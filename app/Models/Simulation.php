@@ -38,7 +38,7 @@ class Simulation extends Model
 
     public function answers()
     {
-        return $this->hasMany(SimulationAnswer::class);
+        return $this->hasMany(SimulationAnswer::class)->orderBy('id');
     }
 
     public function correction()
