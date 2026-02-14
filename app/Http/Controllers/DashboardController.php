@@ -20,8 +20,9 @@ class DashboardController extends Controller
         $user = $request->user();
         $user->load(['plan', 'stats']);
 
-        // Estatísticas do mês
+        // Estatísticas do mês (apenas finalizadas/corrigidas)
         $simulationsThisMonth = Simulation::where('user_id', $user->id)
+            ->whereIn('status', ['finished', 'corrected'])
             ->whereMonth('created_at', now()->month)
             ->count();
 
@@ -31,12 +32,40 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        $stats = $user->stats ?? (object) [
-            'total_simulations' => 0,
-            'total_essays' => 0,
-            'average_math_score' => 0,
-            'average_portuguese_score' => 0,
-            'average_overall_score' => 0,
+        // Calcular estatísticas reais baseadas nas simulações finalizadas/corrigidas
+        $finishedSimulations = Simulation::where('user_id', $user->id)
+            ->whereIn('status', ['finished', 'corrected'])
+            ->get();
+
+        $totalSimulations = $finishedSimulations->count();
+
+        // Média Geral
+        $averageOverall = $totalSimulations > 0
+            ? $finishedSimulations->avg('score')
+            : 0;
+
+        // Média Matemática
+        $mathScores = $finishedSimulations->map(function ($sim) {
+            $scores = $sim->scores_by_subject ?? [];
+            return $scores['matemática'] ?? null;
+        })->filter(fn($v) => !is_null($v));
+
+        $averageMath = $mathScores->count() > 0 ? $mathScores->avg() : 0;
+
+        // Média Português
+        $portScores = $finishedSimulations->map(function ($sim) {
+            $scores = $sim->scores_by_subject ?? [];
+            return $scores['português'] ?? null;
+        })->filter(fn($v) => !is_null($v));
+
+        $averagePortuguese = $portScores->count() > 0 ? $portScores->avg() : 0;
+
+        $stats = (object) [
+            'total_simulations' => $totalSimulations,
+            'total_essays' => 0, // Mantendo 0 pois não foi solicitado correção de redação
+            'average_math_score' => round($averageMath, 1),
+            'average_portuguese_score' => round($averagePortuguese, 1),
+            'average_overall_score' => round($averageOverall, 1),
         ];
 
         $simulationLimit = $this->planService->checkSimulationLimit($user);
