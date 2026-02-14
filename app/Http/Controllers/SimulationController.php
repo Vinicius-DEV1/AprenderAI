@@ -200,6 +200,26 @@ class SimulationController extends Controller
         $total = (int) $request->total_questions;
         $distribution = $request->subject_distribution;
 
+        // Se for ENEM, forçar ordem: Matemática depois Português (ou vice-versa conforme pedido: Maths then Portuguese)
+        // User asked: "primeiro TODAS de matematica, depois TODAS de português"
+        if ($type === 'enem') {
+            // Reordenar distribution para garantir que matemática venha antes
+            $orderedDist = [];
+            if (isset($distribution['matemática'])) {
+                $orderedDist['matemática'] = $distribution['matemática'];
+            }
+            if (isset($distribution['português'])) {
+                $orderedDist['português'] = $distribution['português'];
+            }
+            // Adicionar outros se houver
+            foreach ($distribution as $k => $v) {
+                if ($k !== 'matemática' && $k !== 'português') {
+                    $orderedDist[$k] = $v;
+                }
+            }
+            $distribution = $orderedDist;
+        }
+
         $questions = collect();
 
         // 1) Por subject
@@ -230,7 +250,8 @@ class SimulationController extends Controller
             $questions = $questions->merge($extra);
         }
 
-        // 3) Embaralhar para garantir ordem aleatória (primeira questão não será sempre a mesma)
-        return $questions->shuffle()->values()->take($total);
+        // 3) Retornar SEM embaralhar a ordem dos assuntos (mantém Math -> Port), 
+        // mas as questões dentro de cada assunto já estão aleatórias pelo inRandomOrder acima.
+        return $questions->values()->take($total);
     }
 }

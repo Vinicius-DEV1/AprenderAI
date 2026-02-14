@@ -47,13 +47,44 @@ class CorrectSimulationJob implements ShouldQueue
 
         if (!$result) {
             Log::warning("Falha ao corrigir simulação {$this->simulation->id}: Sem resposta da IA ou sem chave.");
-            // Mesmo sem IA, calcular nota baseada no gabarito (já temos is_correct no banco se foi salvo antes?
-            // SimulationController::saveAnswer salva is_correct baseada na comparação simples.
-            // Então a nota básica JÁ EXISTE.
-            // A IA serve para o feedback detalhado.
 
-            $this->simulation->update(['status' => 'corrected']); // Marca como corrigido mesmo sem IA extra
+            // Calcular score mesmo sem IA (baseado em is_correct já salvo)
+            $totalQuestions = $this->simulation->answers->count();
+            $correctAnswers = $this->simulation->answers->where('is_correct', true)->count();
+            $score = $totalQuestions > 0 ? round(($correctAnswers / $totalQuestions) * 100, 2) : 0;
+
+            // Calcular scores por matéria
+            $scoresBySubject = [];
+            $answersBySubject = $this->simulation->answers->groupBy('question.subject');
+
+            foreach ($answersBySubject as $subject => $answers) {
+                $total = $answers->count();
+                $correct = $answers->where('is_correct', true)->count();
+                $scoresBySubject[$subject] = $total > 0 ? round(($correct / $total) * 100, 2) : 0;
+            }
+
+            $this->simulation->update([
+                'status' => 'corrected',
+                'score' => $score,
+                'scores_by_subject' => $scoresBySubject,
+            ]);
+
             return;
+        }
+
+        // Calcular score com base nos dados
+        $totalQuestions = $this->simulation->answers->count();
+        $correctAnswers = $this->simulation->answers->where('is_correct', true)->count();
+        $score = $totalQuestions > 0 ? round(($correctAnswers / $totalQuestions) * 100, 2) : 0;
+
+        // Calcular scores por matéria
+        $scoresBySubject = [];
+        $answersBySubject = $this->simulation->answers->groupBy('question.subject');
+
+        foreach ($answersBySubject as $subject => $answers) {
+            $total = $answers->count();
+            $correct = $answers->where('is_correct', true)->count();
+            $scoresBySubject[$subject] = $total > 0 ? round(($correct / $total) * 100, 2) : 0;
         }
 
         // Salvar Correção da IA
@@ -65,7 +96,11 @@ class CorrectSimulationJob implements ShouldQueue
             'corrected_at' => now(),
         ]);
 
-        $this->simulation->update(['status' => 'corrected']);
+        $this->simulation->update([
+            'status' => 'corrected',
+            'score' => $score,
+            'scores_by_subject' => $scoresBySubject,
+        ]);
 
         // Enviar E-mail
         try {

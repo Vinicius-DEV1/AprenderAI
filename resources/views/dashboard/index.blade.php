@@ -187,8 +187,8 @@
                             </h4>
                             <p>{{ $simulation->created_at->format('d/m/Y H:i') }}</p>
                         </div>
-                        @if($simulation->score)
-                            <div class="simulation-score">{{ number_format($simulation->score, 1) }}%</div>
+                        @if(in_array($simulation->status, ['finished', 'corrected']))
+                            <div class="simulation-score">{{ number_format((float) $simulation->score, 1) }}%</div>
                         @else
                             <span style="color: #f59e0b; font-weight: 600;">Pendente</span>
                         @endif
