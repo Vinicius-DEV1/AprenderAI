@@ -205,7 +205,8 @@ class SimulationController extends Controller
         // 1) Por subject
         foreach ($distribution as $subject => $count) {
             $count = (int) $count;
-            if ($count <= 0) continue;
+            if ($count <= 0)
+                continue;
 
             $selected = Question::where('type', $type)
                 ->where('subject', $subject)
@@ -229,6 +230,7 @@ class SimulationController extends Controller
             $questions = $questions->merge($extra);
         }
 
-        return $questions->take($total);
+        // 3) Embaralhar para garantir ordem aleatória (primeira questão não será sempre a mesma)
+        return $questions->shuffle()->values()->take($total);
     }
 }

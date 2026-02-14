@@ -354,7 +354,7 @@ function goToQuestion(index) {
     document.querySelectorAll('.question-content').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
     
-    document.querySelector(`[data-question="${index}"]`).style.display = 'block';
+    document.querySelector(`.question-content[data-question="${index}"]`).style.display = 'block';
     document.querySelectorAll('.nav-btn')[index].classList.add('active');
     
     currentQuestion = index;
