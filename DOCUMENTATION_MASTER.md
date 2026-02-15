@@ -130,5 +130,11 @@ O fluxo utiliza o pacote `laravel/socialite` mas com configuração dinâmica.
 *   **Gestão de Planos**:
     *   `Admin/PlanController`: CRUD de planos.
     *   Permite editar quotas e preços (novas assinaturas).
+    *   `Admin/PlanController`: CRUD de planos.
+    *   Permite editar quotas e preços (novas assinaturas).
     *   Views em `resources/views/admin/plans/`.
+*   **Monitoramento VPS**:
+    *   `ServerMetric`: Tabela para histórico de CPU/RAM/Rede.
+    *   `CollectMetrics`: Comando agendado (Cron) a cada minuto.
+    *   `Admin/MonitorController`: Dashboard com gráficos e gauges em tempo real.
 
