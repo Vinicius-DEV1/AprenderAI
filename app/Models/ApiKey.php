@@ -41,10 +41,8 @@ class ApiKey extends Model
 
     public function incrementUsage(): void
     {
-        $this->update([
-            'last_used_at' => now(),
-            'requests_count' => $this->requests_count + 1,
-        ]);
+        $this->increment('requests_count');
+        $this->update(['last_used_at' => now()]);
     }
 
     public static function getActiveKeyForProvider(string $provider): ?self
