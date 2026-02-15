@@ -127,4 +127,8 @@ O fluxo utiliza o pacote `laravel/socialite` mas com configuração dinâmica.
 *   **Gestão de Usuários**:
     *   `Admin/UserController`: CRUD simplificado + ações de segurança.
     *   Views em `resources/views/admin/users/`.
+*   **Gestão de Planos**:
+    *   `Admin/PlanController`: CRUD de planos.
+    *   Permite editar quotas e preços (novas assinaturas).
+    *   Views em `resources/views/admin/plans/`.
 
