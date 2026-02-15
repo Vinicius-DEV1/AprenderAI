@@ -171,6 +171,7 @@
         }
     </style>
     @stack('styles')
+    @include('partials.analytics')
 </head>
 
 <body>
