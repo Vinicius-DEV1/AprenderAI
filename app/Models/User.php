@@ -25,6 +25,8 @@ class User extends Authenticatable
         'plan_id',
         'plan_started_at',
         'plan_expires_at',
+        'google_id',
+        'avatar_url',
     ];
 
     /**
