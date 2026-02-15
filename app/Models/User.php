@@ -21,6 +21,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
         'plan_id',
         'plan_started_at',
         'plan_expires_at',
@@ -79,6 +80,11 @@ class User extends Authenticatable
     }
 
     // Métodos auxiliares
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
     public function canCreateSimulation(): bool
     {
         if (!$this->plan)
