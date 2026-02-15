@@ -191,4 +191,43 @@ class AIService
 
         return "Corrija a redação do ENEM com tema '$title' e $instructions\n\nTexto:\n$content";
     }
+
+    public function generateJson(string $prompt): array
+    {
+        if (!$this->hasActiveKey()) {
+            return [];
+        }
+
+        $provider = $this->getFirstAvailableProvider();
+        if (!$provider) {
+            return [];
+        }
+
+        try {
+            $apiKey = ApiKey::getActiveKeyForProvider($provider);
+            $response = $this->callAI($provider, $apiKey->decrypted_key, $prompt);
+            $apiKey->incrementUsage();
+
+            $data = $response;
+
+            // Normalize OpenAI response
+            if ($provider === 'openai') {
+                $content = $response['choices'][0]['message']['content'] ?? '';
+                // Try to decode JSON from content
+                $decoded = json_decode($content, true);
+                $data = $decoded ?? ['text' => $content];
+            }
+
+            return [
+                'provider' => $provider,
+                'data' => $data,
+            ];
+        } catch (\Exception $e) {
+            Log::error('AI Generation failed', [
+                'provider' => $provider,
+                'error' => $e->getMessage()
+            ]);
+            return [];
+        }
+    }
 }
