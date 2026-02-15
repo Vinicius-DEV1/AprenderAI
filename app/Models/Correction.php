@@ -56,6 +56,6 @@ class Correction extends Model
             }
         }
 
-        return null; // Não encontrou explicação específica para esta questão
+        return "Sem análise específica disponível para esta questão."; // Fallback para evitar loading infinito
     }
 }
