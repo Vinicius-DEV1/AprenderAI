@@ -1,42 +1,42 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Gerenciar Chaves de API') }}
-        </h2>
-    </x-slot>
+<x-layouts.admin>
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Gerenciar Chaves de API</h1>
+        <p class="text-gray-600">Configure as chaves e provedores de IA.</p>
+    </div>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            
-            <!-- Adicionar Nova Chave -->
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">AIzaSyA0ZSiRuR0T66mS-2KU-V23PcSL2uX-fvo</h3>
-                <form action="{{ route('admin.api-keys.store') }}" method="POST" class="flex gap-4 items-end">
-                    @csrf
-                    <div>
-                        <x-input-label for="provider" value="Provedor" />
-                        <select name="provider" id="provider" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full">
-                            <option value="gemini">Google Gemini</option>
-                            <option value="openai">OpenAI (GPT-4)</option>
-                            <option value="grok">Grok (xAI)</option>
-                        </select>
-                    </div>
-                    <div class="flex-1">
-                        <x-input-label for="key" value="Chave de API (sk-...)" />
-                        <x-text-input id="key" name="key" type="password" class="mt-1 block w-full" required />
-                    </div>
-                    <x-primary-button>Salvar Chave</x-primary-button>
-                </form>
-            </div>
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- Adicionar Nova Chave -->
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border border-gray-100">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Adicionar Nova Chave</h3>
+            <form action="{{ route('admin.api-keys.store') }}" method="POST" class="flex flex-col md:flex-row gap-4 items-end">
+                @csrf
+                <div class="w-full md:w-1/4">
+                    <x-input-label for="provider" value="Provedor" />
+                    <select name="provider" id="provider" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full">
+                        <option value="gemini">Google Gemini</option>
+                        <option value="openai">OpenAI (GPT-4)</option>
+                        <option value="grok">Grok (xAI)</option>
+                    </select>
+                </div>
+                <div class="flex-1 w-full">
+                    <x-input-label for="key" value="Chave de API (sk-...)" />
+                    <x-text-input id="key" name="key" type="password" class="mt-1 block w-full" required />
+                </div>
+                <x-primary-button class="w-full md:w-auto justify-center">Salvar Chave</x-primary-button>
+            </form>
+        </div>
 
-            <!-- Listagem -->
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    @if($keys->isEmpty())
-                        <div class="text-center py-8 text-gray-500">
-                            Nenhuma chave configurada. O sistema usará respostas simuladas.
-                        </div>
-                    @else
+        <!-- Listagem -->
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
+            <div class="p-6 text-gray-900">
+                @if($keys->isEmpty())
+                    <div class="text-center py-8 text-gray-500">
+                        Nenhuma chave configurada. O sistema usará respostas simuladas.
+                    </div>
+                @else
+                    <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
@@ -93,9 +93,9 @@
                                 @endforeach
                             </tbody>
                         </table>
-                    @endif
-                </div>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
-</x-app-layout>
+</x-layouts.admin>

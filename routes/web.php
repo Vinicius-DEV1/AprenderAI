@@ -11,6 +11,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::post('/webhooks/mercadopago', [\App\Http\Controllers\WebhookController::class, 'handleMercadoPago'])->name('webhooks.mercadopago');
+Route::post('/webhooks/asaas', [\App\Http\Controllers\WebhookController::class, 'handleAsaas'])->name('webhooks.asaas');
 
 Route::middleware(['auth'])->group(function () {
     // Dashboard
@@ -44,7 +45,11 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('plans')->name('plans.')->group(function () {
         Route::get('/', [PlanController::class, 'index'])->name('index');
         Route::get('/{plan}', [PlanController::class, 'show'])->name('show');
-        Route::post('/{plan}/subscribe', [\App\Http\Controllers\SubscriptionController::class, 'checkout'])->name('checkout');
+        Route::get('/{plan}/checkout', [\App\Http\Controllers\SubscriptionController::class, 'showCheckout'])->name('checkout');
+        Route::post('/{plan}/validate-coupon', [\App\Http\Controllers\SubscriptionController::class, 'validateCoupon'])->name('validate-coupon');
+        Route::post('/{plan}/checkout', [\App\Http\Controllers\SubscriptionController::class, 'store'])
+            ->middleware('check.payment.active')
+            ->name('store');
     });
 
     // Pagamentos
@@ -61,6 +66,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/api-keys', [\App\Http\Controllers\Admin\AdminController::class, 'storeApiKey'])->name('api-keys.store');
         Route::patch('/api-keys/{apiKey}/toggle', [\App\Http\Controllers\Admin\AdminController::class, 'toggleApiKey'])->name('api-keys.toggle');
         Route::delete('/api-keys/{apiKey}', [\App\Http\Controllers\Admin\AdminController::class, 'destroyApiKey'])->name('api-keys.destroy');
+        
+        // Configurações de Pagamento
+        Route::get('/payment-settings', [\App\Http\Controllers\Admin\PaymentSettingController::class, 'index'])->name('payment-settings');
+        Route::post('/payment-settings', [\App\Http\Controllers\Admin\PaymentSettingController::class, 'update'])->name('payment-settings.update');
+
+        // Cupons
+        Route::resource('coupons', \App\Http\Controllers\Admin\CouponController::class);
     });
 });
 

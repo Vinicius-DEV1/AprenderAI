@@ -79,6 +79,21 @@ Para um histórico detalhado de alterações, logs de verificação e diário de
 
 ---
 
+## 👤 Usuários de Teste (Seeders)
+
+Ao rodar `php artisan db:seed`, os seguintes usuários são criados automaticamente para testes:
+
+| Email | Função | Plano | Senha Padrão |
+| :--- | :--- | :--- | :--- |
+| `admin@aprovaai.com` | **Admin** | Plus | `Aprova@123` |
+| `plus@aprovaai.test` | User | Plus | `Aprova@123` |
+| `basic@aprovaai.test` | User | Basic | `Aprova@123` |
+| `free@aprovaai.test` | User | Free | `Aprova@123` |
+
+> **Nota:** A senha padrão é definida pela chave `DEFAULT_USER_PASSWORD` no `.env`. Se não estiver definida, o fallback é `Aprova@123`.
+
+---
+
 <p align="center">
   Desenvolvido com ❤️ para transformar a educação brasileira.
 </p>

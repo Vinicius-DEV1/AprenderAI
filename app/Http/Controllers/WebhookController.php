@@ -10,6 +10,70 @@ use Illuminate\Support\Facades\Log;
 
 class WebhookController extends Controller
 {
+    public function handleAsaas(Request $request)
+    {
+        $data = $request->all();
+        $event = $data['event'] ?? null;
+        
+        Log::info('Asaas Webhook:', $data);
+
+        if (!$event) {
+            return response()->json(['status' => 'ignored']);
+        }
+
+        $payment = $data['payment'] ?? [];
+        $subscriptionId = $payment['subscription'] ?? null;
+
+        if (!$subscriptionId) {
+            return response()->json(['status' => 'ignored_no_subscription']);
+        }
+
+        $subscription = Subscription::where('gateway_id', $subscriptionId)->first();
+
+        if (!$subscription) {
+            Log::warning('Asaas Webhook: Subscription not found', ['id' => $subscriptionId]);
+            return response()->json(['status' => 'not_found']);
+        }
+
+        $user = $subscription->user;
+        $plan = $subscription->plan; // Assuming relation exists
+
+        switch ($event) {
+            case 'PAYMENT_CONFIRMED':
+            case 'PAYMENT_RECEIVED':
+                $subscription->update([
+                    'status' => 'active',
+                    'current_period_start' => now(), // Start of this period
+                    // Calculate end based on plan interval
+                    'current_period_end' => $plan->interval === 'yearly' ? now()->addYear() : now()->addMonth(),
+                ]);
+
+                // Update User Plan
+                $user->update([
+                    'plan_id' => $plan->id,
+                    'plan_started_at' => now(),
+                    'plan_expires_at' => $subscription->current_period_end,
+                ]);
+
+                // Optional: Reset usage stats if needed
+                // $user->update(['simulations_used_this_month' => 0, ...]);
+                break;
+
+            case 'PAYMENT_OVERDUE':
+            case 'PAYMENT_REFUNDED':
+                $subscription->update(['status' => 'past_due']); // or canceled
+                // We might want to keep user access until grace period ends, or cut immediately.
+                // For now, let's not remove plan_id immediately but plan_expires_at handles access.
+                break;
+                
+            case 'PAYMENT_DELETED':
+                $subscription->update(['status' => 'canceled']);
+                break;
+        }
+
+        return response()->json(['status' => 'ok']);
+    }
+
     public function handleMercadoPago(Request $request)
     {
         // Validar origem se possível (HMAC ou IP)
@@ -26,31 +90,7 @@ class WebhookController extends Controller
         if ($type === 'payment') {
             $paymentId = $data['data']['id'] ?? $data['id'] ?? null;
             if ($paymentId) {
-                // Consultar pagamento na API (simulado aqui)
-                // $payment = MercadoPago\Payment::find_by_id($paymentId);
-
-                // Se status approved...
-                // Localizar usuário pelo external_reference (user_id)
-                // Atualizar assinatura
-
-                // Como não tenho API key real configurada e sandbox exige setup,
-                // vou deixar logado e retornar 200.
-                // A implementação real faria:
-                /*
-                $payment = ...;
-                if ($payment->status === 'approved') {
-                    $user = User::find($payment->external_reference);
-                    if ($user) {
-                         $sub = Subscription::where('user_id', $user->id)->first();
-                         $sub->update([
-                             'status' => 'active',
-                             'current_period_start' => now(),
-                             'current_period_end' => now()->addMonth(), // Baseado no plano atual
-                         ]);
-                         $user->update(['plan_id' => $sub->plan_id]);
-                    }
-                }
-                */
+                // ... (existing logic commented out)
             }
         }
 
