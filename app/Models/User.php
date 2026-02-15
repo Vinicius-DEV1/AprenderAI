@@ -20,6 +20,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'phone',
         'password',
         'role',
         'plan_id',
@@ -27,6 +28,7 @@ class User extends Authenticatable
         'plan_expires_at',
         'google_id',
         'avatar_url',
+        'is_banned',
     ];
 
     /**
@@ -51,11 +53,17 @@ class User extends Authenticatable
             'password' => 'hashed',
             'plan_started_at' => 'datetime',
             'plan_expires_at' => 'datetime',
+            'is_banned' => 'boolean',
             'usage_reset_at' => 'datetime',
         ];
     }
 
     // Relacionamentos
+    public function logs()
+    {
+        return $this->hasMany(UserLog::class);
+    }
+
     public function plan()
     {
         return $this->belongsTo(Plan::class);
