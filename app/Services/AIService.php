@@ -36,13 +36,18 @@ class AIService
 
             $prompt = $this->buildSimulationCorrectionPrompt($questionsAndAnswers, $plan);
 
-            $response = $this->callAI($provider, $apiKey->decrypted_key, $prompt);
+            $result = $this->callAI($provider, $apiKey->decrypted_key, $prompt);
 
             $apiKey->incrementUsage();
 
             return [
                 'provider' => $provider,
-                'response' => $response,
+                'response' => $result['content'],
+                'usage' => $result['usage'] ?? [
+                    'input_tokens' => 0,
+                    'output_tokens' => 0,
+                    'total_tokens' => 0,
+                ],
             ];
         } catch (\Exception $e) {
             Log::error('AI Correction failed', [
@@ -69,13 +74,18 @@ class AIService
 
             $prompt = $this->buildEssayCorrectionPrompt($title, $content, $plan);
 
-            $response = $this->callAI($provider, $apiKey->decrypted_key, $prompt);
+            $result = $this->callAI($provider, $apiKey->decrypted_key, $prompt);
 
             $apiKey->incrementUsage();
 
             return [
                 'provider' => $provider,
-                'response' => $response,
+                'response' => $result['content'],
+                'usage' => $result['usage'] ?? [
+                    'input_tokens' => 0,
+                    'output_tokens' => 0,
+                    'total_tokens' => 0,
+                ],
             ];
         } catch (\Exception $e) {
             Log::error('Essay correction failed', [
@@ -110,7 +120,23 @@ class AIService
                     'temperature' => 0.7,
                 ]);
 
-        return $response->json();
+        $data = $response->json();
+        
+        // Parse content
+        $contentString = $data['choices'][0]['message']['content'] ?? '{}';
+        $content = json_decode($contentString, true) ?? [];
+
+        // Extract usage
+        $usage = $data['usage'] ?? [];
+        
+        return [
+            'content' => $content,
+            'usage' => [
+                'input_tokens' => $usage['prompt_tokens'] ?? 0,
+                'output_tokens' => $usage['completion_tokens'] ?? 0,
+                'total_tokens' => $usage['total_tokens'] ?? 0,
+            ]
+        ];
     }
 
     protected function callGemini(string $apiKey, string $prompt): array
@@ -142,9 +168,19 @@ class AIService
         $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
 
         // Tentar decodificar se for JSON esperado
-        $json = json_decode($text, true);
+        $json = json_decode($text, true) ?? ['text' => $text];
 
-        return $json ?? ['text' => $text];
+        // Extract Usage Metadata (Gemini returns usageMetadata)
+        $usageMeta = $data['usageMetadata'] ?? [];
+
+        return [
+            'content' => $json,
+            'usage' => [
+                'input_tokens' => $usageMeta['promptTokenCount'] ?? 0,
+                'output_tokens' => $usageMeta['candidatesTokenCount'] ?? 0,
+                'total_tokens' => $usageMeta['totalTokenCount'] ?? 0,
+            ]
+        ];
     }
 
     protected function callGrok(string $apiKey, string $prompt): array

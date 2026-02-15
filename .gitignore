@@ -16,3 +16,11 @@ yarn-error.log
 /.idea
 /.vscode
 *.sqlite
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+/storage/*.sqlite
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/testing/*
+/storage/framework/views/*
+/storage/logs/*
