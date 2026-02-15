@@ -192,66 +192,101 @@ class SimulationController extends Controller
     }
 
     /**
-     * Seleciona questões por distribuição e completa faltantes com qualquer subject do mesmo type (sem repetir IDs).
+     * Seleciona questões respeitando regras de negócio:
+     * - ENEM: 90% Real + 10% Geradas; Ordem Português -> Matemática; Sem repetição de enunciado.
+     * - Outros: Seleção aleatória simples.
      */
     protected function selectQuestions(Request $request): Collection
     {
         $type = $request->type;
         $total = (int) $request->total_questions;
         $distribution = $request->subject_distribution;
+        $finalQuestions = collect();
+        $usedStatements = []; // Para anti-repetição global na prova
 
-        // Se for ENEM, forçar ordem: Matemática depois Português (ou vice-versa conforme pedido: Maths then Portuguese)
-        // User asked: "primeiro TODAS de matematica, depois TODAS de português"
+        // 1. Definir Ordem dos Assuntos
         if ($type === 'enem') {
-            // Reordenar distribution para garantir que matemática venha antes
-            $orderedDist = [];
-            if (isset($distribution['matemática'])) {
-                $orderedDist['matemática'] = $distribution['matemática'];
+            // Forçar ordem: Português primeiro, depois Matemática
+            $orderedSubjects = ['português', 'matemática'];
+            // Adicionar outros se existirem no request (ex: teste)
+            foreach (array_keys($distribution) as $s) {
+                if (!in_array($s, $orderedSubjects))
+                    $orderedSubjects[] = $s;
             }
-            if (isset($distribution['português'])) {
-                $orderedDist['português'] = $distribution['português'];
-            }
-            // Adicionar outros se houver
-            foreach ($distribution as $k => $v) {
-                if ($k !== 'matemática' && $k !== 'português') {
-                    $orderedDist[$k] = $v;
-                }
-            }
-            $distribution = $orderedDist;
+        } else {
+            $orderedSubjects = array_keys($distribution);
         }
 
-        $questions = collect();
-
-        // 1) Por subject
-        foreach ($distribution as $subject => $count) {
-            $count = (int) $count;
-            if ($count <= 0)
+        foreach ($orderedSubjects as $subject) {
+            if (empty($distribution[$subject]))
                 continue;
 
-            $selected = Question::where('type', $type)
-                ->where('subject', $subject)
-                ->whereNotIn('id', $questions->pluck('id'))
-                ->inRandomOrder()
-                ->limit($count)
-                ->get();
+            $subjectTotal = (int) $distribution[$subject];
 
-            $questions = $questions->merge($selected);
+            if ($type === 'enem' && in_array($subject, ['português', 'matemática'])) {
+                // REGRA 90/10
+                $countReal = floor($subjectTotal * 0.9);
+                $countGen = $subjectTotal - $countReal;
+
+                // Buscar Reais (enem_real_2009_2023)
+                $realCandidates = Question::where('type', 'enem')
+                    ->where('subject', $subject)
+                    ->where('source', 'enem_real_2009_2023')
+                    ->inRandomOrder()
+                    ->limit($countReal * 2) // Buscar dobro para filtrar repetidas
+                    ->get();
+
+                $subjectQuestions = collect();
+
+                foreach ($realCandidates as $q) {
+                    if ($subjectQuestions->count() >= $countReal)
+                        break;
+
+                    // Check Repetição
+                    $stmtHash = md5(trim($q->statement));
+                    if (!in_array($stmtHash, $usedStatements)) {
+                        $subjectQuestions->push($q);
+                        $usedStatements[] = $stmtHash;
+                    }
+                }
+
+                // Buscar Geradas (generated_system)
+                $neededGen = $subjectTotal - $subjectQuestions->count();
+
+                $genCandidates = Question::where('type', 'enem')
+                    ->where('subject', $subject)
+                    ->where('source', 'generated_system')
+                    ->inRandomOrder()
+                    ->limit($neededGen * 3) // Margem maior para geradas
+                    ->get();
+
+                foreach ($genCandidates as $q) {
+                    if ($subjectQuestions->count() >= $subjectTotal)
+                        break;
+
+                    $stmtHash = md5(trim($q->statement));
+                    if (!in_array($stmtHash, $usedStatements)) {
+                        $subjectQuestions->push($q);
+                        $usedStatements[] = $stmtHash;
+                    }
+                }
+
+                // Append ao final (mantendo ordem do bloco)
+                $finalQuestions = $finalQuestions->merge($subjectQuestions);
+
+            } else {
+                // Lógica Padrão (Concurso ou matérias não-ENEM filter)
+                // Se type concurso, source deve ser manual tambem? Ou qualquer? geralmente manual.
+                $candidates = Question::where('type', $type)
+                    ->where('subject', $subject)
+                    ->inRandomOrder()
+                    ->limit($subjectTotal)
+                    ->get();
+
+                $finalQuestions = $finalQuestions->merge($candidates);
+            }
         }
 
-        // 2) Completa se faltou
-        $missing = $total - $questions->count();
-        if ($missing > 0) {
-            $extra = Question::where('type', $type)
-                ->whereNotIn('id', $questions->pluck('id'))
-                ->inRandomOrder()
-                ->limit($missing)
-                ->get();
-
-            $questions = $questions->merge($extra);
-        }
-
-        // 3) Retornar SEM embaralhar a ordem dos assuntos (mantém Math -> Port), 
-        // mas as questões dentro de cada assunto já estão aleatórias pelo inRandomOrder acima.
-        return $questions->values()->take($total);
+        return $finalQuestions;
     }
 }
