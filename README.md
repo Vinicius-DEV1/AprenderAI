@@ -1,59 +1,84 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# AprovadoAI 🎓
+> **Sua jornada rumo à aprovação potencializada por Inteligência Artificial.**
+
+[![Laravel Version](https://img.shields.io/badge/Laravel-11.x-FF2D20?style=flat-square&logo=laravel)](https://laravel.com)
+[![PHP Version](https://img.shields.io/badge/PHP-8.2%2B-777BB4?style=flat-square&logo=php)](https://www.php.net)
+[![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
+
+---
+
+## 📝 Sobre o Projeto
+
+O **AprovadoAI** é uma plataforma brasileira de vanguarda projetada para revolucionar a preparação de estudantes para o ENEM e concursos públicos. Ao integrar modelos de linguagem de última geração (LLMs), o sistema oferece feedbacks instantâneos e personalizados, transformando o erro em uma oportunidade real de aprendizado.
+
+A plataforma automatiza a correção de redações e simulados, permitindo que o estudante foque no que realmente importa: a evolução constante. Com uma arquitetura moderna e escalável, o AprovadoAI une a robustez do ecossistema Laravel com a agilidade do Tailwind CSS 4 para entregar uma experiência de usuário (UX) fluida e focada na produtividade.
+
+---
+
+## 🛠️ Stack Tecnológica
+
+| Categoria | Tecnologia |
+| :--- | :--- |
+| **Backend** | PHP 8.4+ / Laravel 11.x |
+| **Frontend** | Blade Templates / Tailwind CSS 4 / Vite 7 |
+| **Banco de Dados** | SQLite (Desenvolvimento) / MySQL (Produção) |
+| **Pagamentos** | Mercado Pago SDK |
+| **AI Integration** | OpenAI / Gemini / Grok (Gestão Dinâmica de Chaves) |
+
+---
+
+## 🚀 Arquitetura & Funcionalidades
+
+O diferencial técnico do AprovadoAI reside na sua capacidade de orquestrar diferentes provedores de IA de forma transparente para o usuário final:
+
+-   🧠 **Correção Inteligente**: Feedback detalhado de pontos de melhoria em redações baseados em critérios oficiais.
+-   📊 **Gestão de Simulados**: Geração e acompanhamento de desempenho em baterias de questões por matéria.
+-   🔑 **Dynamic AI Key Management**: Painel administrativo para alternar entre provedores de IA em tempo real.
+-   💳 **Assinaturas**: Sistema de planos (Gratuito, Básico, Plus) com limites dinâmicos controlados via Middleware.
+
+---
+
+## ⚙️ Instalação (Quick Start)
+
+Siga os comandos abaixo para configurar o ambiente de desenvolvimento:
+
+```bash
+# 1. Clonar o repositório
+git clone https://github.com/Antonio7s/AprovadoAI.git
+cd AprovadoAI
+
+# 2. Instalar dependências e configurar ambiente
+composer install && npm install
+
+# 3. Configurar banco e chaves
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite
+php artisan migrate --seed
+```
+
+---
+
+## 💻 Fluxo de Desenvolvimento
+
+Para rodar o projeto localmente, utilize o comando concorrente (configurado via `composer.json`):
+
+```bash
+# Inicia todos os serviços (Server, Vite, Queue, Pail) simultaneamente
+composer dev
+```
+
+Acesse a aplicação em: [http://localhost:8000](http://localhost:8000)
+
+---
+
+## 📑 Documentação Adicional
+
+Para um histórico detalhado de alterações, logs de verificação e diário de bordo da construção deste projeto, consulte o arquivo:
+👉 [**walkthrough.md**](file:///C:/Users/vinic/.gemini/antigravity/brain/5392c893-6210-42ff-bbaf-394cab5e505f/walkthrough.md)
+
+---
 
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+  Desenvolvido com ❤️ para transformar a educação brasileira.
 </p>
-
-## About Laravel
-
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
-
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
-
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-## Laravel Sponsors
-
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
-
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).

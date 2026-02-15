@@ -65,10 +65,10 @@ class UserSeeder extends Seeder
             [
                 'plan_id' => $basic->id,
                 'status' => 'active',
-                'provider' => 'manual',
-                'provider_subscription_id' => 'manual_basic_' . $uBasic->id,
-                'started_at' => now(),
-                'ends_at' => now()->addMonth()
+                'gateway' => 'manual',
+                'gateway_id' => 'manual_basic_' . $uBasic->id,
+                'current_period_start' => now(),
+                'current_period_end' => now()->addMonth()
             ]
         );
 
@@ -90,10 +90,10 @@ class UserSeeder extends Seeder
             [
                 'plan_id' => $plus->id,
                 'status' => 'active',
-                'provider' => 'manual',
-                'provider_subscription_id' => 'manual_plus_' . $uPlus->id,
-                'started_at' => now(),
-                'ends_at' => now()->addMonth()
+                'gateway' => 'manual',
+                'gateway_id' => 'manual_plus_' . $uPlus->id,
+                'current_period_start' => now(),
+                'current_period_end' => now()->addMonth()
             ]
         );
 
