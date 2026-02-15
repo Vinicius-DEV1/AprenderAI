@@ -30,7 +30,7 @@
 
         <!-- Sidebar -->
         <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-            class="fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-xl transform transition-transform duration-300 lg:translate-x-0 lg:static lg:inset-auto lg:flex lg:flex-col lg:w-72 border-r border-slate-200">
+            class="fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-xl transform transition-transform duration-300 lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:inset-auto lg:flex lg:flex-col lg:w-72 border-r border-slate-200">
             <!-- Logo -->
             <div
                 class="flex items-center justify-between h-20 px-6 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-indigo-600">
