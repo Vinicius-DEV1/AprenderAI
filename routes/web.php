@@ -84,6 +84,9 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'update'])->name('users.update');
         Route::patch('/users/{user}/toggle-status', [\App\Http\Controllers\Admin\UserController::class, 'toggleStatus'])->name('users.toggle-status');
         Route::post('/users/{user}/reset-password', [\App\Http\Controllers\Admin\UserController::class, 'resetPassword'])->name('users.reset-password');
+
+        // Planos
+        Route::resource('plans', \App\Http\Controllers\Admin\PlanController::class);
     });
 });
 
