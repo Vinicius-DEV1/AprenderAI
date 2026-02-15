@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Simulation;
 use App\Models\Question;
+use App\Http\Requests\StoreSimulationRequest;
 use App\Services\PlanService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -38,17 +39,8 @@ class SimulationController extends Controller
         return view('simulations.create');
     }
 
-    public function store(Request $request)
+    public function store(StoreSimulationRequest $request)
     {
-        $request->validate([
-            'type' => 'required|in:enem,concurso',
-            'subject_distribution' => 'required|array|min:1',
-            'subject_distribution.*' => 'required|integer|min:0',
-            'include_essay' => 'boolean',
-            'total_questions' => 'required|integer|min:40|max:100',
-            'custom_time' => 'nullable|integer|min:600|max:43200',
-        ]);
-
         $user = $request->user();
 
         // 0) Checagem do plano
@@ -60,17 +52,7 @@ class SimulationController extends Controller
         $total = (int) $request->total_questions;
         $distribution = $request->input('subject_distribution', []);
 
-        // 1) Validar soma da distribuição
-        $sum = collect($distribution)->sum(fn($v) => (int) $v);
-        if ($sum !== $total) {
-            return back()
-                ->withInput()
-                ->withErrors([
-                    'subject_distribution' => "A soma da distribuição ({$sum}) deve ser igual ao total de questões ({$total}).",
-                ]);
-        }
-
-        // 2) Criar simulação
+        // 1) Criar simulação
         $simulation = Simulation::create([
             'user_id' => $user->id,
             'type' => $request->type,
