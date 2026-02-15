@@ -73,7 +73,15 @@ Route::middleware(['auth'])->group(function () {
 
         // Cupons
         Route::resource('coupons', \App\Http\Controllers\Admin\CouponController::class);
+
+        // Integrações
+        Route::get('/integrations', [\App\Http\Controllers\Admin\IntegrationController::class, 'index'])->name('integrations');
+        Route::post('/integrations', [\App\Http\Controllers\Admin\IntegrationController::class, 'update'])->name('integrations.update');
     });
 });
+
+// Google Auth
+Route::get('auth/google', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'redirect'])->name('auth.google');
+Route::get('auth/google/callback', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'callback'])->name('auth.google.callback');
 
 require __DIR__ . '/auth.php';
