@@ -69,6 +69,34 @@ class SimulationController extends Controller
         return view('simulations.show', compact('simulation'));
     }
 
+    public function checkCorrectionStatus(Simulation $simulation)
+    {
+        $this->authorize('view', $simulation);
+
+        $simulation->load('correction');
+
+        if (!$simulation->correction) {
+            return response()->json(['status' => 'pending']);
+        }
+
+        // Preparar dados de explicação por questão
+        $explanations = [];
+        $answers = $simulation->answers;
+
+        foreach ($answers as $answer) {
+            $explanation = $simulation->correction->getExplanationForQuestion($answer->question_id);
+            if ($explanation) {
+                // Parse markdown to HTML if needed, or send raw text
+                $explanations[$answer->question_id] = $explanation;
+            }
+        }
+
+        return response()->json([
+            'status' => 'completed',
+            'data' => $explanations
+        ]);
+    }
+
     public function saveAnswer(Request $request, Simulation $simulation)
     {
         $this->authorize('update', $simulation);
@@ -114,7 +142,7 @@ class SimulationController extends Controller
     {
         $this->authorize('view', $simulation);
 
-        $simulation->load(['answers.question', 'user.plan']);
+        $simulation->load(['answers.question', 'user.plan', 'correction']);
 
         $totalQuestions = $simulation->answers()->count();
         $correctAnswers = $simulation->answers()->where('is_correct', true)->count();

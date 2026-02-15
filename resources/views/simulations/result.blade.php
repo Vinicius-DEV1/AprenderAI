@@ -149,6 +149,14 @@
             background: #1d4ed8;
             transform: translateY(-1px);
         }
+
+        .blink {
+            animation: blinker 1.5s linear infinite;
+        }
+
+        @keyframes blinker {
+            50% { opacity: 0.5; }
+        }
     </style>
 
     <div class="result-header">
@@ -180,6 +188,87 @@
                 {{ $totalQuestions > 0 ? gmdate('i:s', ($simulation->time_elapsed ?? 0) / $totalQuestions) : '00:00' }}
             </div>
         </div>
+    <!-- Script de Polling para Correção IA -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const loadingElements = document.querySelectorAll('.ai-loading');
+            
+            if (loadingElements.length > 0) {
+                const simulationId = "{{ $simulation->id }}";
+                const pollInterval = 3000; // 3 segundos
+
+                const intervalId = setInterval(checkStatus, pollInterval);
+
+                async function checkStatus() {
+                    try {
+                        const response = await fetch("{{ route('simulations.status', $simulation) }}");
+                        if (!response.ok) return;
+                        
+                        const result = await response.json();
+
+                        if (result.status === 'completed') {
+                            clearInterval(intervalId);
+                            updateUI(result.data);
+                        }
+                    } catch (error) {
+                        console.error('Erro ao verificar status da IA:', error);
+                    }
+                }
+
+                function updateUI(data) {
+                    const explanations = document.querySelectorAll('.explanation[data-question-id]');
+                    
+                    explanations.forEach(container => {
+                        const questionId = container.getAttribute('data-question-id');
+                        const text = data[questionId];
+                        
+                        if (text) {
+                            // Atualizar Header
+                            const header = container.querySelector('h4');
+                            if (header) {
+                                header.innerHTML = '✨ Análise da IA';
+                            }
+                            
+                            // Remover Loader
+                            const loadingDiv = container.querySelector('.ai-loading');
+                            if (loadingDiv) {
+                                loadingDiv.remove();
+                            }
+                            
+                            // Criar ou atualizar conteúdo
+                            let contentDiv = container.querySelector('.markdown-content');
+                            if (!contentDiv) {
+                                contentDiv = document.createElement('div');
+                                contentDiv.className = 'markdown-content';
+                                contentDiv.style.whiteSpace = 'pre-wrap';
+                                contentDiv.style.opacity = '0';
+                                contentDiv.style.transition = 'opacity 1s ease-in';
+                                container.appendChild(contentDiv);
+                                
+                                // Trigger reflow
+                                void contentDiv.offsetWidth; 
+                            }
+                            
+                            contentDiv.innerText = text;
+                            contentDiv.style.opacity = '1';
+                            
+                            // Remover texto de "aguardando" se existir
+                            const waitingText = container.querySelector('p.text-muted');
+                            if (waitingText && waitingText.textContent.includes('Aguardando')) {
+                                waitingText.remove();
+                            }
+                        } else {
+                             // Caso raro onde a IA terminou mas não mandou texto para esta questão
+                             const loadingDiv = container.querySelector('.ai-loading');
+                             if (loadingDiv) {
+                                 loadingDiv.innerHTML = '<p class="text-muted" style="font-style: italic; color: #64748b;">Sem análise específica para esta questão.</p>';
+                             }
+                        }
+                    });
+                }
+            }
+        });
+    </script>
     </div>
 
     <div class="answers-section">
@@ -204,12 +293,35 @@
                     </p>
                 @endif
 
-                @if($answer->question->explanation)
-                    <div class="explanation">
-                        <h4>Explicação:</h4>
-                        <p>{{ $answer->question->explanation }}</p>
-                    </div>
-                @endif
+                @php
+                    $aiExplanation = null;
+                    if($simulation->correction) {
+                        $aiExplanation = $simulation->correction->getExplanationForQuestion($answer->question_id);
+                    }
+                @endphp
+
+                <div class="explanation" data-question-id="{{ $answer->question_id }}" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <h4 style="display: flex; align-items: center; gap: 8px;">
+                        @if($simulation->correction)
+                            ✨ Análise da IA
+                        @else
+                            🤖 Processando Correção...
+                        @endif
+                    </h4>
+
+                    @if($simulation->correction)
+                        @if($aiExplanation)
+                            <div class="markdown-content" style="white-space: pre-wrap;">{{ $aiExplanation }}</div>
+                        @else
+                            <p class="text-muted" style="font-style: italic; color: #64748b;">Aguardando análise detalhada da IA para esta questão...</p>
+                        @endif
+                    @else
+                        <div class="ai-loading" style="color: #64748b;">
+                            <p class="blink" style="margin: 0;">[...] Gerando explicação personalizada com IA...</p>
+                            <small>Aguarde alguns segundos e atualize a página.</small>
+                        </div>
+                    @endif
+                </div>
             </div>
         @endforeach
     </div>

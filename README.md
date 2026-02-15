@@ -38,24 +38,58 @@ O diferencial técnico do AprovadoAI reside na sua capacidade de orquestrar dife
 
 ---
 
-## ⚙️ Instalação (Quick Start)
+## ⚙️ Instalação & Execução Local
 
-Siga os comandos abaixo para configurar o ambiente de desenvolvimento:
+Siga os passos abaixo para configurar o ambiente de desenvolvimento. Este projeto é otimizado para rodar com **Laragon** no Windows, mas funciona em qualquer ambiente PHP 8.4+.
 
-```bash
-# 1. Clonar o repositório
+### 1. Requisitos
+- PHP 8.4 ou superior
+- Composer
+- Node.js & NPM
+- SQLite (ativado no PHP)
+
+### 2. Configuração do Projeto
+```powershell
+# Clonar o repositório
 git clone https://github.com/Antonio7s/AprovadoAI.git
 cd AprovadoAI
 
-# 2. Instalar dependências e configurar ambiente
-composer install && npm install
+# Instalar dependências do PHP (via Laragon ou Global)
+composer install
 
-# 3. Configurar banco e chaves
-cp .env.example .env
+# Instalar dependências do Frontend
+npm install
+
+# Configurar ambiente
+copy .env.example .env
 php artisan key:generate
-touch database/database.sqlite
-php artisan migrate --seed
 ```
+
+### 3. Banco de Dados
+O projeto utiliza SQLite por padrão para desenvolvimento.
+```powershell
+# Criar o arquivo do banco se não existir
+if (!(Test-Path "database/database.sqlite")) { New-Item "database/database.sqlite" }
+
+# Rodar Migrações e Seeders (Siga esta ordem para evitar erros de integridade)
+php artisan migrate:fresh
+php artisan db:seed --class=PlanSeeder
+php artisan db:seed --class=UserSeeder
+php artisan db:seed --class=AddPortugueseQuestionsSeeder
+```
+
+### 4. Executando o Servidor
+```powershell
+# Compilar assets (produção)
+npm run build
+
+# Iniciar Servidor (Porta 8000)
+php artisan serve
+```
+Acesse em: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+
+> [!TIP]
+> **Dica para Laragon:** Se você usa Laragon, pode usar o executável do PHP 8.4 localizado em `C:\laragon\bin\php\php-8.4.16...` para garantir a compatibilidade.
 
 ---
 

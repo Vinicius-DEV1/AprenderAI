@@ -28,6 +28,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{simulation}/answer', [SimulationController::class, 'saveAnswer'])->name('answer');
         Route::post('/{simulation}/finish', [SimulationController::class, 'finish'])->name('finish');
         Route::get('/{simulation}/result', [SimulationController::class, 'result'])->name('result');
+        Route::get('/{simulation}/status', [SimulationController::class, 'checkCorrectionStatus'])->name('status');
     });
 
     // Redações

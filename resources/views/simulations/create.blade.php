@@ -171,6 +171,17 @@
         <form method="POST" action="{{ route('simulations.store') }}" id="simulationForm">
             @csrf
 
+            <!-- Exibir Erros de Validação ou Exceções -->
+            @if ($errors->any())
+                <div style="background-color: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 12px; border-radius: 8px; margin-bottom: 24px;">
+                    <ul style="list-style-type: disc; padding-left: 20px;">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             <div class="form-section">
                 <h3>Tipo de Prova</h3>
                 <div class="radio-group">
