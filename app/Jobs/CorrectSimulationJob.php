@@ -93,6 +93,10 @@ class CorrectSimulationJob implements ShouldQueue
             'correctable_id' => $this->simulation->id,
             'ai_provider' => $result['provider'],
             'correction_data' => $result['response'],
+            'input_tokens' => $result['usage']['input_tokens'] ?? 0,
+            'output_tokens' => $result['usage']['output_tokens'] ?? 0,
+            'total_tokens' => $result['usage']['total_tokens'] ?? 0,
+            'tokens_used' => $result['usage']['total_tokens'] ?? 0, // Legacy fallback
             'corrected_at' => now(),
         ]);
 
