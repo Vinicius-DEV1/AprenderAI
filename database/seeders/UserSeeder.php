@@ -35,10 +35,24 @@ class UserSeeder extends Seeder
 
         $this->command->info("Plans found: Free({$free->id}), Basic({$basic->id}), Plus({$plus->id})");
 
+        // Admin User
+        User::updateOrCreate(['email' => 'admin@aprovaai.com'], [
+            'name' => 'Administrador',
+            'password' => $password,
+            'role' => 'admin',
+            'plan_id' => $plus->id,
+            'plan_started_at' => now(),
+            'plan_expires_at' => now()->addYear(),
+            'simulations_used_this_month' => 0,
+            'essays_used_this_month' => 0,
+            'usage_reset_at' => now()->addMonth(),
+        ]);
+
         // Free User
         User::updateOrCreate(['email' => 'free@aprovaai.test'], [
-            'name' => 'Admin Free',
+            'name' => 'Usuário Free',
             'password' => $password,
+            'role' => 'user',
             'plan_id' => $free->id,
             'plan_started_at' => now(),
             'plan_expires_at' => null,
@@ -49,8 +63,9 @@ class UserSeeder extends Seeder
 
         // Basic User
         $uBasic = User::updateOrCreate(['email' => 'basic@aprovaai.test'], [
-            'name' => 'Admin Basic',
+            'name' => 'Usuário Basic',
             'password' => $password,
+            'role' => 'user',
             'plan_id' => $basic->id,
             'plan_started_at' => now(),
             'plan_expires_at' => now()->addMonth(),
@@ -74,8 +89,9 @@ class UserSeeder extends Seeder
 
         // Plus User
         $uPlus = User::updateOrCreate(['email' => 'plus@aprovaai.test'], [
-            'name' => 'Admin Plus',
+            'name' => 'Usuário Plus',
             'password' => $password,
+            'role' => 'user',
             'plan_id' => $plus->id,
             'plan_started_at' => now(),
             'plan_expires_at' => now()->addMonth(),
@@ -97,6 +113,6 @@ class UserSeeder extends Seeder
             ]
         );
 
-        $this->command->info("All users created successfully.");
+        $this->command->info("All users created successfully (including admin user).");
     }
 }
