@@ -116,3 +116,15 @@ O fluxo utiliza o pacote `laravel/socialite` mas com configuração dinâmica.
     *   `resources/views/admin/integrations.blade.php` (Tela de Configuração)
     *   `resources/views/auth/login.blade.php` (Botão de Login)
     *   `resources/views/partials/analytics.blade.php` (Script GA4)
+
+### Novas Funcionalidades (Dashboard & Usuários)
+*   **Banco de Dados**:
+    *   `user_logs`: Tabela para auditoria de ações (login, update, ban).
+    *   `users`: Adicionado colunas `phone` e `is_banned`.
+*   **Admin Dashboard**:
+    *   Utiliza `Chart.js` via CDN para gráficos.
+    *   Lógica em `AdminController@dashboard`.
+*   **Gestão de Usuários**:
+    *   `Admin/UserController`: CRUD simplificado + ações de segurança.
+    *   Views em `resources/views/admin/users/`.
+
