@@ -6,17 +6,18 @@ use App\Models\Simulation;
 use App\Models\Question;
 use App\Http\Requests\StoreSimulationRequest;
 use App\Services\PlanService;
+use App\Services\SimulationCreationService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 class SimulationController extends Controller
 {
     protected PlanService $planService;
+    protected SimulationCreationService $simulationService;
 
-    public function __construct(PlanService $planService)
+    public function __construct(PlanService $planService, SimulationCreationService $simulationService)
     {
         $this->planService = $planService;
+        $this->simulationService = $simulationService;
     }
 
     public function index(Request $request)
@@ -41,69 +42,18 @@ class SimulationController extends Controller
 
     public function store(StoreSimulationRequest $request)
     {
-        $user = $request->user();
+        try {
+            $simulation = $this->simulationService->createSimulation(
+                $request->user(),
+                $request->validated()
+            );
 
-        // 0) Checagem do plano
-        $check = $this->planService->checkSimulationLimit($user);
-        if (!$check['can_create']) {
-            return redirect()->route('dashboard')->with('error', $check['message']);
-        }
-
-        $total = (int) $request->total_questions;
-        $distribution = $request->input('subject_distribution', []);
-
-        // 1) Criar simulação
-        $simulation = Simulation::create([
-            'user_id' => $user->id,
-            'type' => $request->type,
-            'configuration' => [
-                'questions' => $total,
-                'subject_distribution' => $distribution,
-                'include_essay' => $request->boolean('include_essay'),
-                'time_limit' => $request->type === 'enem'
-                    ? ($request->boolean('include_essay') ? 19800 : 16200)
-                    : (int) $request->input('custom_time', 10800),
-            ],
-            'status' => 'pending',
-        ]);
-
-        // 3) Selecionar questões (com fallback)
-        $questions = $this->selectQuestions($request);
-
-        // 4) Garantir que montou exatamente o total (senão desfaz)
-        if ($questions->count() !== $total) {
-            $simulation->delete();
-
+            return redirect()->route('simulations.show', $simulation);
+        } catch (\Exception $e) {
             return back()
                 ->withInput()
-                ->withErrors([
-                    'total_questions' =>
-                        "Banco insuficiente para montar {$total} questões com essa distribuição. " .
-                        "Foram selecionadas {$questions->count()}. Cadastre mais questões e tente novamente.",
-                ]);
+                ->withErrors(['error' => $e->getMessage()]);
         }
-
-        // 5) Criar answers vazias em lote
-        $now = now();
-
-        $rows = $questions->map(fn($q) => [
-            'simulation_id' => $simulation->id,
-            'question_id' => $q->id,
-            'user_answer' => null,
-            'is_correct' => false,
-            'time_spent' => 0,
-            'marked_for_review' => false,
-            'created_at' => $now,
-            'updated_at' => $now,
-        ])->all();
-
-        DB::table('simulation_answers')->insert($rows);
-
-        // 6) Incrementar uso e iniciar
-        $user->incrementSimulationUsage();
-        $simulation->startSimulation();
-
-        return redirect()->route('simulations.show', $simulation);
     }
 
     public function show(Simulation $simulation)
@@ -172,103 +122,3 @@ class SimulationController extends Controller
 
         return view('simulations.result', compact('simulation', 'totalQuestions', 'correctAnswers', 'percentageScore'));
     }
-
-    /**
-     * Seleciona questões respeitando regras de negócio:
-     * - ENEM: 90% Real + 10% Geradas; Ordem Português -> Matemática; Sem repetição de enunciado.
-     * - Outros: Seleção aleatória simples.
-     */
-    protected function selectQuestions(Request $request): Collection
-    {
-        $type = $request->type;
-        $total = (int) $request->total_questions;
-        $distribution = $request->subject_distribution;
-        $finalQuestions = collect();
-        $usedStatements = []; // Para anti-repetição global na prova
-
-        // 1. Definir Ordem dos Assuntos
-        if ($type === 'enem') {
-            // Forçar ordem: Português primeiro, depois Matemática
-            $orderedSubjects = ['português', 'matemática'];
-            // Adicionar outros se existirem no request (ex: teste)
-            foreach (array_keys($distribution) as $s) {
-                if (!in_array($s, $orderedSubjects))
-                    $orderedSubjects[] = $s;
-            }
-        } else {
-            $orderedSubjects = array_keys($distribution);
-        }
-
-        foreach ($orderedSubjects as $subject) {
-            if (empty($distribution[$subject]))
-                continue;
-
-            $subjectTotal = (int) $distribution[$subject];
-
-            if ($type === 'enem' && in_array($subject, ['português', 'matemática'])) {
-                // REGRA 90/10
-                $countReal = floor($subjectTotal * 0.9);
-                $countGen = $subjectTotal - $countReal;
-
-                // Buscar Reais (enem_real_2009_2023)
-                $realCandidates = Question::where('type', 'enem')
-                    ->where('subject', $subject)
-                    ->where('source', 'enem_real_2009_2023')
-                    ->inRandomOrder()
-                    ->limit($countReal * 2) // Buscar dobro para filtrar repetidas
-                    ->get();
-
-                $subjectQuestions = collect();
-
-                foreach ($realCandidates as $q) {
-                    if ($subjectQuestions->count() >= $countReal)
-                        break;
-
-                    // Check Repetição
-                    $stmtHash = md5(trim($q->statement));
-                    if (!in_array($stmtHash, $usedStatements)) {
-                        $subjectQuestions->push($q);
-                        $usedStatements[] = $stmtHash;
-                    }
-                }
-
-                // Buscar Geradas (generated_system)
-                $neededGen = $subjectTotal - $subjectQuestions->count();
-
-                $genCandidates = Question::where('type', 'enem')
-                    ->where('subject', $subject)
-                    ->where('source', 'generated_system')
-                    ->inRandomOrder()
-                    ->limit($neededGen * 3) // Margem maior para geradas
-                    ->get();
-
-                foreach ($genCandidates as $q) {
-                    if ($subjectQuestions->count() >= $subjectTotal)
-                        break;
-
-                    $stmtHash = md5(trim($q->statement));
-                    if (!in_array($stmtHash, $usedStatements)) {
-                        $subjectQuestions->push($q);
-                        $usedStatements[] = $stmtHash;
-                    }
-                }
-
-                // Append ao final (mantendo ordem do bloco)
-                $finalQuestions = $finalQuestions->merge($subjectQuestions);
-
-            } else {
-                // Lógica Padrão (Concurso ou matérias não-ENEM filter)
-                // Se type concurso, source deve ser manual tambem? Ou qualquer? geralmente manual.
-                $candidates = Question::where('type', $type)
-                    ->where('subject', $subject)
-                    ->inRandomOrder()
-                    ->limit($subjectTotal)
-                    ->get();
-
-                $finalQuestions = $finalQuestions->merge($candidates);
-            }
-        }
-
-        return $finalQuestions;
-    }
-}
