@@ -15,9 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'check.api.key' => \App\Http\Middleware\CheckAPIKey::class,
             'check.plan.limits' => \App\Http\Middleware\CheckPlanLimits::class,
             'is.admin' => \App\Http\Middleware\IsAdmin::class,
+            'check.payment.active' => \App\Http\Middleware\CheckPaymentActive::class,
         ]);
         $middleware->validateCsrfTokens(except: [
             'webhooks/mercadopago',
+            'webhooks/asaas',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

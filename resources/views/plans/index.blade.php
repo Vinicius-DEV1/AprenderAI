@@ -89,13 +89,10 @@
                                     Plano Atual
                                 </button>
                             @else
-                                <form action="{{ route('plans.checkout', $plan) }}" method="POST">
-                                    @csrf
-                                    <button type="submit"
-                                        class="w-full block text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded transition duration-200">
-                                        {{ $plan->price > 0 ? 'Assinar Agora' : 'Mudar para Gratuito' }}
-                                    </button>
-                                </form>
+                                <a href="{{ route('plans.checkout', $plan) }}"
+                                    class="w-full block text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded transition duration-200">
+                                    {{ $plan->price > 0 ? 'Assinar Agora' : 'Mudar para Gratuito' }}
+                                </a>
                             @endif
                         </div>
                     </div>
