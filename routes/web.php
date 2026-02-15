@@ -87,6 +87,11 @@ Route::middleware(['auth'])->group(function () {
 
         // Planos
         Route::resource('plans', \App\Http\Controllers\Admin\PlanController::class);
+
+        // Monitoramento
+        Route::get('/monitor', [\App\Http\Controllers\Admin\MonitorController::class, 'index'])->name('monitor.index');
+        Route::get('/monitor/realtime', [\App\Http\Controllers\Admin\MonitorController::class, 'realtime'])->name('monitor.realtime');
+        Route::get('/monitor/history', [\App\Http\Controllers\Admin\MonitorController::class, 'history'])->name('monitor.history');
     });
 });
 
