@@ -122,3 +122,4 @@ class SimulationController extends Controller
 
         return view('simulations.result', compact('simulation', 'totalQuestions', 'correctAnswers', 'percentageScore'));
     }
+}
