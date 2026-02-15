@@ -114,10 +114,11 @@ class AIService
         ])->post('https://api.openai.com/v1/chat/completions', [
                     'model' => 'gpt-4',
                     'messages' => [
-                        ['role' => 'system', 'content' => 'Você é um professor especialista em correção de provas e redações do ENEM.'],
+                        ['role' => 'system', 'content' => 'Você é um professor especialista em correção do ENEM. Responda estritamente em JSON.'],
                         ['role' => 'user', 'content' => $prompt]
                     ],
                     'temperature' => 0.7,
+                    'response_format' => ['type' => 'json_object'],
                 ]);
 
         $data = $response->json();
@@ -207,14 +208,23 @@ class AIService
 
     protected function buildSimulationCorrectionPrompt(array $questionsAndAnswers, string $plan): string
     {
-        $instructions = match ($plan) {
-            'free' => 'Retorne apenas um JSON com: {total_correct: X, total_questions: Y}',
-            'basic' => 'Retorne JSON com: {total_correct: X, total_questions: Y, themes_to_improve: [array de temas]}',
-            'plus' => 'Retorne JSON detalhado com: {total_correct, total_questions, themes_analysis: {tema: {correct, total, percentage}}, errors_explanation: [{question_id, why_wrong, correct_approach}], study_plan: [temas prioritários]}',
-            default => 'Retorne apenas acertos/erros'
+        // Estrutura Base Obrigatória (Imutável)
+        $baseStructure = "Retorne APENAS um JSON válido com esta estrutura exata: {
+            'total_correct': int, 
+            'total_questions': int, 
+            'errors_explanation': [
+                { 'question_id': id_da_questao, 'why_wrong': 'motivo do erro', 'correct_approach': 'como resolver' }
+            ]
+        }";
+
+        // Instruções de Profundidade (Variável por Plano)
+        $depthInstruction = match ($plan) {
+            'free', 'basic' => "Para 'errors_explanation', forneça explicações CURTAS e DIRETAS (máximo 1 frase). Ex: 'A alternativa correta é B porque X.' foco apenas nas questões erradas.",
+            'plus' => "Para 'errors_explanation', forneça explicações DETALHADAS e PEDAGÓGICAS. Explique o conceito por trás do erro e dê uma dica de estudo.",
+            default => "Explicações concisas."
         };
 
-        return "Corrija as seguintes questões e $instructions\n\n" . json_encode($questionsAndAnswers);
+        return "Corrija as questões abaixo. $baseStructure\n\n$depthInstruction\n\nDados:\n" . json_encode($questionsAndAnswers);
     }
 
     protected function buildEssayCorrectionPrompt(string $title, string $content, string $plan): string
