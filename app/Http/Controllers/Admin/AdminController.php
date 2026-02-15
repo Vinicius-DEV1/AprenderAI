@@ -15,6 +15,7 @@ class AdminController extends Controller
             'simulations_count' => \App\Models\Simulation::count(),
             'essays_count' => \App\Models\Essay::count(),
             'api_keys_count' => ApiKey::count(),
+            'recent_users' => \App\Models\User::latest()->take(5)->get(),
         ]);
     }
 
