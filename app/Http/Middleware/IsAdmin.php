@@ -19,10 +19,8 @@ class IsAdmin
             return redirect()->route('login');
         }
 
-        $adminEmails = config('admin.emails', []);
-
-        if (!in_array($request->user()->email, $adminEmails)) {
-            abort(403, 'Acesso não autorizado.');
+        if (!$request->user()->isAdmin()) {
+            return redirect()->route('home')->with('error', 'Acesso não autorizado.');
         }
 
         return $next($request);
