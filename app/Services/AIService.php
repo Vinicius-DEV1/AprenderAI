@@ -31,14 +31,11 @@ class AIService
             return null;
         }
 
+        $apiKey = ApiKey::getActiveKeyForProvider($provider);
+
         try {
-            $apiKey = ApiKey::getActiveKeyForProvider($provider);
-
             $prompt = $this->buildSimulationCorrectionPrompt($questionsAndAnswers, $plan);
-
             $result = $this->callAI($provider, $apiKey->decrypted_key, $prompt);
-
-            $apiKey->incrementUsage();
 
             return [
                 'provider' => $provider,
@@ -55,6 +52,11 @@ class AIService
                 'error' => $e->getMessage()
             ]);
             return null;
+        } finally {
+            // Count usage regardless of success
+            if (isset($apiKey)) {
+                $apiKey->incrementUsage();
+            }
         }
     }
 
@@ -69,14 +71,11 @@ class AIService
             return null;
         }
 
+        $apiKey = ApiKey::getActiveKeyForProvider($provider);
+
         try {
-            $apiKey = ApiKey::getActiveKeyForProvider($provider);
-
             $prompt = $this->buildEssayCorrectionPrompt($title, $content, $plan);
-
             $result = $this->callAI($provider, $apiKey->decrypted_key, $prompt);
-
-            $apiKey->incrementUsage();
 
             return [
                 'provider' => $provider,
@@ -93,6 +92,11 @@ class AIService
                 'error' => $e->getMessage()
             ]);
             return null;
+        } finally {
+            // Count usage regardless of success
+            if (isset($apiKey)) {
+                 $apiKey->incrementUsage();
+            }
         }
     }
 
@@ -108,30 +112,45 @@ class AIService
 
     protected function callOpenAI(string $apiKey, string $prompt): array
     {
-        $response = Http::withHeaders([
-            'Authorization' => "Bearer $apiKey",
-            'Content-Type' => 'application/json',
-        ])->post('https://api.openai.com/v1/chat/completions', [
-                    'model' => 'gpt-4',
-                    'messages' => [
-                        ['role' => 'system', 'content' => 'Você é um professor especialista em correção do ENEM. Responda estritamente em JSON.'],
-                        ['role' => 'user', 'content' => $prompt]
-                    ],
-                    'temperature' => 0.7,
-                    'response_format' => ['type' => 'json_object'],
-                ]);
+        $response = Http::timeout(120)
+            ->connectTimeout(60)
+            ->withHeaders([
+                'Authorization' => "Bearer $apiKey",
+                'Content-Type' => 'application/json',
+            ])->post('https://api.openai.com/v1/chat/completions', [
+                'model' => 'gpt-4',
+                'messages' => [
+                    ['role' => 'system', 'content' => 'Você é um professor especialista em correção do ENEM. Responda estritamente em JSON.'],
+                    ['role' => 'user', 'content' => $prompt]
+                ],
+                'temperature' => 0.7,
+                'response_format' => ['type' => 'json_object'],
+            ]);
+
+        if ($response->failed()) {
+             Log::error('OpenAI API Error', [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+            throw new \Exception("OpenAI API Error: " . $response->status());
+        }
 
         $data = $response->json();
         
-        // Parse content
+        // Parse content safely
         $contentString = $data['choices'][0]['message']['content'] ?? '{}';
-        $content = json_decode($contentString, true) ?? [];
+        $content = json_decode($contentString, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+             Log::error('OpenAI invalid JSON response', ['content' => $contentString]);
+             $content = []; // Retorna vazio mas não quebra
+        }
 
         // Extract usage
         $usage = $data['usage'] ?? [];
         
         return [
-            'content' => $content,
+            'content' => $content ?? [],
             'usage' => [
                 'input_tokens' => $usage['prompt_tokens'] ?? 0,
                 'output_tokens' => $usage['completion_tokens'] ?? 0,
@@ -144,22 +163,28 @@ class AIService
     {
         $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={$apiKey}";
 
-        $response = Http::withHeaders([
-            'Content-Type' => 'application/json',
-        ])->post($url, [
-                    'contents' => [
-                        [
-                            'parts' => [
-                                ['text' => $prompt]
-                            ]
+        $response = Http::timeout(120)
+            ->connectTimeout(60)
+            ->withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post($url, [
+                'contents' => [
+                    [
+                        'parts' => [
+                            ['text' => $prompt]
                         ]
-                    ],
-                    'generationConfig' => [
-                        'temperature' => 0.7,
                     ]
-                ]);
+                ],
+                'generationConfig' => [
+                    'temperature' => 0.7,
+                ]
+            ]);
 
         if ($response->failed()) {
+            Log::error('Gemini API Error', [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
             throw new \Exception("Gemini API Error: " . $response->body());
         }
 
@@ -236,44 +261,5 @@ class AIService
         };
 
         return "Corrija a redação do ENEM com tema '$title' e $instructions\n\nTexto:\n$content";
-    }
-
-    public function generateJson(string $prompt): array
-    {
-        if (!$this->hasActiveKey()) {
-            return [];
-        }
-
-        $provider = $this->getFirstAvailableProvider();
-        if (!$provider) {
-            return [];
-        }
-
-        try {
-            $apiKey = ApiKey::getActiveKeyForProvider($provider);
-            $response = $this->callAI($provider, $apiKey->decrypted_key, $prompt);
-            $apiKey->incrementUsage();
-
-            $data = $response;
-
-            // Normalize OpenAI response
-            if ($provider === 'openai') {
-                $content = $response['choices'][0]['message']['content'] ?? '';
-                // Try to decode JSON from content
-                $decoded = json_decode($content, true);
-                $data = $decoded ?? ['text' => $content];
-            }
-
-            return [
-                'provider' => $provider,
-                'data' => $data,
-            ];
-        } catch (\Exception $e) {
-            Log::error('AI Generation failed', [
-                'provider' => $provider,
-                'error' => $e->getMessage()
-            ]);
-            return [];
-        }
     }
 }

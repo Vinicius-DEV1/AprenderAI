@@ -31,8 +31,11 @@ class CorrectSimulationJob implements ShouldQueue
         $user = $this->simulation->user;
         $plan = $user->plan ? $user->plan->slug : 'free';
 
-        // Preparar dados para IA
-        $questionsAndAnswers = $this->simulation->answers->map(function ($answer) {
+        $totalQuestions = $this->simulation->answers->count();
+        Log::info("Iniciando correção da simulação #{$this->simulation->id} - Total de questões: {$totalQuestions}");
+
+        // 1. Preparar Todas as Questões
+        $allQuestions = $this->simulation->answers->map(function ($answer) {
             return [
                 'question_id' => $answer->question_id,
                 'statement' => $answer->question->statement,
@@ -42,69 +45,100 @@ class CorrectSimulationJob implements ShouldQueue
             ];
         })->toArray();
 
-        // Chamar Serviço de IA
-        $result = $aiService->correctSimulation($questionsAndAnswers, $plan);
+        // 2. Criar/Recuperar Registro de Correção (Inicialização)
+        $correction = Correction::updateOrCreate(
+            [
+                'correctable_type' => Simulation::class,
+                'correctable_id' => $this->simulation->id,
+            ],
+            [
+                'ai_provider' => 'pending',
+                'correction_data' => [
+                    'total_correct' => 0,
+                    'total_questions' => $totalQuestions,
+                    'errors_explanation' => []
+                ],
+                'input_tokens' => 0,
+                'output_tokens' => 0,
+                'total_tokens' => 0,
+                'created_at' => now(), // Garantir criação
+            ]
+        );
 
-        if (!$result) {
-            Log::warning("Falha ao corrigir simulação {$this->simulation->id}: Sem resposta da IA ou sem chave.");
+        // 3. Processamento em Lotes (Chunking) e Persistência Incremental
+        $chunks = array_chunk($allQuestions, 5); // Lotes de 5
+        $accumulatedExplanations = [];
+        $totalInput = 0;
+        $totalOutput = 0;
+        $providerUsed = 'openai'; // Fallback default
 
-            // Calcular score mesmo sem IA (baseado em is_correct já salvo)
-            $totalQuestions = $this->simulation->answers->count();
-            $correctAnswers = $this->simulation->answers->where('is_correct', true)->count();
-            $score = $totalQuestions > 0 ? round(($correctAnswers / $totalQuestions) * 100, 2) : 0;
+        foreach ($chunks as $index => $chunk) {
+            $currentBatch = $index + 1;
+            $totalBatches = count($chunks);
+            Log::info("Processando lote {$currentBatch} de {$totalBatches} para simulação #{$this->simulation->id}");
 
-            // Calcular scores por matéria
-            $scoresBySubject = [];
-            $answersBySubject = $this->simulation->answers->groupBy('question.subject');
+            // Call AI (Usage increment is handled in AIService::finally)
+            $result = $aiService->correctSimulation($chunk, $plan);
 
-            foreach ($answersBySubject as $subject => $answers) {
-                $total = $answers->count();
-                $correct = $answers->where('is_correct', true)->count();
-                $scoresBySubject[$subject] = $total > 0 ? round(($correct / $total) * 100, 2) : 0;
+            if ($result) {
+                $providerUsed = $result['provider'];
+                $response = $result['response'];
+                $usage = $result['usage'];
+
+                // Accumulate Tokens
+                $totalInput += $usage['input_tokens'] ?? 0;
+                $totalOutput += $usage['output_tokens'] ?? 0;
+
+                // Merge Explanations
+                if (isset($response['errors_explanation']) && is_array($response['errors_explanation'])) {
+                    $accumulatedExplanations = array_merge($accumulatedExplanations, $response['errors_explanation']);
+                }
+
+                // Persistência Incremental (Salvar o progresso)
+                $correction->update([
+                    'ai_provider' => $providerUsed,
+                    'input_tokens' => $totalInput,
+                    'output_tokens' => $totalOutput,
+                    'total_tokens' => $totalInput + $totalOutput,
+                    'tokens_used' => $totalInput + $totalOutput, // Legacy
+                    'correction_data' => [
+                        'total_correct' => $this->simulation->answers->where('is_correct', true)->count(),
+                        'total_questions' => $totalQuestions,
+                        'errors_explanation' => $accumulatedExplanations
+                    ]
+                ]);
+            } else {
+                Log::error("Falha ao processar lote {$currentBatch} da simulação #{$this->simulation->id}. Pulando para o próximo.");
             }
-
-            $this->simulation->update([
-                'status' => 'corrected',
-                'score' => $score,
-                'scores_by_subject' => $scoresBySubject,
-            ]);
-
-            return;
         }
 
-        // Calcular score com base nos dados
-        $totalQuestions = $this->simulation->answers->count();
+        // 4. Finalização e Cálculos Locais
         $correctAnswers = $this->simulation->answers->where('is_correct', true)->count();
         $score = $totalQuestions > 0 ? round(($correctAnswers / $totalQuestions) * 100, 2) : 0;
 
         // Calcular scores por matéria
         $scoresBySubject = [];
         $answersBySubject = $this->simulation->answers->groupBy('question.subject');
-
         foreach ($answersBySubject as $subject => $answers) {
             $total = $answers->count();
             $correct = $answers->where('is_correct', true)->count();
             $scoresBySubject[$subject] = $total > 0 ? round(($correct / $total) * 100, 2) : 0;
         }
 
-        // Salvar Correção da IA
-        Correction::create([
-            'correctable_type' => Simulation::class,
-            'correctable_id' => $this->simulation->id,
-            'ai_provider' => $result['provider'],
-            'correction_data' => $result['response'],
-            'input_tokens' => $result['usage']['input_tokens'] ?? 0,
-            'output_tokens' => $result['usage']['output_tokens'] ?? 0,
-            'total_tokens' => $result['usage']['total_tokens'] ?? 0,
-            'tokens_used' => $result['usage']['total_tokens'] ?? 0, // Legacy fallback
-            'corrected_at' => now(),
+        // Finalizar Correção
+        $correction->update([
+             'corrected_at' => now(),
+             // Dados já estão atualizados pelo loop
         ]);
 
+        // Atualizar Status da Simulação
         $this->simulation->update([
             'status' => 'corrected',
             'score' => $score,
             'scores_by_subject' => $scoresBySubject,
         ]);
+
+        Log::info("Correção #{$this->simulation->id} finalizada com sucesso. Total Tokens: " . ($totalInput + $totalOutput));
 
         // Enviar E-mail
         try {
