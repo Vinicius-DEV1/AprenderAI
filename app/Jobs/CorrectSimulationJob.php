@@ -111,8 +111,8 @@ class CorrectSimulationJob implements ShouldQueue
 
                 // CRITICAL FIX: Robust Extraction
                 // Tentar várias chaves possíveis que a IA pode usar
-                $newExplanations = $response['errors_explanation'] 
-                    ?? $response['explanations'] 
+                $newExplanations = $response['errors_explanation']
+                    ?? $response['explanations']
                     ?? $response['questions']
                     ?? $response['data']
                     ?? [];
@@ -122,7 +122,7 @@ class CorrectSimulationJob implements ShouldQueue
                     $nestedJson = json_decode(preg_replace('/^```(?:json)?\s+|\s+```$/i', '', trim($response['text'])), true);
                     $newExplanations = $nestedJson['errors_explanation'] ?? $nestedJson['explanations'] ?? $nestedJson ?? [];
                 }
-                
+
                 // Se for array de objetos mas sem chave pai (root array)
                 if (empty($newExplanations) && isset($response[0]) && is_array($response[0])) {
                     $newExplanations = $response;
@@ -134,14 +134,14 @@ class CorrectSimulationJob implements ShouldQueue
                         $explanation['question_id'] = (string) $explanation['question_id'];
                     }
                 }
-                
+
                 // Refresh model to get latest data from DB
                 $correction->refresh();
                 $existingData = $correction->correction_data ?? [];
                 $existingExplanations = $existingData['errors_explanation'] ?? [];
-                
+
                 $mergedExplanations = array_merge($existingExplanations, $newExplanations);
-                
+
                 // Update local accumulator
                 $accumulatedExplanations = $mergedExplanations;
 
@@ -178,12 +178,19 @@ class CorrectSimulationJob implements ShouldQueue
 
         // Finalizar Correção
         $correction->update([
-             'corrected_at' => now(),
-             // Dados já estão atualizados pelo loop
+            'corrected_at' => now(),
+            // Dados já estão atualizados pelo loop
         ]);
 
         Log::info("Correção #{$this->simulation->id} finalizada com sucesso. Total Tokens: " . ($totalInput + $totalOutput));
 
-
+        // 5. Atualizar Estatísticas do Usuário para o Plano de Estudos
+        try {
+            $studyPlanService = app(\App\Services\StudyPlanService::class);
+            $studyPlanService->updateUserStats($user, $this->simulation);
+            Log::info("Estatísticas do usuário {$user->id} atualizadas com sucesso.");
+        } catch (\Exception $e) {
+            Log::error("Falha ao atualizar estatísticas do usuário: " . $e->getMessage());
+        }
     }
 }

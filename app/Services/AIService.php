@@ -122,8 +122,48 @@ class AIService
         } finally {
             // Count usage regardless of success
             if (isset($apiKey)) {
-                 $apiKey->incrementUsage();
+                $apiKey->incrementUsage();
             }
+        }
+    }
+
+    public function generateStudyPlan(array $stats, array $inputs): ?array
+    {
+        if (!$this->hasActiveKey()) {
+            return null;
+        }
+
+        $provider = $this->getFirstAvailableProvider();
+        if (!$provider)
+            return null;
+
+        $apiKey = ApiKey::getActiveKeyForProvider($provider);
+
+        $prompt = "Crie um Plano de Estudos personalizado.\n\n";
+        $prompt .= "PERFIL DO ALUNO:\n" . json_encode($stats) . "\n\n";
+        $prompt .= "OBJETIVOS e DISPONIBILIDADE:\n" . json_encode($inputs) . "\n\n";
+        $prompt .= "REGRAS:\n";
+        $prompt .= "1. Retorne APENAS um JSON válido.\n";
+        $prompt .= "2. Estrutura obrigatória: { 'overview': 'texto motivacional', 'weekly_schedule': { 'segunda': ['atividade 1', 'atividade 2'], ... }, 'focus_points': ['ponto 1', 'ponto 2'], 'methodology': 'pomodoro/intercalado/etc' }.\n";
+        $prompt .= "3. Seja estratégico focado nos pontos fracos.\n";
+
+        try {
+            $result = $this->callAI($provider, $apiKey, $prompt);
+            $apiKey->incrementUsage();
+
+            // callAI returns ['content' => (json or text), 'usage' => ...]
+            // sanitizeAIResponse inside callGemini handles JSON parsing
+
+            $content = $result['content'];
+            if (is_array($content))
+                return $content;
+
+            // Should be covered by sanitize, but double check
+            return json_decode(json_encode($content), true) ?: [];
+
+        } catch (\Exception $e) {
+            Log::error("Study Plan AI Error: " . $e->getMessage());
+            return null;
         }
     }
 
@@ -131,7 +171,7 @@ class AIService
     {
         Log::info("DEBUG: Using API Key ID: {$apiKey->id} for provider: {$provider}");
         $startTime = microtime(true);
-        
+
         try {
             $result = match ($provider) {
                 'openai' => $this->callOpenAI($apiKey, $prompt),
@@ -146,7 +186,7 @@ class AIService
             return $result;
         } catch (\Exception $e) {
             $executionTime = microtime(true) - $startTime;
-            
+
             // Log partial result on error if possible
             if (!str_contains($e->getMessage(), '429')) {
                 $this->logAiRequest($apiKey, $prompt, ['content' => ['error' => $e->getMessage()], 'usage' => []], $executionTime, $userId);
@@ -156,31 +196,53 @@ class AIService
             if (str_contains($e->getMessage(), '429')) {
                 $this->log($provider, 'warning', "QUOTA EXHAUSTED: 429 received. Key ID: {$apiKey->id}. Job should retry.", 429, null, $apiKey->id);
             }
-            
+
             throw $e;
         }
     }
 
     protected function callOpenAI(ApiKey $apiKey, string $prompt): array
     {
-        // ... (OpenAI method remains for future use or can be deprecated) ...
-        // Keeping it but not using it via callAI fallback.
-        $model = $apiKey->preferred_model;
-        // ... existing implementation ...
-        // Simplify for brevity in this replace block if checking full file, 
-        // but user asked to remove "logic of fallback".
-        // returning existing implementation to match usage in correctSimulation if needed directly,
-        // but generally we are just cutting the fallback in callAI.
-        
-        // Let's just keep the existing callOpenAI logic as is or return empty if we want to enforce no usage.
-        // User said: "Remover completamente a lógica de fallback para a OpenAI."
-        // This is done in callAI above.
-        
-        return $this->originalCallOpenAI($apiKey, $prompt); // Placeholder to indicate I am not changing this method's internals yet, just the fallback.
+        $url = 'https://api.openai.com/v1/chat/completions';
+        $model = $apiKey->preferred_model ?? 'gpt-4o';
+
+        $response = Http::withToken($apiKey->decrypted_key)
+            ->timeout(120)
+            ->post($url, [
+                'model' => $model,
+                'messages' => [
+                    ['role' => 'user', 'content' => $prompt],
+                ],
+                'temperature' => 0.7,
+            ]);
+
+        if ($response->failed()) {
+            throw new \Exception("OpenAI API Error: " . $response->body());
+        }
+
+        $data = $response->json();
+
+        $usage = $data['usage'] ?? [];
+        $content = $data['choices'][0]['message']['content'] ?? '';
+
+        // Sanitize
+        $json = $this->sanitizeAIResponse($content);
+        if (empty($json)) {
+            $json = ['text' => $content];
+        }
+
+        return [
+            'content' => $json,
+            'usage' => [
+                'input_tokens' => $usage['prompt_tokens'] ?? 0,
+                'output_tokens' => $usage['completion_tokens'] ?? 0,
+                'total_tokens' => $usage['total_tokens'] ?? 0,
+            ]
+        ];
     }
-    
+
     // ... (rest of the file) ...
-    
+
     // WAIT, I need to be careful with replace_file_content.
     // I will target specific blocks.
 
@@ -197,7 +259,7 @@ class AIService
 
         Log::info("==== AI DEBUG START: Gemini Request [{$requestId}] ====");
         Log::info("DEBUG: Model: [{$model}]");
-        
+
         // Multimodality: Extract images from prompt
         $imageUrls = $this->extractImages($prompt);
         $parts = [['text' => $prompt]];
@@ -217,7 +279,7 @@ class AIService
                     // Normalize path for public storage
                     $cleanUrl = ltrim($url, '/');
                     $path = public_path($cleanUrl);
-                    
+
                     if (file_exists($path)) {
                         $imageData = base64_encode(file_get_contents($path));
                         $mimeType = mime_content_type($path) ?: 'image/jpeg';
@@ -262,13 +324,13 @@ class AIService
                 ->withHeaders([
                     'Content-Type' => 'application/json',
                 ])->post($url, $payload);
-            
+
             Log::info("[{$requestId}] DEBUG: Gemini Response Status: " . $response->status());
-            
+
             // Log Headers (x-ratelimit)
             $headers = $response->headers();
             Log::info("[{$requestId}] DEBUG: Gemini Headers: " . json_encode($headers));
-            
+
             Log::debug("[{$requestId}] DEBUG: Gemini Raw Body: " . $response->body());
             Log::info("==== AI DEBUG END: Gemini [{$requestId}] ====");
         } catch (\Exception $e) {
@@ -336,7 +398,7 @@ class AIService
 
             $data = $response->json();
             $models = [];
-            
+
             foreach ($data['models'] ?? [] as $model) {
                 // Filter for generateContent supported models
                 if (in_array('generateContent', $model['supportedGenerationMethods'] ?? []) || str_contains($model['name'], 'gemini')) {
@@ -362,9 +424,9 @@ class AIService
             if ($response->failed()) {
                 return ['is_valid' => false, 'error' => 'Chave inválida ou erro na API'];
             }
-             return ['is_valid' => true, 'models' => [['id' => 'gpt-4o', 'name' => 'GPT-4o'], ['id' => 'gpt-4-turbo', 'name' => 'GPT-4 Turbo']]];
+            return ['is_valid' => true, 'models' => [['id' => 'gpt-4o', 'name' => 'GPT-4o'], ['id' => 'gpt-4-turbo', 'name' => 'GPT-4 Turbo']]];
         } catch (\Exception $e) {
-             return ['is_valid' => false, 'error' => $e->getMessage()];
+            return ['is_valid' => false, 'error' => $e->getMessage()];
         }
     }
 
@@ -440,12 +502,12 @@ class AIService
             $apiKey->incrementUsage();
 
             $content = $result['content'];
-            
+
             // Validate structure
             if (isset($content['questions']) && is_array($content['questions'])) {
                 return $content['questions'];
             }
-            
+
             return [];
 
         } catch (\Exception $e) {
@@ -460,9 +522,9 @@ class AIService
     protected function buildQuestionGenerationPrompt(string $subject, int $quantity): string
     {
         return "Gere {$quantity} questões inéditas estilo ENEM de {$subject}.\n" .
-               "Retorne APENAS um JSON válido com a chave 'questions' contendo uma lista de objetos.\n" .
-               "Cada objeto deve ter: 'statement' (enunciado), 'alternatives' (objeto A:texto, B:texto...), 'correct_answer' (A,B,C,D ou E), 'explanation' (breve explicação).\n" .
-               "Seja criativo e siga a matriz de referência do ENEM.";
+            "Retorne APENAS um JSON válido com a chave 'questions' contendo uma lista de objetos.\n" .
+            "Cada objeto deve ter: 'statement' (enunciado), 'alternatives' (objeto A:texto, B:texto...), 'correct_answer' (A,B,C,D ou E), 'explanation' (breve explicação).\n" .
+            "Seja criativo e siga a matriz de referência do ENEM.";
     }
 
     public function chatAboutQuestion(mixed $question, mixed $simulation, string $userMessage, array $history): ?string
@@ -483,7 +545,7 @@ class AIService
             $questionText = $question->statement;
             $alternatives = json_encode($question->alternatives);
             $correctAnswer = $question->correct_answer;
-            
+
             // Find user answer
             $userAnswer = $simulation->answers()->where('question_id', $question->id)->first();
             $userAnswerText = $userAnswer ? $userAnswer->user_answer : 'Não respondida';
@@ -507,31 +569,31 @@ class AIService
 
             // Call AI
             $result = $this->callAI($provider, $apiKey, $baseContext, $simulation->user_id);
-            
+
             Log::info("Chat AI Response Raw: " . json_encode($result));
-            
+
             // Extract text differently depending on structure or simple string
             // callAI returns ['content' => ..., 'usage' => ...]
             // content might be an array or string depending on sanitizeAIResponse
-            
+
             $content = $result['content'];
-            
+
             if (is_array($content) && isset($content['text'])) {
                 return $content['text'];
             }
-            
+
             // Fallback: if sanitization tried to parse JSON but it was just text
             if (empty($content) && isset($result['content']['text'])) {
-                 return $result['content']['text'];
+                return $result['content']['text'];
             }
 
             // Specialized handling for chat which expects text, not JSON
             // We might need to adjust callAI or handle the response raw here
             // But for now let's assume sanitizeAIResponse handles plain text gracefully if it fails JSON
-            
+
             // Re-check callGemini:
             // if empty($json) -> returns ['text' => $text]
-            
+
             return $content['text'] ?? "Erro ao interpretar resposta.";
 
         } catch (\Exception $e) {
@@ -553,25 +615,57 @@ class AIService
      */
     protected function sanitizeAIResponse(?string $text): array
     {
-        if (!$text) return [];
+        if (!$text)
+            return [];
 
-        // Remover blocos de código markdown (```json ... ``` ou ``` ...)
-        $cleanText = preg_replace('/^```(?:json)?\s+|\s+```$/i', '', trim($text));
-        
-        // Se ainda houver crases em outras partes, tentar extrair apenas o que está entre chaves
-        if (str_contains($cleanText, '```')) {
-            preg_match('/\{(?:[^{}]|(?R))*\}/s', $cleanText, $matches);
-            if (!empty($matches)) {
-                $cleanText = $matches[0];
+        // 1. First, try to decode the text directly (cleanest case)
+        $decoded = json_decode($text, true);
+        if (json_last_error() === JSON_ERROR_NONE) {
+            return $decoded;
+        }
+
+        // 2. Identify the start of JSON object or array
+        $p1 = strpos($text, '{');
+        $p2 = strpos($text, '[');
+        $start = -1;
+
+        if ($p1 !== false && $p2 !== false) {
+            $start = min($p1, $p2);
+        } elseif ($p1 !== false) {
+            $start = $p1;
+        } elseif ($p2 !== false) {
+            $start = $p2;
+        }
+
+        // 3. Identify the end (search backwards)
+        $p3 = strrpos($text, '}');
+        $p4 = strrpos($text, ']');
+        $end = -1;
+
+        if ($p3 !== false && $p4 !== false) {
+            $end = max($p3, $p4);
+        } elseif ($p3 !== false) {
+            $end = $p3;
+        } elseif ($p4 !== false) {
+            $end = $p4;
+        }
+
+        if ($start !== -1 && $end !== -1 && $end > $start) {
+            $cleanText = substr($text, $start, $end - $start + 1);
+            $decoded = json_decode($cleanText, true);
+
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $decoded;
             }
         }
 
+        // 4. Fallback: Try regex for wrapped markdown if simple substring failed
+        $cleanText = preg_replace('/^```[a-z]*\s*|\s*```$/i', '', trim($text));
         $decoded = json_decode($cleanText, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
             Log::error("AI JSON Parse Error: " . json_last_error_msg(), [
-                'raw_text_snippet' => substr($text, 0, 200),
-                'clean_text_snippet' => substr($cleanText, 0, 200)
+                'raw_snippet' => substr($text, 0, 500)
             ]);
             return [];
         }
@@ -602,7 +696,7 @@ class AIService
                 'provider' => $apiKey->provider,
                 'model' => $model,
                 'prompt_text' => substr($prompt, 0, 10000), // Safety limit
-                'response_text' => is_array($result['content']) ? json_encode($result['content']) : (string)$result['content'],
+                'response_text' => is_array($result['content']) ? json_encode($result['content']) : (string) $result['content'],
                 'tokens_used_input' => $inputTokens,
                 'tokens_used_output' => $outputTokens,
                 'tokens_used_total' => $inputTokens + $outputTokens,

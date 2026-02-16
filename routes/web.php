@@ -29,7 +29,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{simulation}/finish', [SimulationController::class, 'finish'])->name('finish');
         Route::get('/{simulation}/result', [SimulationController::class, 'result'])->name('result');
         Route::get('/{simulation}/status', [SimulationController::class, 'checkCorrectionStatus'])->name('status');
-        
+
         // Chat Contextual
         Route::post('/{simulation}/questions/{question}/chat', [\App\Http\Controllers\QuestionChatController::class, 'store'])->name('questions.chat.store');
         Route::get('/{simulation}/questions/{question}/chat', [\App\Http\Controllers\QuestionChatController::class, 'index'])->name('questions.chat.index');
@@ -44,6 +44,14 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/', [EssayController::class, 'store'])->name('store');
         Route::post('/{essay}/submit', [EssayController::class, 'submit'])->name('submit');
         Route::get('/{essay}', [EssayController::class, 'show'])->name('show');
+    });
+
+    // Plano de Estudos
+    Route::prefix('study-plan')->name('study-plan.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\StudyPlanController::class, 'index'])->name('index');
+        Route::get('/status', [\App\Http\Controllers\StudyPlanController::class, 'status'])->name('status');
+        Route::post('/generate', [\App\Http\Controllers\StudyPlanController::class, 'store'])->name('store');
+        Route::post('/update', [\App\Http\Controllers\StudyPlanController::class, 'update'])->name('update');
     });
 
     // Planos
@@ -74,7 +82,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/api-keys/clear-logs', [\App\Http\Controllers\Admin\AdminController::class, 'clearLogs'])->name('api-keys.clear-logs');
         Route::post('/api-keys/{apiKey}/retest', [\App\Http\Controllers\Admin\AdminController::class, 'retestApiKey'])->name('api-keys.retest');
         Route::delete('/api-keys/{apiKey}', [\App\Http\Controllers\Admin\AdminController::class, 'destroyApiKey'])->name('api-keys.destroy');
-        
+
         // Configurações de Pagamento
         Route::get('/payment-settings', [\App\Http\Controllers\Admin\PaymentSettingController::class, 'index'])->name('payment-settings');
         Route::post('/payment-settings', [\App\Http\Controllers\Admin\PaymentSettingController::class, 'update'])->name('payment-settings.update');

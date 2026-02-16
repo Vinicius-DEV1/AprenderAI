@@ -1,0 +1,40 @@
+{
+    "detailed_db_check": [
+        {
+            "subject": "matem\u00e1tica",
+            "subject_hex": "6d6174656dc3a174696361",
+            "source": "enem_real_2009_2023",
+            "count": 51
+        },
+        {
+            "subject": "portugu\u00eas",
+            "subject_hex": "706f7274756775c3aa73",
+            "source": "enem_real_2009_2023",
+            "count": 60
+        },
+        {
+            "subject": "portugu\u00eas",
+            "subject_hex": "706f7274756775c3aa73",
+            "source": "generated_system",
+            "count": 53
+        },
+        {
+            "subject": "matem\u00e1tica",
+            "subject_hex": "6d6174656dc3a174696361",
+            "source": "generated_system",
+            "count": 52
+        }
+    ],
+    "system_config_check": [
+        {
+            "query_for": "matem\u00e1tica",
+            "query_for_hex": "6d6174656dc3a174696361",
+            "total": 103
+        },
+        {
+            "query_for": "portugu\u00eas",
+            "query_for_hex": "706f7274756775c3aa73",
+            "total": 113
+        }
+    ]
+}
