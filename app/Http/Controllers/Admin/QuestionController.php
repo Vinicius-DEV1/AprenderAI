@@ -45,7 +45,7 @@ class QuestionController extends Controller
 
         // Group by origin (excluding null/empty which are likely generic manual or AI)
         // We only want explicit origins for the cards like "ENEM 2012"
-        $questionsByOrigin = Question::select('origin', \DB::raw('count(*) as total'))
+        $questionsByOrigin = Question::select('origin', DB::raw('count(*) as total'))
             ->whereNotNull('origin')
             ->where('origin', '!=', '')
             ->groupBy('origin')
