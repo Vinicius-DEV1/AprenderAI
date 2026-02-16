@@ -86,6 +86,15 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">Limite de Redações</label>
                             <input type="number" name="essays_limit" min="0" value="{{ old('essays_limit', $plan->essays_limit) }}" class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500" required>
                         </div>
+                        
+                        <div class="md:col-span-2 border-t pt-4 mt-2">
+                             <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                Limite de Perguntas IA (Mensal)
+                            </label>
+                            <input type="number" name="max_ai_questions" min="0" value="{{ old('max_ai_questions', $plan->max_ai_questions ?? 10) }}" class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500" required>
+                            <p class="text-xs text-gray-500 mt-1">Quantidade de perguntas que o usuário pode fazer ao chat de IA por mês.</p>
+                        </div>
                     </div>
                 </div>
             </div>

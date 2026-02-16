@@ -44,6 +44,7 @@
                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Usuário</th>
                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Plano</th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Uso IA</th>
                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Cadastro</th>
                         <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Ações</th>
                     </tr>
@@ -80,6 +81,20 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="text-sm text-gray-600">{{ $user->plan->name ?? 'Sem Plano' }}</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900 font-bold">
+                                    {{ $user->ai_questions_count }} <span class="text-gray-400 text-xs font-normal">/ {{ $user->plan->max_ai_questions ?? '∞' }}</span>
+                                </div>
+                                <div class="w-16 h-1.5 bg-gray-100 rounded-full mt-1 overflow-hidden">
+                                    @php
+                                        $percent = ($user->plan && $user->plan->max_ai_questions > 0) 
+                                            ? min(100, ($user->ai_questions_count / $user->plan->max_ai_questions) * 100) 
+                                            : 0;
+                                        $color = $percent > 90 ? 'bg-red-500' : ($percent > 50 ? 'bg-yellow-500' : 'bg-green-500');
+                                    @endphp
+                                    <div class="h-full {{ $color }}" style="width: {{ $percent }}%"></div>
+                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {{ $user->created_at->format('d/m/Y') }}

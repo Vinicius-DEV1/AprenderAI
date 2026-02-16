@@ -19,6 +19,7 @@ class Plan extends Model
         'essays_limit',
         'features',
         'is_active',
+        'max_ai_questions',
     ];
 
     protected $casts = [
@@ -40,10 +41,10 @@ class Plan extends Model
     public function isUnlimited(string $feature): bool
     {
         return match ($feature) {
-            'simulations' => $this->simulations_limit === 0,
-            'essays' => $this->essays_limit === 0,
-            default => false,
-        };
+                'simulations' => $this->simulations_limit === 0,
+                'essays' => $this->essays_limit === 0,
+                default => false,
+            };
     }
 
     public function hasFeature(string $feature): bool

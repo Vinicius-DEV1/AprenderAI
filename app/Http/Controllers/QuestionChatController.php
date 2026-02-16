@@ -32,6 +32,25 @@ class QuestionChatController extends Controller
         $user = $request->user();
         Log::info("Chat Request - User: " . $user->id . " - Question: " . $question->id . " - Message: " . $request->message);
 
+        // Check AI Quota
+        if (!$user->hasAiQuota()) {
+            $resetDate = $user->last_reset_at
+                ? $user->last_reset_at->addMonth()->format('d/m/Y')
+                : now()->addMonth()->format('d/m/Y');
+
+            return response()->json([
+                'status' => 'quota_exceeded',
+                'message' => 'Você atingiu o limite de dúvidas do seu plano.',
+                'quota_max' => $user->plan->max_ai_questions,
+                'quota_used' => $user->ai_questions_count,
+                'reset_date' => $resetDate,
+                'upgrade_url' => route('dashboard') // Change to plans/upgrade route when available
+            ]);
+        }
+
+        // Increment Usage immediately to prevent race conditions
+        $user->incrementAiUsage();
+
         // 1. Save User Message
         QuestionInteraction::create([
             'simulation_id' => $simulation->id,
@@ -47,47 +66,37 @@ class QuestionChatController extends Controller
             ->orderBy('created_at', 'asc')
             ->get()
             ->map(fn($interaction) => [
-                'role' => $interaction->role,
-                'message' => $interaction->message
-            ])
+        'role' => $interaction->role,
+        'message' => $interaction->message
+        ])
             ->toArray();
 
-        // 3. Call AI
-        try {
-            $responseMessage = $this->aiService->chatAboutQuestion($question, $simulation, $request->message, $history);
-            
-            // 4. Save AI Response
-            if ($responseMessage) {
-                QuestionInteraction::create([
-                    'simulation_id' => $simulation->id,
-                    'question_id' => $question->id,
-                    'user_id' => $user->id,
-                    'role' => 'assistant',
-                    'message' => $responseMessage,
-                ]);
+        // 3. Dispatch Job (Async)
+        // We pass the history *before* the current message because the Job might re-append or the AI Service might need context.
+        // Actually, the Service probably expects the full history including the new user message? 
+        // Let's check AIService signature: chatAboutQuestion($question, $simulation, $message, $history)
+        // Usually history contains previous messages. The current message is passed as argument.
+        // So passing $history as we fetched it (previous interactions) is correct.
 
-                return response()->json(['message' => $responseMessage]);
-            } else {
-                 return response()->json(['error' => 'Erro ao processar resposta da IA.'], 500);
-            }
+        \App\Jobs\RespondToChatJob::dispatch(
+            $simulation,
+            $question,
+            $request->message,
+            $history,
+            $user->id
+        );
 
-        } catch (\Exception $e) {
-            if (str_contains($e->getMessage(), '429')) {
-                 Log::warning("Chat 429 Error - User: " . $user->id . " - Error: " . $e->getMessage());
-                 return response()->json(['error' => 'Desculpe, estou processando muitas dúvidas agora. Tente novamente em 1 minuto.'], 429);
-            }
-            Log::error("Chat Error: " . $e->getMessage());
-            return response()->json(['error' => 'Erro interno no chat.'], 500);
-        }
+        // Return success immediately
+        return response()->json(['status' => 'queued']);
     }
 
     public function index(Request $request, Simulation $simulation, Question $question)
     {
-         $history = QuestionInteraction::where('simulation_id', $simulation->id)
+        $history = QuestionInteraction::where('simulation_id', $simulation->id)
             ->where('question_id', $question->id)
             ->orderBy('created_at', 'asc')
             ->get();
-            
-         return response()->json($history);
+
+        return response()->json($history);
     }
 }
