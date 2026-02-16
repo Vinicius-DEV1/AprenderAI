@@ -55,9 +55,12 @@ class UserController extends Controller
         
         $successRate = $aiRequestCount > 0 ? ($successCount / $aiRequestCount) * 100 : 0;
 
-        // Peak Usage Hour
+        // Peak Usage Hour - Cross-database compatibility
+        $driverName = \Illuminate\Support\Facades\DB::getDriverName();
+        $hourFunc = $driverName === 'sqlite' ? "strftime('%H', created_at)" : "HOUR(created_at)";
+
         $peakHour = \App\Models\AiRequestLog::where('user_id', $user->id)
-            ->selectRaw('HOUR(created_at) as hour, count(*) as count')
+            ->selectRaw("$hourFunc as hour, count(*) as count")
             ->groupBy('hour')
             ->orderByDesc('count')
             ->first();
