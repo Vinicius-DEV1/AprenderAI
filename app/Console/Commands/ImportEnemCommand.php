@@ -5,22 +5,25 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use App\Models\Question;
 
 class ImportEnemCommand extends Command
 {
     protected $signature = 'enem:import {--from=2009} {--to=2023}';
-    protected $description = 'Importa questões do ENEM (2009-2023) via API';
+    protected $description = 'Importa questões do ENEM (2009-2023) via API com suporte a imagens e filtros estritos';
 
     private $baseUrl = 'https://api.enem.dev/v1/exams';
 
     public function handle()
     {
-        $from = (int) $this->option('from');
-        $to = (int) $this->option('to');
+        $from = (int)$this->option('from');
+        $to = (int)$this->option('to');
 
         $this->info("Iniciando importação ENEM de {$from} a {$to}...");
-        $this->info("Filtro Estrito: Apenas 'linguagens' (PT) e 'matematica'.");
+        $this->info("Filtro Estrito: Apenas 'Linguagens' (PT) e 'Matemática'. Excluindo Inglês/Espanhol.");
+        $this->info("Imagens: Download e substituição local.");
 
         $globalStats = [
             'imported' => 0,
@@ -51,18 +54,18 @@ class ImportEnemCommand extends Command
         $this->line("Processando ano {$year}...");
         $page = 1;
         $failedPages = [];
-        $limit = 10; // API usually limits to 10 or 20
+        $limit = 25; // Aumentar limit para eficiência
 
         while (true) {
             $offset = ($page - 1) * $limit;
-            
+
             try {
                 // Rate Limiting (1 req/sec)
-                usleep(1000000); // 1s
+                usleep(500000); // 0.5s
 
                 $response = Http::timeout(30)->get("{$this->baseUrl}/{$year}/questions", [
                     'limit' => $limit,
-                    'offset' => $offset, 
+                    'offset' => $offset,
                 ]);
 
                 if ($response->status() === 429) {
@@ -91,18 +94,11 @@ class ImportEnemCommand extends Command
                 }
                 DB::commit();
 
-                $this->info("Ano {$year} - Página {$page} processada.");
-
-                // Verificar se tem mais páginas
-                $hasMore = $data['metadata']['hasMore'] ?? false; // A API retorna hasMore boolean? As vezes é total pages.
-                // Ajuste: A API enem.dev retorna um array direto em datas antigas ou paginada?
-                // Verificando padrão comum: se vier vazio o array questions, break.
-                // Se a API retornar paginação explícita, usar.
-                // Assumindo loop até vazio.
-                
+                $this->info("Ano {$year} - Página {$page} processada (" . count($questions) . " itens).");
                 $page++;
 
-            } catch (\Exception $e) {
+            }
+            catch (\Exception $e) {
                 DB::rollBack();
                 $this->error("Exception Ano {$year} Pág {$page}: " . $e->getMessage());
                 $stats['errors']++;
@@ -116,26 +112,30 @@ class ImportEnemCommand extends Command
         // 1. FILTRO ESTRITO
         $discipline = isset($q['discipline']) ? strtolower($q['discipline']) : '';
         $language = isset($q['language']) ? strtolower($q['language']) : null;
-        
+
         $targetSubject = null;
 
-        // Normalizar
-        if (str_contains($discipline, 'matematica') || str_contains($discipline, 'matemática')) {
+        // Normalização de acentos para busca
+        $disciplineSlug = Str::slug($discipline);
+        $languageSlug = $language ?Str::slug($language) : '';
+
+        // Lógica Matemática
+        if (str_contains($disciplineSlug, 'matematica')) {
             $targetSubject = 'matemática';
-        } elseif (str_contains($discipline, 'linguagens') || str_contains($discipline, 'portugues') || str_contains($discipline, 'português')) {
-            // Verificar se é lingua estrangeira
+        }
+        // Lógica Linguagens (Português)
+        elseif (str_contains($disciplineSlug, 'linguagens') || str_contains($disciplineSlug, 'portugues')) {
+
+            // Exclusão Explícita de Língua Estrangeira
             $isForeign = false;
-            
-            // Check explicit language field (common in recent API data)
-            if ($language && (str_contains($language, 'ingles') || str_contains($language, 'espanhol') || str_contains($language, 'inglês'))) {
+
+            if (str_contains($languageSlug, 'ingles') || str_contains($languageSlug, 'espanhol')) {
+                $isForeign = true;
+            }
+            if (str_contains($disciplineSlug, 'ingles') || str_contains($disciplineSlug, 'espanhol')) {
                 $isForeign = true;
             }
 
-            // Check discipline field fallback (just in case)
-            if (str_contains($discipline, 'ingles') || str_contains($discipline, 'espanhol') || str_contains($discipline, 'inglês')) {
-                $isForeign = true;
-            }
-            
             if (!$isForeign) {
                 $targetSubject = 'português';
             }
@@ -149,21 +149,20 @@ class ImportEnemCommand extends Command
         // 2. PREPARA DADOS
         $context = $q['context'] ?? '';
         $intro = $q['alternativesIntroduction'] ?? '';
-        $statement = trim($context . "\n\n" . $intro);
-        
-        // Fallback para statement vazio (algumas questoes so tem img ou titulo)
-        if (empty($statement)) {
-            $statement = $q['title'] ?? 'Sem enunciado (verificar imagem)';
+        $rawStatement = trim($context . "\n\n" . $intro);
+
+        // Fallback
+        if (empty(trim($rawStatement))) {
+            $rawStatement = $q['title'] ?? 'Questão sem enunciado de texto (verificar imagem).';
         }
+
+        // 2.1 TRATAMENTO DE IMAGENS
+        $statement = $this->processImages($rawStatement, $q['files'] ?? [], $year);
 
         // Mapear alternativas
         $alternativesMap = [];
-        $correctLetter = 'A'; // Default fallback
+        $correctLetter = 'A'; // Default
 
-        // Formato da API enem.dev varia.
-        // Opcao A: array de objects [{letter: 'a', text: '...'}, ...]
-        // Opcao B: as vezes vem diferente. Focar A.
-        
         if (isset($q['alternatives']) && is_array($q['alternatives'])) {
             foreach ($q['alternatives'] as $alt) {
                 $letter = strtoupper($alt['letter'] ?? '');
@@ -176,20 +175,25 @@ class ImportEnemCommand extends Command
                 }
             }
         }
-        
-        // Se a API mandar correctAlternative separado
+
         if (isset($q['correctAlternative'])) {
             $correctLetter = strtoupper($q['correctAlternative']);
         }
-
         ksort($alternativesMap);
 
-        // 3. DEDUPLICAÇÃO
-        // Usar statement exato + ano
-        $exists = Question::where('type', 'enem')
-            ->where('year', $year)
-            ->where('statement', $statement)
-            ->exists();
+        // 3. DEDUPLICAÇÃO (External ID > Statement Check)
+        $externalId = $q['id'] ?? null;
+
+        if ($externalId) {
+            $exists = Question::where('external_id', $externalId)->exists();
+        }
+        else {
+            // Fallback para statement + year se não tiver ID (improvável na API nova)
+            $exists = Question::where('type', 'enem')
+                ->where('year', $year)
+                ->where('statement', $statement)
+                ->exists();
+        }
 
         if ($exists) {
             $stats['skipped_duplicate']++;
@@ -200,12 +204,15 @@ class ImportEnemCommand extends Command
         Question::create([
             'type' => 'enem',
             'subject' => $targetSubject,
+            'topic' => $discipline, // Armazena a disciplina original como tópico
             'difficulty' => 'medium',
             'year' => $year,
             'statement' => $statement,
             'alternatives' => $alternativesMap,
             'correct_answer' => $correctLetter,
             'source' => 'manual',
+            'origin' => "ENEM {$year}",
+            'external_id' => $externalId
         ]);
 
         $stats['imported']++;
@@ -213,30 +220,70 @@ class ImportEnemCommand extends Command
         $stats['by_subject'][$targetSubject]++;
     }
 
+    private function processImages($text, $files, $year)
+    {
+        // Regex para encontrar links de imagens markdown ou html
+        // Markdown: ![alt](url)
+        // HTML: <img src="url">
+        // Simplificação: A API retorna urls absolutas. Vamos procurar por http(s)://...jpg/png/jpeg etc
+
+        // Se a API fornecer arrays de 'files', podemos usar isso.
+        // Se não, parsear o texto.
+        // A API Dev ENEM costuma mandar URLs no markdown.
+
+        return preg_replace_callback('/(https?:\/\/[^\s"\')]+?\.(?:png|jpg|jpeg|gif|webp))/i', function ($matches) use ($year) {
+            $url = $matches[1];
+            return $this->downloadImage($url, $year);
+        }, $text);
+    }
+
+    private function downloadImage($url, $year)
+    {
+        try {
+            // Gerar nome único
+            $extension = pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION) ?? 'jpg';
+            $filename = 'enem_' . $year . '_' . md5($url) . '.' . $extension;
+            $path = "questions/images/{$year}/{$filename}";
+
+            // Verificar se já existe
+            if (Storage::disk('public')->exists($path)) {
+                return Storage::url($path);
+            }
+
+            // Baixar
+            $contents = file_get_contents($url); // Simples. Se falhar, retorna URL original?
+            if ($contents) {
+                Storage::disk('public')->put($path, $contents);
+                return Storage::url($path);
+            }
+        }
+        catch (\Exception $e) {
+        // Log erro silencioso e retorna URL original
+        // $this->warn("Falha ao baixar imagem {$url}: " . $e->getMessage());
+        }
+
+        return $url;
+    }
+
+
     private function printFinalStats($stats)
     {
         $this->info("\n================================================");
         $this->info("RELATÓRIO FINAL DE IMPORTAÇÃO (ENEM)");
         $this->info("================================================");
-        
+
         $this->info("Total Geral Inserido: " . $stats['imported']);
         $this->info("Filtrados (Ignorados): " . $stats['skipped_filter']);
-        $this->info("Duplicados (Já existiam): " . $stats['skipped_duplicate']);
+        $this->info("Duplicados: " . $stats['skipped_duplicate']);
         $this->info("Erros de Requisição: " . $stats['errors']);
-        
+
         $this->info("\n--- Por Matéria ---");
         $this->info("Português: " . $stats['by_subject']['português']);
         $this->info("Matemática: " . $stats['by_subject']['matemática']);
-        
+
         $this->info("\n--- Por Ano ---");
         foreach ($stats['by_year'] as $y => $count) {
             $this->info("Ano {$y}: {$count} questões");
         }
-        
-        $this->info("\n================================================");
-        
-        // Validar no Banco
-        $dbCount = Question::where('type', 'enem')->where('source', 'manual')->count();
-        $this->info("Confirmação via DB (COUNT): {$dbCount}");
     }
 }
