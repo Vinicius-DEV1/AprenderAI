@@ -323,11 +323,12 @@
 
                 <!-- Chat Contextual -->
                 <div class="mt-2 border-t border-gray-100 pt-2" 
-                     x-data="chatComponent({{ $simulation->id }}, {{ $answer->question_id }})">
+                     x-data="chatComponent({{ $simulation->id }}, {{ $answer->question_id }})"
+                     @explanation-available.window="if ($event.detail.questionId === {{ $answer->question_id }}) hasExplanation = true">
                     
                     <button @click="toggleChat()" 
                             class="text-xs text-indigo-600 font-medium hover:text-indigo-800 flex items-center gap-1.5 transition-colors">
-                        <span x-text="showChat ? 'Ocultar Chat' : '💬 Tirar Dúvida'">💬 Tirar Dúvida</span>
+                        <span x-text="showChat ? 'Ocultar Chat' : (hasExplanation ? 'Ainda com dúvida na explicação? Pergunte ao Tutor' : '💬 Tirar Dúvida')">💬 Tirar Dúvida</span>
                     </button>
 
                     <div x-show="showChat" 
@@ -429,7 +430,6 @@
                     if (this.attempts > this.maxAttempts) {
                         console.warn(`[Polling] Question ${questionId} - Timeout reached.`);
                         clearInterval(this.interval);
-                        // Optional: Show "Analysis not available" message here via a new state property
                         return;
                     }
 
@@ -444,9 +444,12 @@
                             console.log(`[Polling] Question ${questionId} - Data received!`);
                             this.content = result.data[questionId];
                             this.status = 'completed';
+                            
+                            // Notify chat component that explanation is available
+                            window.dispatchEvent(new CustomEvent('explanation-available', { detail: { questionId: questionId } }));
+                            
                             clearInterval(this.interval);
                         } 
-                        // If result.status is 'completed' globally but we don't have data -> Wait for timeout (race condition protection)
                     } catch (error) {
                         console.error('Polling error:', error);
                     }
@@ -471,6 +474,15 @@
                 newMessage: '',
                 messages: [],
                 errorMessage: null,
+                hasExplanation: false, // Reactive state for button text
+
+                init() {
+                    // Check if explanation is already loaded on init (server-side rendered)
+                    const explanationDiv = document.querySelector(`.explanation[data-question-id="${questionId}"] .markdown-body`);
+                    if (explanationDiv && explanationDiv.innerHTML.trim() !== '') {
+                        this.hasExplanation = true;
+                    }
+                },
                 
                 renderMarkdown(text) {
                     if (!text) return '';

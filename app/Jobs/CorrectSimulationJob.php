@@ -63,88 +63,9 @@ class CorrectSimulationJob implements ShouldQueue
             ]
         );
 
-        // 3. Processamento em Lotes (Chunking) e Persistência Incremental
-        $chunks = array_chunk($allQuestions, 5); // Lotes de 5
-        $accumulatedExplanations = [];
+        // 3. Correção Local (Offline-First)
         $totalInput = 0;
         $totalOutput = 0;
-        $providerUsed = 'openai'; // Fallback default
-
-        foreach ($chunks as $index => $chunk) {
-            $currentBatch = $index + 1;
-            $totalBatches = count($chunks);
-            Log::info("Processando lote {$currentBatch} de {$totalBatches} para simulação #{$this->simulation->id}");
-
-            // Intensive Debug: Log input batch
-            Log::info("==== JOB DEBUG: Sending Batch {$currentBatch} to AI ====");
-            Log::info("DEBUG: Question IDs in this batch: " . implode(', ', array_column($chunk, 'question_id')));
-            Log::debug("DEBUG: Full Batch Data: " . json_encode($chunk));
-
-            // Call AI
-            try {
-                $result = $aiService->correctSimulation($chunk, $plan, $this->simulation->user_id);
-            } catch (\Exception $e) {
-                if (str_contains($e->getMessage(), '429')) {
-                    Log::warning("JOB: 429 Quota Exceeded. Releasing job for 60 seconds.");
-                    $this->release(60);
-                    return; // Stop execution of this job instance
-                }
-                Log::error("JOB: Error in batch {$currentBatch}: " . $e->getMessage());
-                $result = null;
-            }
-
-            if (!$result) {
-                Log::error("JOB ERROR: AI Service returned null for batch {$currentBatch}. Possible cause: No active/online API keys.");
-                continue;
-            }
-
-            if ($result) {
-                $providerUsed = $result['provider'];
-                $response = $result['response'];
-                $usage = $result['usage'];
-
-                // DEBUG: Log raw response to find why it is empty
-                Log::debug("AI Raw Response Batch {$currentBatch}: " . json_encode($response));
-
-                $totalInput += $usage['input_tokens'] ?? 0;
-                $totalOutput += $usage['output_tokens'] ?? 0;
-
-                // CRITICAL FIX: Robust Extraction
-                // Tentar várias chaves possíveis que a IA pode usar
-                $newExplanations = $response['errors_explanation'] 
-                    ?? $response['explanations'] 
-                    ?? $response['questions']
-                    ?? $response['data']
-                    ?? [];
-
-                // Caso a AIService tenha retornado um array com chave 'text' contendo o JSON bruto
-                if (empty($newExplanations) && isset($response['text'])) {
-                    $nestedJson = json_decode(preg_replace('/^```(?:json)?\s+|\s+```$/i', '', trim($response['text'])), true);
-                    $newExplanations = $nestedJson['errors_explanation'] ?? $nestedJson['explanations'] ?? $nestedJson ?? [];
-                }
-                
-                // Se for array de objetos mas sem chave pai (root array)
-                if (empty($newExplanations) && isset($response[0]) && is_array($response[0])) {
-                    $newExplanations = $response;
-                }
-
-                // Normalizar IDs para garantir match (String vs Int)
-                foreach ($newExplanations as &$explanation) {
-                    if (isset($explanation['question_id'])) {
-                        $explanation['question_id'] = (string) $explanation['question_id'];
-                    }
-                }
-                
-                // Refresh model to get latest data from DB
-                $correction->refresh();
-                $existingData = $correction->correction_data ?? [];
-                $existingExplanations = $existingData['errors_explanation'] ?? [];
-                
-                $mergedExplanations = array_merge($existingExplanations, $newExplanations);
-                
-                // Update local accumulator
-                $accumulatedExplanations = $mergedExplanations;
-
                 // Persistência Incremental
                 $correction->update([
                     'ai_provider' => $providerUsed,
