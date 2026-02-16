@@ -63,9 +63,7 @@ class CorrectSimulationJob implements ShouldQueue
             ]
         );
 
-        // 3. Processamento em Lotes (Chunking) e Persistência Incremental
-        $chunks = array_chunk($allQuestions, 5); // Lotes de 5
-        $accumulatedExplanations = [];
+        // 3. Correção Local (Offline-First)
         $totalInput = 0;
         $totalOutput = 0;
         $providerUsed = 'openai'; // Fallback default
@@ -111,8 +109,8 @@ class CorrectSimulationJob implements ShouldQueue
 
                 // CRITICAL FIX: Robust Extraction
                 // Tentar várias chaves possíveis que a IA pode usar
-                $newExplanations = $response['errors_explanation']
-                    ?? $response['explanations']
+                $newExplanations = $response['errors_explanation'] 
+                    ?? $response['explanations'] 
                     ?? $response['questions']
                     ?? $response['data']
                     ?? [];
@@ -122,7 +120,7 @@ class CorrectSimulationJob implements ShouldQueue
                     $nestedJson = json_decode(preg_replace('/^```(?:json)?\s+|\s+```$/i', '', trim($response['text'])), true);
                     $newExplanations = $nestedJson['errors_explanation'] ?? $nestedJson['explanations'] ?? $nestedJson ?? [];
                 }
-
+                
                 // Se for array de objetos mas sem chave pai (root array)
                 if (empty($newExplanations) && isset($response[0]) && is_array($response[0])) {
                     $newExplanations = $response;
@@ -134,14 +132,14 @@ class CorrectSimulationJob implements ShouldQueue
                         $explanation['question_id'] = (string) $explanation['question_id'];
                     }
                 }
-
+                
                 // Refresh model to get latest data from DB
                 $correction->refresh();
                 $existingData = $correction->correction_data ?? [];
                 $existingExplanations = $existingData['errors_explanation'] ?? [];
-
+                
                 $mergedExplanations = array_merge($existingExplanations, $newExplanations);
-
+                
                 // Update local accumulator
                 $accumulatedExplanations = $mergedExplanations;
 

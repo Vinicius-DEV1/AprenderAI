@@ -280,32 +280,55 @@
                     }
                 @endphp
 
-                <div class="explanation" data-question-id="{{ $answer->question_id }}" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                <div class="explanation" 
+                     data-question-id="{{ $answer->question_id }}" 
+                     style="background: #f8fafc; border: 1px solid #e2e8f0;"
+                     x-data="analysisPolling({{ $simulation->id }}, {{ $answer->question_id }}, '{{ $aiExplanation ? 'completed' : 'pending' }}', `{{ $aiExplanation ? $aiExplanation : '' }}`)"
+                     x-show="true">
+                    
                     <h4 style="display: flex; align-items: center; gap: 8px;">
-                        @if($simulation->correction)
-                            ✨ Análise da IA
-                        @else
-                            🤖 Processando Correção...
-                        @endif
+                        <template x-if="status === 'completed'">
+                            <span>✨ Análise da IA</span>
+                        </template>
+                        <template x-if="status !== 'completed'">
+                            <span class="flex items-center gap-2 text-indigo-600">
+                                <svg class="animate-spin h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Analisando...
+                            </span>
+                        </template>
                     </h4>
 
-                    @if($aiExplanation)
-                        <div class="markdown-content" style="white-space: pre-wrap;">{{ $aiExplanation }}</div>
-                    @else
-                        <div class="ai-loading" style="color: #64748b;">
-                            <p class="blink" style="margin: 0;">[...] Gerando explicação personalizada com IA...</p>
-                            <small>Aguarde alguns segundos e atualize a página.</small>
+                    <div x-show="status === 'completed'" class="markdown-body" style="white-space: pre-wrap;" x-html="renderContent(content)"></div>
+
+                    <div x-show="status !== 'completed'" class="ai-loading space-y-3 mt-4">
+                        <div class="flex items-center gap-3">
+                            <span class="relative flex h-3 w-3">
+                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                              <span class="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                            </span>
+                            <p class="text-sm text-indigo-700 font-medium m-0">A IA está analisando seu desempenho...</p>
                         </div>
-                    @endif
+                        
+                        <!-- Skeleton Loader -->
+                        <div class="animate-pulse space-y-2">
+                            <div class="h-2 bg-indigo-100 rounded w-3/4"></div>
+                            <div class="h-2 bg-indigo-100 rounded w-full"></div>
+                            <div class="h-2 bg-indigo-100 rounded w-5/6"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Chat Contextual -->
                 <div class="mt-2 border-t border-gray-100 pt-2" 
-                     x-data="chatComponent({{ $simulation->id }}, {{ $answer->question_id }})">
+                     x-data="chatComponent({{ $simulation->id }}, {{ $answer->question_id }})"
+                     @explanation-available.window="if ($event.detail.questionId === {{ $answer->question_id }}) hasExplanation = true">
                     
                     <button @click="toggleChat()" 
                             class="text-xs text-indigo-600 font-medium hover:text-indigo-800 flex items-center gap-1.5 transition-colors">
-                        <span x-text="showChat ? 'Ocultar Chat' : '💬 Tirar Dúvida'">💬 Tirar Dúvida</span>
+                        <span x-text="showChat ? 'Ocultar Chat' : (hasExplanation ? 'Ainda com dúvida na explicação? Pergunte ao Tutor' : '💬 Tirar Dúvida')">💬 Tirar Dúvida</span>
                     </button>
 
                     <div x-show="showChat" 
@@ -320,8 +343,17 @@
                                     <div 
                                         :class="msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-800 border border-gray-200'" 
                                         :style="msg.role === 'user' ? 'background-color: #4f46e5 !important; color: white !important;' : 'background-color: white !important; color: #1f2937 !important; border: 1px solid #e5e7eb;'"
-                                        class="rounded-lg px-3 py-1.5 max-w-[85%] text-[11px] shadow-sm">
-                                        <span x-text="msg.message" class="break-words leading-tight"></span>
+                                        class="rounded-lg px-3 py-1.5 max-w-[85%] text-[11px] shadow-sm group">
+                                        
+                                        <!-- User Message (Text Only) -->
+                                        <template x-if="msg.role === 'user'">
+                                            <span x-text="msg.message" class="break-words leading-tight"></span>
+                                        </template>
+
+                                        <!-- AI Message (Markdown HTML) -->
+                                        <template x-if="msg.role !== 'user'">
+                                            <div x-html="renderMarkdown(msg.message)" class="markdown-body break-words leading-relaxed"></div>
+                                        </template>
                                     </div>
                                     <span class="text-[9px] text-gray-400 mt-0.5" x-text="msg.role === 'user' ? 'Você' : 'IA'"></span>
                                 </div>
@@ -329,10 +361,13 @@
                             
                             <!-- Typing Indicator -->
                             <div x-show="isTyping" class="flex items-start">
-                                <div class="bg-gray-200 rounded-lg px-2 py-1 text-[11px] text-gray-500 animate-pulse flex items-center gap-1">
-                                    <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></span>
-                                    <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
-                                    <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+                                <div class="bg-gray-100 rounded-lg px-3 py-2 text-xs text-gray-500 flex items-center gap-2 shadow-sm border border-gray-200">
+                                    <span class="font-medium">IA está digitando</span>
+                                    <div class="flex gap-1">
+                                        <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></span>
+                                        <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
+                                        <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -368,8 +403,69 @@
             Prova</a>
     </div>
 
-    <!-- Chat Component Definition -->
     <script>
+        window.analysisPolling = function(simulationId, questionId, initialStatus, initialContent) {
+            return {
+                status: initialStatus,
+                content: initialContent,
+                interval: null,
+                attempts: 0,
+                maxAttempts: 40, // ~2 minutes (3s interval)
+
+                init() {
+                    if (this.status !== 'completed') {
+                        this.startPolling();
+                    }
+                },
+
+                startPolling() {
+                    this.interval = setInterval(() => {
+                        this.checkAnalysis();
+                    }, 3000);
+                },
+
+                async checkAnalysis() {
+                    this.attempts++;
+                    
+                    if (this.attempts > this.maxAttempts) {
+                        console.warn(`[Polling] Question ${questionId} - Timeout reached.`);
+                        clearInterval(this.interval);
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`/simulations/${simulationId}/status`);
+                        if (!response.ok) return;
+
+                        const result = await response.json();
+                        
+                        // Only stop polling if we explicitly receive content
+                        if (result.data && result.data[questionId]) {
+                            console.log(`[Polling] Question ${questionId} - Data received!`);
+                            this.content = result.data[questionId];
+                            this.status = 'completed';
+                            
+                            // Notify chat component that explanation is available
+                            window.dispatchEvent(new CustomEvent('explanation-available', { detail: { questionId: questionId } }));
+                            
+                            clearInterval(this.interval);
+                        } 
+                    } catch (error) {
+                        console.error('Polling error:', error);
+                    }
+                },
+
+                renderContent(text) {
+                     if (!text) return '';
+                     try {
+                         return marked.parse(text);
+                     } catch (e) {
+                         return text;
+                     }
+                }
+            }
+        }
+        
         window.chatComponent = function(simulationId, questionId) {
             return {
                 showChat: false,
@@ -378,6 +474,25 @@
                 newMessage: '',
                 messages: [],
                 errorMessage: null,
+                hasExplanation: false, // Reactive state for button text
+
+                init() {
+                    // Check if explanation is already loaded on init (server-side rendered)
+                    const explanationDiv = document.querySelector(`.explanation[data-question-id="${questionId}"] .markdown-body`);
+                    if (explanationDiv && explanationDiv.innerHTML.trim() !== '') {
+                        this.hasExplanation = true;
+                    }
+                },
+                
+                renderMarkdown(text) {
+                    if (!text) return '';
+                    try {
+                        return marked.parse(text);
+                    } catch (e) {
+                        console.error('Markdown parse error:', e);
+                        return text;
+                    }
+                },
                 
                 toggleChat() {
                     console.log('Botão clicado para a questão: ' + questionId);
@@ -386,6 +501,7 @@
                         this.loadHistory();
                     }
                 },
+
 
                 async loadHistory() {
                     this.isLoadingHistory = true;
@@ -414,7 +530,7 @@
                         id: Date.now() 
                     });
                     
-                    this.newMessage = '';
+                    this.newMessage = ''; // Clear input immediately
                     this.scrollToBottom();
                     this.isTyping = true;
                     this.errorMessage = null;
@@ -546,4 +662,14 @@
             }
         });
     </script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    // Configure marked for security and typical usage
+    marked.setOptions({
+        breaks: true, // Enable GFM line breaks
+        gfm: true,
+        headerIds: false,
+        mangle: false
+    });
+</script>
 @endsection
