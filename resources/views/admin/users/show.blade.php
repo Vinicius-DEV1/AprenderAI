@@ -68,6 +68,18 @@
                         <input type="text" name="phone" value="{{ old('phone', $user->phone) }}" class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500">
                         @error('phone') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                     </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
+                            <span>Consumo de IA (Reset Manual)</span>
+                            <span class="text-xs text-gray-500">Max: {{ $user->plan->max_ai_questions ?? 'N/A' }}</span>
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" name="ai_questions_count" value="{{ old('ai_questions_count', $user->ai_questions_count) }}" class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500" min="0">
+                            <button type="button" onclick="document.querySelector('input[name=ai_questions_count]').value = 0" class="text-xs text-blue-600 hover:underline">Zerar</button>
+                        </div>
+                        @error('ai_questions_count') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+                        <p class="text-xs text-gray-400 mt-1">Altere este valor para desbloquear ou bloquear o usuário antes do reset automático.</p>
+                    </div>
                     <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-medium transition-colors">
                         Salvar Alterações
                     </button>
@@ -182,6 +194,7 @@
                                 <th class="pb-3 font-bold">Modelo</th>
                                 <th class="pb-3 font-bold">Tokens (I/O)</th>
                                 <th class="pb-3 font-bold text-right">Custo (R$)</th>
+                                <th class="pb-3 font-bold text-center">Ações</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50">
@@ -201,6 +214,15 @@
                                     </td>
                                     <td class="py-3 text-right font-bold text-gray-800">
                                         R$ {{ number_format($log->estimated_cost, 4, ',', '.') }}
+                                    </td>
+                                    <td class="py-3 text-center">
+                                        @if($log->question_id)
+                                            <a href="{{ route('admin.chat-logs.show', $log->id) }}" class="text-blue-600 hover:text-blue-800" title="Ver Conversa">
+                                                <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                            </a>
+                                        @else
+                                            <span class="text-gray-300">-</span>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty

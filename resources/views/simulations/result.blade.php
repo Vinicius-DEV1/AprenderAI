@@ -216,6 +216,13 @@
             <div class="answer-item {{ $answer->is_correct ? 'correct' : 'incorrect' }}">
                 <div class="answer-header">
                     <span class="question-num">Questão {{ $index + 1 }} - {{ ucfirst($answer->question->subject) }}</span>
+                    
+                    @if($answer->question->source === 'ai_generated')
+                        <span class="badge" style="background: #E9D5FF; color: #6B21A8; margin-left: 8px;">✨ INÉDITA</span>
+                    @elseif(!empty($answer->question->origin)) 
+                        <span class="badge" style="background: #E2E8F0; color: #475569; margin-left: 8px;">{{ $answer->question->origin }}</span>
+                    @endif
+                    
                     <span class="badge {{ $answer->is_correct ? 'badge-correct' : 'badge-incorrect' }}">
                         {{ $answer->is_correct ? '✓ Correta' : '✗ Incorreta' }}
                     </span>
@@ -223,7 +230,7 @@
 
                 <!-- Question Statement -->
                 <div class="mb-4 text-gray-900 text-base leading-relaxed whitespace-pre-wrap border-b border-gray-100 pb-4">
-                    {!! $answer->question->statement_html !!}
+                    {!! $answer->question->statement_html ?? nl2br(e($answer->question->statement)) !!}
                 </div>
 
                 <!-- Question Alternatives -->
@@ -243,92 +250,29 @@
                     @endforeach
                 </div>
 
-                <!-- AI Analysis Section -->
-                <div class="bg-blue-50/50 rounded-lg p-4 border border-blue-100">
-                    <div class="flex items-center gap-2 mb-2">
-                        <svg class="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.364-6.364l-.707-.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M12 11a3 3 0 110-6 3 3 0 010 6z" />
-                        </svg>
-                        <h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider">Análise da IA</h4>
-                    </div>
-                    
-                    <div class="text-sm text-slate-700 leading-relaxed space-y-2 mb-4">
-                        @php
-                            $questionAnalysis = collect($simulation->correction_details['errors_explanation'] ?? [])
-                                ->firstWhere('question_id', $answer->question_id);
-                        @endphp
-
-                        @if($questionAnalysis)
-                            <div>
-                                <p class="font-semibold text-red-700 text-xs mb-1">Por que você errou:</p>
-                                <p class="text-slate-600">{{ $questionAnalysis['why_wrong'] }}</p>
-                            </div>
-                            <div class="mt-2 pt-2 border-t border-blue-100">
-                                <p class="font-semibold text-green-700 text-xs mb-1">Como resolver:</p>
-                                <p class="text-slate-600">{{ $questionAnalysis['correct_approach'] }}</p>
-                            </div>
-                        @else
-                            <p class="text-slate-600 italic">Parabéns! Você acertou esta questão. Caso tenha alguma dúvida sobre o conceito, use o chat abaixo.</p>
-                        @endif
-                    </div>
-                </div>
-
-                @php
-                    $aiExplanation = null;
-                    if($simulation->correction) {
-                        $aiExplanation = $simulation->correction->getExplanationForQuestion($answer->question_id);
-                    }
-                @endphp
-
-                <div class="explanation" 
-                     data-question-id="{{ $answer->question_id }}" 
-                     style="background: #f8fafc; border: 1px solid #e2e8f0;"
-                     x-data="analysisPolling({{ $simulation->id }}, {{ $answer->question_id }}, '{{ $aiExplanation ? 'completed' : 'pending' }}', `{{ $aiExplanation ? $aiExplanation : '' }}`)"
-                     x-show="true">
-                    
-                    <h4 style="display: flex; align-items: center; gap: 8px;">
-                        <template x-if="status === 'completed'">
-                            <span>✨ Análise da IA</span>
-                        </template>
-                        <template x-if="status !== 'completed'">
-                            <span class="flex items-center gap-2 text-indigo-600">
-                                <svg class="animate-spin h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Analisando...
-                            </span>
-                        </template>
+                <!-- Resolução / Explicação -->
+                <div class="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h4 class="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.364-6.364l-.707-.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M12 11a3 3 0 110-6 3 3 0 010 6z"></path></svg>
+                        Resolução Comentada
                     </h4>
-
-                    <div x-show="status === 'completed'" class="markdown-body" style="white-space: pre-wrap;" x-html="renderContent(content)"></div>
-
-                    <div x-show="status !== 'completed'" class="ai-loading space-y-3 mt-4">
-                        <div class="flex items-center gap-3">
-                            <span class="relative flex h-3 w-3">
-                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                              <span class="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
-                            </span>
-                            <p class="text-sm text-indigo-700 font-medium m-0">A IA está analisando seu desempenho...</p>
-                        </div>
-                        
-                        <!-- Skeleton Loader -->
-                        <div class="animate-pulse space-y-2">
-                            <div class="h-2 bg-indigo-100 rounded w-3/4"></div>
-                            <div class="h-2 bg-indigo-100 rounded w-full"></div>
-                            <div class="h-2 bg-indigo-100 rounded w-5/6"></div>
-                        </div>
+                    
+                    <div class="text-sm text-gray-600 leading-relaxed markdown-body">
+                        @if(!empty($answer->question->explanation))
+                             {!! \Illuminate\Support\Str::markdown($answer->question->explanation) !!}
+                        @else
+                             <p class="italic text-gray-500">A resolução comentada para esta questão está sendo processada e estará disponível em breve.</p>
+                        @endif
                     </div>
                 </div>
 
                 <!-- Chat Contextual -->
                 <div class="mt-2 border-t border-gray-100 pt-2" 
-                     x-data="chatComponent({{ $simulation->id }}, {{ $answer->question_id }})"
-                     @explanation-available.window="if ($event.detail.questionId === {{ $answer->question_id }}) hasExplanation = true">
+                     x-data="chatComponent({{ $simulation->id }}, {{ $answer->question_id }})">
                     
                     <button @click="toggleChat()" 
                             class="text-xs text-indigo-600 font-medium hover:text-indigo-800 flex items-center gap-1.5 transition-colors">
-                        <span x-text="showChat ? 'Ocultar Chat' : (hasExplanation ? 'Ainda com dúvida na explicação? Pergunte ao Tutor' : '💬 Tirar Dúvida')">💬 Tirar Dúvida</span>
+                        <span x-text="showChat ? 'Ocultar Chat' : '💬 Tirar Dúvida com IA'">💬 Tirar Dúvida com IA</span>
                     </button>
 
                     <div x-show="showChat" 
@@ -339,23 +283,36 @@
                         <!-- History -->
                         <div class="chat-history space-y-2 mb-3 max-h-48 overflow-y-auto p-1" x-ref="history">
                             <template x-for="msg in messages" :key="msg.id">
-                                <div class="flex flex-col" :class="msg.role === 'user' ? 'items-end' : 'items-start'">
-                                    <div 
-                                        :class="msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-800 border border-gray-200'" 
-                                        :style="msg.role === 'user' ? 'background-color: #4f46e5 !important; color: white !important;' : 'background-color: white !important; color: #1f2937 !important; border: 1px solid #e5e7eb;'"
-                                        class="rounded-lg px-3 py-1.5 max-w-[85%] text-[11px] shadow-sm group">
-                                        
-                                        <!-- User Message (Text Only) -->
-                                        <template x-if="msg.role === 'user'">
-                                            <span x-text="msg.message" class="break-words leading-tight"></span>
-                                        </template>
+                                <div class="flex flex-col" :class="msg.role === 'user' ? 'items-end' : (msg.role === 'system' ? 'items-center' : 'items-start')">
+                                    
+                                    <!-- User Message -->
+                                    <template x-if="msg.role === 'user'">
+                                        <div class="bg-indigo-600 text-white rounded-lg px-3 py-1.5 max-w-[85%] text-[11px] shadow-sm break-words leading-tight" 
+                                             style="background-color: #4f46e5 !important; color: white !important;">
+                                            <span x-text="msg.message"></span>
+                                        </div>
+                                    </template>
 
-                                        <!-- AI Message (Markdown HTML) -->
-                                        <template x-if="msg.role !== 'user'">
-                                            <div x-html="renderMarkdown(msg.message)" class="markdown-body break-words leading-relaxed"></div>
-                                        </template>
-                                    </div>
-                                    <span class="text-[9px] text-gray-400 mt-0.5" x-text="msg.role === 'user' ? 'Você' : 'IA'"></span>
+                                    <!-- AI Message -->
+                                    <template x-if="msg.role !== 'user' && msg.role !== 'system'">
+                                        <div class="bg-white text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 max-w-[85%] text-[11px] shadow-sm break-words leading-relaxed markdown-body">
+                                             <div x-html="renderMarkdown(msg.message)"></div>
+                                        </div>
+                                    </template>
+
+                                    <!-- System Message (Quota Exceeded) -->
+                                    <template x-if="msg.role === 'system'">
+                                        <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center w-[95%] mx-auto my-2 shadow-sm">
+                                            <p class="text-xs text-red-800 font-bold mb-2 break-words" x-text="msg.message"></p>
+                                            <p class="text-[10px] text-red-600 mb-3" x-show="msg.reset_date">Renova em: <span x-text="msg.reset_date"></span></p>
+                                            <a :href="msg.upgrade_url" class="inline-block bg-gradient-to-r from-red-500 to-orange-500 text-white text-[11px] font-bold py-2 px-4 rounded-full shadow hover:scale-105 transition-transform uppercase tracking-wide">
+                                                🚀 Turbinar meu Plano
+                                            </a>
+                                        </div>
+                                    </template>
+
+                                    <!-- Label -->
+                                    <span class="text-[9px] text-gray-400 mt-0.5" x-text="msg.role === 'user' ? 'Você' : (msg.role === 'system' ? 'Sistema' : 'IA')"></span>
                                 </div>
                             </template>
                             
@@ -393,6 +350,7 @@
                         </div>
                     </div>
                 </div>
+
             </div>
         @endforeach
     </div>
@@ -403,69 +361,16 @@
             Prova</a>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
-        window.analysisPolling = function(simulationId, questionId, initialStatus, initialContent) {
-            return {
-                status: initialStatus,
-                content: initialContent,
-                interval: null,
-                attempts: 0,
-                maxAttempts: 40, // ~2 minutes (3s interval)
+        // Configure marked
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            headerIds: false,
+            mangle: false
+        });
 
-                init() {
-                    if (this.status !== 'completed') {
-                        this.startPolling();
-                    }
-                },
-
-                startPolling() {
-                    this.interval = setInterval(() => {
-                        this.checkAnalysis();
-                    }, 3000);
-                },
-
-                async checkAnalysis() {
-                    this.attempts++;
-                    
-                    if (this.attempts > this.maxAttempts) {
-                        console.warn(`[Polling] Question ${questionId} - Timeout reached.`);
-                        clearInterval(this.interval);
-                        return;
-                    }
-
-                    try {
-                        const response = await fetch(`/simulations/${simulationId}/status`);
-                        if (!response.ok) return;
-
-                        const result = await response.json();
-                        
-                        // Only stop polling if we explicitly receive content
-                        if (result.data && result.data[questionId]) {
-                            console.log(`[Polling] Question ${questionId} - Data received!`);
-                            this.content = result.data[questionId];
-                            this.status = 'completed';
-                            
-                            // Notify chat component that explanation is available
-                            window.dispatchEvent(new CustomEvent('explanation-available', { detail: { questionId: questionId } }));
-                            
-                            clearInterval(this.interval);
-                        } 
-                    } catch (error) {
-                        console.error('Polling error:', error);
-                    }
-                },
-
-                renderContent(text) {
-                     if (!text) return '';
-                     try {
-                         return marked.parse(text);
-                     } catch (e) {
-                         return text;
-                     }
-                }
-            }
-        }
-        
         window.chatComponent = function(simulationId, questionId) {
             return {
                 showChat: false,
@@ -474,14 +379,9 @@
                 newMessage: '',
                 messages: [],
                 errorMessage: null,
-                hasExplanation: false, // Reactive state for button text
 
                 init() {
-                    // Check if explanation is already loaded on init (server-side rendered)
-                    const explanationDiv = document.querySelector(`.explanation[data-question-id="${questionId}"] .markdown-body`);
-                    if (explanationDiv && explanationDiv.innerHTML.trim() !== '') {
-                        this.hasExplanation = true;
-                    }
+                    // No automatic init actions needed for basic chat
                 },
                 
                 renderMarkdown(text) {
@@ -489,19 +389,16 @@
                     try {
                         return marked.parse(text);
                     } catch (e) {
-                        console.error('Markdown parse error:', e);
                         return text;
                     }
                 },
                 
                 toggleChat() {
-                    console.log('Botão clicado para a questão: ' + questionId);
                     this.showChat = !this.showChat;
                     if (this.showChat && this.messages.length === 0) {
                         this.loadHistory();
                     }
                 },
-
 
                 async loadHistory() {
                     this.isLoadingHistory = true;
@@ -509,7 +406,7 @@
                         const response = await fetch(`/simulations/${simulationId}/questions/${questionId}/chat`);
                         if (response.ok) {
                             this.messages = await response.json();
-                            this.scrollToBottom();
+                            this.$nextTick(() => this.scrollToBottom());
                         }
                     } catch (error) {
                         console.error('Failed to load history', error);
@@ -530,8 +427,8 @@
                         id: Date.now() 
                     });
                     
-                    this.newMessage = ''; // Clear input immediately
-                    this.scrollToBottom();
+                    this.newMessage = ''; 
+                    this.$nextTick(() => this.scrollToBottom());
                     this.isTyping = true;
                     this.errorMessage = null;
 
@@ -548,128 +445,81 @@
                         const data = await response.json();
 
                         if (!response.ok) {
-                            if (response.status === 429) {
-                                throw new Error(data.error || "Muitas requisições. Aguarde um pouco.");
-                            }
                             throw new Error(data.error || "Erro ao enviar mensagem.");
                         }
 
-                        this.messages.push({ 
-                            role: 'assistant', 
-                            message: data.message, 
-                            id: Date.now() + 1 
-                        });
-                        
-                        this.scrollToBottom();
+                        // Check for Quota Exceeded
+                        if (data.status === 'quota_exceeded') {
+                            this.messages.push({
+                                role: 'system',
+                                message: data.message,
+                                upgrade_url: data.upgrade_url,
+                                reset_date: data.reset_date,
+                                id: Date.now()
+                            });
+                            this.isTyping = false;
+                            this.$nextTick(() => this.scrollToBottom());
+                            return; // Stop polling
+                        }
+
+                        // Start Polling for Answer
+                        this.pollForAnswer();
 
                     } catch (error) {
                         this.errorMessage = error.message;
-                    } finally {
                         this.isTyping = false;
                     }
                 },
 
-                scrollToBottom() {
-                    this.$nextTick(() => {
-                        const container = this.$refs.history;
-                        if (container) {
-                            container.scrollTop = container.scrollHeight;
+                pollForAnswer() {
+                    let attempts = 0;
+                    const maxAttempts = 30; // 60 seconds (2s interval)
+                    
+                    const poller = setInterval(async () => {
+                        attempts++;
+                        try {
+                            const response = await fetch(`/simulations/${simulationId}/questions/${questionId}/chat`);
+                            if (response.ok) {
+                                const history = await response.json();
+                                // Check if the last message is from assistant
+                                const lastMsg = history[history.length - 1];
+                                
+                                if (lastMsg && lastMsg.role === 'assistant') {
+                                    // Found answer!
+                                    // Only append if we haven't already (check ID or length)
+                                    // Simplest: just replace messages or append distinct?
+                                    // Let's just append the new one since we have local state
+                                    
+                                    // Check if we already have this message locally (to avoid duplicates if re-render)
+                                    // Creating a unique ID based on content/time?
+                                    // Actually, replacing `messages` with `history` is safer to sync state.
+                                    this.messages = history;
+                                    
+                                    this.isTyping = false;
+                                    this.$nextTick(() => this.scrollToBottom());
+                                    clearInterval(poller);
+                                }
+                            }
+                        } catch (e) {
+                            console.error("Polling error", e);
                         }
-                    });
+
+                        if (attempts >= maxAttempts) {
+                            clearInterval(poller);
+                            this.isTyping = false;
+                            this.errorMessage = "A IA demorou muito para responder. Tente recarregar a página.";
+                        }
+                    }, 2000);
+                },
+
+                scrollToBottom() {
+                    const container = this.$refs.history;
+                    if (container) {
+                        container.scrollTop = container.scrollHeight;
+                    }
                 }
             }
         }
     </script>
-    
-    <!-- Script de Polling para Correção IA -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const loadingElements = document.querySelectorAll('.ai-loading');
-            
-            if (loadingElements.length > 0) {
-                const simulationId = "{{ $simulation->id }}";
-                const pollInterval = 3000; // 3 segundos
-
-                const intervalId = setInterval(checkStatus, pollInterval);
-
-                async function checkStatus() {
-                    try {
-                        const response = await fetch("{{ route('simulations.status', $simulation) }}");
-                        if (!response.ok) return;
-                        
-                        const result = await response.json();
-
-                        if (result.status === 'completed') {
-                            clearInterval(intervalId);
-                            updateUI(result.data);
-                        }
-                    } catch (error) {
-                        console.error('Erro ao verificar status da IA:', error);
-                    }
-                }
-
-                function updateUI(data) {
-                    const explanations = document.querySelectorAll('.explanation[data-question-id]');
-                    
-                    explanations.forEach(container => {
-                        const questionId = container.getAttribute('data-question-id');
-                        const text = data[questionId];
-                        
-                        if (text) {
-                            // Atualizar Header
-                            const header = container.querySelector('h4');
-                            if (header) {
-                                header.innerHTML = '✨ Análise da IA';
-                            }
-                            
-                            // Remover Loader
-                            const loadingDiv = container.querySelector('.ai-loading');
-                            if (loadingDiv) {
-                                loadingDiv.remove();
-                            }
-                            
-                            // Criar ou atualizar conteúdo
-                            let contentDiv = container.querySelector('.markdown-content');
-                            if (!contentDiv) {
-                                contentDiv = document.createElement('div');
-                                contentDiv.className = 'markdown-content';
-                                contentDiv.style.whiteSpace = 'pre-wrap';
-                                contentDiv.style.opacity = '0';
-                                contentDiv.style.transition = 'opacity 1s ease-in';
-                                container.appendChild(contentDiv);
-                                
-                                // Trigger reflow
-                                void contentDiv.offsetWidth; 
-                            }
-                            
-                            contentDiv.innerText = text;
-                            contentDiv.style.opacity = '1';
-                            
-                            // Remover texto de "aguardando" se existir
-                            const waitingText = container.querySelector('p.text-muted');
-                            if (waitingText && waitingText.textContent.includes('Aguardando')) {
-                                waitingText.remove();
-                            }
-                        } else {
-                             // Caso raro onde a IA terminou mas não mandou texto para esta questão
-                             const loadingDiv = container.querySelector('.ai-loading');
-                             if (loadingDiv) {
-                                 loadingDiv.innerHTML = '<p class="text-muted" style="font-style: italic; color: #64748b;">Sem análise específica para esta questão.</p>';
-                             }
-                        }
-                    });
-                }
-            }
-        });
-    </script>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script>
-    // Configure marked for security and typical usage
-    marked.setOptions({
-        breaks: true, // Enable GFM line breaks
-        gfm: true,
-        headerIds: false,
-        mangle: false
-    });
-</script>
 @endsection
+```
