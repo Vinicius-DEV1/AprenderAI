@@ -41,13 +41,43 @@ class UserController extends Controller
     {
         $user->load(['subscriptions', 'logs' => fn($q) => $q->latest()->take(20)]);
         
-        // Mocking some stats if not available in a relation
+        // AI Metrics
+        $aiLogsQuery = \App\Models\AiRequestLog::where('user_id', $user->id);
+        
+        $totalAiCost = $aiLogsQuery->sum('estimated_cost');
+        $aiRequestCount = $aiLogsQuery->count();
+        
+        // Success Rate: defined as requests that don't have "error" in response_text
+        // Or more properly if we had a status column. For now let's check for "error" key in JSON or 0 tokens if fails completely.
+        $successCount = \App\Models\AiRequestLog::where('user_id', $user->id)
+            ->where('tokens_used_total', '>', 0)
+            ->count();
+        
+        $successRate = $aiRequestCount > 0 ? ($successCount / $aiRequestCount) * 100 : 0;
+
+        // Peak Usage Hour
+        $peakHour = \App\Models\AiRequestLog::where('user_id', $user->id)
+            ->selectRaw('HOUR(created_at) as hour, count(*) as count')
+            ->groupBy('hour')
+            ->orderByDesc('count')
+            ->first();
+
+        $promptHistory = \App\Models\AiRequestLog::where('user_id', $user->id)
+            ->latest()
+            ->paginate(10, ['*'], 'ai_page');
+        
         $stats = [
             'simulations' => \App\Models\Simulation::where('user_id', $user->id)->count(),
             'essays' => \App\Models\Essay::where('user_id', $user->id)->count(),
+            'ai' => [
+                'total_cost' => $totalAiCost,
+                'request_count' => $aiRequestCount,
+                'success_rate' => $successRate,
+                'peak_hour' => $peakHour ? $peakHour->hour . ':00' : 'N/A',
+            ]
         ];
 
-        return view('admin.users.show', compact('user', 'stats'));
+        return view('admin.users.show', compact('user', 'stats', 'promptHistory'));
     }
 
     public function update(Request $request, User $user)

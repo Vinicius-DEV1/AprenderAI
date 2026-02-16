@@ -9,6 +9,12 @@ use Illuminate\Support\Facades\Log;
 class AIService
 {
     protected $providers = ['openai', 'gemini', 'grok'];
+    protected $costCalculator;
+
+    public function __construct(CostCalculatorService $costCalculator)
+    {
+        $this->costCalculator = $costCalculator;
+    }
 
     protected function log(string $provider, string $type, string $message, ?int $statusCode = null, ?array $payload = null, ?int $apiKeyId = null): void
     {
@@ -583,18 +589,25 @@ class AIService
     protected function logAiRequest(ApiKey $apiKey, string $prompt, array $result, float $executionTime, ?int $userId = null): void
     {
         try {
+            $inputTokens = $result['usage']['input_tokens'] ?? 0;
+            $outputTokens = $result['usage']['output_tokens'] ?? 0;
+            $model = $apiKey->preferred_model ?? 'padrão';
+
+            $estimatedCost = $this->costCalculator->calculateCost($model, $inputTokens, $outputTokens);
+
             \App\Models\AiRequestLog::create([
                 'user_id' => $userId ?? (\Illuminate\Support\Facades\Auth::check() ? \Illuminate\Support\Facades\Auth::id() : null),
                 'api_key_id' => $apiKey->id,
-                'api_key_name' => $apiKey->provider . ' (' . ($apiKey->preferred_model ?? 'padrão') . ')',
+                'api_key_name' => $apiKey->provider . ' (' . $model . ')',
                 'provider' => $apiKey->provider,
-                'model' => $apiKey->preferred_model ?? 'padrão',
+                'model' => $model,
                 'prompt_text' => substr($prompt, 0, 10000), // Safety limit
                 'response_text' => is_array($result['content']) ? json_encode($result['content']) : (string)$result['content'],
-                'tokens_used_input' => $result['usage']['input_tokens'] ?? 0,
-                'tokens_used_output' => $result['usage']['output_tokens'] ?? 0,
-                'tokens_used_total' => $result['usage']['total_tokens'] ?? 0,
+                'tokens_used_input' => $inputTokens,
+                'tokens_used_output' => $outputTokens,
+                'tokens_used_total' => $inputTokens + $outputTokens,
                 'execution_time' => round($executionTime, 3),
+                'estimated_cost' => $estimatedCost,
             ]);
         } catch (\Exception $e) {
             Log::error("Failed to log AI Request: " . $e->getMessage());

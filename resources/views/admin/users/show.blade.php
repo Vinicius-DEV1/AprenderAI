@@ -128,23 +128,94 @@
 
         <!-- Right Column: Stats & Logs -->
         <div class="lg:col-span-2 space-y-6">
-            <!-- Stats Overview -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- AI Metrics Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500">
-                    <div class="text-gray-500 text-xs uppercase font-bold">Simulados</div>
+                    <div class="text-gray-500 text-[10px] uppercase font-bold mb-1">Simulados</div>
                     <div class="text-2xl font-bold text-gray-800">{{ $stats['simulations'] }}</div>
                 </div>
                 <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-purple-500">
-                    <div class="text-gray-500 text-xs uppercase font-bold">Redações</div>
+                    <div class="text-gray-500 text-[10px] uppercase font-bold mb-1">Redações</div>
                     <div class="text-2xl font-bold text-gray-800">{{ $stats['essays'] }}</div>
                 </div>
                 <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500">
-                    <div class="text-gray-500 text-xs uppercase font-bold">Gasto Total</div>
+                    <div class="text-gray-500 text-[10px] uppercase font-bold mb-1">Investimento Aluno</div>
                     <div class="text-2xl font-bold text-gray-800">
                         R$ {{ number_format($user->subscriptions->where('status', 'active')->sum(fn($s) => $s->plan->price ?? 0), 2, ',', '.') }}
                     </div>
                 </div>
+                <div class="bg-gradient-to-br from-indigo-600 to-purple-700 p-4 rounded-xl shadow-md text-white">
+                    <div class="text-indigo-100 text-[10px] uppercase font-bold mb-1">Consumo IA (R$)</div>
+                    <div class="text-2xl font-bold">R$ {{ number_format($stats['ai']['total_cost'], 2, ',', '.') }}</div>
+                    <div class="text-[10px] text-indigo-200 mt-1">Gasto total acumulado</div>
+                </div>
             </div>
+
+            <!-- Métricas de IA -->
+            <div class="bg-white rounded-2xl shadow-sm overflow-hidden border border-indigo-100">
+                <div class="p-6 border-b border-indigo-50 bg-indigo-50/30 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-indigo-900 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                        Métricas de IA
+                    </h3>
+                    <div class="flex gap-4">
+                        <div class="text-center">
+                            <p class="text-[10px] text-gray-400 uppercase font-bold">Requisições</p>
+                            <p class="text-sm font-bold text-indigo-600">{{ $stats['ai']['request_count'] }}</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-[10px] text-gray-400 uppercase font-bold">Sucesso</p>
+                            <p class="text-sm font-bold text-green-600">{{ number_format($stats['ai']['success_rate'], 1) }}%</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-[10px] text-gray-400 uppercase font-bold">Pico Uso</p>
+                            <p class="text-sm font-bold text-orange-600">{{ $stats['ai']['peak_hour'] }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="p-6 overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-xs text-gray-400 uppercase tracking-wider">
+                                <th class="pb-3 font-bold">Data</th>
+                                <th class="pb-3 font-bold">Modelo</th>
+                                <th class="pb-3 font-bold">Tokens (I/O)</th>
+                                <th class="pb-3 font-bold text-right">Custo (R$)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50">
+                            @forelse($promptHistory as $log)
+                                <tr class="hover:bg-gray-50/50 transition-colors">
+                                    <td class="py-3 text-gray-500 whitespace-nowrap">
+                                        {{ $log->created_at->format('d/m/Y H:i') }}
+                                    </td>
+                                    <td class="py-3">
+                                        <div class="flex flex-col">
+                                            <span class="font-medium text-gray-800">{{ $log->provider }}</span>
+                                            <span class="text-[10px] text-gray-400">{{ $log->model }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 text-gray-500 font-mono text-xs">
+                                        {{ $log->tokens_used_input }} / {{ $log->tokens_used_output }}
+                                    </td>
+                                    <td class="py-3 text-right font-bold text-gray-800">
+                                        R$ {{ number_format($log->estimated_cost, 4, ',', '.') }}
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="py-8 text-center text-gray-500 italic">Nenhum uso de IA registrado.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                    <div class="mt-4">
+                        {{ $promptHistory->links() }}
+                    </div>
+                </div>
+            </div>
+
 
             <!-- Subscription History -->
             <div class="bg-white rounded-2xl shadow-sm overflow-hidden">

@@ -165,7 +165,8 @@
                     response: '',
                     input_tokens: 0,
                     output_tokens: 0,
-                    execution_time: 0
+                    execution_time: 0,
+                    estimated_cost: 0
                 } 
              }">
             <div class="p-6 border-b border-gray-100">
@@ -180,6 +181,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Provedor / Modelo</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tokens (I/O)</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tempo</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Custo (R$)</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                         </tr>
                     </thead>
@@ -201,6 +203,9 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
                                     {{ round($log->execution_time, 2) }}s
                                 </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs font-bold text-gray-700">
+                                    R$ {{ number_format($log->estimated_cost, 4, ',', '.') }}
+                                </td>
                                 <td class="px-6 py-4 text-right">
                                     <button 
                                         @click="activeLog = {
@@ -211,7 +216,8 @@
                                             response: {{ json_encode($log->response_text) }},
                                             input_tokens: {{ $log->tokens_used_input }},
                                             output_tokens: {{ $log->tokens_used_output }},
-                                            execution_time: {{ round($log->execution_time, 3) }}
+                                            execution_time: {{ round($log->execution_time, 3) }},
+                                            estimated_cost: {{ round($log->estimated_cost, 4) }}
                                         }; openModal = true;"
                                         class="text-indigo-600 hover:text-indigo-900 text-xs font-bold border border-indigo-100 px-2 py-1 rounded hover:bg-indigo-50">
                                         Ver Detalhes
@@ -244,7 +250,7 @@
                             </button>
                         </div>
                         <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto font-sans">
-                            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 text-[10px] uppercase tracking-wider font-bold text-gray-400">
+                            <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 text-[10px] uppercase tracking-wider font-bold text-gray-400">
                                 <div>
                                     <p>Usuário</p>
                                     <p class="text-gray-800 text-xs" x-text="activeLog.user"></p>
@@ -260,6 +266,10 @@
                                 <div>
                                     <p>Tempo de Execução</p>
                                     <p class="text-gray-800 text-xs" x-text="activeLog.execution_time + 's'"></p>
+                                </div>
+                                <div>
+                                    <p>Custo Estimado</p>
+                                    <p class="text-indigo-600 text-xs font-bold" x-text="'R$ ' + activeLog.estimated_cost.toFixed(4)"></p>
                                 </div>
                             </div>
 
