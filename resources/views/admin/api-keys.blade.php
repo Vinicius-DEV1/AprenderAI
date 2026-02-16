@@ -153,6 +153,133 @@
             </div>
         </div>
 
+        <!-- Histórico de Uso (AI Requests) -->
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100" 
+             x-data="{ 
+                openModal: false, 
+                activeLog: {
+                    user: '',
+                    provider: '',
+                    model: '',
+                    prompt: '',
+                    response: '',
+                    input_tokens: 0,
+                    output_tokens: 0,
+                    execution_time: 0
+                } 
+             }">
+            <div class="p-6 border-b border-gray-100">
+                <h3 class="text-lg font-medium text-gray-900">Histórico de Uso (Últimas 20 Transações)</h3>
+                <p class="text-xs text-gray-500">Log detalhado de prompts e respostas enviadas para a IA.</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuário</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Provedor / Modelo</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tokens (I/O)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tempo</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @forelse($aiLogs as $log)
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ $log->user ? $log->user->name : 'Sistema/Job' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex flex-col">
+                                        <span class="text-sm font-bold text-gray-800">{{ $log->api_key_name }}</span>
+                                        <span class="text-xs text-gray-400">{{ $log->model }}</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-600 font-mono">
+                                    {{ $log->tokens_used_input }} / {{ $log->tokens_used_output }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+                                    {{ round($log->execution_time, 2) }}s
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <button 
+                                        @click="activeLog = {
+                                            user: {{ json_encode($log->user ? $log->user->name : 'Sistema/Job') }},
+                                            provider: {{ json_encode($log->provider) }},
+                                            model: {{ json_encode($log->model) }},
+                                            prompt: {{ json_encode($log->prompt_text) }},
+                                            response: {{ json_encode($log->response_text) }},
+                                            input_tokens: {{ $log->tokens_used_input }},
+                                            output_tokens: {{ $log->tokens_used_output }},
+                                            execution_time: {{ round($log->execution_time, 3) }}
+                                        }; openModal = true;"
+                                        class="text-indigo-600 hover:text-indigo-900 text-xs font-bold border border-indigo-100 px-2 py-1 rounded hover:bg-indigo-50">
+                                        Ver Detalhes
+                                    </button>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="px-6 py-8 text-center text-gray-500">Nenhuma transação registrada.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Modal -->
+            <div x-show="openModal" class="fixed inset-0 z-[100] overflow-y-auto" style="display: none;">
+                <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                    <div x-show="openModal" @click="openModal = false" class="fixed inset-0 transition-opacity" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                        <div class="absolute inset-0 bg-gray-900 opacity-75"></div>
+                    </div>
+
+                    <span class="hidden sm:inline-block sm:align-middle sm:h-screen"></span>&#8203;
+
+                    <div x-show="openModal" class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full border border-gray-200" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100">
+                        <div class="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                            <h3 class="text-lg font-bold text-gray-800">Detalhes da Transação IA</h3>
+                            <button @click="openModal = false" class="text-gray-400 hover:text-gray-600">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+                        <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto font-sans">
+                            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 text-[10px] uppercase tracking-wider font-bold text-gray-400">
+                                <div>
+                                    <p>Usuário</p>
+                                    <p class="text-gray-800 text-xs" x-text="activeLog.user"></p>
+                                </div>
+                                <div>
+                                    <p>Provedor / Modelo</p>
+                                    <p class="text-gray-800 text-xs" x-text="activeLog.provider + ' / ' + activeLog.model"></p>
+                                </div>
+                                <div>
+                                    <p>Tokens (In / Out)</p>
+                                    <p class="text-gray-800 text-xs" x-text="activeLog.input_tokens + ' / ' + activeLog.output_tokens"></p>
+                                </div>
+                                <div>
+                                    <p>Tempo de Execução</p>
+                                    <p class="text-gray-800 text-xs" x-text="activeLog.execution_time + 's'"></p>
+                                </div>
+                            </div>
+
+                            <hr class="border-gray-100">
+
+                            <div>
+                                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Prompt Enviado</h4>
+                                <div class="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-[11px] overflow-x-auto whitespace-pre-wrap border border-gray-800 shadow-inner" x-text="activeLog.prompt"></div>
+                            </div>
+
+                            <div>
+                                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Resposta da IA</h4>
+                                <div class="bg-indigo-50 text-indigo-900 p-4 rounded-lg font-mono text-[11px] overflow-x-auto whitespace-pre-wrap border border-indigo-100 shadow-inner" x-text="activeLog.response"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Logs de Atividade -->
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
             <div class="p-6 border-b border-gray-100 flex justify-between items-center">
