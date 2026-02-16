@@ -41,19 +41,20 @@
                 'lg:w-56': !sidebarCollapsed,
                 'lg:w-20': sidebarCollapsed
             }"
-            class="fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-xl transform transition-all duration-300 lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:inset-auto lg:flex lg:flex-col border-r border-slate-200">
+            class="fixed inset-y-0 left-0 z-50 bg-white shadow-xl transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:inset-auto lg:flex lg:flex-col border-r border-slate-200">
             
             <!-- Toggle Button (Desktop Only) -->
             <button @click="sidebarCollapsed = !sidebarCollapsed" 
-                    class="hidden lg:flex absolute -right-3 top-10 w-6 h-6 bg-white border border-slate-200 rounded-full items-center justify-center shadow-sm hover:bg-slate-50 transition-colors z-50">
+                    class="hidden lg:flex absolute -right-3 top-10 w-6 h-6 bg-white border border-slate-200 rounded-full items-center justify-center shadow-sm hover:bg-slate-50 transition-colors z-[60]">
                 <svg class="w-4 h-4 text-slate-500 transform transition-transform duration-300" :class="sidebarCollapsed ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
             </button>
 
-            <!-- Logo -->
+            <!-- Logo Area -->
             <div
-                class="flex items-center justify-between h-20 px-4 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-indigo-600 overflow-hidden">
+                class="flex items-center h-20 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-300 overflow-hidden"
+                :class="sidebarCollapsed ? 'justify-center px-0' : 'justify-between px-4'">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2 text-white font-bold text-xl whitespace-nowrap">
                     <svg class="w-8 h-8 flex-shrink-0 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -70,11 +71,14 @@
             </div>
 
             <!-- Nav -->
-            <nav class="flex-1 px-3 py-6 space-y-1 overflow-y-auto overflow-x-hidden">
+            <nav class="flex-1 py-6 space-y-1 overflow-y-auto overflow-x-hidden transition-all duration-300"
+                 :class="sidebarCollapsed ? 'px-2' : 'px-3'">
+                
                 <p x-show="!sidebarCollapsed" class="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Menu Principal</p>
 
                 <a href="{{ route('dashboard') }}"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('dashboard') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                    class="flex items-center rounded-lg text-sm font-medium transition-all duration-300 {{ request()->routeIs('dashboard') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                    :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'"
                     title="Dashboard">
                     <svg class="w-5 h-5 flex-shrink-0 {{ request()->routeIs('dashboard') ? 'text-blue-600' : 'text-slate-400' }}"
                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -85,7 +89,8 @@
                 </a>
 
                 <a href="{{ route('simulations.index') }}"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('simulations.*') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                    class="flex items-center rounded-lg text-sm font-medium transition-all duration-300 {{ request()->routeIs('simulations.*') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                    :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'"
                     title="Simulados">
                     <svg class="w-5 h-5 flex-shrink-0 {{ request()->routeIs('simulations.*') ? 'text-blue-600' : 'text-slate-400' }}"
                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -96,7 +101,8 @@
                 </a>
 
                 <a href="{{ route('essays.index') }}"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('essays.*') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                    class="flex items-center rounded-lg text-sm font-medium transition-all duration-300 {{ request()->routeIs('essays.*') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                    :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'"
                     title="Redações">
                     <svg class="w-5 h-5 flex-shrink-0 {{ request()->routeIs('essays.*') ? 'text-blue-600' : 'text-slate-400' }}"
                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -108,7 +114,8 @@
 
                 @if(auth()->user()->plan && auth()->user()->plan->hasFeature('study_plan'))
                     <a href="#"
-                        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        class="flex items-center rounded-lg text-sm font-medium transition-all duration-300 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'"
                         title="Plano de Estudos">
                         <svg class="w-5 h-5 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -121,7 +128,8 @@
                 <p x-show="!sidebarCollapsed" class="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-6 mb-2">Conta</p>
 
                 <a href="{{ route('plans.index') }}"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('plans.*') ? 'bg-purple-50 text-purple-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                    class="flex items-center rounded-lg text-sm font-medium transition-all duration-300 {{ request()->routeIs('plans.*') ? 'bg-purple-50 text-purple-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                    :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'"
                     title="Meu Plano">
                     <svg class="w-5 h-5 flex-shrink-0 {{ request()->routeIs('plans.*') ? 'text-purple-600' : 'text-slate-400' }}"
                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -131,15 +139,15 @@
                     <span x-show="!sidebarCollapsed" class="whitespace-nowrap">Meu Plano</span>
                 </a>
 
-                <!-- Admin Link -->
                 @if(in_array(auth()->user()->email, config('admin.emails', [])))
                     <a href="{{ route('admin.dashboard') }}"
-                        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('admin.*') ? 'bg-red-50 text-red-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                        class="flex items-center rounded-lg text-sm font-medium transition-all duration-300 {{ request()->routeIs('admin.*') ? 'bg-red-50 text-red-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                        :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'"
                         title="Painel Admin">
                         <svg class="w-5 h-5 flex-shrink-0 {{ request()->routeIs('admin.*') ? 'text-red-600' : 'text-slate-400' }}"
                             fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37.996.608 2.296.07 2.572-1.065z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
@@ -149,8 +157,9 @@
             </nav>
 
             <!-- User Footer -->
-            <div class="px-2 py-4 border-t border-slate-200">
-                <div class="flex items-center gap-2 w-full p-2 rounded-lg bg-slate-50 border border-slate-100 overflow-hidden">
+            <div class="px-2 py-4 border-t border-slate-200 transition-all duration-300">
+                <div class="flex items-center gap-2 w-full p-2 rounded-lg bg-slate-50 border border-slate-100 overflow-hidden"
+                     :class="sidebarCollapsed ? 'justify-center' : ''">
                     <div
                         class="h-8 w-8 flex-shrink-0 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">
                         {{ substr(auth()->user()->name, 0, 1) }}
@@ -158,7 +167,7 @@
                     <div x-show="!sidebarCollapsed" class="flex-1 min-w-0" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
                         <p class="text-xs font-semibold text-slate-900 truncate">{{ auth()->user()->name }}</p>
                     </div>
-                    <form method="POST" action="{{ route('logout') }}" class="flex-shrink-0">
+                    <form method="POST" action="{{ route('logout') }}" class="flex-shrink-0" x-show="!sidebarCollapsed">
                         @csrf
                         <button type="submit" class="text-slate-400 hover:text-red-600 transition-colors p-1"
                             title="Sair">
