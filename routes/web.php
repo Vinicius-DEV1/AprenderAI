@@ -100,6 +100,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/monitor', [\App\Http\Controllers\Admin\MonitorController::class, 'index'])->name('monitor.index');
         Route::get('/monitor/realtime', [\App\Http\Controllers\Admin\MonitorController::class, 'realtime'])->name('monitor.realtime');
         Route::get('/monitor/history', [\App\Http\Controllers\Admin\MonitorController::class, 'history'])->name('monitor.history');
+
+        // Questões (Banco de Questões)
+        Route::resource('questions', \App\Http\Controllers\Admin\QuestionController::class);
     });
 });
 

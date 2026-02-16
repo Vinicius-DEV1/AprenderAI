@@ -53,6 +53,7 @@ class Correction extends Model
                     return "**Por que errei?**\n$why\n\n**Como resolver:**\n$approach";
                 }
                 
+                // Retorna apenas o why (explicação do banco) se approach for vazio
                 return $why ?: $approach;
             }
         }
