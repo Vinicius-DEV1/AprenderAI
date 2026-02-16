@@ -27,81 +27,105 @@ class ResetContentCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Limpa dados de simulações e questões ENEM, MANTENDO usuários e concurso';
+    protected $description = 'Limpa SOMENTE dados de simulações e questões do ENEM. Preserva Usuários e Concursos.';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $this->info('Iniciando limpeza segura do banco de dados (MySQL Estrito)...');
+        $this->info('Iniciando limpeza CIRÚRGICA do ENEM (MySQL Estrito)...');
 
         // 1. Verificação de Segurança (Users)
         $userCount = User::count();
-        if ($userCount === 0) {
-            $this->warn('Nenhum usuário encontrado. Continuando mesmo assim...');
-        } else {
-            $this->info("Encontrados {$userCount} usuários. Eles SERÃO PRESERVADOS.");
-        }
+        $this->info("Usuários encontrados: {$userCount} (SERÃO PRESERVADOS)");
 
         // 2. Verificação de Segurança (Concurso)
         $concursoCount = Question::where('type', 'concurso')->count();
-        $this->info("Questões de Concurso atuais: {$concursoCount}. Elas SERÃO PRESERVADAS.");
+        $this->info("Questões de Concurso: {$concursoCount} (SERÃO PRESERVADAS)");
 
+        // 3. Alvo (Enem)
         $enemCount = Question::where('type', 'enem')->count();
-        $this->info("Questões ENEM atuais (serão apagadas): {$enemCount}");
+        $simEnemCount = Simulation::where('type', 'enem')->count();
+        
+        $this->info("------------------------------------------------");
+        $this->info("ALVOS PARA EXCLUSÃO:");
+        $this->info("- Questões ENEM: {$enemCount}");
+        $this->info("- Simulados ENEM: {$simEnemCount}");
+        $this->info("- Todas as Redações (Essays)");
+        $this->info("- Estatísticas de Usuário (UserStats)");
+        $this->info("------------------------------------------------");
 
-        if (!$this->confirm('Deseja prosseguir com a limpeza? ISSO APAGARÁ SIMULADOS E QUESTÕES ENEM.', true)) {
+        if (!$this->confirm('CONFIRMA A EXCLUSÃO DESSES DADOS? (Isso não pode ser desfeito)', true)) {
             $this->info('Operação cancelada.');
             return;
         }
 
-        // 3. MySQL Safe Reset (SET FOREIGN_KEY_CHECKS=0)
+        // 3. MySQL/SQLite Safe Reset
         try {
-            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            $connection = DB::getDefaultConnection(); // 'sqlite' or 'mysql'
+            $driver = DB::connection($connection)->getDriverName();
 
-            // Limpar Tabelas de Simulado (Ordem FK)
-            $this->line('Limpando respostas de simulados...');
-            if (Schema::hasTable('simulation_answers')) {
-                SimulationAnswer::truncate();
+            if ($driver === 'sqlite') {
+                DB::statement('PRAGMA foreign_keys = OFF;');
+            } else {
+                DB::statement('SET FOREIGN_KEY_CHECKS=0;');
             }
 
-            $this->line('Limpando correções...');
-            if (Schema::hasTable('corrections')) {
-                Correction::truncate();
-            }
-
-            $this->line('Limpando redações...');
+            // A. Limpar Redações (Geral)
+            $this->line('Limpando Redações (Essays)...');
             if (Schema::hasTable('essays')) {
                 Essay::truncate();
             }
 
-            $this->line('Limpando simulados...');
-            if (Schema::hasTable('simulations')) {
-                Simulation::truncate(); // Reset ID auto-increment
-            }
-
-            $this->line('Limpando estatísticas de usuário...');
+            // B. Limpar Estatísticas
+            $this->line('Limpando UserStats...');
             if (Schema::hasTable('user_stats')) {
                 UserStat::truncate();
             }
 
-            // Limpar Questões ENEM (Delete, não Truncate, para filtrar)
-            $this->line('Apagando questões ENEM...');
-            Question::where('type', 'enem')->delete();
+            // C. Limpar Simulados ENEM
+            $this->line('Identificando Simulados ENEM para exclusão...');
+            
+            $enemSimIds = Simulation::where('type', 'enem')->pluck('id');
+            
+            if ($enemSimIds->isNotEmpty()) {
+                $this->line("Excluindo respostas de " . $enemSimIds->count() . " simulados ENEM...");
+                SimulationAnswer::whereIn('simulation_id', $enemSimIds)->delete();
+
+                $this->line("Excluindo correções de simulados ENEM...");
+                Correction::where('correctable_type', Simulation::class)
+                    ->whereIn('correctable_id', $enemSimIds)
+                    ->delete();
+
+                $this->line("Excluindo simulados ENEM...");
+                Simulation::whereIn('id', $enemSimIds)->delete();
+            } else {
+                $this->line("Nenhum simulado ENEM encontrado.");
+            }
+
+            // D. Limpar Questões ENEM
+            $this->line('Excluindo Questões ENEM...');
+            $deletedQuestions = Question::where('type', 'enem')->delete();
+            $this->line("{$deletedQuestions} questões ENEM excluídas.");
 
         } catch (\Exception $e) {
             $this->error('Erro durante a limpeza: ' . $e->getMessage());
             $this->error($e->getTraceAsString());
         } finally {
             // SEMPRE reativar FKs
-            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            if (isset($driver) && $driver === 'sqlite') {
+                DB::statement('PRAGMA foreign_keys = ON;');
+            } else {
+                DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            }
         }
 
         // Validação Pós-Limpeza
         $finalUserCount = User::count();
         $finalConcursoCount = Question::where('type', 'concurso')->count();
         $finalEnemCount = Question::where('type', 'enem')->count();
+        $finalEnemSimCount = Simulation::where('type', 'enem')->count();
 
         if ($finalUserCount !== $userCount) {
             $this->error("CRÍTICO: Contagem de usuários mudou! Antes: {$userCount}, Depois: {$finalUserCount}");
@@ -115,7 +139,8 @@ class ResetContentCommand extends Command
         $this->info('Limpeza concluída com sucesso!');
         $this->info("Usuários preservados: {$finalUserCount}");
         $this->info("Questões Concurso preservadas: {$finalConcursoCount}");
-        $this->info("Questões ENEM apagadas (restantes): {$finalEnemCount}");
+        $this->info("Questões ENEM restantes: {$finalEnemCount} (Esperado: 0)");
+        $this->info("Simulados ENEM restantes: {$finalEnemSimCount} (Esperado: 0)");
         $this->info('------------------------------------------------');
     }
 }

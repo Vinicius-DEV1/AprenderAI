@@ -75,7 +75,7 @@ class SimulationController extends Controller
 
         $simulation->load('correction');
 
-        if (!$simulation->correction) {
+        if (!$simulation->correction || !$simulation->correction->corrected_at) {
             return response()->json(['status' => 'pending']);
         }
 

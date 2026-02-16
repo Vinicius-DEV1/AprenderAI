@@ -5,13 +5,11 @@ namespace App\Jobs;
 use App\Models\Simulation;
 use App\Models\Correction;
 use App\Services\AIService;
-use App\Mail\SimulationCorrectedMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 
 class CorrectSimulationJob implements ShouldQueue
@@ -34,8 +32,8 @@ class CorrectSimulationJob implements ShouldQueue
         $totalQuestions = $this->simulation->answers->count();
         Log::info("Iniciando correção da simulação #{$this->simulation->id} - Total de questões: {$totalQuestions}");
 
-        // 1. Preparar Todas as Questões
-        $allQuestions = $this->simulation->answers->map(function ($answer) {
+        // 1. Preparar Todas as Questões (TEST MODE: 25 QUESTIONS)
+        $allQuestions = $this->simulation->answers->take(25)->map(function ($answer) {
             return [
                 'question_id' => $answer->question_id,
                 'statement' => $answer->question->statement,
@@ -77,34 +75,87 @@ class CorrectSimulationJob implements ShouldQueue
             $totalBatches = count($chunks);
             Log::info("Processando lote {$currentBatch} de {$totalBatches} para simulação #{$this->simulation->id}");
 
-            // Call AI (Usage increment is handled in AIService::finally)
-            $result = $aiService->correctSimulation($chunk, $plan);
+            // Intensive Debug: Log input batch
+            Log::info("==== JOB DEBUG: Sending Batch {$currentBatch} to AI ====");
+            Log::info("DEBUG: Question IDs in this batch: " . implode(', ', array_column($chunk, 'question_id')));
+            Log::debug("DEBUG: Full Batch Data: " . json_encode($chunk));
+
+            // Call AI
+            try {
+                $result = $aiService->correctSimulation($chunk, $plan);
+            } catch (\Exception $e) {
+                if (str_contains($e->getMessage(), '429')) {
+                    Log::warning("JOB: 429 Quota Exceeded. Releasing job for 60 seconds.");
+                    $this->release(60);
+                    return; // Stop execution of this job instance
+                }
+                Log::error("JOB: Error in batch {$currentBatch}: " . $e->getMessage());
+                $result = null;
+            }
+
+            if (!$result) {
+                Log::error("JOB ERROR: AI Service returned null for batch {$currentBatch}. Possible cause: No active/online API keys.");
+                continue;
+            }
 
             if ($result) {
                 $providerUsed = $result['provider'];
                 $response = $result['response'];
                 $usage = $result['usage'];
 
-                // Accumulate Tokens
+                // DEBUG: Log raw response to find why it is empty
+                Log::debug("AI Raw Response Batch {$currentBatch}: " . json_encode($response));
+
                 $totalInput += $usage['input_tokens'] ?? 0;
                 $totalOutput += $usage['output_tokens'] ?? 0;
 
-                // Merge Explanations
-                if (isset($response['errors_explanation']) && is_array($response['errors_explanation'])) {
-                    $accumulatedExplanations = array_merge($accumulatedExplanations, $response['errors_explanation']);
+                // CRITICAL FIX: Robust Extraction
+                // Tentar várias chaves possíveis que a IA pode usar
+                $newExplanations = $response['errors_explanation'] 
+                    ?? $response['explanations'] 
+                    ?? $response['questions']
+                    ?? $response['data']
+                    ?? [];
+
+                // Caso a AIService tenha retornado um array com chave 'text' contendo o JSON bruto
+                if (empty($newExplanations) && isset($response['text'])) {
+                    $nestedJson = json_decode(preg_replace('/^```(?:json)?\s+|\s+```$/i', '', trim($response['text'])), true);
+                    $newExplanations = $nestedJson['errors_explanation'] ?? $nestedJson['explanations'] ?? $nestedJson ?? [];
+                }
+                
+                // Se for array de objetos mas sem chave pai (root array)
+                if (empty($newExplanations) && isset($response[0]) && is_array($response[0])) {
+                    $newExplanations = $response;
                 }
 
-                // Persistência Incremental (Salvar o progresso)
+                // Normalizar IDs para garantir match (String vs Int)
+                foreach ($newExplanations as &$explanation) {
+                    if (isset($explanation['question_id'])) {
+                        $explanation['question_id'] = (string) $explanation['question_id'];
+                    }
+                }
+                
+                // Refresh model to get latest data from DB
+                $correction->refresh();
+                $existingData = $correction->correction_data ?? [];
+                $existingExplanations = $existingData['errors_explanation'] ?? [];
+                
+                $mergedExplanations = array_merge($existingExplanations, $newExplanations);
+                
+                // Update local accumulator
+                $accumulatedExplanations = $mergedExplanations;
+
+                // Persistência Incremental
                 $correction->update([
                     'ai_provider' => $providerUsed,
                     'input_tokens' => $totalInput,
                     'output_tokens' => $totalOutput,
                     'total_tokens' => $totalInput + $totalOutput,
-                    'tokens_used' => $totalInput + $totalOutput, // Legacy
+                    'tokens_used' => $totalInput + $totalOutput,
                     'correction_data' => [
                         'total_correct' => $this->simulation->answers->where('is_correct', true)->count(),
                         'total_questions' => $totalQuestions,
-                        'errors_explanation' => $accumulatedExplanations
+                        'errors_explanation' => $mergedExplanations
                     ]
                 ]);
             } else {
@@ -131,20 +182,8 @@ class CorrectSimulationJob implements ShouldQueue
              // Dados já estão atualizados pelo loop
         ]);
 
-        // Atualizar Status da Simulação
-        $this->simulation->update([
-            'status' => 'corrected',
-            'score' => $score,
-            'scores_by_subject' => $scoresBySubject,
-        ]);
-
         Log::info("Correção #{$this->simulation->id} finalizada com sucesso. Total Tokens: " . ($totalInput + $totalOutput));
 
-        // Enviar E-mail
-        try {
-            Mail::to($user)->send(new SimulationCorrectedMail($this->simulation));
-        } catch (\Exception $e) {
-            Log::error("Erro ao enviar email de correção: " . $e->getMessage());
-        }
+
     }
 }

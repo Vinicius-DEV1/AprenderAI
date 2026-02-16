@@ -17,6 +17,9 @@ class ApiKey extends Model
         'is_primary',
         'last_used_at',
         'requests_count',
+        'preferred_model',
+        'status',
+        'last_health_check_at',
     ];
 
     protected $casts = [
@@ -49,7 +52,9 @@ class ApiKey extends Model
     {
         return static::where('provider', $provider)
             ->where('is_active', true)
+            ->where('status', 'online') // Garantir que só pegamos chaves funcionais
             ->orderBy('is_primary', 'desc')
+            ->orderBy('last_used_at', 'asc') // Rodízio: pega a que não é usada há mais tempo
             ->first();
     }
 }

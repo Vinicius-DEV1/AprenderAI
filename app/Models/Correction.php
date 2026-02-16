@@ -43,7 +43,8 @@ class Correction extends Model
 
         foreach ($data['errors_explanation'] as $error) {
             // A IA pode retornar ID como string ou int, forçar comparação
-            if (isset($error['question_id']) && $error['question_id'] == $questionId) {
+            // FIX: Normalizar ambos para string para garantir match
+            if (isset($error['question_id']) && (string)$error['question_id'] === (string)$questionId) {
                 // Combinar why_wrong e correct_approach para uma explicação completa
                 $why = $error['why_wrong'] ?? '';
                 $approach = $error['correct_approach'] ?? '';
