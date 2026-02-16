@@ -38,7 +38,7 @@
             :class="{
                 'translate-x-0': sidebarOpen,
                 '-translate-x-full': !sidebarOpen,
-                'lg:w-56': !sidebarCollapsed,
+                'lg:w-72': !sidebarCollapsed,
                 'lg:w-20': sidebarCollapsed
             }"
             class="fixed inset-y-0 left-0 z-50 bg-white shadow-xl transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:inset-auto lg:flex lg:flex-col border-r border-slate-200">
