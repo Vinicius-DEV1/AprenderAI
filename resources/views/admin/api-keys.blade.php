@@ -290,6 +290,64 @@
             </div>
         </div>
 
+        <!-- Ranking de Consumo (Top 20 Usuários) -->
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
+            <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+                <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <span>🏆</span>
+                    Top 20 Usuários - Consumo de IA
+                </h3>
+                <p class="text-xs text-gray-500">Ranking baseado no volume total de tokens consumidos.</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">#</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Usuário</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Total Tokens</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Investimento (R$)</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider font-mono">Média/Req</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-100">
+                        @forelse($aiRanking as $index => $stat)
+                            <tr class="hover:bg-gray-50/50 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold {{ $index < 3 ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' : 'bg-gray-100 text-gray-600' }}">
+                                        {{ $index + 1 }}º
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="text-sm">
+                                            <a href="{{ route('admin.users.show', $stat->user_id) }}" class="font-bold text-indigo-600 hover:text-indigo-900">
+                                                {{ $stat->user ? $stat->user->name : 'N/A' }}
+                                            </a>
+                                            <div class="text-xs text-gray-400 font-mono">{{ $stat->user ? $stat->user->email : 'N/A' }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700">
+                                    {{ number_format($stat->total_tokens, 0, ',', '.') }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="text-sm font-bold text-green-600">R$ {{ number_format($stat->total_cost, 2, ',', '.') }}</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500 font-mono">
+                                    {{ number_format($stat->total_tokens / $stat->request_count, 0, ',', '.') }} tk/req
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="px-6 py-8 text-center text-gray-500">Sem dados de consumo suficientes para gerar o ranking.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- Logs de Atividade -->
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
             <div class="p-6 border-b border-gray-100 flex justify-between items-center">
