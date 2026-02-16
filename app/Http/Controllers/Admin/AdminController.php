@@ -89,13 +89,25 @@ class AdminController extends Controller
 
         // NEW: Fetch last 20 AI transaction logs
         $aiLogs = \App\Models\AiRequestLog::with('user')->latest()->take(20)->get();
+
+        // NEW: Top 20 AI Consumers Ranking (Cached for 1 hour)
+        $aiRanking = \Illuminate\Support\Facades\Cache::remember('ai_consumption_ranking', 3600, function () {
+            return \App\Models\AiRequestLog::query()
+                ->selectRaw('user_id, SUM(tokens_used_total) as total_tokens, SUM(estimated_cost) as total_cost, COUNT(*) as request_count')
+                ->whereNotNull('user_id')
+                ->groupBy('user_id')
+                ->orderByDesc('total_tokens')
+                ->with('user')
+                ->limit(20)
+                ->get();
+        });
         
         // SRE: Check for errors in last 6 hours
         $hasRecentErrors = \App\Models\ApiLog::where('type', 'error')
             ->where('created_at', '>=', now()->subHours(6))
             ->exists();
 
-        return view('admin.api-keys', compact('keys', 'logs', 'aiLogs', 'hasRecentErrors'));
+        return view('admin.api-keys', compact('keys', 'logs', 'aiLogs', 'aiRanking', 'hasRecentErrors'));
     }
 
     public function storeApiKey(Request $request)
