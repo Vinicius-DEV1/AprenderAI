@@ -329,10 +329,13 @@
                             
                             <!-- Typing Indicator -->
                             <div x-show="isTyping" class="flex items-start">
-                                <div class="bg-gray-200 rounded-lg px-2 py-1 text-[11px] text-gray-500 animate-pulse flex items-center gap-1">
-                                    <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></span>
-                                    <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
-                                    <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+                                <div class="bg-gray-100 rounded-lg px-3 py-2 text-xs text-gray-500 flex items-center gap-2 shadow-sm border border-gray-200">
+                                    <span class="font-medium">IA está digitando</span>
+                                    <div class="flex gap-1">
+                                        <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></span>
+                                        <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
+                                        <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+                                    </div>
                                 </div>
                             </div>
                             
