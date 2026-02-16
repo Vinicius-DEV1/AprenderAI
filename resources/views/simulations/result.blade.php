@@ -64,22 +64,22 @@
         .answers-section {
             background: white;
             border-radius: 12px;
-            padding: 32px;
+            padding: 24px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             margin-bottom: 24px;
         }
 
         .answers-section h2 {
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 600;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
 
         .answer-item {
-            padding: 20px;
+            padding: 16px;
             border: 2px solid #f1f5f9;
             border-radius: 8px;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
 
         .answer-item.correct {
@@ -100,14 +100,17 @@
         }
 
         .question-num {
+            font-size: 13px;
             font-weight: 600;
-            color: #1e293b;
+            color: #64748b;
+            text-transform: uppercase;
+            tracking: wide;
         }
 
         .badge {
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 11px;
             font-weight: 600;
         }
 
@@ -129,18 +132,18 @@
 
         .explanation {
             background: #f8fafc;
-            padding: 16px;
+            padding: 12px;
             border-radius: 6px;
             margin-top: 12px;
-            font-size: 14px;
-            line-height: 1.6;
+            font-size: 13px;
+            line-height: 1.5;
         }
 
         .explanation h4 {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             color: #2563EB;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .btn-back {
@@ -225,42 +228,51 @@
                     {!! $answer->question->statement_html !!}
                 </div>
 
-                <!-- Alternatives List -->
-                <div class="space-y-2 mb-6">
+                <!-- Question Alternatives -->
+                <div class="space-y-2 mb-4">
                     @foreach($answer->question->alternatives as $letter => $text)
-                        @php
-                            $isUserSelected = strtoupper($letter) === strtoupper($answer->user_answer ?? '');
-                            $isCorrect = strtoupper($letter) === strtoupper($answer->question->correct_answer);
-                            
-                            $containerClass = 'border-gray-200 bg-white hover:bg-gray-50';
-                            $textClass = 'text-gray-700';
-                            
-                            if ($isUserSelected && $isCorrect) {
-                                // User got it right
-                                $containerClass = 'border-green-500 bg-green-50';
-                                $textClass = 'text-green-900 font-medium';
-                            } elseif ($isUserSelected) {
-                                // User selected this but it's wrong
-                                $containerClass = 'border-blue-500 bg-blue-50';
-                                $textClass = 'text-blue-900 font-medium';
-                            } elseif ($isCorrect) {
-                                // This is the correct answer (user missed it)
-                                $containerClass = 'border-green-400 bg-white ring-1 ring-green-400';
-                                $textClass = 'text-green-800 font-medium';
-                            }
-                        @endphp
-                        
-                        <div class="p-3 border rounded-md flex gap-3 items-start transition-colors {{ $containerClass }}">
-                            <span class="font-bold min-w-[24px] uppercase {{ $textClass }}">{{ $letter }})</span>
-                            <div class="flex-1 {{ $textClass }}">{{ $text }}</div>
-                            
-                            @if($isCorrect)
-                                <span class="text-green-600 font-bold" title="Resposta Correta">✓</span>
-                            @elseif($isUserSelected)
-                                <span class="text-blue-600 font-bold" title="Sua Escolha">●</span>
+                        <div class="flex items-start gap-2 p-2 rounded-lg border {{ $answer->user_answer === $letter ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-100' }} {{ $answer->question->correct_answer === $letter ? 'ring-2 ring-green-500 ring-offset-1' : '' }}">
+                            <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold {{ $answer->user_answer === $letter ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700' }}">
+                                {{ $letter }}
+                            </span>
+                            <span class="text-sm text-gray-800 leading-snug">{{ $text }}</span>
+                            @if($answer->question->correct_answer === $letter)
+                                <svg class="w-4 h-4 text-green-600 ml-auto flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
                             @endif
                         </div>
                     @endforeach
+                </div>
+
+                <!-- AI Analysis Section -->
+                <div class="bg-blue-50/50 rounded-lg p-4 border border-blue-100">
+                    <div class="flex items-center gap-2 mb-2">
+                        <svg class="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.364-6.364l-.707-.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M12 11a3 3 0 110-6 3 3 0 010 6z" />
+                        </svg>
+                        <h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider">Análise da IA</h4>
+                    </div>
+                    
+                    <div class="text-sm text-slate-700 leading-relaxed space-y-2 mb-4">
+                        @php
+                            $questionAnalysis = collect($simulation->correction_details['errors_explanation'] ?? [])
+                                ->firstWhere('question_id', $answer->question_id);
+                        @endphp
+
+                        @if($questionAnalysis)
+                            <div>
+                                <p class="font-semibold text-red-700 text-xs mb-1">Por que você errou:</p>
+                                <p class="text-slate-600">{{ $questionAnalysis['why_wrong'] }}</p>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-blue-100">
+                                <p class="font-semibold text-green-700 text-xs mb-1">Como resolver:</p>
+                                <p class="text-slate-600">{{ $questionAnalysis['correct_approach'] }}</p>
+                            </div>
+                        @else
+                            <p class="text-slate-600 italic">Parabéns! Você acertou esta questão. Caso tenha alguma dúvida sobre o conceito, use o chat abaixo.</p>
+                        @endif
+                    </div>
                 </div>
 
                 @php
@@ -279,12 +291,8 @@
                         @endif
                     </h4>
 
-                    @if($simulation->correction)
-                        @if($aiExplanation)
-                            <div class="markdown-content" style="white-space: pre-wrap;">{{ $aiExplanation }}</div>
-                        @else
-                            <p class="text-muted" style="font-style: italic; color: #64748b;">Aguardando análise detalhada da IA para esta questão...</p>
-                        @endif
+                    @if($aiExplanation)
+                        <div class="markdown-content" style="white-space: pre-wrap;">{{ $aiExplanation }}</div>
                     @else
                         <div class="ai-loading" style="color: #64748b;">
                             <p class="blink" style="margin: 0;">[...] Gerando explicação personalizada com IA...</p>
@@ -294,50 +302,44 @@
                 </div>
 
                 <!-- Chat Contextual -->
-                <div class="mt-4 border-t border-gray-100 pt-4" 
+                <div class="mt-2 border-t border-gray-100 pt-2" 
                      x-data="chatComponent({{ $simulation->id }}, {{ $answer->question_id }})">
                     
                     <button @click="toggleChat()" 
-                            class="text-sm text-indigo-600 font-medium hover:text-indigo-800 flex items-center gap-2 transition-colors">
-                        <span x-text="showChat ? 'Ocultar Chat' : '💬 Tirar Dúvidas com IA'">💬 Tirar Dúvidas com IA</span>
+                            class="text-xs text-indigo-600 font-medium hover:text-indigo-800 flex items-center gap-1.5 transition-colors">
+                        <span x-text="showChat ? 'Ocultar Chat' : '💬 Tirar Dúvida'">💬 Tirar Dúvida</span>
                     </button>
 
                     <div x-show="showChat" 
                          x-transition.opacity.duration.300ms
                          x-cloak
-                         class="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                         class="mt-3 bg-gray-50 rounded-lg p-3 border border-gray-200">
                         
                         <!-- History -->
-                        <div class="chat-history space-y-3 mb-4 max-h-60 overflow-y-auto" x-ref="history">
+                        <div class="chat-history space-y-2 mb-3 max-h-48 overflow-y-auto p-1" x-ref="history">
                             <template x-for="msg in messages" :key="msg.id">
                                 <div class="flex flex-col" :class="msg.role === 'user' ? 'items-end' : 'items-start'">
                                     <div 
                                         :class="msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-800 border border-gray-200'" 
                                         :style="msg.role === 'user' ? 'background-color: #4f46e5 !important; color: white !important;' : 'background-color: white !important; color: #1f2937 !important; border: 1px solid #e5e7eb;'"
-                                        class="rounded-lg px-4 py-2 max-w-[85%] text-sm shadow-sm">
-                                        <span x-text="msg.message" class="break-words"></span>
+                                        class="rounded-lg px-3 py-1.5 max-w-[85%] text-[11px] shadow-sm">
+                                        <span x-text="msg.message" class="break-words leading-tight"></span>
                                     </div>
-                                    <span class="text-[10px] text-gray-400 mt-1" x-text="msg.role === 'user' ? 'Você' : 'IA'"></span>
+                                    <span class="text-[9px] text-gray-400 mt-0.5" x-text="msg.role === 'user' ? 'Você' : 'IA'"></span>
                                 </div>
                             </template>
                             
                             <!-- Typing Indicator -->
                             <div x-show="isTyping" class="flex items-start">
-                                <div class="bg-gray-200 rounded-lg px-4 py-2 text-sm text-gray-500 animate-pulse flex items-center gap-1">
-                                    <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
-                                    <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
-                                    <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
-                                    <span class="ml-1 text-xs">IA está digitando...</span>
+                                <div class="bg-gray-200 rounded-lg px-2 py-1 text-[11px] text-gray-500 animate-pulse flex items-center gap-1">
+                                    <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></span>
+                                    <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
+                                    <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
                                 </div>
                             </div>
                             
-                            <!-- Loading History -->
-                            <div x-show="isLoadingHistory" class="flex justify-center py-2">
-                                <span class="text-xs text-gray-400 animate-pulse">Carregando histórico...</span>
-                            </div>
-
                             <!-- Error Message -->
-                            <div x-show="errorMessage" class="text-xs text-red-600 text-center mt-2 bg-red-50 p-1 rounded" x-text="errorMessage"></div>
+                            <div x-show="errorMessage" class="text-[10px] text-red-600 text-center mt-2 bg-red-50 p-1 rounded" x-text="errorMessage"></div>
                         </div>
 
                         <!-- Input Area -->
@@ -345,13 +347,13 @@
                             <input type="text" 
                                 x-model="newMessage" 
                                 @keydown.enter.prevent="sendMessage()"
-                                placeholder="Digite sua dúvida aqui..." 
-                                class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm text-gray-900"
+                                placeholder="Dúvida rápida..." 
+                                class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-xs text-gray-900 h-8"
                                 :disabled="isTyping || isLoadingHistory">
                                 
                             <button @click="sendMessage()" 
                                 type="button"
-                                class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                                class="px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-xs font-medium disabled:opacity-50 transition-all h-8"
                                 :disabled="isTyping || isLoadingHistory || !newMessage.trim()">
                                 Enviar
                             </button>
