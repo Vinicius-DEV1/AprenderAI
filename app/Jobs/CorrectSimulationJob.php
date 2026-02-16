@@ -82,7 +82,7 @@ class CorrectSimulationJob implements ShouldQueue
 
             // Call AI
             try {
-                $result = $aiService->correctSimulation($chunk, $plan);
+                $result = $aiService->correctSimulation($chunk, $plan, $this->simulation->user_id);
             } catch (\Exception $e) {
                 if (str_contains($e->getMessage(), '429')) {
                     Log::warning("JOB: 429 Quota Exceeded. Releasing job for 60 seconds.");

@@ -36,7 +36,7 @@ class AIService
         return false;
     }
 
-    public function correctSimulation(array $questionsAndAnswers, string $plan): ?array
+    public function correctSimulation(array $questionsAndAnswers, string $plan, ?int $userId = null): ?array
     {
         if (!$this->hasActiveKey()) {
             return null;
@@ -51,7 +51,7 @@ class AIService
 
         try {
             $prompt = $this->buildSimulationCorrectionPrompt($questionsAndAnswers, $plan);
-            $result = $this->callAI($provider, $apiKey, $prompt);
+            $result = $this->callAI($provider, $apiKey, $prompt, $userId);
 
             return [
                 'provider' => $provider,
@@ -81,7 +81,7 @@ class AIService
         }
     }
 
-    public function correctEssay(string $title, string $content, string $plan): ?array
+    public function correctEssay(string $title, string $content, string $plan, ?int $userId = null): ?array
     {
         if (!$this->hasActiveKey()) {
             return null;
@@ -96,7 +96,7 @@ class AIService
 
         try {
             $prompt = $this->buildEssayCorrectionPrompt($title, $content, $plan);
-            $result = $this->callAI($provider, $apiKey, $prompt);
+            $result = $this->callAI($provider, $apiKey, $prompt, $userId);
 
             return [
                 'provider' => $provider,
@@ -121,24 +121,35 @@ class AIService
         }
     }
 
-    protected function callAI(string $provider, ApiKey $apiKey, string $prompt): array
+    protected function callAI(string $provider, ApiKey $apiKey, string $prompt, ?int $userId = null): array
     {
         Log::info("DEBUG: Using API Key ID: {$apiKey->id} for provider: {$provider}");
+        $startTime = microtime(true);
+        
         try {
-            return match ($provider) {
+            $result = match ($provider) {
                 'openai' => $this->callOpenAI($apiKey, $prompt),
                 'gemini' => $this->callGemini($apiKey, $prompt),
                 'grok' => $this->callGrok($apiKey, $prompt),
                 default => throw new \Exception("Provider not supported: $provider")
             };
+
+            $executionTime = microtime(true) - $startTime;
+            $this->logAiRequest($apiKey, $prompt, $result, $executionTime, $userId);
+
+            return $result;
         } catch (\Exception $e) {
-            // Se for erro de quota (429), APENAS LOGA e REPASSA O ERRO para o Job tratar (release).
-            if (str_contains($e->getMessage(), '429')) {
-                // $apiKey->update(['status' => 'quota_exceeded']); // DISABLED: Allow retry
-                $this->log($provider, 'warning', "QUOTA EXHAUSTED: 429 received. Key ID: {$apiKey->id}. Job should retry.", 429, null, $apiKey->id);
+            $executionTime = microtime(true) - $startTime;
+            
+            // Log partial result on error if possible
+            if (!str_contains($e->getMessage(), '429')) {
+                $this->logAiRequest($apiKey, $prompt, ['content' => ['error' => $e->getMessage()], 'usage' => []], $executionTime, $userId);
             }
 
-            // FALLBACK REMOVED
+            // Se for erro de quota (429), APENAS LOGA e REPASSA O ERRO para o Job tratar (release).
+            if (str_contains($e->getMessage(), '429')) {
+                $this->log($provider, 'warning', "QUOTA EXHAUSTED: 429 received. Key ID: {$apiKey->id}. Job should retry.", 429, null, $apiKey->id);
+            }
             
             throw $e;
         }
@@ -181,20 +192,59 @@ class AIService
         Log::info("==== AI DEBUG START: Gemini Request [{$requestId}] ====");
         Log::info("DEBUG: Model: [{$model}]");
         
+        // Multimodality: Extract images from prompt
+        $imageUrls = $this->extractImages($prompt);
+        $parts = [['text' => $prompt]];
+
+        foreach ($imageUrls as $url) {
+            try {
+                $imageData = null;
+                $mimeType = 'image/jpeg';
+
+                if (str_starts_with($url, 'http')) {
+                    $response = Http::timeout(10)->get($url);
+                    if ($response->successful()) {
+                        $imageData = base64_encode($response->body());
+                        $mimeType = $response->header('Content-Type') ?: 'image/jpeg';
+                    }
+                } else {
+                    // Normalize path for public storage
+                    $cleanUrl = ltrim($url, '/');
+                    $path = public_path($cleanUrl);
+                    
+                    if (file_exists($path)) {
+                        $imageData = base64_encode(file_get_contents($path));
+                        $mimeType = mime_content_type($path) ?: 'image/jpeg';
+                    }
+                }
+
+                if ($imageData) {
+                    $parts[] = [
+                        'inline_data' => [
+                            'mime_type' => $mimeType,
+                            'data' => $imageData
+                        ]
+                    ];
+                    Log::info("[{$requestId}] DEBUG: Image attached successfully: $url");
+                }
+            } catch (\Exception $e) {
+                Log::warning("[{$requestId}] Failed to attach image: $url. Error: " . $e->getMessage());
+            }
+        }
+
         // Log Full Payload
         $payload = [
             'contents' => [
                 [
-                    'parts' => [
-                        ['text' => $prompt]
-                    ]
+                    'parts' => $parts
                 ]
             ],
             'generationConfig' => [
                 'temperature' => 0.7,
             ]
         ];
-        Log::info("DEBUG: Full Payload: " . json_encode($payload));
+        Log::info("DEBUG: Payload structure prepared. Part count: " . count($parts));
+
 
         $decryptedKey = $apiKey->decrypted_key;
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$decryptedKey}";
@@ -450,7 +500,7 @@ class AIService
             Log::info("Chat Prompt Sent to AI: " . $baseContext);
 
             // Call AI
-            $result = $this->callAI($provider, $apiKey, $baseContext);
+            $result = $this->callAI($provider, $apiKey, $baseContext, $simulation->user_id);
             
             Log::info("Chat AI Response Raw: " . json_encode($result));
             
@@ -521,5 +571,33 @@ class AIService
         }
 
         return $decoded ?: [];
+    }
+
+    protected function extractImages(string $text): array
+    {
+        // Regex para capturar ![...] (URL) ou apenas a URL se seguir o padrão markdown
+        preg_match_all('/\!\[.*?\]\((.*?)\)/', $text, $matches);
+        return array_unique($matches[1] ?? []);
+    }
+
+    protected function logAiRequest(ApiKey $apiKey, string $prompt, array $result, float $executionTime, ?int $userId = null): void
+    {
+        try {
+            \App\Models\AiRequestLog::create([
+                'user_id' => $userId ?? (\Illuminate\Support\Facades\Auth::check() ? \Illuminate\Support\Facades\Auth::id() : null),
+                'api_key_id' => $apiKey->id,
+                'api_key_name' => $apiKey->provider . ' (' . ($apiKey->preferred_model ?? 'padrão') . ')',
+                'provider' => $apiKey->provider,
+                'model' => $apiKey->preferred_model ?? 'padrão',
+                'prompt_text' => substr($prompt, 0, 10000), // Safety limit
+                'response_text' => is_array($result['content']) ? json_encode($result['content']) : (string)$result['content'],
+                'tokens_used_input' => $result['usage']['input_tokens'] ?? 0,
+                'tokens_used_output' => $result['usage']['output_tokens'] ?? 0,
+                'tokens_used_total' => $result['usage']['total_tokens'] ?? 0,
+                'execution_time' => round($executionTime, 3),
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Failed to log AI Request: " . $e->getMessage());
+        }
     }
 }

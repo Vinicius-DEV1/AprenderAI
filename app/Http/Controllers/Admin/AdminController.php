@@ -84,15 +84,18 @@ class AdminController extends Controller
     {
         $keys = ApiKey::orderBy('provider')->get();
         
-        // SRE: Fetch last 20 logs
+        // SRE: Fetch last 20 health check logs
         $logs = \App\Models\ApiLog::with('apiKey')->latest()->take(20)->get();
+
+        // NEW: Fetch last 20 AI transaction logs
+        $aiLogs = \App\Models\AiRequestLog::with('user')->latest()->take(20)->get();
         
         // SRE: Check for errors in last 6 hours
         $hasRecentErrors = \App\Models\ApiLog::where('type', 'error')
             ->where('created_at', '>=', now()->subHours(6))
             ->exists();
 
-        return view('admin.api-keys', compact('keys', 'logs', 'hasRecentErrors'));
+        return view('admin.api-keys', compact('keys', 'logs', 'aiLogs', 'hasRecentErrors'));
     }
 
     public function storeApiKey(Request $request)

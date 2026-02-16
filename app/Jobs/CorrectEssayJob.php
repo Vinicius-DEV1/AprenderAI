@@ -31,7 +31,7 @@ class CorrectEssayJob implements ShouldQueue
         $plan = $user->plan ? $user->plan->slug : 'free';
 
         // Chamar Serviço de IA
-        $result = $aiService->correctEssay($this->essay->title, $this->essay->content, $plan);
+        $result = $aiService->correctEssay($this->essay->title, $this->essay->content, $plan, $this->essay->user_id);
 
         if (!$result) {
             Log::warning("Falha ao corrigir redação {$this->essay->id}: Sem resposta da IA ou sem chave.");
