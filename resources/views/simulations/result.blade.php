@@ -8,9 +8,7 @@
         console.log('JS básico carregado no result.blade.php');
         window.onload = () => { console.log('DOM pronto (window.onload)'); };
     </script>
-    
-    <!-- Alpine.js CDN (Fallback Check) -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+
 
     <style>
         .result-header {
