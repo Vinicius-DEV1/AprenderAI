@@ -57,6 +57,6 @@ class Correction extends Model
             }
         }
 
-        return "Sem análise específica disponível para esta questão."; // Fallback para evitar loading infinito
+        return null; // Return null so the frontend knows to keep polling
     }
 }

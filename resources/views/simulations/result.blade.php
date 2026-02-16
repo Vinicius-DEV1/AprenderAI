@@ -425,11 +425,11 @@
 
                 async checkAnalysis() {
                     this.attempts++;
-                    // console.log(`[Polling] Question ${questionId} - Attempt ${this.attempts}`);
-
+                    
                     if (this.attempts > this.maxAttempts) {
-                        console.warn(`[Polling] Question ${questionId} - Max attempts reached.`);
+                        console.warn(`[Polling] Question ${questionId} - Timeout reached.`);
                         clearInterval(this.interval);
+                        // Optional: Show "Analysis not available" message here via a new state property
                         return;
                     }
 
@@ -439,13 +439,14 @@
 
                         const result = await response.json();
                         
-                        // Check if we have data for this specific question
+                        // Only stop polling if we explicitly receive content
                         if (result.data && result.data[questionId]) {
                             console.log(`[Polling] Question ${questionId} - Data received!`);
                             this.content = result.data[questionId];
                             this.status = 'completed';
                             clearInterval(this.interval);
-                        }
+                        } 
+                        // If result.status is 'completed' globally but we don't have data -> Wait for timeout (race condition protection)
                     } catch (error) {
                         console.error('Polling error:', error);
                     }
