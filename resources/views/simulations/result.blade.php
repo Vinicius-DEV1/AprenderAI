@@ -280,23 +280,45 @@
                     }
                 @endphp
 
-                <div class="explanation" data-question-id="{{ $answer->question_id }}" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                <div class="explanation" 
+                     data-question-id="{{ $answer->question_id }}" 
+                     style="background: #f8fafc; border: 1px solid #e2e8f0;"
+                     x-data="analysisPolling({{ $simulation->id }}, {{ $answer->question_id }}, '{{ $aiExplanation ? 'completed' : 'pending' }}', `{{ $aiExplanation ? $aiExplanation : '' }}`)"
+                     x-show="true">
+                    
                     <h4 style="display: flex; align-items: center; gap: 8px;">
-                        @if($simulation->correction)
-                            ✨ Análise da IA
-                        @else
-                            🤖 Processando Correção...
-                        @endif
+                        <template x-if="status === 'completed'">
+                            <span>✨ Análise da IA</span>
+                        </template>
+                        <template x-if="status !== 'completed'">
+                            <span class="flex items-center gap-2 text-indigo-600">
+                                <svg class="animate-spin h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Analisando...
+                            </span>
+                        </template>
                     </h4>
 
-                    @if($aiExplanation)
-                        <div class="markdown-content" style="white-space: pre-wrap;">{{ $aiExplanation }}</div>
-                    @else
-                        <div class="ai-loading" style="color: #64748b;">
-                            <p class="blink" style="margin: 0;">[...] Gerando explicação personalizada com IA...</p>
-                            <small>Aguarde alguns segundos e atualize a página.</small>
+                    <div x-show="status === 'completed'" class="markdown-body" style="white-space: pre-wrap;" x-html="renderContent(content)"></div>
+
+                    <div x-show="status !== 'completed'" class="ai-loading space-y-3 mt-4">
+                        <div class="flex items-center gap-3">
+                            <span class="relative flex h-3 w-3">
+                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                              <span class="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                            </span>
+                            <p class="text-sm text-indigo-700 font-medium m-0">A IA está analisando seu desempenho...</p>
                         </div>
-                    @endif
+                        
+                        <!-- Skeleton Loader -->
+                        <div class="animate-pulse space-y-2">
+                            <div class="h-2 bg-indigo-100 rounded w-3/4"></div>
+                            <div class="h-2 bg-indigo-100 rounded w-full"></div>
+                            <div class="h-2 bg-indigo-100 rounded w-5/6"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Chat Contextual -->
@@ -380,8 +402,61 @@
             Prova</a>
     </div>
 
-    <!-- Chat Component Definition -->
     <script>
+        window.analysisPolling = function(simulationId, questionId, initialStatus, initialContent) {
+            return {
+                status: initialStatus,
+                content: initialContent,
+                interval: null,
+                attempts: 0,
+                maxAttempts: 40, // ~2 minutes (3s interval)
+
+                init() {
+                    if (this.status !== 'completed') {
+                        this.startPolling();
+                    }
+                },
+
+                startPolling() {
+                    this.interval = setInterval(() => {
+                        this.checkAnalysis();
+                    }, 3000);
+                },
+
+                async checkAnalysis() {
+                    this.attempts++;
+                    if (this.attempts > this.maxAttempts) {
+                        clearInterval(this.interval);
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`/simulations/${simulationId}/status`);
+                        if (!response.ok) return;
+
+                        const result = await response.json();
+                        
+                        if (result.status === 'completed' && result.data && result.data[questionId]) {
+                            this.content = result.data[questionId];
+                            this.status = 'completed';
+                            clearInterval(this.interval);
+                        }
+                    } catch (error) {
+                        console.error('Polling error:', error);
+                    }
+                },
+
+                renderContent(text) {
+                     if (!text) return '';
+                     try {
+                         return marked.parse(text);
+                     } catch (e) {
+                         return text;
+                     }
+                }
+            }
+        }
+        
         window.chatComponent = function(simulationId, questionId) {
             return {
                 showChat: false,
@@ -408,6 +483,7 @@
                         this.loadHistory();
                     }
                 },
+
 
                 async loadHistory() {
                     this.isLoadingHistory = true;
