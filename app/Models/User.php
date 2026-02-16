@@ -89,7 +89,29 @@ class User extends Authenticatable
         return $this->hasOne(UserStat::class);
     }
 
+    public function studyPlans()
+    {
+        return $this->hasMany(StudyPlan::class);
+    }
+
     // Métodos auxiliares
+    public function hasPlusPlan(): bool
+    {
+        return $this->plan && $this->plan->name === 'Plus';
+    }
+
+    public function hasCompletedSimulation(): bool
+    {
+        return $this->simulations()
+            ->where('status', 'finished')
+            ->whereHas('answers')
+            ->exists();
+    }
+
+    public function canAccessStudyPlan(): bool
+    {
+        return $this->hasPlusPlan() && $this->hasCompletedSimulation();
+    }
     public function isAdmin(): bool
     {
         return $this->role === 'admin';

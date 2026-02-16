@@ -1,0 +1,34 @@
+{
+    "detailed_db_check": [
+        {
+            "type": "concurso",
+            "subject": "matem\u00e1tica",
+            "source": "enem_real_2009_2023",
+            "count": 51
+        },
+        {
+            "type": "concurso",
+            "subject": "portugu\u00eas",
+            "source": "enem_real_2009_2023",
+            "count": 56
+        },
+        {
+            "type": "enem",
+            "subject": "portugu\u00eas",
+            "source": "enem_real_2009_2023",
+            "count": 4
+        },
+        {
+            "type": "enem",
+            "subject": "portugu\u00eas",
+            "source": "generated_system",
+            "count": 53
+        },
+        {
+            "type": "enem",
+            "subject": "matem\u00e1tica",
+            "source": "generated_system",
+            "count": 52
+        }
+    ]
+}

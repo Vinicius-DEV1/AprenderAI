@@ -322,7 +322,7 @@
                     </div>
                     
                     <div class="question-statement">
-                        {!! nl2br(e($answer->question->statement)) !!}
+                        {!! $answer->question->statement_html !!}
                     </div>
                     
                     <ul class="alternatives">

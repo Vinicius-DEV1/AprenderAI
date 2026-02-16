@@ -20,6 +20,7 @@ class Question extends Model
         'correct_answer',
         'explanation',
         'source',
+        'topic',
     ];
 
     protected $casts = [
@@ -44,8 +45,8 @@ class Question extends Model
 
         // 1. Converter Imagens Markdown: ![](URL) -> <img ...>
         $html = preg_replace(
-            '/!\[(.*?)\]\((.*?)\)/', 
-            '<img src="$2" alt="$1" class="max-w-full h-auto rounded-lg my-4 mx-auto block shadow-sm" loading="lazy">', 
+            '/!\[(.*?)\]\((.*?)\)/',
+            '<img src="$2" alt="$1" class="max-w-full h-auto rounded-lg my-4 mx-auto block shadow-sm" loading="lazy">',
             $this->statement
         );
 
@@ -54,7 +55,7 @@ class Question extends Model
         // Mas se tivermos tags HTML misturadas com texto puro, o whitespace-pre-wrap pode não ser ideal para a imagem.
         // A melhor abordagem é escapar o texto HTML *antes*, exceto as imagens que acabamos de gerar.
         // Mas para simplificar e seguir o pedido: focar nas imagens.
-        
+
         return $html;
     }
 }
