@@ -320,8 +320,17 @@
                                     <div 
                                         :class="msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-800 border border-gray-200'" 
                                         :style="msg.role === 'user' ? 'background-color: #4f46e5 !important; color: white !important;' : 'background-color: white !important; color: #1f2937 !important; border: 1px solid #e5e7eb;'"
-                                        class="rounded-lg px-3 py-1.5 max-w-[85%] text-[11px] shadow-sm">
-                                        <span x-text="msg.message" class="break-words leading-tight"></span>
+                                        class="rounded-lg px-3 py-1.5 max-w-[85%] text-[11px] shadow-sm group">
+                                        
+                                        <!-- User Message (Text Only) -->
+                                        <template x-if="msg.role === 'user'">
+                                            <span x-text="msg.message" class="break-words leading-tight"></span>
+                                        </template>
+
+                                        <!-- AI Message (Markdown HTML) -->
+                                        <template x-if="msg.role !== 'user'">
+                                            <div x-html="renderMarkdown(msg.message)" class="markdown-body break-words leading-relaxed"></div>
+                                        </template>
                                     </div>
                                     <span class="text-[9px] text-gray-400 mt-0.5" x-text="msg.role === 'user' ? 'Você' : 'IA'"></span>
                                 </div>
@@ -382,6 +391,16 @@
                 messages: [],
                 errorMessage: null,
                 
+                renderMarkdown(text) {
+                    if (!text) return '';
+                    try {
+                        return marked.parse(text);
+                    } catch (e) {
+                        console.error('Markdown parse error:', e);
+                        return text;
+                    }
+                },
+                
                 toggleChat() {
                     console.log('Botão clicado para a questão: ' + questionId);
                     this.showChat = !this.showChat;
@@ -417,7 +436,7 @@
                         id: Date.now() 
                     });
                     
-                    this.newMessage = '';
+                    this.newMessage = ''; // Clear input immediately
                     this.scrollToBottom();
                     this.isTyping = true;
                     this.errorMessage = null;
@@ -549,4 +568,14 @@
             }
         });
     </script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    // Configure marked for security and typical usage
+    marked.setOptions({
+        breaks: true, // Enable GFM line breaks
+        gfm: true,
+        headerIds: false,
+        mangle: false
+    });
+</script>
 @endsection
