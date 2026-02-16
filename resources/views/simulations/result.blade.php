@@ -425,7 +425,10 @@
 
                 async checkAnalysis() {
                     this.attempts++;
+                    // console.log(`[Polling] Question ${questionId} - Attempt ${this.attempts}`);
+
                     if (this.attempts > this.maxAttempts) {
+                        console.warn(`[Polling] Question ${questionId} - Max attempts reached.`);
                         clearInterval(this.interval);
                         return;
                     }
@@ -436,7 +439,9 @@
 
                         const result = await response.json();
                         
-                        if (result.status === 'completed' && result.data && result.data[questionId]) {
+                        // Check if we have data for this specific question
+                        if (result.data && result.data[questionId]) {
+                            console.log(`[Polling] Question ${questionId} - Data received!`);
                             this.content = result.data[questionId];
                             this.status = 'completed';
                             clearInterval(this.interval);

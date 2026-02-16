@@ -75,24 +75,26 @@ class SimulationController extends Controller
 
         $simulation->load('correction');
 
-        if (!$simulation->correction || !$simulation->correction->corrected_at) {
+        if (!$simulation->correction) {
             return response()->json(['status' => 'pending']);
         }
 
-        // Preparar dados de explicação por questão
+        // Prepare explanations per question
         $explanations = [];
         $answers = $simulation->answers;
 
         foreach ($answers as $answer) {
             $explanation = $simulation->correction->getExplanationForQuestion($answer->question_id);
             if ($explanation) {
-                // Parse markdown to HTML if needed, or send raw text
                 $explanations[$answer->question_id] = $explanation;
             }
         }
+        
+        // Determine status based on corrected_at or presence of explanations
+        $status = $simulation->correction->corrected_at ? 'completed' : 'pending';
 
         return response()->json([
-            'status' => 'completed',
+            'status' => $status,
             'data' => $explanations
         ]);
     }
