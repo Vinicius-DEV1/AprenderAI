@@ -72,8 +72,12 @@ class SimulationController extends Controller
     public function checkCorrectionStatus(Simulation $simulation)
     {
         $this->authorize('view', $simulation);
-
+        
+        // Ensure we are reading the fresh state from DB (Race Condition Fix)
+        $simulation->refresh(); 
         $simulation->load('correction');
+
+        // \Illuminate\Support\Facades\Log::info("Polling Simulation {$simulation->id}: Checking status.");
 
         if (!$simulation->correction) {
             return response()->json(['status' => 'pending']);
