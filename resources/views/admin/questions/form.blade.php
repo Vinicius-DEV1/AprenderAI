@@ -42,6 +42,11 @@
                             </div>
 
                             <div>
+                                <x-input-label for="origin" value="Tag de Origem (Ex: ENEM 2023)" />
+                                <input type="text" id="origin" name="origin" value="{{ old('origin', $question->origin ?? '') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                            </div>
+
+                            <div>
                                 <x-input-label for="difficulty" value="Dificuldade" />
                                 <select id="difficulty" name="difficulty" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                                     <option value="easy" {{ old('difficulty', $question->difficulty ?? '') == 'easy' ? 'selected' : '' }}>Fácil</option>
@@ -82,9 +87,9 @@
                             <p class="text-sm text-gray-500 mt-1">Se deixado em branco, o aluno será forçado a solicitar ajuda ao tutor (gerando custo de API).</p>
                         </div>
 
-                        <div class="flex items-center justify-end">
+                        <div class="flex items-center justify-end mt-8 border-t pt-4">
                             <a href="{{ route('admin.questions.index') }}" class="text-gray-600 underline mr-4">Cancelar</a>
-                            <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                            <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-semibold shadow-sm">
                                 Salvar Questão
                             </button>
                         </div>

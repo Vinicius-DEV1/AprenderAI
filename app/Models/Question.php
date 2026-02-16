@@ -21,6 +21,7 @@ class Question extends Model
         'explanation',
         'source',
         'topic',
+        'origin',
     ];
 
     protected $casts = [
