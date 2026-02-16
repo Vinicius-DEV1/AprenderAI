@@ -1,101 +1,291 @@
 <x-layouts.admin>
     <!-- Header -->
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Gerenciar Chaves de API</h1>
-        <p class="text-gray-600">Configure as chaves e provedores de IA.</p>
+    <div class="mb-8 flex justify-between items-start">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">SRE Dashboard: APIs</h1>
+            <p class="text-gray-600">Monitoramento e controle de provedores de IA.</p>
+        </div>
+        @if($hasRecentErrors)
+            <div class="bg-red-50 border-l-4 border-red-400 p-4 animate-pulse">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <span class="text-red-400">⚠️</span>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-red-700 font-bold">
+                            ALERTA CRÍTICO: Detectamos erros nas últimas 6 horas.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
 
     <div class="max-w-7xl mx-auto space-y-6">
         
         <!-- Adicionar Nova Chave -->
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border border-gray-100">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Adicionar Nova Chave</h3>
-            <form action="{{ route('admin.api-keys.store') }}" method="POST" class="flex flex-col md:flex-row gap-4 items-end">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Adicionar/Testar Nova Chave</h3>
+            <form action="{{ route('admin.api-keys.store') }}" method="POST" class="space-y-4">
                 @csrf
-                <div class="w-full md:w-1/4">
-                    <x-input-label for="provider" value="Provedor" />
-                    <select name="provider" id="provider" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full">
-                        <option value="gemini">Google Gemini</option>
-                        <option value="openai">OpenAI (GPT-4)</option>
-                        <option value="grok">Grok (xAI)</option>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <x-input-label for="provider" value="Provedor" />
+                        <select name="provider" id="provider" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" onchange="resetValidation()">
+                            <option value="gemini">Google Gemini</option>
+                            <option value="openai">OpenAI (GPT-4)</option>
+                            <option value="grok">Grok (xAI)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <x-input-label for="key" value="Chave de API" />
+                        <div class="flex gap-2">
+                            <x-text-input id="key" name="key" type="password" class="mt-1 block w-full" required placeholder="Insira a chave para testar" oninput="resetValidation()" />
+                            <button type="button" onclick="testConnection()" id="btn-test" class="mt-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors flex items-center gap-2">
+                                <span id="btn-text">Testar</span>
+                                <span id="btn-loader" class="hidden animate-spin">⌛</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Model Selection (Hidden by default) -->
+                <div id="model-section" class="hidden bg-indigo-50 p-4 rounded-md border border-indigo-100">
+                    <x-input-label for="preferred_model" value="Modelo Preferido (Detectado)" />
+                    <select name="preferred_model" id="preferred_model" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full">
+                        <!-- Populated via JS -->
                     </select>
+                    <p class="text-xs text-indigo-600 mt-1">✓ Chave validada com sucesso. Selecione o modelo para uso.</p>
                 </div>
-                <div class="flex-1 w-full">
-                    <x-input-label for="key" value="Chave de API (sk-...)" />
-                    <x-text-input id="key" name="key" type="password" class="mt-1 block w-full" required />
+
+                <div id="feedback-area" class="hidden p-4 rounded-md text-sm"></div>
+
+                <div class="flex justify-end">
+                    <x-primary-button id="btn-save" class="opacity-50 cursor-not-allowed" disabled>Salvar Configuração</x-primary-button>
                 </div>
-                <x-primary-button class="w-full md:w-auto justify-center">Salvar Chave</x-primary-button>
             </form>
         </div>
 
-        <!-- Listagem -->
+        <!-- Listagem e Status -->
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
-            <div class="p-6 text-gray-900">
+            <div class="p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Chaves Ativas e Saúde</h3>
                 @if($keys->isEmpty())
-                    <div class="text-center py-8 text-gray-500">
-                        Nenhuma chave configurada. O sistema usará respostas simuladas.
-                    </div>
+                    <div class="text-center py-8 text-gray-500">Nenhuma chave configurada.</div>
                 @else
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provedor</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uso</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Último Uso</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                @foreach($keys as $key)
                                     <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="flex items-center">
-                                                <span class="font-medium capitalize">{{ $key->provider }}</span>
-                                                @if($key->is_primary)
-                                                    <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                        Primária
-                                                    </span>
-                                                @endif
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            @if($key->is_active)
-                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                                    Ativa
-                                                </span>
-                                            @else
-                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                                    Inativa
-                                                </span>
-                                            @endif
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ $key->requests_count }} reqs
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ $key->last_used_at ? $key->last_used_at->diffForHumans() : '-' }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <form action="{{ route('admin.api-keys.toggle', $key) }}" method="POST" class="inline">
-                                                @csrf @method('PATCH')
-                                                <button type="submit" class="text-indigo-600 hover:text-indigo-900 mr-3">
-                                                    {{ $key->is_active ? 'Desativar' : 'Ativar' }}
-                                                </button>
-                                            </form>
-                                            <form action="{{ route('admin.api-keys.destroy', $key) }}" method="POST" class="inline" onsubmit="return confirm('Tem certeza?');">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" class="text-red-600 hover:text-red-900">Remover</button>
-                                            </form>
-                                        </td>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Provedor / Modelo</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Saúde (SRE)</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check / Adição</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uso Acumulado</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                                     </tr>
-                                @endforeach
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @foreach($keys as $key)
+                                        <tr>
+                                            <td class="px-6 py-4">
+                                                <div class="flex flex-col">
+                                                    <span class="font-bold capitalize text-gray-900 text-base">{{ $key->provider }}</span>
+                                                    <span class="text-xs font-mono bg-indigo-50 text-indigo-700 px-1 rounded inline-block w-fit">
+                                                        {{ $key->preferred_model ?? 'Padrão' }}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <div class="flex items-center gap-2">
+                                                    @php
+                                                        $statusClasses = match($key->status) {
+                                                            'online' => 'bg-green-100 text-green-800',
+                                                            'offline' => 'bg-red-100 text-red-800',
+                                                            'quota_exceeded' => 'bg-yellow-100 text-yellow-800',
+                                                            default => 'bg-gray-100 text-gray-800'
+                                                        };
+                                                        $statusLabel = match($key->status) {
+                                                            'online' => '🟢 Online',
+                                                            'offline' => '🔴 Offline',
+                                                            'quota_exceeded' => '🟡 Quota Exceeded',
+                                                            default => '⚪ Desconhecido'
+                                                        };
+                                                    @endphp
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $statusClasses }}">
+                                                        {{ $statusLabel }}
+                                                    </span>
+                                                    
+                                                    <form action="{{ route('admin.api-keys.retest', $key) }}" method="POST" class="inline">
+                                                        @csrf
+                                                        <button type="submit" title="Forçar reteste agora" class="text-gray-400 hover:text-indigo-600 transition-colors">
+                                                            🔄
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <div class="flex flex-col text-xs text-gray-500">
+                                                    <span><strong>Check:</strong> {{ $key->last_health_check_at ? $key->last_health_check_at->diffForHumans() : 'Nunca' }}</span>
+                                                    <span><strong>Criado:</strong> {{ $key->created_at->format('d/m/y H:i') }}</span>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 text-sm text-gray-500 font-mono">
+                                                {{ number_format($key->requests_count) }} reqs
+                                            </td>
+                                            <td class="px-6 py-4 text-right text-sm">
+                                                 <form action="{{ route('admin.api-keys.toggle', $key) }}" method="POST" class="inline">
+                                                    @csrf @method('PATCH')
+                                                    <button type="submit" class="text-indigo-600 hover:text-indigo-900 mr-2 p-1 border rounded hover:bg-indigo-50" title="{{ $key->is_active ? 'Desativar' : 'Ativar' }}">
+                                                        {{ $key->is_active ? '🔓' : '🔒' }}
+                                                    </button>
+                                                </form>
+                                                <form action="{{ route('admin.api-keys.destroy', $key) }}" method="POST" class="inline" onsubmit="return confirm('Apagar chave?');">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit" class="text-red-600 hover:text-red-900 p-1 border rounded hover:bg-red-50" title="Excluir">🗑️</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    @endforeach
                             </tbody>
                         </table>
                     </div>
                 @endif
             </div>
         </div>
+
+        <!-- Logs de Atividade -->
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="text-lg font-medium text-gray-900">Logs de Eventos da API (Últimos 20)</h3>
+                <form action="{{ route('admin.api-keys.clear-logs') }}" method="POST" onsubmit="return confirm('Limpar histórico?')">
+                    @csrf
+                    <button type="submit" class="text-sm text-gray-500 hover:text-red-600">Limpar Histórico</button>
+                </form>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <tbody class="bg-white divide-y divide-gray-50">
+                        @forelse($logs as $log)
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-400 font-mono">
+                                    {{ $log->created_at->format('H:i:s') }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    @php
+                                        $typeClasses = match($log->type) {
+                                            'success' => 'text-green-600',
+                                            'error' => 'text-red-600 font-bold',
+                                            'warning' => 'text-yellow-600',
+                                            'fallback' => 'text-purple-600 font-bold',
+                                            default => 'text-gray-600'
+                                        };
+                                        $typeEmoji = match($log->type) {
+                                            'success' => '✅',
+                                            'error' => '❌',
+                                            'warning' => '⚠️',
+                                            'fallback' => '🔄',
+                                            default => '🔹'
+                                        };
+                                    @endphp
+                                    <span class="text-sm {{ $typeClasses }}">
+                                        {{ $typeEmoji }} {{ strtoupper($log->type) }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-600">
+                                    <span class="font-bold text-gray-800 capitalize">{{ $log->provider }}:</span>
+                                    {{ $log->message }}
+                                    @if($log->status_code)
+                                        <span class="text-xs bg-gray-100 px-1 rounded">Code: {{ $log->status_code }}</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="3" class="px-6 py-8 text-center text-gray-500">Sem atividade recente.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
+
+    <script>
+        function resetValidation() {
+            document.getElementById('model-section').classList.add('hidden');
+            document.getElementById('feedback-area').classList.add('hidden');
+            document.getElementById('btn-save').disabled = true;
+            document.getElementById('btn-save').classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        async function testConnection() {
+            const provider = document.getElementById('provider').value;
+            const key = document.getElementById('key').value;
+            const btnTest = document.getElementById('btn-test');
+            const btnText = document.getElementById('btn-text');
+            const btnLoader = document.getElementById('btn-loader');
+            const feedback = document.getElementById('feedback-area');
+            const modelSection = document.getElementById('model-section');
+            const modelSelect = document.getElementById('preferred_model');
+            const btnSave = document.getElementById('btn-save');
+
+            if (!key) {
+                alert('Por favor, insira uma chave.');
+                return;
+            }
+
+            btnTest.disabled = true;
+            btnText.textContent = 'Testando...';
+            btnLoader.classList.remove('hidden');
+            feedback.classList.add('hidden');
+            modelSection.classList.add('hidden');
+
+            try {
+                const response = await fetch("{{ route('admin.api-keys.test') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': "{{ csrf_token() }}"
+                    },
+                    body: JSON.stringify({ provider, key })
+                });
+
+                const result = await response.json();
+
+                if (result.is_valid) {
+                    feedback.className = 'p-4 rounded-md text-sm bg-green-50 text-green-700 block mb-4 border border-green-100';
+                    feedback.textContent = '✅ Conexão estabelecida com sucesso!';
+                    
+                    modelSelect.innerHTML = '';
+                    if (result.models && result.models.length > 0) {
+                        result.models.forEach(model => {
+                            const option = document.createElement('option');
+                            option.value = model.id;
+                            option.textContent = model.name;
+                            modelSelect.appendChild(option);
+                        });
+                        modelSection.classList.remove('hidden');
+                    } else {
+                        const option = document.createElement('option');
+                        option.value = '';
+                        option.textContent = 'Padrão (Nenhum modelo específico)';
+                        modelSelect.appendChild(option);
+                    }
+
+                    btnSave.disabled = false;
+                    btnSave.classList.remove('opacity-50', 'cursor-not-allowed');
+                } else {
+                    throw new Error(result.error || 'Chave inválida');
+                }
+            } catch (error) {
+                feedback.className = 'p-4 rounded-md text-sm bg-red-50 text-red-700 block border border-red-100';
+                feedback.textContent = '❌ Erro SRE: ' + error.message;
+            } finally {
+                btnTest.disabled = false;
+                btnText.textContent = 'Testar';
+                btnLoader.classList.add('hidden');
+                feedback.classList.remove('hidden');
+            }
+        }
+    </script>
 </x-layouts.admin>

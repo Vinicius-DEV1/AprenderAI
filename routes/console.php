@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('metrics:collect')->everyMinute();
+Schedule::command('api:check-health')->everyThirtyMinutes();

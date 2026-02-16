@@ -83,7 +83,16 @@ class AdminController extends Controller
     public function apiKeys()
     {
         $keys = ApiKey::orderBy('provider')->get();
-        return view('admin.api-keys', compact('keys'));
+        
+        // SRE: Fetch last 20 logs
+        $logs = \App\Models\ApiLog::with('apiKey')->latest()->take(20)->get();
+        
+        // SRE: Check for errors in last 6 hours
+        $hasRecentErrors = \App\Models\ApiLog::where('type', 'error')
+            ->where('created_at', '>=', now()->subHours(6))
+            ->exists();
+
+        return view('admin.api-keys', compact('keys', 'logs', 'hasRecentErrors'));
     }
 
     public function storeApiKey(Request $request)
@@ -91,6 +100,7 @@ class AdminController extends Controller
         $request->validate([
             'provider' => 'required|in:openai,gemini,grok',
             'key' => 'required|string',
+            'preferred_model' => 'nullable|string',
         ]);
 
         // Se for a primeira chave deste provider, torna-a primária
@@ -99,6 +109,8 @@ class AdminController extends Controller
         ApiKey::create([
             'provider' => $request->provider,
             'key' => $request->key, // Setter encrypts automatically
+            'preferred_model' => $request->preferred_model,
+            'is_valid' => true, // Assumimos válido se o user salvou após teste (ou podemos forçar teste)
             'is_active' => true,
             'is_primary' => $isPrimary,
         ]);
@@ -110,6 +122,19 @@ class AdminController extends Controller
     {
         $apiKey->update(['is_active' => !$apiKey->is_active]);
         return back()->with('success', 'Status da chave atualizado!');
+    }
+
+    public function testConnection(Request $request)
+    {
+        $request->validate([
+            'provider' => 'required|string',
+            'key' => 'required|string',
+        ]);
+
+        $aiService = new \App\Services\AIService();
+        $result = $aiService->validateKey($request->provider, $request->key);
+
+        return response()->json($result);
     }
 
     public function destroyApiKey(ApiKey $apiKey)
@@ -125,5 +150,41 @@ class AdminController extends Controller
         }
 
         return back()->with('success', 'Chave removida!');
+    }
+
+    public function retestApiKey(ApiKey $apiKey)
+    {
+        $aiService = new \App\Services\AIService();
+        
+        try {
+            $result = $aiService->validateKey($apiKey->provider, $apiKey->decrypted_key);
+            
+            if ($result['is_valid']) {
+                $apiKey->update([
+                    'status' => 'online',
+                    'last_health_check_at' => now(),
+                ]);
+                return back()->with('success', "Provedor {$apiKey->provider} validado com sucesso! (Online)");
+            } else {
+                $status = str_contains($result['error'] ?? '', '429') ? 'quota_exceeded' : 'offline';
+                $apiKey->update([
+                    'status' => $status,
+                    'last_health_check_at' => now(),
+                ]);
+                return back()->with('error', "Provedor {$apiKey->provider} falhou: " . ($result['error'] ?? 'Erro desconhecido'));
+            }
+        } catch (\Exception $e) {
+            $apiKey->update([
+                'status' => 'offline',
+                'last_health_check_at' => now(),
+            ]);
+            return back()->with('error', "Exceção ao testar {$apiKey->provider}: " . $e->getMessage());
+        }
+    }
+
+    public function clearLogs()
+    {
+        \App\Models\ApiLog::truncate();
+        return back()->with('success', 'Histórico de logs limpo!');
     }
 }

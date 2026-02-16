@@ -29,6 +29,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{simulation}/finish', [SimulationController::class, 'finish'])->name('finish');
         Route::get('/{simulation}/result', [SimulationController::class, 'result'])->name('result');
         Route::get('/{simulation}/status', [SimulationController::class, 'checkCorrectionStatus'])->name('status');
+        
+        // Chat Contextual
+        Route::post('/{simulation}/questions/{question}/chat', [\App\Http\Controllers\QuestionChatController::class, 'store'])->name('questions.chat.store');
+        Route::get('/{simulation}/questions/{question}/chat', [\App\Http\Controllers\QuestionChatController::class, 'index'])->name('questions.chat.index');
     });
 
     // Redações
@@ -66,6 +70,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/api-keys', [\App\Http\Controllers\Admin\AdminController::class, 'apiKeys'])->name('api-keys');
         Route::post('/api-keys', [\App\Http\Controllers\Admin\AdminController::class, 'storeApiKey'])->name('api-keys.store');
         Route::patch('/api-keys/{apiKey}/toggle', [\App\Http\Controllers\Admin\AdminController::class, 'toggleApiKey'])->name('api-keys.toggle');
+        Route::post('/api-keys/test-connection', [\App\Http\Controllers\Admin\AdminController::class, 'testConnection'])->name('api-keys.test');
+        Route::post('/api-keys/clear-logs', [\App\Http\Controllers\Admin\AdminController::class, 'clearLogs'])->name('api-keys.clear-logs');
+        Route::post('/api-keys/{apiKey}/retest', [\App\Http\Controllers\Admin\AdminController::class, 'retestApiKey'])->name('api-keys.retest');
         Route::delete('/api-keys/{apiKey}', [\App\Http\Controllers\Admin\AdminController::class, 'destroyApiKey'])->name('api-keys.destroy');
         
         // Configurações de Pagamento

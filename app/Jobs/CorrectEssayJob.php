@@ -35,13 +35,34 @@ class CorrectEssayJob implements ShouldQueue
 
         if (!$result) {
             Log::warning("Falha ao corrigir redação {$this->essay->id}: Sem resposta da IA ou sem chave.");
-            // Redação fica pendente ou marca erro?
-            // Vamos deixar pendente por enquanto para retry, ou falha.
-            // Se falhar várias vezes, queue vai jogar para failed_jobs.
+            
+            // FALLBACK: Marcar erro visual para o usuário ou criar correção de erro
+            // Se criarmos correção com 'error', o front precisa saber lidar.
+            // Pela segurança, vamos criar uma correção com mensagem de indisponibilidade
+            
+            Correction::create([
+                'correctable_type' => Essay::class,
+                'correctable_id' => $this->essay->id,
+                'ai_provider' => 'system_fallback',
+                'correction_data' => [
+                    'score' => 0,
+                    'competencies' => [],
+                    'feedback' => 'O sistema de correção por IA está instável no momento. Por favor, tente novamente mais tarde ou entre em contato com o suporte.',
+                    'detailed_suggestions' => [],
+                    'example_essay' => ''
+                ],
+                'corrected_at' => now(),
+            ]);
+
+            $this->essay->update([
+                'status' => 'corrected', // Ou 'error' se o sistema suportar
+                'score' => 0,
+            ]);
+            
             return;
         }
 
-        // Salvar Correção da IA
+        // Caminho Feliz
         Correction::create([
             'correctable_type' => Essay::class,
             'correctable_id' => $this->essay->id,
@@ -50,7 +71,7 @@ class CorrectEssayJob implements ShouldQueue
             'corrected_at' => now(),
         ]);
 
-        // Extrair nota do JSON se possível para salvar no modelo Essay para fácil acesso
+        // Extrair nota do JSON se possível
         $score = $result['response']['score'] ?? null;
 
         $this->essay->update([
