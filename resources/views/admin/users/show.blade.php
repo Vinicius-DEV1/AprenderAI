@@ -144,10 +144,10 @@
                         R$ {{ number_format($user->subscriptions->where('status', 'active')->sum(fn($s) => $s->plan->price ?? 0), 2, ',', '.') }}
                     </div>
                 </div>
-                <div class="bg-gradient-to-br from-indigo-600 to-purple-700 p-4 rounded-xl shadow-md text-white">
-                    <div class="text-indigo-100 text-[10px] uppercase font-bold mb-1">Consumo IA (R$)</div>
-                    <div class="text-2xl font-bold">R$ {{ number_format($stats['ai']['total_cost'], 2, ',', '.') }}</div>
-                    <div class="text-[10px] text-indigo-200 mt-1">Gasto total acumulado</div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-amber-500">
+                    <div class="text-gray-500 text-[10px] uppercase font-bold mb-1">Consumo IA (R$)</div>
+                    <div class="text-2xl font-bold text-slate-900">R$ {{ number_format($stats['ai']['total_cost'], 2, ',', '.') }}</div>
+                    <div class="text-[10px] text-slate-500 mt-1">Gasto total acumulado</div>
                 </div>
             </div>
 

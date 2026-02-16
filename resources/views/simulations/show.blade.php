@@ -153,6 +153,7 @@
             color: #1e293b;
             margin-bottom: 32px;
             max-width: 900px; /* Readability limit */
+            white-space: pre-wrap;
         }
         
         .simulation-page .alternatives {
