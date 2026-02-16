@@ -153,6 +153,7 @@
             color: #1e293b;
             margin-bottom: 32px;
             max-width: 900px; /* Readability limit */
+            white-space: pre-wrap;
         }
         
         .simulation-page .alternatives {
@@ -322,7 +323,7 @@
                     </div>
                     
                     <div class="question-statement">
-                        {!! nl2br(e($answer->question->statement)) !!}
+                        {!! $answer->question->statement_html !!}
                     </div>
                     
                     <ul class="alternatives">
