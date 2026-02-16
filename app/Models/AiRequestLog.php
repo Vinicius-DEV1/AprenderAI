@@ -20,6 +20,7 @@ class AiRequestLog extends Model
         'tokens_used_output',
         'tokens_used_total',
         'execution_time',
+        'estimated_cost',
     ];
 
     public function user(): BelongsTo

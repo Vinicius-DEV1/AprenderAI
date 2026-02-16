@@ -35,4 +35,28 @@ return [
         ],
     ],
 
+    'ai' => [
+        'pricing' => [
+            'exchange_rate' => 5.0, // USD to BRL
+            'models' => [
+                'gemini-1.5-flash' => [
+                    'input' => 0.075 / 1000000,
+                    'output' => 0.30 / 1000000,
+                ],
+                'gemini-1.5-pro' => [
+                    'input' => 3.50 / 1000000,
+                    'output' => 10.50 / 1000000,
+                ],
+                'gemini-2.0-flash' => [
+                    'input' => 0.10 / 1000000,
+                    'output' => 0.40 / 1000000,
+                ],
+                'default' => [
+                    'input' => 0.075 / 1000000,
+                    'output' => 0.30 / 1000000,
+                ],
+            ],
+        ],
+    ],
+
 ];
