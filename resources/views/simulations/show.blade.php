@@ -569,7 +569,7 @@
                     <div class="question-header">
                         <span class="question-number">Questão {{ $index + 1 }} de {{ $simulation->answers->count() }}</span>
                         <span style="font-size: 14px; color: #64748b; background: #f1f5f9; padding: 4px 12px; rounded: 12px;">
-                            {{ ucfirst($answer->question->subject) }}
+                            {{ $answer->question->subjects->pluck('name')->join(', ') }}
                         </span>
                     </div>
                     

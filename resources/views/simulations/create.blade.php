@@ -355,8 +355,8 @@
                 </div>
 
                 <input type="hidden" name="total_questions" id="total_questions" value="90">
-                <input type="hidden" name="subject_distribution[matemática]" id="math_hidden" value="45">
-                <input type="hidden" name="subject_distribution[português]" id="portuguese_hidden" value="45">
+                <input type="hidden" name="subject_distribution[Matemática]" id="math_hidden" value="45">
+                <input type="hidden" name="subject_distribution[Português]" id="portuguese_hidden" value="45">
             </div>
 
             <div class="form-section">

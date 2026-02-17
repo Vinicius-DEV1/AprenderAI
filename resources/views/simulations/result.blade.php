@@ -307,7 +307,7 @@
         @foreach($simulation->answers as $index => $answer)
             <div class="answer-item {{ $answer->is_correct ? 'correct' : 'incorrect' }}">
                 <div class="answer-header">
-                    <span class="question-num">Questão {{ $index + 1 }} - {{ ucfirst($answer->question->subject) }}</span>
+                    <span class="question-num">Questão {{ $index + 1 }} - {{ $answer->question->subjects->pluck('name')->join(', ') }}</span>
 
                     @if($answer->question->source === 'ai_generated')
                         <span class="badge" style="background: #E9D5FF; color: #6B21A8; margin-left: 8px;">✨ INÉDITA</span>
