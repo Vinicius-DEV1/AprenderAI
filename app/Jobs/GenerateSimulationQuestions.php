@@ -33,6 +33,8 @@ class GenerateSimulationQuestions implements ShouldQueue
      */
     public function handle(SimulationCreationService $service): void
     {
+        Log::info("DEBUG AGRESSIVO: Iniciando job para Simulação {$this->simulation->id}");
+        Log::info("DEBUG AGRESSIVO: Dados recebidos: " . json_encode($this->data));
         Log::info("Job GenerateSimulationQuestions started for Simulation {$this->simulation->id}");
 
         try {
