@@ -217,7 +217,7 @@
                 <div class="answer-header">
                     <span class="question-num">Questão {{ $index + 1 }} - {{ ucfirst($answer->question->subject) }}</span>
                     
-                    @if($answer->question->source === 'ai_generated' || $answer->question->source === 'generated_system')
+                    @if($answer->question->source === 'ai_generated')
                         <span class="badge" style="background: #E9D5FF; color: #6B21A8; margin-left: 8px;">✨ INÉDITA</span>
                     @elseif(!empty($answer->question->origin)) 
                         <span class="badge" style="background: #E2E8F0; color: #475569; margin-left: 8px;">{{ $answer->question->origin }}</span>
