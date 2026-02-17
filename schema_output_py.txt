@@ -1,0 +1,65 @@
+--- DATABASE INSPECTION ---
+
+TABLE: provas
+--------------------------------------------------
+Schema:
+CREATE TABLE provas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cargo TEXT, 
+        ano TEXT, 
+        orgao TEXT, 
+        instituicao TEXT, 
+        pasta_local TEXT)
+
+Row Count: 1
+Sample Data:
+Columns: id, cargo, ano, orgao, instituicao, pasta_local
+{
+  "id": 1,
+  "cargo": "Advogado",
+  "ano": "2021",
+  "orgao": "FUNSAÚDE/CE",
+  "instituicao": "FGV",
+  "pasta_local": "provas_fgv_downloads\\Advogado_2021"
+}
+
+==================================================
+
+TABLE: questoes
+--------------------------------------------------
+Schema:
+CREATE TABLE questoes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        prova_id INTEGER, 
+        numero TEXT, 
+        enunciado TEXT, 
+        gabarito TEXT,
+        FOREIGN KEY (prova_id) REFERENCES provas (id))
+
+Row Count: 70
+Sample Data:
+Columns: id, prova_id, numero, enunciado, gabarito
+{
+  "id": 1,
+  "prova_id": 1,
+  "numero": "1",
+  "enunciado": "\"A matemática é a única ciência exata em que se nunca se sabe do que se está falando nem se o que aquilo que se diz é verdadeiro\". Bertrand Russell.\nEssa frase afirma que na matemática \"nunca se sabe do que se está falando\", ou seja, contém a marca da\n(A) inexatidão.\n(B) abstração.\n(C) imprecisão.\n(D) ilogicidade.\n(E) dúvida.",
+  "gabarito": "B"
+}
+{
+  "id": 2,
+  "prova_id": 1,
+  "numero": "2",
+  "enunciado": "\"A matemática, vista corretamente, possui não apenas verdade, mas também suprema beleza – uma beleza fria e austera, como a da escultura.\" Bertrand Russell.\nAssinale a opção que apresenta a afirmação adequada sobre os componentes desse pensamento.\n(A) O segmento \"vista corretamente\" indica a causa da oração seguinte.\n(B) Os segmentos \"não apenas\" e \"mas também\" indicam oposição de ideias.\n(C) As palavras \"verdade\" e \"beleza\" indicam valores que se contradizem na ciência matemática.\n(D) O termo \"a\" em \"a da escultura\" engloba a verdade e a beleza da matemática.\n(E) A comparação \"como a da escultura\" traz uma valorização artística da matemática.",
+  "gabarito": "E"
+}
+{
+  "id": 3,
+  "prova_id": 1,
+  "numero": "3",
+  "enunciado": "\"O homem é confinado nos limites estreitos do corpo, como numa prisão, mas a matemática o liberta e o faz maior do que todo o universo... É levado pela tempestade das paixões a um canto e a outro, sem nenhuma meta, mas a matemática lhe restitui a paz interior, resolvendo harmoniosamente os movimentos opostos da alma e reconduzindo-a, sob a orientação da razão, ao acordo e à harmonia.\" Bertrand Russell.\nAs opções a seguir apresentam marcas qualitativas da matemática sugeridas pelo texto acima, à exceção de uma. Assinale-a.\n(A) A capacidade de superar a limitação humana.\n(B) A possibilidade de criar a ilusão de grandeza.\n(C) A criação da harmonia interior.\n(D) A orientação racional diante das paixões.\n(E) A formação de condições de união interna.",
+  "gabarito": "B"
+}
+
+==================================================
+
