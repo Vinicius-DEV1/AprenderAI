@@ -12,19 +12,35 @@ class Essay extends Model
     protected $fillable = [
         'user_id',
         'simulation_id',
+        'type',
+        'time_limit',
         'title',
+        'theme', // Deprecated but preserved
+        'topic_description',
         'content',
         'status',
         'score',
         'competencies',
         'feedback',
+        'feedback_json',
         'ai_suggestions',
         'example_essay',
+        'topic_regen_count',
+        'topic_hash',
+        'started_at',
+        'submitted_at',
+        'evaluated_at',
     ];
 
     protected $casts = [
         'competencies' => 'array',
         'ai_suggestions' => 'array',
+        'feedback_json' => 'array',
+        'started_at' => 'datetime',
+        'submitted_at' => 'datetime',
+        'evaluated_at' => 'datetime',
+        'topic_regen_count' => 'integer',
+        'time_limit' => 'integer',
     ];
 
     public function user()

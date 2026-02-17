@@ -207,7 +207,8 @@ class AIService
         $model = $apiKey->preferred_model ?? 'gpt-4o';
 
         $response = Http::withToken($apiKey->decrypted_key)
-            ->timeout(120)
+            ->connectTimeout(15)
+            ->timeout(60)
             ->post($url, [
                 'model' => $model,
                 'messages' => [
@@ -318,8 +319,8 @@ class AIService
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$decryptedKey}";
 
         try {
-            $response = Http::timeout(120)
-                ->connectTimeout(60)
+            $response = Http::timeout(60)
+                ->connectTimeout(15)
                 ->withoutVerifying() // Disable SSL for local dev
                 ->withHeaders([
                     'Content-Type' => 'application/json',
@@ -473,15 +474,111 @@ class AIService
         return "Corrija as questões abaixo. $baseStructure\n\n$depthInstruction\n\nDados:\n" . json_encode($questionsAndAnswers);
     }
 
+    public function generateEssayTopic(string $type): array
+    {
+        if (!$this->hasActiveKey()) {
+            throw new \Exception('Avaliador Xavier indisponível no momento (Key)');
+        }
+
+        $provider = $this->getFirstAvailableProvider();
+        if (!$provider)
+            throw new \Exception('Avaliador Xavier indisponível no momento (Provider)');
+
+        $apiKey = ApiKey::getActiveKeyForProvider($provider);
+
+        $prompt = "Você é o Professor Xavier, um avaliador experiente de redações.\n";
+        $prompt .= "Sua tarefa: Criar um tema de redação inédito para $type.\n";
+        $prompt .= "Regras:\n";
+        if ($type === 'enem') {
+            $prompt .= "- Estilo ENEM: Um problema social/ambiental/cultural brasileiro.\n";
+            $prompt .= "- Inclua um 'Texto Motivador 1' (max 2 frases).\n";
+            $prompt .= "- Inclua 3 'Tópicos de Apoio' (bullets).\n";
+            $prompt .= "- Inclua a frase tema explícita.\n";
+        } else {
+            $prompt .= "- Estilo CONCURSO PÚBLICO: Tema técnico ou atualidade (ex: Adm Pública, Direito, Tecnologia).\n";
+            $prompt .= "- Comando direto: 'Disserte sobre...'.\n";
+        }
+        $prompt .= "\nRetorne APENAS um objeto JSON válido. NÃO use markdown. NÃO use código ```json.\nEstrutura: { \"title\": \"Titulo do Tema\", \"description\": \"Texto completo do tema\" }.";
+
+        try {
+            $result = $this->callAI($provider, $apiKey, $prompt);
+            $apiKey->incrementUsage();
+
+            $content = $result['content'];
+            if (isset($content['error'])) {
+                throw new \Exception($content['error']);
+            }
+            if (!isset($content['title']) || !isset($content['description'])) {
+                throw new \Exception('Formato de resposta inválido do Xavier.');
+            }
+
+            return $content;
+        } catch (\Exception $e) {
+            Log::error("Xavier Topic Gen Error: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    public function evaluateEssay(string $title, string $content, string $type): ?array
+    {
+        if (!$this->hasActiveKey())
+            return null;
+        $provider = $this->getFirstAvailableProvider();
+        if (!$provider)
+            return null;
+
+        $apiKey = ApiKey::getActiveKeyForProvider($provider);
+
+        $prompt = $this->buildXavierEvaluationPrompt($title, $content, $type);
+
+        try {
+            $result = $this->callAI($provider, $apiKey, $prompt);
+            $apiKey->incrementUsage();
+
+            $content = $result['content'];
+            // Ensure we have the structure
+            if (!isset($content['score']))
+                $content['score'] = 0;
+
+            return [
+                'provider' => $provider,
+                'response' => $content,
+                'usage' => $result['usage'] ?? []
+            ];
+        } catch (\Exception $e) {
+            Log::error('Xavier Evaluation failed', ['error' => $e->getMessage()]);
+            return null;
+        } finally {
+            if (isset($apiKey))
+                $apiKey->incrementUsage();
+        }
+    }
+
+    protected function buildXavierEvaluationPrompt(string $title, string $content, string $type): string
+    {
+        $maxScore = ($type === 'enem') ? 1000 : 100; // Concurso 0-100 standard
+
+        return "Você é o Professor Xavier, corretor oficial de redações.\n" .
+            "Corrija este texto seguindo rigorosamente os critérios do {$type}.\n" .
+            "Tema: $title\n" .
+            "Texto do Aluno:\n$content\n\n" .
+            "Retorne APENAS JSON válido com esta estrutura exata:\n" .
+            "{\n" .
+            "  'score': (inteiro 0-$maxScore),\n" .
+            "  'summary': 'Resumo geral em 1 parágrafo',\n" .
+            "  'strengths': ['ponto forte 1', 'ponto forte 2'],\n" .
+            "  'weaknesses': ['ponto a melhorar 1', 'ponto a melhorar 2'],\n" .
+            "  'checklist': [ {'item': 'Coesão', 'status': 'ok'/'atenção'}, {'item': 'Gramática', 'status': 'ok'/'atenção'} ],\n" .
+            "  'corrections': [ {'excerpt': 'trecho erro', 'issue': 'explicação erro', 'suggestion': 'sugestão correção'} ],\n" .
+            "  'improved_version': 'Reescreva a redação mantendo a ideia do aluno, mas elevando para nota máxima. Não mude os fatos, melhore a forma/coesão.'\n" .
+            "}\n" .
+            "Seja polido, didático e motive o aluno. Nunca mencione ser uma IA.";
+    }
+
+    // Deprecated but kept for old calls if any
     protected function buildEssayCorrectionPrompt(string $title, string $content, string $plan): string
     {
-        $instructions = match ($plan) {
-            'basic' => 'Retorne JSON com: {score: 0-1000, competencies: {C1-C5: 1-5}, feedback: string}',
-            'plus' => 'Retorne JSON detalhado com: {score, competencies, feedback, detailed_suggestions: [], example_essay: string}',
-            default => 'Redações não disponíveis neste plano'
-        };
-
-        return "Corrija a redação do ENEM com tema '$title' e $instructions\n\nTexto:\n$content";
+        return $this->buildXavierEvaluationPrompt($title, $content, 'enem');
     }
 
     public function generateQuestions(string $subject, int $quantity = 1): array
