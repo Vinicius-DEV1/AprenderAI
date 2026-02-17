@@ -22,6 +22,10 @@ class Question extends Model
         'source',
         'topic',
         'origin',
+        'organization',
+        'institution',
+        'role',
+        'external_id',
     ];
 
     protected $casts = [
