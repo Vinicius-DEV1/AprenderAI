@@ -87,7 +87,7 @@
                             @endif
                             
                             <div class="prose prose-sm {{ $msg->role === 'user' ? 'prose-invert' : '' }} max-w-none">
-                                {!! Str::markdown($msg->message) !!}
+                                {!! str($msg->message ?? '')->markdown() !!}
                             </div>
                             
                             <div class="text-[10px] mt-2 opacity-60 text-right">
@@ -96,32 +96,33 @@
                         </div>
                     </div>
                 @empty
-                    <div class="flex flex-col items-center justify-center h-full text-gray-400">
-                        <svg class="w-16 h-16 mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-                        <p>Nenhuma mensagem encontrada neste contexto.</p>
-                        @if($log->response_text)
-                            <p class="mt-4 text-xs font-mono bg-gray-200 p-2 rounded">Resposta Raw do Log disponível (veja metadados)</p>
-                        @endif
-                    </div>
-                @endforelse
-
-                @if(!empty($log->response_text) && $messages->isEmpty())
-                     <!-- Fallback to showing just the logged request/response if no chat history found -->
-                    <div class="flex justify-end">
-                        <div class="max-w-[80%] rounded-2xl p-4 bg-blue-600 text-white rounded-tr-none">
-                             <div class="text-xs font-bold opacity-50 mb-1">Prompt Original</div>
-                             {{ Str::limit($log->prompt_text, 200) }}
+                    @if($log->response_text || $log->prompt_text)
+                        <!-- Fallback: Exibir Raw Log se não houver mensagens estruturadas -->
+                        <div class="flex justify-end mb-6">
+                            <div class="max-w-[90%] rounded-2xl p-4 bg-blue-600 text-white rounded-tr-none shadow-sm">
+                                <div class="text-[10px] uppercase font-bold opacity-70 mb-2 border-b border-blue-400 pb-1">Prompt Enviado</div>
+                                <div class="prose prose-sm prose-invert max-w-none text-xs font-mono whitespace-pre-wrap">
+{{ $log->prompt_text }}
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="flex justify-start">
-                         <div class="max-w-[80%] rounded-2xl p-4 bg-white text-gray-800 shadow-sm rounded-tl-none border border-gray-100">
-                             <div class="text-xs font-bold text-gray-400 mb-1">Resposta do Log</div>
-                             <div class="prose prose-sm">
-                                 {!! Str::markdown($log->response_text) !!}
-                             </div>
-                         </div>
-                    </div>
-                @endif
+                        
+                        <div class="flex justify-start">
+                            <div class="max-w-[90%] rounded-2xl p-4 bg-white text-gray-800 shadow-sm rounded-tl-none border border-gray-100">
+                                <div class="text-[10px] uppercase font-bold text-gray-400 mb-2 border-b border-gray-100 pb-1">Resposta da IA (Raw)</div>
+                                <div class="prose prose-sm max-w-none">
+                                    {!! str($log->response_text ?? '')->markdown() !!}
+                                </div>
+                            </div>
+                        </div>
+                    @else
+                        <!-- Estado Vazio Real -->
+                        <div class="flex flex-col items-center justify-center h-full text-gray-400 py-12">
+                            <svg class="w-16 h-16 mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                            <p>Nenhuma mensagem ou dado de log encontrado.</p>
+                        </div>
+                    @endif
+                @endforelse
             </div>
         </div>
     </div>

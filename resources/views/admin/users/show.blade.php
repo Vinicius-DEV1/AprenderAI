@@ -216,12 +216,12 @@
                                         R$ {{ number_format($log->estimated_cost, 4, ',', '.') }}
                                     </td>
                                     <td class="py-3 text-center">
-                                        @if($log->question_id)
-                                            <a href="{{ route('admin.chat-logs.show', $log->id) }}" class="text-blue-600 hover:text-blue-800" title="Ver Conversa">
+                                        @if($log->question_id || in_array($log->type, ['chat', 'question_generation']))
+                                            <a href="{{ route('admin.chat-logs.show', $log->id) }}" class="text-blue-600 hover:text-blue-800" title="Ver Detalhes">
                                                 <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                             </a>
                                         @else
-                                            <span class="text-gray-300">-</span>
+                                            <span class="text-gray-300" title="Sem detalhes visuais">-</span>
                                         @endif
                                     </td>
                                 </tr>
