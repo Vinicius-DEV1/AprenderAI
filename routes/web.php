@@ -10,6 +10,9 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
+Route::view('/privacidade', 'legal.privacy')->name('privacy');
+Route::view('/uso-justo', 'legal.fair-use')->name('fair-use');
+
 Route::post('/webhooks/mercadopago', [\App\Http\Controllers\WebhookController::class, 'handleMercadoPago'])->name('webhooks.mercadopago');
 Route::post('/webhooks/asaas', [\App\Http\Controllers\WebhookController::class, 'handleAsaas'])->name('webhooks.asaas');
 
