@@ -3,9 +3,11 @@
 namespace App\Console\Commands;
 
 use App\Models\Question;
+use App\Models\Subject;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use PDO;
 
 class ImportConcursosCommand extends Command
@@ -86,17 +88,17 @@ class ImportConcursosCommand extends Command
                 }
 
                 // 3. Map Fields
-                $data = [
+                // The 'subject' field is now handled via a relationship, so it's removed from the direct Question creation data.
+                // The 'source' field is updated as per the provided snippet.
+                $questionData = [
                     'type' => 'concurso',
-                    'subject' => $row['disciplina'] ?? 'Geral', // Map from source or fallback
-                    'theme' => null,
-                    'difficulty' => 'medium',
-                    'year' => (int)$row['ano'],
                     'statement' => $parsed['statement'],
                     'alternatives' => $parsed['alternatives'], // map to json
                     'correct_answer' => strtoupper(trim($row['gabarito'])),
-                    'source' => 'generated_system',
-                    'origin' => "{$row['orgao']} - {$row['cargo']} ({$row['ano']})",
+                    'explanation' => null, // Added as per snippet
+                    'year' => (int)$row['ano'],
+                    'difficulty' => 'medium',
+                    'source' => 'sql_import', // Changed from 'generated_system'
                     'organization' => $row['instituicao'], // Banca maps to organization
                     'institution' => $row['orgao'], // Orgao maps to institution
                     'role' => $row['cargo'],
@@ -106,7 +108,16 @@ class ImportConcursosCommand extends Command
                 ];
 
                 if (!$isDryRun) {
-                    Question::create($data);
+                    $question = Question::create($questionData);
+
+                    // Attach subject (N:N Relationship)
+                    // We normalize the subject name and attach it to the question using the pivot table.
+                    $mapDisciplina = $row['disciplina'] ?? 'Geral';
+                    $subjectModel = Subject::firstOrCreate(
+                    ['name' => $mapDisciplina],
+                    ['slug' => Str::slug($mapDisciplina), 'type' => 'concurso']
+                    );
+                    $question->subjects()->attach($subjectModel->id);
                 }
 
                 $inserted++;
