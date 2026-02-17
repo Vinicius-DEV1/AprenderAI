@@ -40,7 +40,10 @@ class QuestionAvailabilityService
         $ignoredIds = $this->getLastSeenQuestionIds($user);
 
         // Fetch Real Questions (up to the full needed amount to allow fallback if AI is missing)
-        $realQuestions = Question::where('subject', $subject)
+        // Fetch Real Questions (up to the full needed amount to allow fallback if AI is missing)
+        $realQuestions = Question::whereHas('subjects', function ($q) use ($subject) {
+            $q->where('name', $subject);
+        })
             ->where(function ($q) {
             $q->where('source', 'enem_real_2009_2023')
                 ->orWhere('source', 'manual');
@@ -51,7 +54,10 @@ class QuestionAvailabilityService
             ->get();
 
         // Fetch Existing AI Questions (up to the full needed amount to allow fallback if Real is missing)
-        $aiQuestions = Question::where('subject', $subject)
+        // Fetch Existing AI Questions (up to the full needed amount to allow fallback if Real is missing)
+        $aiQuestions = Question::whereHas('subjects', function ($q) use ($subject) {
+            $q->where('name', $subject);
+        })
             ->where('source', 'ai_generated')
             ->whereNotIn('id', $ignoredIds)
             ->inRandomOrder()

@@ -143,9 +143,13 @@ class SimulationCreationService
             \Illuminate\Support\Facades\Log::info("Processing Subject: $subject | Total Needed: $subjectTotal");
 
             if ($type === 'concurso') {
-                // Concurso Logic: Dynamic Filtering
+                // Concurso Logic: N:N Subject Filtering
+                // We use 'whereHas' to filter questions that belong to the specific subject
+                // via the 'question_subject' pivot table.
                 $query = Question::where('type', 'concurso')
-                    ->where('subject', $subject);
+                    ->whereHas('subjects', function ($q) use ($subject) {
+                    $q->where('name', $subject);
+                });
 
                 // Apply Filters
                 if (!empty($context['organization'])) {
@@ -158,9 +162,14 @@ class SimulationCreationService
                     $query->whereIn('role', $context['role']);
                 }
 
-                // Avoid repeats
-                if (!empty($lastSeenIds)) {
-                    $query->whereNotIn('id', $lastSeenIds);
+                // Anti-duplication Logic:
+                // We merge globally seen questions (last 20) with questions already selected
+                // in the current simulation session to prevent the same question from appearing
+                // multiple times (e.g., if it belongs to multiple subjects requested).
+                $avoidIds = array_merge($lastSeenIds, $finalQuestions->pluck('id')->toArray());
+
+                if (!empty($avoidIds)) {
+                    $query->whereNotIn('id', $avoidIds);
                 }
 
                 $subjectQuestions = $query->inRandomOrder()->limit($subjectTotal)->get();
@@ -178,7 +187,7 @@ class SimulationCreationService
                             if (!empty($nq['statement'])) {
                                 $createdQ = Question::create([
                                     'type' => 'concurso',
-                                    'subject' => $subject,
+                                    // 'subject' removed
                                     'difficulty' => $nq['difficulty'] ?? 'medium',
                                     'year' => date('Y'),
                                     'statement' => $nq['statement'],
@@ -191,6 +200,12 @@ class SimulationCreationService
                                     'institution' => $context['institution'][0] ?? null,
                                     'role' => $context['role'][0] ?? null,
                                 ]);
+
+                                $subjectModel = \App\Models\Subject::firstOrCreate(
+                                ['name' => $subject],
+                                ['slug' => \Illuminate\Support\Str::slug($subject), 'type' => 'concurso']
+                                );
+                                $createdQ->subjects()->attach($subjectModel->id);
                                 $finalQuestions->push($createdQ);
                             }
                         }
@@ -259,7 +274,7 @@ class SimulationCreationService
                                 if (!empty($nq['statement']) && !empty($nq['alternatives'])) {
                                     $createdQ = Question::create([
                                         'type' => $type,
-                                        'subject' => $subject,
+                                        // 'subject' removed
                                         'theme' => null,
                                         'difficulty' => $nq['difficulty'] ?? 'medium',
                                         'year' => $nq['year'] ?? rand(2015, 2025),
@@ -270,6 +285,12 @@ class SimulationCreationService
                                         'source' => 'ai_generated',
                                         'origin' => 'IA'
                                     ]);
+
+                                    $subjectModel = \App\Models\Subject::firstOrCreate(
+                                    ['name' => $subject],
+                                    ['slug' => \Illuminate\Support\Str::slug($subject), 'type' => $type]
+                                    );
+                                    $createdQ->subjects()->attach($subjectModel->id);
 
                                     $subjectQuestions->push($createdQ);
                                     $missingTotal--;
@@ -289,9 +310,13 @@ class SimulationCreationService
             // take whatever Real is left (ignoring "last 10" filter as emergency measure)
             if ($subjectQuestions->count() < $subjectTotal) {
                 $emergencyNeeded = $subjectTotal - $subjectQuestions->count();
-                $emergencyReal = Question::where('subject', $subject)
+                $emergencyReal = Question::whereHas('subjects', function ($q) use ($subject) {
+                    $q->where('name', $subject);
+                })
                     ->where(function ($q) {
-                    $q->where('source', 'enem_real_2009_2023')->orWhere('source', 'manual');
+                    $q->where('source', 'enem_real_2009_2023')
+                        ->orWhere('source', 'manual')
+                        ->orWhere('source', 'enem_api'); // Added enem_api just in case
                 })
                     ->whereNotIn('id', $subjectQuestions->pluck('id'))
                     ->inRandomOrder()
