@@ -7,7 +7,7 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-8 text-center relative">
+            <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-8 text-center relative border">
                 <!-- Lock Icon -->
                 <div class="absolute top-4 right-4 text-slate-100">
                     <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 24 24">
@@ -23,69 +23,73 @@
                         </svg>
                     </div>
 
-                    <h3 class="text-3xl font-bold text-slate-900 mb-4">
-                        Desbloqueie seu Potencial Máximo
-                    </h3>
+                </div>
 
-                    <p class="text-lg text-slate-600 mb-8">
-                        O Plano de Estudos Personalizado com IA é um recurso exclusivo para membros
-                        <span class="font-bold text-purple-600">PLUS</span>.
-                    </p>
+                <h3 class="text-3xl font-bold text-slate-900 mb-4">
+                    Desbloqueie seu Potencial Máximo
+                </h3>
 
-                    <div class="grid md:grid-cols-2 gap-6 text-left mb-10">
-                        <div class="flex items-start gap-3">
-                            <svg class="w-6 h-6 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7" />
-                            </svg>
-                            <div>
-                                <h4 class="font-semibold text-slate-900">Cronograma Inteligente</h4>
-                                <p class="text-sm text-slate-500">A IA organiza sua rotina baseada nos seus horários.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="flex items-start gap-3">
-                            <svg class="w-6 h-6 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7" />
-                            </svg>
-                            <div>
-                                <h4 class="font-semibold text-slate-900">Foco nas Dificuldades</h4>
-                                <p class="text-sm text-slate-500">Cronograma adaptado aos seus pontos fracos.</p>
-                            </div>
-                        </div>
-                        <div class="flex items-start gap-3">
-                            <svg class="w-6 h-6 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7" />
-                            </svg>
-                            <div>
-                                <h4 class="font-semibold text-slate-900">Evolução Constante</h4>
-                                <p class="text-sm text-slate-500">O plano se atualiza conforme você estuda.</p>
-                            </div>
-                        </div>
-                        <div class="flex items-start gap-3">
-                            <svg class="w-6 h-6 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7" />
-                            </svg>
-                            <div>
-                                <h4 class="font-semibold text-slate-900">Estratégia de Aprovação</h4>
-                                <p class="text-sm text-slate-500">Metodologia validada por especialistas.</p>
-                            </div>
+                </h3>
+
+                <p class="text-lg text-slate-600 mb-8">
+                    O Plano de Estudos Personalizado com IA é um recurso exclusivo para membros
+                    <span class="font-bold text-purple-600">PLUS</span>.
+                </p>
+
+                <div class="grid md:grid-cols-2 gap-6 text-left mb-10">
+                    <div class="flex items-start gap-3">
+                        <svg class="w-6 h-6 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <div>
+                            <h4 class="font-semibold text-slate-900">Cronograma Inteligente</h4>
+                            <p class="text-sm text-slate-500">A IA organiza sua rotina baseada nos
+                                seus horários.
+                            </p>
                         </div>
                     </div>
-
-                    <a href="{{ route('plans.index') }}"
-                        class="inline-flex items-center px-8 py-4 bg-purple-600 border border-transparent rounded-lg font-bold text-white uppercase tracking-widest hover:bg-purple-700 active:bg-purple-900 focus:outline-none focus:border-purple-900 focus:ring ring-purple-300 disabled:opacity-25 transition ease-in-out duration-150 shadow-lg transform hover:-translate-y-1">
-                        Fazer Upgrade para PLUS agora
-                    </a>
+                    <div class="flex items-start gap-3">
+                        <svg class="w-6 h-6 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <div>
+                            <h4 class="font-semibold text-slate-900">Foco nas Dificuldades</h4>
+                            <p class="text-sm text-slate-500">Cronograma adaptado aos seus pontos
+                                fracos.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <svg class="w-6 h-6 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <div>
+                            <h4 class="font-semibold text-slate-900">Evolução Constante</h4>
+                            <p class="text-sm text-slate-500">O plano se atualiza conforme você
+                                estuda.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <svg class="w-6 h-6 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <div>
+                            <h4 class="font-semibold text-slate-900">Estratégia de Aprovação</h4>
+                            <p class="text-sm text-slate-500">Metodologia validada por
+                                especialistas.</p>
+                        </div>
+                    </div>
                 </div>
+
+                <a href="{{ route('plans.index') }}"
+                    class="inline-flex items-center px-8 py-4 bg-purple-600 border border-transparent rounded-lg font-bold text-white uppercase tracking-widest hover:bg-purple-700 active:bg-purple-900 focus:outline-none focus:border-purple-900 focus:ring ring-purple-300 disabled:opacity-25 transition ease-in-out duration-150 shadow-lg transform hover:-translate-y-1">
+                    Fazer Upgrade para PLUS agora
+                </a>
             </div>
         </div>
+    </div>
     </div>
 </x-app-layout>

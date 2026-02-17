@@ -114,6 +114,64 @@
             padding: 60px 20px;
             color: #94a3b8;
         }
+
+        /* DARK MODE */
+        :root.dark .simulations-list {
+            background: #1e293b;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        :root.dark .simulation-row {
+            border-bottom-color: rgba(255, 255, 255, 0.08);
+        }
+
+        :root.dark .simulation-title h4,
+        :root.dark .simulations-header h1 {
+            color: #f1f5f9;
+        }
+
+        :root.dark .simulation-title p {
+            color: #94a3b8;
+        }
+
+        :root.dark .btn-view {
+            background: #0f172a;
+            border-color: rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+        }
+
+        :root.dark .btn-view:hover {
+            background: #334155;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        :root.dark .score-display {
+            color: #60a5fa;
+        }
+
+        :root.dark .empty-state {
+            color: #64748b;
+        }
+
+        :root.dark .status-badge.status-pending {
+            background: rgba(254, 243, 199, 0.1);
+            color: #fde68a;
+        }
+
+        :root.dark .status-badge.status-in_progress {
+            background: rgba(219, 234, 254, 0.1);
+            color: #93c5fd;
+        }
+
+        :root.dark .status-badge.status-finished {
+            background: rgba(253, 230, 138, 0.1);
+            color: #fcd34d;
+        }
+
+        :root.dark .status-badge.status-corrected {
+            background: rgba(209, 250, 229, 0.1);
+            color: #6ee7b7;
+        }
     </style>
 
     <div class="simulations-header">

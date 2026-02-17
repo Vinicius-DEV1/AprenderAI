@@ -2,8 +2,8 @@
     <!-- Welcome Section -->
     <div class="mb-8 flex justify-between items-end">
         <div>
-            <h1 class="text-3xl font-bold text-gray-800 mb-2">Dashboard Analítico 🚀</h1>
-            <p class="text-gray-600">Visão geral da performance do AprovadoAI</p>
+            <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">Dashboard Analítico 🚀</h1>
+            <p class="text-gray-600 dark:text-gray-400">Visão geral da performance do AprovadoAI</p>
         </div>
         <div class="text-sm text-gray-500">
             Atualizado em: {{ now()->format('d/m/Y H:i') }}
@@ -106,8 +106,8 @@
         <!-- Charts Column -->
         <div class="lg:col-span-2 space-y-8">
             <!-- Line Chart: Subscription Growth -->
-            <div class="bg-white rounded-2xl shadow-sm p-6">
-                <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6">
+                <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
                     <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                     </svg>
@@ -119,8 +119,8 @@
             </div>
 
             <!-- Doughnut Chart: User Status -->
-            <div class="bg-white rounded-2xl shadow-sm p-6">
-                <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6">
+                <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
                     <svg class="w-5 h-5 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
@@ -134,11 +134,11 @@
                     <div class="ml-8 space-y-3">
                         <div class="flex items-center">
                             <span class="w-3 h-3 rounded-full bg-green-500 mr-2"></span>
-                            <span class="text-gray-600 text-sm">Usuários Pagantes ({{ $userStats['active'] }})</span>
+                            <span class="text-gray-600 dark:text-gray-400 text-sm">Usuários Pagantes ({{ $userStats['active'] }})</span>
                         </div>
                         <div class="flex items-center">
-                            <span class="w-3 h-3 rounded-full bg-gray-300 mr-2"></span>
-                            <span class="text-gray-600 text-sm">Usuários Gratuitos ({{ $userStats['inactive'] }})</span>
+                            <span class="w-3 h-3 rounded-full bg-gray-300 dark:bg-slate-600 mr-2"></span>
+                            <span class="text-gray-600 dark:text-gray-400 text-sm">Usuários Gratuitos ({{ $userStats['inactive'] }})</span>
                         </div>
                     </div>
                 </div>
@@ -147,20 +147,20 @@
 
         <!-- Activity Feed Column -->
         <div class="lg:col-span-1">
-            <div class="bg-white rounded-2xl shadow-sm p-6 sticky top-6">
-                <h3 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 sticky top-6">
+                <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center">
                     <svg class="w-5 h-5 mr-2 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                     </svg>
                     Últimas Atividades
                 </h3>
 
-                <div class="relative border-l-2 border-gray-100 ml-3 space-y-6">
+                <div class="relative border-l-2 border-gray-100 dark:border-slate-700 ml-3 space-y-6">
                     @forelse($activityFeed as $activity)
                         <div class="mb-8 ml-6 relative">
                             <!-- Bullet Point -->
-                            <span class="absolute -left-[31px] flex items-center justify-center w-8 h-8 rounded-full ring-4 ring-white 
-                                {{ $activity['type'] == 'subscription' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600' }}">
+                            <span class="absolute -left-[31px] flex items-center justify-center w-8 h-8 rounded-full ring-4 ring-white dark:ring-slate-800
+                                {{ $activity['type'] == 'subscription' ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-300' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-300' }}">
                                 @if($activity['type'] == 'subscription')
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                                 @else
@@ -169,15 +169,15 @@
                             </span>
 
                             <!-- Content -->
-                            <div class="bg-gray-50 rounded-xl p-4 hover:bg-gray-100 transition-colors">
+                            <div class="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
                                 <div class="flex items-center mb-2">
                                     <img src="{{ $activity['user']->avatar_url ?? 'https://ui-avatars.com/api/?name='.urlencode($activity['user']->name) }}" 
                                          alt="{{ $activity['user']->name }}" 
                                          class="w-6 h-6 rounded-full mr-2">
-                                    <span class="text-xs font-semibold text-gray-700">{{ $activity['user']->name }}</span>
+                                    <span class="text-xs font-semibold text-gray-700 dark:text-gray-200">{{ $activity['user']->name }}</span>
                                     <span class="text-xs text-gray-400 ml-auto">{{ $activity['created_at']->diffForHumans() }}</span>
                                 </div>
-                                <p class="text-sm text-gray-600 leading-snug">
+                                <p class="text-sm text-gray-600 dark:text-gray-300 leading-snug">
                                     {{ $activity['message'] }}
                                 </p>
                             </div>

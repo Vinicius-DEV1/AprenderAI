@@ -165,6 +165,69 @@
             border-radius: 6px;
             font-size: 15px;
         }
+
+        /* DARK MODE */
+        :root.dark .config-card {
+            background: #1e293b;
+            color: #f1f5f9;
+        }
+
+        :root.dark .form-section h3 {
+            color: #f1f5f9;
+        }
+
+        :root.dark .radio-label {
+            border-color: rgba(255, 255, 255, 0.1);
+            background: rgba(15, 23, 42, 0.3);
+        }
+
+        :root.dark .radio-label h4 {
+            color: #cbd5e1;
+        }
+
+        :root.dark .radio-label p {
+            color: #64748b;
+        }
+
+        :root.dark .radio-option input[type="radio"]:checked+.radio-label {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.15);
+        }
+
+        :root.dark .radio-option input[type="radio"]:checked+.radio-label h4 {
+            color: #93c5fd;
+        }
+
+        :root.dark .slider {
+            background: #334155;
+        }
+
+        :root.dark .slider::-webkit-slider-thumb {
+            background: #3b82f6;
+        }
+
+        :root.dark .slider-value {
+            color: #60a5fa;
+        }
+
+        :root.dark .checkbox-option {
+            border-color: rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+        }
+
+        :root.dark .checkbox-option:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        :root.dark .subject-input label {
+            color: #cbd5e1;
+        }
+
+        :root.dark .subject-input input {
+            background: #0f172a;
+            border-color: rgba(255, 255, 255, 0.1);
+            color: #f1f5f9;
+        }
     </style>
 
     <div class="config-card">
@@ -173,7 +236,8 @@
 
             <!-- Exibir Erros de Validação ou Exceções -->
             @if ($errors->any())
-                <div style="background-color: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 12px; border-radius: 8px; margin-bottom: 24px;">
+                <div
+                    style="background-color: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 12px; border-radius: 8px; margin-bottom: 24px;">
                     <ul style="list-style-type: disc; padding-left: 20px;">
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>

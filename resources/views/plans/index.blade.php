@@ -19,8 +19,10 @@
             @endif
 
             <div class="text-center mb-10">
-                <h3 class="text-3xl font-bold text-gray-900">Escolha o plano ideal para sua aprovação</h3>
-                <p class="mt-2 text-gray-600">Faça upgrade e desbloqueie correção detalhada por IA e planos de estudo.
+                <h3 class="text-3xl font-bold text-gray-900">Escolha o plano ideal para sua aprovação
+                </h3>
+                <p class="mt-2 text-gray-600">Faça upgrade e desbloqueie correção detalhada por IA e
+                    planos de estudo.
                 </p>
             </div>
 
@@ -35,7 +37,8 @@
                         @endif
 
                         <div class="p-8 flex-1">
-                            <h4 class="text-2xl font-bold text-gray-900 text-center mb-4">{{ $plan->name }}</h4>
+                            <h4 class="text-2xl font-bold text-gray-900 text-center mb-4">{{ $plan->name }}
+                            </h4>
                             <div class="text-center mb-6">
                                 <span class="text-4xl font-extrabold text-blue-600">R$
                                     {{ number_format($plan->price, 2, ',', '.') }}</span>
