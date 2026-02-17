@@ -318,6 +318,40 @@
                                 onchange="validateDistribution()">
                         </div>
                     </div>
+
+                    <!-- Filtros Opcionais -->
+                    <div style="margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 24px;">
+                        <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #334155;">Filtros do Edital (Opcional)</h4>
+                        
+                        <div style="display: grid; gap: 16px;">
+                            <div class="subject-input">
+                                <label>Banca (Segure Ctrl para selecionar várias)</label>
+                                <select name="organization[]" multiple style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; height: 120px;">
+                                    @foreach($organizations as $org)
+                                        <option value="{{ $org }}">{{ $org }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="subject-input">
+                                <label>Órgão</label>
+                                <select name="institution[]" multiple style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; height: 120px;">
+                                    @foreach($institutions as $inst)
+                                        <option value="{{ $inst }}">{{ $inst }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="subject-input">
+                                <label>Cargo</label>
+                                <select name="role[]" multiple style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; height: 120px;">
+                                    @foreach($roles as $role)
+                                        <option value="{{ $role }}">{{ $role }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <input type="hidden" name="total_questions" id="total_questions" value="90">
