@@ -146,6 +146,7 @@ class SimulationCreationService
             }
 
             if ($type === 'enem' && in_array($subject, ['português', 'matemática'])) {
+                \Illuminate\Support\Facades\Log::info("DEBUG TRACE: Entrou no IF de geração para $subject. CountGen calculado...");
                 // RULE: 90% Real + 10% Generated
                 // Calculate quotas
                 $countGen = (int)ceil($subjectTotal * 0.10); // At least 1 if total > 0
@@ -214,6 +215,8 @@ class SimulationCreationService
 
                 // CHECK: Do we have enough generated questions?
                 $missingGen = $countGen - $pickedGen->count();
+                \Illuminate\Support\Facades\Log::info("DEBUG TRACE: Subject $subject | CountGen: $countGen | PickedDB: {$pickedGen->count()} | Missing: $missingGen");
+
                 if ($missingGen > 0) {
                     // CALL AI TO GENERATE MISSING
                     try {
@@ -247,7 +250,7 @@ class SimulationCreationService
                                             'alternatives' => $nq['alternatives'],
                                             'correct_answer' => $nq['correct_answer'] ?? 'A',
                                             'explanation' => $nq['explanation'] ?? null,
-                                            'source' => 'generated_system',
+                                            'source' => 'ai_generated', // FIX: Standardize as ai_generated for UI badge
                                             'origin' => 'IA'
                                         ]);
 
@@ -303,6 +306,7 @@ class SimulationCreationService
 
             }
             else {
+                \Illuminate\Support\Facades\Log::info("DEBUG TRACE: Caiu no ELSE para $subject (Type: $type)");
                 // Selection for other types
                 $candidates = Question::where('type', $type)
                     ->where('subject', $subject)
