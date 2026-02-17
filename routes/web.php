@@ -120,7 +120,8 @@ Route::middleware(['auth'])->group(function () {
             // Chat Logs
             Route::get('/chat-logs/{id}', [\App\Http\Controllers\Admin\ChatLogController::class , 'show'])->name('chat-logs.show');
         }
-        );    });
+        );
+    });
 
 // Google Auth
 Route::get('auth/google', [\App\Http\Controllers\Auth\GoogleAuthController::class , 'redirect'])->name('auth.google');
