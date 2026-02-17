@@ -11,246 +11,230 @@ use App\Models\User;
 
 class SimulationCreationService
 {
+    protected $availabilityService;
+
+    public function __construct(QuestionAvailabilityService $availabilityService)
+    {
+        $this->availabilityService = $availabilityService;
+    }
     /**
-     * Create a new simulation with selected questions and answers.
+     * Step 1: Create the simulation record with 'generating' status.
+     * This is synchronous and fast.
      */
-    public function createSimulation(User $user, array $data): Simulation
+    public function createPendingSimulation(User $user, array $data): Simulation
     {
         set_time_limit(300);
-        return DB::transaction(function () use ($user, $data) {
-            $total = (int) $data['total_questions'];
-            $distribution = $data['subject_distribution'] ?? [];
-            $type = $data['type'];
+        $total = (int)$data['total_questions'];
+        $distribution = $data['subject_distribution'] ?? [];
+        $type = $data['type'];
 
-            // 1. Create Simulation Record
-            $simulation = Simulation::create([
-                'user_id' => $user->id,
-                'type' => $type,
-                'configuration' => [
-                    'questions' => $total,
-                    'subject_distribution' => $distribution,
-                    'include_essay' => $data['include_essay'] ?? false,
-                    'time_limit' => $type === 'enem'
-                        ? (($data['include_essay'] ?? false) ? 19800 : 16200)
-                        : (int) ($data['custom_time'] ?? 10800),
-                ],
-                'status' => 'pending',
-            ]);
+        return Simulation::create([
+            'user_id' => $user->id,
+            'type' => $type,
+            'configuration' => [
+                'questions' => $total,
+                'subject_distribution' => $distribution,
+                'include_essay' => $data['include_essay'] ?? false,
+                'time_limit' => $type === 'enem'
+                ? (($data['include_essay'] ?? false) ? 19800 : 16200)
+                : (int)($data['custom_time'] ?? 10800),
+            ],
+            'status' => 'generating', // Initial status for async flow
+        ]);
+    }
 
-            // 2. Select Questions
-            $questions = $this->selectQuestions($type, $total, $distribution);
+    /**
+     * Step 2: Process questions (Select DB + Generate AI).
+     * This runs inside the Job.
+     */
+    public function processSimulationQuestions(Simulation $simulation, array $data): void
+    {
+        // 1. Select Questions (Outside Transaction - Heavy processing & AI calls)
+        $total = (int)$data['total_questions'];
+        $distribution = $data['subject_distribution'] ?? [];
+        $type = $data['type'];
 
-            // Validation: Ensure we found enough questions
-            if ($questions->count() !== $total) {
-                // Rollback will happen automatically if we throw exception
-                throw new \Exception("Banco insuficiente para montar {$total} questões com essa distribuição. Foram selecionadas {$questions->count()}.");
+        // This might take 30-60s if AI is needed.
+        // We do NOT want to hold a DB transaction (especially on SQLite) during this time.
+        $questions = $this->selectQuestions($simulation->user, $type, $total, $distribution);
+
+        // Validation
+        if ($questions->count() !== $total) {
+            if ($questions->isEmpty()) {
+                throw new \Exception("Nenhuma questão encontrada para os critérios.");
             }
+        }
 
-            // 3. Create Answers
+        // 2. Persistence (Inside Transaction - Fast)
+        DB::transaction(function () use ($simulation, $questions) {
             $now = now();
             $rows = $questions->map(fn($q) => [
-                'simulation_id' => $simulation->id,
-                'question_id' => $q->id,
-                'user_answer' => null,
-                'is_correct' => false,
-                'time_spent' => 0,
-                'marked_for_review' => false,
-                'created_at' => $now,
-                'updated_at' => $now,
+            'simulation_id' => $simulation->id,
+            'question_id' => $q->id,
+            'user_answer' => null,
+            'is_correct' => false,
+            'time_spent' => 0,
+            'marked_for_review' => false,
+            'created_at' => $now,
+            'updated_at' => $now,
             ])->all();
 
             DB::table('simulation_answers')->insert($rows);
 
-            // 4. Update User Stats and Start Simulation
-            $user->incrementSimulationUsage();
-            $simulation->startSimulation();
-
-            return $simulation;
+            $simulation->user->incrementSimulationUsage();
         });
+    }
+
+    /**
+     * Wrapper for backward compatibility or direct sync calls if needed.
+     */
+    public function createSimulation(User $user, array $data): Simulation
+    {
+        $simulation = $this->createPendingSimulation($user, $data);
+        $this->processSimulationQuestions($simulation, $data);
+        // Sync update to pending
+        $simulation->update(['status' => 'pending']);
+        $simulation->startSimulation();
+        return $simulation;
+    }
+
+    /**
+     * Get IDs of questions seen in the last 10 finished simulations.
+     */
+    protected function getLastSeenQuestionIds(User $user, int $limit = 10): array
+    {
+        $lastSimulations = Simulation::where('user_id', $user->id)
+            ->where('status', 'finished')
+            ->orderByDesc('created_at')
+            ->limit($limit)
+            ->pluck('id');
+
+        if ($lastSimulations->isEmpty()) {
+            return [];
+        }
+
+        return DB::table('simulation_answers')
+            ->whereIn('simulation_id', $lastSimulations)
+            ->pluck('question_id')
+            ->toArray();
     }
 
     /**
      * Select questions respecting business rules.
      */
-    protected function selectQuestions(string $type, int $total, array $distribution): Collection
+    protected function selectQuestions(User $user, string $type, int $total, array $distribution): Collection
     {
         $finalQuestions = collect();
-        $usedStatements = []; // Global deduplication by statement hash
 
-        // 1. Define Subject Order
-        if ($type === 'enem') {
-            $orderedSubjects = ['português', 'matemática'];
-            foreach (array_keys($distribution) as $s) {
-                if (!in_array($s, $orderedSubjects)) {
-                    $orderedSubjects[] = $s;
-                }
-            }
-        } else {
-            $orderedSubjects = array_keys($distribution);
-        }
+        foreach ($distribution as $subject => $subjectTotal) {
+            if ($subjectTotal <= 0)
+                continue;
 
-        foreach ($orderedSubjects as $subject) {
-            $subjectTotal = (int) ($distribution[$subject] ?? 0);
             \Illuminate\Support\Facades\Log::info("Processing Subject: $subject | Total Needed: $subjectTotal");
 
-            if ($subjectTotal <= 0) {
-                continue;
+            // 1. Calculate Quotas (90% Real / 10% IA)
+            $countGenTarget = (int)ceil($subjectTotal * 0.10);
+            $countRealTarget = $subjectTotal - $countGenTarget;
+
+            // 2. Use Availability Service to get pools
+            $availability = $this->availabilityService->getAvailableQuestions($user, $subject, $subjectTotal);
+            $realPool = $availability['real'];
+            $aiPool = $availability['ai'];
+
+            $subjectQuestions = collect();
+
+            // 3. Populate 90% Real Quota
+            $pickedReal = $realPool->take($countRealTarget);
+            $subjectQuestions = $subjectQuestions->merge($pickedReal);
+            $remainingRealPool = $realPool->diff($pickedReal);
+
+            // 4. Populate 10% IA Quota (from Existing)
+            $pickedAi = $aiPool->take($countGenTarget);
+            $subjectQuestions = $subjectQuestions->merge($pickedAi);
+            $remainingAiPool = $aiPool->diff($pickedAi);
+
+            // 5. Fill remaining gaps (if Real or existing IA was not enough for their targets)
+            $missingBeforeGen = $subjectTotal - $subjectQuestions->count();
+            if ($missingBeforeGen > 0) {
+                // Try to fill with remaining Real first
+                $extraReal = $remainingRealPool->take($missingBeforeGen);
+                $subjectQuestions = $subjectQuestions->merge($extraReal);
+                $missingBeforeGen = $subjectTotal - $subjectQuestions->count();
+
+                // Then try to fill with remaining IA existing
+                if ($missingBeforeGen > 0) {
+                    $extraAi = $remainingAiPool->take($missingBeforeGen);
+                    $subjectQuestions = $subjectQuestions->merge($extraAi);
+                }
             }
 
-            // The original line is now redundant or can be kept if it's meant to re-cast.
-            // $subjectTotal = (int) $distribution[$subject]; // This line was originally here
+            // 6. AI Generation Fallback (ONLY if strictly missing to reach total OR 10% quota)
+            $currentAiCount = $subjectQuestions->where('source', 'ai_generated')->count();
+            $missingForQuota = $countGenTarget - $currentAiCount;
+            $missingForTotal = $subjectTotal - $subjectQuestions->count();
 
-            if ($type === 'enem' && in_array($subject, ['português', 'matemática'])) {
-                // RULE: 90% Real + 10% Generated
-                // Calculate quotas
-                $countGen = (int) ceil($subjectTotal * 0.10); // At least 1 if total > 0
-                $countReal = $subjectTotal - $countGen;
+            $toGenerate = max($missingForQuota, $missingForTotal);
 
-                // 1. Fetch Real Questions
-                // NOTE: Real questions are marked as 'concurso' type in DB but have the official ENEM source.
-                $realCandidates = Question::where('subject', $subject)
-                    ->where('source', 'enem_real_2009_2023') // Official ENEM Source
-                    ->inRandomOrder()
-                    ->limit($countReal * 2) // Overfetch for dedupe
-                    ->get();
+            if ($toGenerate > 0) {
+                try {
+                    $aiService = app(\App\Services\AIService::class);
+                    $batchSize = 5;
+                    $attempts = 0;
+                    $maxAttempts = 3;
 
-                \Illuminate\Support\Facades\Log::info("Real Candidates Found for $subject: " . $realCandidates->count());
-                $subjectQuestions = collect();
+                    while ($toGenerate > 0 && $attempts < $maxAttempts) {
+                        $attempts++;
+                        $chunkCount = min($batchSize, $toGenerate);
+                        $newQuestions = $aiService->generateQuestions($subject, $chunkCount);
 
-                foreach ($realCandidates as $q) {
-                    if ($subjectQuestions->count() >= $countReal)
-                        break;
-
-                    $stmtHash = md5(trim($q->statement));
-                    if (!in_array($stmtHash, $usedStatements)) {
-                        $subjectQuestions->push($q);
-                        $usedStatements[] = $stmtHash;
-                    }
-                }
-
-                // If we didn't get enough real questions (unlikely given import), we might need to fallback?
-                // For now, assume enough real questions exist.
-
-                // 2. Fetch Generated Questions
-                $genCandidates = Question::where('type', 'enem')
-                    ->where('subject', $subject)
-                    ->where('source', 'generated_system') // DB constraint
-                    ->inRandomOrder()
-                    ->limit($countGen * 3)
-                    ->get();
-
-                $pickedGen = collect();
-                foreach ($genCandidates as $q) {
-                    if ($pickedGen->count() >= $countGen)
-                        break;
-
-                    $stmtHash = md5(trim($q->statement));
-                    if (!in_array($stmtHash, $usedStatements)) {
-                        $pickedGen->push($q);
-                        $usedStatements[] = $stmtHash;
-                    }
-                }
-                \Illuminate\Support\Facades\Log::info("Picked Generated Candidates for $subject: " . $pickedGen->count());
-
-                // CHECK: Do we have enough questions in total (Real + Gen)?
-                // We need $subjectTotal, but we have $subjectQuestions + $pickedGen
-                $currentTotal = $subjectQuestions->count() + $pickedGen->count();
-                $missingGen = $subjectTotal - $currentTotal;
-
-                if ($missingGen > 0) {
-                    \Illuminate\Support\Facades\Log::info("Still missing $missingGen questions for $subject. Calling AI...");
-                    try {
-                        $aiService = app(\App\Services\AIService::class);
-
-                        // Chunking AI Generation in batches of 5
-                        $batchSize = 5;
-                        $attempts = 0;
-                        $maxAttempts = 10; // Safety limit
-                        $consecutiveFailures = 0;
-
-                        while (($pickedGen->count() + $subjectQuestions->count()) < $subjectTotal && $attempts < $maxAttempts) {
-                            $attempts++;
-                            $stillNeeded = $subjectTotal - ($pickedGen->count() + $subjectQuestions->count());
-                            $chunkCount = min($batchSize, $stillNeeded);
-
-                            $newQuestions = $aiService->generateQuestions($subject, $chunkCount);
-
-                            if (empty($newQuestions)) {
-                                $consecutiveFailures++;
-                            } else {
-                                $consecutiveFailures = 0;
-                            }
-
-                            foreach (($newQuestions ?? []) as $nq) {
-                                // Validate and Insert
-                                if (!empty($nq['statement']) && !empty($nq['alternatives'])) {
-                                    $createdQ = Question::create([
-                                        'type' => 'enem',
-                                        'subject' => $subject,
-                                        'theme' => null,
-                                        'difficulty' => 'medium',
-                                        'year' => rand(2015, 2025),
-                                        'statement' => $nq['statement'],
-                                        'alternatives' => $nq['alternatives'],
-                                        'correct_answer' => $nq['correct_answer'] ?? 'A',
-                                        'explanation' => $nq['explanation'] ?? null,
-                                        'source' => 'generated_system' // DB constraint
-                                    ]);
-
-                                    $pickedGen->push($createdQ);
-                                    $usedStatements[] = md5(trim($createdQ->statement));
-
-                                    if (($pickedGen->count() + $subjectQuestions->count()) >= $subjectTotal)
-                                        break 2;
-                                }
-                            }
-
-                            if ($consecutiveFailures >= 2) {
-                                \Illuminate\Support\Facades\Log::warning("Aborting AI generation for $subject after $consecutiveFailures consecutive failures.");
-                                break;
-                            }
-
-                        }
-                    } catch (\Exception $e) {
-                        $consecutiveFailures++;
-                        \Illuminate\Support\Facades\Log::error("Failed to generate questions: " . $e->getMessage());
-
-                        if ($consecutiveFailures >= 2) {
-                            \Illuminate\Support\Facades\Log::warning("Aborting AI generation for $subject after $consecutiveFailures consecutive failures (Exception).");
+                        if (empty($newQuestions))
                             break;
+
+                        foreach ($newQuestions as $nq) {
+                            if (!empty($nq['statement']) && !empty($nq['alternatives'])) {
+                                $createdQ = Question::create([
+                                    'type' => $type,
+                                    'subject' => $subject,
+                                    'theme' => null,
+                                    'difficulty' => $nq['difficulty'] ?? 'medium',
+                                    'year' => $nq['year'] ?? rand(2015, 2025),
+                                    'statement' => $nq['statement'],
+                                    'alternatives' => $nq['alternatives'],
+                                    'correct_answer' => $nq['correct_answer'] ?? 'A',
+                                    'explanation' => $nq['explanation'] ?? null,
+                                    'source' => 'ai_generated',
+                                    'origin' => 'IA'
+                                ]);
+
+                                $subjectQuestions->push($createdQ);
+                                $toGenerate--;
+                                if ($toGenerate <= 0)
+                                    break;
+                            }
                         }
                     }
                 }
-
-                \Illuminate\Support\Facades\Log::info("Picked for $subject: Real=" . ($subjectQuestions->count()) . " | Gen=" . $pickedGen->count());
-
-                $subjectQuestions = $subjectQuestions->merge($pickedGen);
-
-                // FINAL CHECK: If still missing (IA failed to deliver enough), fill with Real even if duplicates
-                $stillMissing = $subjectTotal - $subjectQuestions->count();
-                if ($stillMissing > 0) {
-                    \Illuminate\Support\Facades\Log::warning("Still missing $stillMissing questions for $subject after AI fallback. Filling with available real questions.");
-                    $extraReal = Question::where('subject', $subject)
-                        ->where('source', 'enem_real_2009_2023')
-                        ->whereNotIn('id', $subjectQuestions->pluck('id')) // AVOID DUPLICATES
-                        ->inRandomOrder()
-                        ->limit($stillMissing)
-                        ->get();
-                    $subjectQuestions = $subjectQuestions->merge($extraReal);
+                catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::warning("AI Generation failed for subject $subject: " . $e->getMessage());
                 }
+            }
 
-                $finalQuestions = $finalQuestions->merge($subjectQuestions);
-
-            } else {
-                // Standard random selection for other types
-                $candidates = Question::where('type', $type)
-                    ->where('subject', $subject)
+            // 7. Desperate Fallback: If still missing, ignore the "last 10" and take Real
+            if ($subjectQuestions->count() < $subjectTotal) {
+                $stillNeeded = $subjectTotal - $subjectQuestions->count();
+                $desperateReal = Question::where('subject', $subject)
+                    ->where(function ($q) {
+                    $q->where('source', 'enem_real_2009_2023')->orWhere('source', 'manual');
+                })
+                    ->whereNotIn('id', $subjectQuestions->pluck('id'))
                     ->inRandomOrder()
-                    ->limit($subjectTotal)
+                    ->limit($stillNeeded)
                     ->get();
 
-                $finalQuestions = $finalQuestions->merge($candidates);
+                $subjectQuestions = $subjectQuestions->merge($desperateReal);
             }
+
+            $finalQuestions = $finalQuestions->merge($subjectQuestions->take($subjectTotal));
         }
 
         return $finalQuestions;

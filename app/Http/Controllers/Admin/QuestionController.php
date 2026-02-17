@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Question;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class QuestionController extends Controller
 {
@@ -23,15 +24,36 @@ class QuestionController extends Controller
         if ($request->filled('source')) {
             $query->where('source', $request->source);
         }
-        
+
         // Filter for missing explanations (to help admin prioritize)
         if ($request->boolean('missing_explanation')) {
-            $query->whereNull('explanation')->orWhere('explanation', '');
+            $query->where(function ($q) {
+                $q->whereNull('explanation')->orWhere('explanation', '');
+            });
+        }
+
+        // Filter by origin (new)
+        if ($request->filled('origin')) {
+            $query->where('origin', $request->origin);
         }
 
         $questions = $query->orderByDesc('id')->paginate(15);
 
-        return view('admin.questions.index', compact('questions'));
+        // --- Mini-Dashboard Stats ---
+        $totalQuestions = Question::count();
+        $aiQuestions = Question::where('source', 'ai_generated')->count();
+
+        // Group by origin (excluding null/empty which are likely generic manual or AI)
+        // We only want explicit origins for the cards like "ENEM 2012"
+        $questionsByOrigin = Question::select('origin', DB::raw('count(*) as total'))
+            ->whereNotNull('origin')
+            ->where('origin', '!=', '')
+            ->where('origin', '!=', 'IA') // Fix: Exclude 'IA' as it has its own dedicated card
+            ->groupBy('origin')
+            ->orderByDesc('total')
+            ->get();
+
+        return view('admin.questions.index', compact('questions', 'totalQuestions', 'aiQuestions', 'questionsByOrigin'));
     }
 
     public function create()
@@ -56,6 +78,7 @@ class QuestionController extends Controller
             'source' => 'required|in:manual,ai_generated',
             'year' => 'nullable|integer',
             'difficulty' => 'required|in:easy,medium,hard',
+            'origin' => 'nullable|string|max:255',
         ]);
 
         Question::create($validated);
@@ -71,7 +94,7 @@ class QuestionController extends Controller
 
     public function update(Request $request, Question $question)
     {
-         $validated = $request->validate([
+        $validated = $request->validate([
             'subject' => 'required|in:matemática,português',
             'type' => 'required|in:enem,concurso',
             'statement' => 'required|string',
@@ -84,8 +107,9 @@ class QuestionController extends Controller
             'correct_answer' => 'required|in:A,B,C,D,E',
             'explanation' => 'nullable|string',
             'source' => 'required|in:manual,ai_generated',
-             'year' => 'nullable|integer',
+            'year' => 'nullable|integer',
             'difficulty' => 'required|in:easy,medium,hard',
+            'origin' => 'nullable|string|max:255',
         ]);
 
         $question->update($validated);

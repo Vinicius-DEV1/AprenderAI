@@ -13,6 +13,50 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             
+            <!-- Mini-Dashboard -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <!-- Total Geral -->
+                <a href="{{ route('admin.questions.index') }}" class="block p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border-l-4 border-indigo-500">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-indigo-50 text-indigo-600 mr-4">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 font-medium">Total Geral</p>
+                            <p class="text-2xl font-bold text-gray-800">{{ number_format($totalQuestions) }}</p>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Inéditas -->
+                <a href="{{ route('admin.questions.index', ['source' => 'ai_generated']) }}" class="block p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border-l-4 border-purple-500">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-purple-50 text-purple-600 mr-4">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 font-medium">Inéditas (IA)</p>
+                            <p class="text-2xl font-bold text-gray-800">{{ number_format($aiQuestions) }}</p>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Origins Dinâmicos -->
+                @foreach($questionsByOrigin as $stat)
+                     <a href="{{ route('admin.questions.index', ['origin' => $stat->origin]) }}" class="block p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border-l-4 border-blue-400">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-blue-50 text-blue-500 mr-4">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500 font-medium truncate" title="{{ $stat->origin }}">{{ str($stat->origin)->limit(15) }}</p>
+                                <p class="text-2xl font-bold text-gray-800">{{ number_format($stat->total) }}</p>
+                            </div>
+                        </div>
+                    </a>
+                @endforeach
+            </div>
+
             <!-- Filtros -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6 p-6">
                 <form method="GET" action="{{ route('admin.questions.index') }}" class="grid grid-cols-1 md:grid-cols-4 gap-4">
