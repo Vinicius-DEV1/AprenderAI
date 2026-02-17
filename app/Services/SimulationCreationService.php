@@ -132,106 +132,102 @@ class SimulationCreationService
 
             \Illuminate\Support\Facades\Log::info("Processing Subject: $subject | Total Needed: $subjectTotal");
 
-            // 1. Calculate Quotas (90% Real / 10% IA)
+            // 1. Calculate Quotas (STRICT 90/10 split)
             $countGenTarget = (int)ceil($subjectTotal * 0.10);
             $countRealTarget = $subjectTotal - $countGenTarget;
 
-            // 2. Use Availability Service to get pools
+            // 2. Fetch Pools from Availability Service
             $availability = $this->availabilityService->getAvailableQuestions($user, $subject, $subjectTotal);
             $realPool = $availability['real'];
             $aiPool = $availability['ai'];
 
             $subjectQuestions = collect();
 
-            // 3. Populate 90% Real Quota
+            // 3. Pick Real content up to their target
             $pickedReal = $realPool->take($countRealTarget);
             $subjectQuestions = $subjectQuestions->merge($pickedReal);
-            $remainingRealPool = $realPool->diff($pickedReal);
 
-            // 4. Populate 10% IA Quota (from Existing)
+            // 4. Pick Existing IA content up to their target
             $pickedAi = $aiPool->take($countGenTarget);
             $subjectQuestions = $subjectQuestions->merge($pickedAi);
             $remainingAiPool = $aiPool->diff($pickedAi);
 
-            // 5. Fill remaining gaps (if Real or existing IA was not enough for their targets)
-            $missingBeforeGen = $subjectTotal - $subjectQuestions->count();
-            if ($missingBeforeGen > 0) {
-                // Try to fill with remaining Real first
-                $extraReal = $remainingRealPool->take($missingBeforeGen);
-                $subjectQuestions = $subjectQuestions->merge($extraReal);
-                $missingBeforeGen = $subjectTotal - $subjectQuestions->count();
+            // 5. Check if we have gaps
+            $missingTotal = $subjectTotal - $subjectQuestions->count();
 
-                // Then try to fill with remaining IA existing
-                if ($missingBeforeGen > 0) {
-                    $extraAi = $remainingAiPool->take($missingBeforeGen);
-                    $subjectQuestions = $subjectQuestions->merge($extraAi);
-                }
-            }
+            if ($missingTotal > 0) {
+                // If we are missing questions, it's either because:
+                // a) Real questions were exhausted (need AI fallback)
+                // b) Existing AI was exhausted (need Generation)
 
-            // 6. AI Generation Fallback (ONLY if strictly missing to reach total OR 10% quota)
-            $currentAiCount = $subjectQuestions->where('source', 'ai_generated')->count();
-            $missingForQuota = $countGenTarget - $currentAiCount;
-            $missingForTotal = $subjectTotal - $subjectQuestions->count();
+                // First, try to fill "Exhaustion gaps" with REMAINING existing AI from pool
+                // This covers cases where we wanted 90 Real but only found 50.
+                $extraAiFromPool = $remainingAiPool->take($missingTotal);
+                $subjectQuestions = $subjectQuestions->merge($extraAiFromPool);
 
-            $toGenerate = max($missingForQuota, $missingForTotal);
+                $missingTotal = $subjectTotal - $subjectQuestions->count();
 
-            if ($toGenerate > 0) {
-                try {
-                    $aiService = app(\App\Services\AIService::class);
-                    $batchSize = 5;
-                    $attempts = 0;
-                    $maxAttempts = 3;
+                // If still missing, we MUST generate.
+                // This covers the remaining IA quota AND the Real exhaustion exhaustion.
+                if ($missingTotal > 0) {
+                    try {
+                        $aiService = app(\App\Services\AIService::class);
+                        $batchSize = 5;
+                        $attempts = 0;
+                        $maxAttempts = 3;
 
-                    while ($toGenerate > 0 && $attempts < $maxAttempts) {
-                        $attempts++;
-                        $chunkCount = min($batchSize, $toGenerate);
-                        $newQuestions = $aiService->generateQuestions($subject, $chunkCount);
+                        while ($missingTotal > 0 && $attempts < $maxAttempts) {
+                            $attempts++;
+                            $chunkCount = min($batchSize, $missingTotal);
+                            $newQuestions = $aiService->generateQuestions($subject, $chunkCount);
 
-                        if (empty($newQuestions))
-                            break;
+                            if (empty($newQuestions))
+                                break;
 
-                        foreach ($newQuestions as $nq) {
-                            if (!empty($nq['statement']) && !empty($nq['alternatives'])) {
-                                $createdQ = Question::create([
-                                    'type' => $type,
-                                    'subject' => $subject,
-                                    'theme' => null,
-                                    'difficulty' => $nq['difficulty'] ?? 'medium',
-                                    'year' => $nq['year'] ?? rand(2015, 2025),
-                                    'statement' => $nq['statement'],
-                                    'alternatives' => $nq['alternatives'],
-                                    'correct_answer' => $nq['correct_answer'] ?? 'A',
-                                    'explanation' => $nq['explanation'] ?? null,
-                                    'source' => 'ai_generated',
-                                    'origin' => 'IA'
-                                ]);
+                            foreach ($newQuestions as $nq) {
+                                if (!empty($nq['statement']) && !empty($nq['alternatives'])) {
+                                    $createdQ = Question::create([
+                                        'type' => $type,
+                                        'subject' => $subject,
+                                        'theme' => null,
+                                        'difficulty' => $nq['difficulty'] ?? 'medium',
+                                        'year' => $nq['year'] ?? rand(2015, 2025),
+                                        'statement' => $nq['statement'],
+                                        'alternatives' => $nq['alternatives'],
+                                        'correct_answer' => $nq['correct_answer'] ?? 'A',
+                                        'explanation' => $nq['explanation'] ?? null,
+                                        'source' => 'ai_generated',
+                                        'origin' => 'IA'
+                                    ]);
 
-                                $subjectQuestions->push($createdQ);
-                                $toGenerate--;
-                                if ($toGenerate <= 0)
-                                    break;
+                                    $subjectQuestions->push($createdQ);
+                                    $missingTotal--;
+                                    if ($missingTotal <= 0)
+                                        break;
+                                }
                             }
                         }
                     }
-                }
-                catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::warning("AI Generation failed for subject $subject: " . $e->getMessage());
+                    catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::warning("AI Generation failed for subject $subject: " . $e->getMessage());
+                    }
                 }
             }
 
-            // 7. Desperate Fallback: If still missing, ignore the "last 10" and take Real
+            // 6. Absolute Fallback: Only if AI Generation FAILED and pool is empty, 
+            // take whatever Real is left (ignoring "last 10" filter as emergency measure)
             if ($subjectQuestions->count() < $subjectTotal) {
-                $stillNeeded = $subjectTotal - $subjectQuestions->count();
-                $desperateReal = Question::where('subject', $subject)
+                $emergencyNeeded = $subjectTotal - $subjectQuestions->count();
+                $emergencyReal = Question::where('subject', $subject)
                     ->where(function ($q) {
                     $q->where('source', 'enem_real_2009_2023')->orWhere('source', 'manual');
                 })
                     ->whereNotIn('id', $subjectQuestions->pluck('id'))
                     ->inRandomOrder()
-                    ->limit($stillNeeded)
+                    ->limit($emergencyNeeded)
                     ->get();
 
-                $subjectQuestions = $subjectQuestions->merge($desperateReal);
+                $subjectQuestions = $subjectQuestions->merge($emergencyReal);
             }
 
             $finalQuestions = $finalQuestions->merge($subjectQuestions->take($subjectTotal));
