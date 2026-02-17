@@ -38,6 +38,9 @@ class SimulationCreationService
                 'time_limit' => $type === 'enem'
                 ? (($data['include_essay'] ?? false) ? 19800 : 16200)
                 : (int)($data['custom_time'] ?? 10800),
+                'organization' => $data['organization'] ?? [],
+                'institution' => $data['institution'] ?? [],
+                'role' => $data['role'] ?? [],
             ],
             'status' => 'generating', // Initial status for async flow
         ]);
@@ -56,7 +59,9 @@ class SimulationCreationService
 
         // This might take 30-60s if AI is needed.
         // We do NOT want to hold a DB transaction (especially on SQLite) during this time.
-        $questions = $this->selectQuestions($simulation->user, $type, $total, $distribution);
+        // This might take 30-60s if AI is needed.
+        // We do NOT want to hold a DB transaction (especially on SQLite) during this time.
+        $questions = $this->selectQuestions($simulation->user, $type, $total, $distribution, $data);
 
         // Validation
         if ($questions->count() !== $total) {
@@ -122,15 +127,81 @@ class SimulationCreationService
     /**
      * Select questions respecting business rules.
      */
-    protected function selectQuestions(User $user, string $type, int $total, array $distribution): Collection
+    protected function selectQuestions(User $user, string $type, int $total, array $distribution, array $context = []): Collection
     {
         $finalQuestions = collect();
+        $lastSeenIds = [];
+
+        if ($type === 'concurso') {
+            $lastSeenIds = $this->getLastSeenQuestionIds($user, 20);
+        }
 
         foreach ($distribution as $subject => $subjectTotal) {
             if ($subjectTotal <= 0)
                 continue;
 
             \Illuminate\Support\Facades\Log::info("Processing Subject: $subject | Total Needed: $subjectTotal");
+
+            if ($type === 'concurso') {
+                // Concurso Logic: Dynamic Filtering
+                $query = Question::where('type', 'concurso')
+                    ->where('subject', $subject);
+
+                // Apply Filters
+                if (!empty($context['organization'])) {
+                    $query->whereIn('organization', $context['organization']);
+                }
+                if (!empty($context['institution'])) {
+                    $query->whereIn('institution', $context['institution']);
+                }
+                if (!empty($context['role'])) {
+                    $query->whereIn('role', $context['role']);
+                }
+
+                // Avoid repeats
+                if (!empty($lastSeenIds)) {
+                    $query->whereNotIn('id', $lastSeenIds);
+                }
+
+                $subjectQuestions = $query->inRandomOrder()->limit($subjectTotal)->get();
+                $finalQuestions = $finalQuestions->merge($subjectQuestions);
+
+                // Check if we need to generate more (AI Fallback with Context)
+                $missing = $subjectTotal - $subjectQuestions->count();
+                if ($missing > 0) {
+                    // Trigger AI generation with context
+                    try {
+                        $aiService = app(\App\Services\AIService::class);
+                        $generated = $aiService->generateQuestions($subject, $missing, $context);
+
+                        foreach ($generated as $nq) {
+                            if (!empty($nq['statement'])) {
+                                $createdQ = Question::create([
+                                    'type' => 'concurso',
+                                    'subject' => $subject,
+                                    'difficulty' => $nq['difficulty'] ?? 'medium',
+                                    'year' => date('Y'),
+                                    'statement' => $nq['statement'],
+                                    'alternatives' => $nq['alternatives'],
+                                    'correct_answer' => $nq['correct_answer'] ?? 'A',
+                                    'explanation' => $nq['explanation'] ?? null,
+                                    'source' => 'ai_generated',
+                                    'origin' => 'IA Personalizada',
+                                    'organization' => $context['organization'][0] ?? null,
+                                    'institution' => $context['institution'][0] ?? null,
+                                    'role' => $context['role'][0] ?? null,
+                                ]);
+                                $finalQuestions->push($createdQ);
+                            }
+                        }
+                    }
+                    catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error("Concurso AI Failed: " . $e->getMessage());
+                    }
+                }
+
+                continue; // Skip ENEM logic
+            }
 
             // 1. Calculate Quotas (STRICT 90/10 split)
             $countGenTarget = (int)ceil($subjectTotal * 0.10);
