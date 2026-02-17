@@ -48,6 +48,7 @@ class QuestionController extends Controller
         $questionsByOrigin = Question::select('origin', DB::raw('count(*) as total'))
             ->whereNotNull('origin')
             ->where('origin', '!=', '')
+            ->where('origin', '!=', 'IA') // Fix: Exclude 'IA' as it has its own dedicated card
             ->groupBy('origin')
             ->orderByDesc('total')
             ->get();
