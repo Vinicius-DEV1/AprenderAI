@@ -56,7 +56,12 @@ class SimulationController extends Controller
             ->orderBy('role')
             ->pluck('role');
 
-        return view('simulations.create', compact('organizations', 'institutions', 'roles'));
+        $subjects = \App\Models\Subject::where('type', 'concurso')
+            ->orWhereNull('type')
+            ->orderBy('name')
+            ->pluck('name');
+
+        return view('simulations.create', compact('organizations', 'institutions', 'roles', 'subjects'));
     }
 
     public function store(StoreSimulationRequest $request)
