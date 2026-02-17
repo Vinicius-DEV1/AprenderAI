@@ -201,19 +201,28 @@ class ImportEnemCommand extends Command
         }
 
         // 4. INSERÇÃO
-        Question::create([
+        $question = Question::create([
             'type' => 'enem',
-            'subject' => $targetSubject,
-            'topic' => $discipline, // Armazena a disciplina original como tópico
+            'theme' => null,
             'difficulty' => 'medium',
             'year' => $year,
             'statement' => $statement,
             'alternatives' => $alternativesMap,
             'correct_answer' => $correctLetter,
-            'source' => 'manual',
-            'origin' => "ENEM {$year}",
-            'external_id' => $externalId
+            'explanation' => null,
+            'source' => 'enem_api',
+            'external_id' => $externalId,
+            'origin' => 'ENEM ' . $year
         ]);
+
+        // N:N Relationship:
+        // Find or create the subject model and attach it to the question via the pivot table.
+        // This replaces the old single-column 'subject' logic.
+        $subjectModel = \App\Models\Subject::firstOrCreate(
+        ['name' => $targetSubject],
+        ['slug' => \Illuminate\Support\Str::slug($targetSubject), 'type' => 'enem']
+        );
+        $question->subjects()->attach($subjectModel->id);
 
         $stats['imported']++;
         $stats['by_year'][$year]++;

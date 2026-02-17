@@ -38,6 +38,9 @@ class SimulationCreationService
                 'time_limit' => $type === 'enem'
                 ? (($data['include_essay'] ?? false) ? 19800 : 16200)
                 : (int)($data['custom_time'] ?? 10800),
+                'organization' => $data['organization'] ?? [],
+                'institution' => $data['institution'] ?? [],
+                'role' => $data['role'] ?? [],
             ],
             'status' => 'generating', // Initial status for async flow
         ]);
@@ -56,7 +59,9 @@ class SimulationCreationService
 
         // This might take 30-60s if AI is needed.
         // We do NOT want to hold a DB transaction (especially on SQLite) during this time.
-        $questions = $this->selectQuestions($simulation->user, $type, $total, $distribution);
+        // This might take 30-60s if AI is needed.
+        // We do NOT want to hold a DB transaction (especially on SQLite) during this time.
+        $questions = $this->selectQuestions($simulation->user, $type, $total, $distribution, $data);
 
         // Validation
         if ($questions->count() !== $total) {
@@ -122,15 +127,96 @@ class SimulationCreationService
     /**
      * Select questions respecting business rules.
      */
-    protected function selectQuestions(User $user, string $type, int $total, array $distribution): Collection
+    protected function selectQuestions(User $user, string $type, int $total, array $distribution, array $context = []): Collection
     {
         $finalQuestions = collect();
+        $lastSeenIds = [];
+
+        if ($type === 'concurso') {
+            $lastSeenIds = $this->getLastSeenQuestionIds($user, 20);
+        }
 
         foreach ($distribution as $subject => $subjectTotal) {
             if ($subjectTotal <= 0)
                 continue;
 
             \Illuminate\Support\Facades\Log::info("Processing Subject: $subject | Total Needed: $subjectTotal");
+
+            if ($type === 'concurso') {
+                // Concurso Logic: N:N Subject Filtering
+                // We use 'whereHas' to filter questions that belong to the specific subject
+                // via the 'question_subject' pivot table.
+                $query = Question::where('type', 'concurso')
+                    ->whereHas('subjects', function ($q) use ($subject) {
+                    $q->where('name', $subject);
+                });
+
+                // Apply Filters
+                if (!empty($context['organization'])) {
+                    $query->whereIn('organization', $context['organization']);
+                }
+                if (!empty($context['institution'])) {
+                    $query->whereIn('institution', $context['institution']);
+                }
+                if (!empty($context['role'])) {
+                    $query->whereIn('role', $context['role']);
+                }
+
+                // Anti-duplication Logic:
+                // We merge globally seen questions (last 20) with questions already selected
+                // in the current simulation session to prevent the same question from appearing
+                // multiple times (e.g., if it belongs to multiple subjects requested).
+                $avoidIds = array_merge($lastSeenIds, $finalQuestions->pluck('id')->toArray());
+
+                if (!empty($avoidIds)) {
+                    $query->whereNotIn('id', $avoidIds);
+                }
+
+                $subjectQuestions = $query->inRandomOrder()->limit($subjectTotal)->get();
+                $finalQuestions = $finalQuestions->merge($subjectQuestions);
+
+                // Check if we need to generate more (AI Fallback with Context)
+                $missing = $subjectTotal - $subjectQuestions->count();
+                if ($missing > 0) {
+                    // Trigger AI generation with context
+                    try {
+                        $aiService = app(\App\Services\AIService::class);
+                        $generated = $aiService->generateQuestions($subject, $missing, $context);
+
+                        foreach ($generated as $nq) {
+                            if (!empty($nq['statement'])) {
+                                $createdQ = Question::create([
+                                    'type' => 'concurso',
+                                    // 'subject' removed
+                                    'difficulty' => $nq['difficulty'] ?? 'medium',
+                                    'year' => date('Y'),
+                                    'statement' => $nq['statement'],
+                                    'alternatives' => $nq['alternatives'],
+                                    'correct_answer' => $nq['correct_answer'] ?? 'A',
+                                    'explanation' => $nq['explanation'] ?? null,
+                                    'source' => 'ai_generated',
+                                    'origin' => 'IA Personalizada',
+                                    'organization' => $context['organization'][0] ?? null,
+                                    'institution' => $context['institution'][0] ?? null,
+                                    'role' => $context['role'][0] ?? null,
+                                ]);
+
+                                $subjectModel = \App\Models\Subject::firstOrCreate(
+                                ['name' => $subject],
+                                ['slug' => \Illuminate\Support\Str::slug($subject), 'type' => 'concurso']
+                                );
+                                $createdQ->subjects()->attach($subjectModel->id);
+                                $finalQuestions->push($createdQ);
+                            }
+                        }
+                    }
+                    catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error("Concurso AI Failed: " . $e->getMessage());
+                    }
+                }
+
+                continue; // Skip ENEM logic
+            }
 
             // 1. Calculate Quotas (STRICT 90/10 split)
             $countGenTarget = (int)ceil($subjectTotal * 0.10);
@@ -188,7 +274,7 @@ class SimulationCreationService
                                 if (!empty($nq['statement']) && !empty($nq['alternatives'])) {
                                     $createdQ = Question::create([
                                         'type' => $type,
-                                        'subject' => $subject,
+                                        // 'subject' removed
                                         'theme' => null,
                                         'difficulty' => $nq['difficulty'] ?? 'medium',
                                         'year' => $nq['year'] ?? rand(2015, 2025),
@@ -199,6 +285,12 @@ class SimulationCreationService
                                         'source' => 'ai_generated',
                                         'origin' => 'IA'
                                     ]);
+
+                                    $subjectModel = \App\Models\Subject::firstOrCreate(
+                                    ['name' => $subject],
+                                    ['slug' => \Illuminate\Support\Str::slug($subject), 'type' => $type]
+                                    );
+                                    $createdQ->subjects()->attach($subjectModel->id);
 
                                     $subjectQuestions->push($createdQ);
                                     $missingTotal--;
@@ -218,9 +310,13 @@ class SimulationCreationService
             // take whatever Real is left (ignoring "last 10" filter as emergency measure)
             if ($subjectQuestions->count() < $subjectTotal) {
                 $emergencyNeeded = $subjectTotal - $subjectQuestions->count();
-                $emergencyReal = Question::where('subject', $subject)
+                $emergencyReal = Question::whereHas('subjects', function ($q) use ($subject) {
+                    $q->where('name', $subject);
+                })
                     ->where(function ($q) {
-                    $q->where('source', 'enem_real_2009_2023')->orWhere('source', 'manual');
+                    $q->where('source', 'enem_real_2009_2023')
+                        ->orWhere('source', 'manual')
+                        ->orWhere('source', 'enem_api'); // Added enem_api just in case
                 })
                     ->whereNotIn('id', $subjectQuestions->pluck('id'))
                     ->inRandomOrder()

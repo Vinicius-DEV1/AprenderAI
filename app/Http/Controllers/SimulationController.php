@@ -37,7 +37,31 @@ class SimulationController extends Controller
             return redirect()->route('dashboard')->with('error', $check['message']);
         }
 
-        return view('simulations.create');
+        // Fetch Filters for Concurso
+        $organizations = Question::where('type', 'concurso')
+            ->whereNotNull('organization')
+            ->distinct()
+            ->orderBy('organization')
+            ->pluck('organization');
+
+        $institutions = Question::where('type', 'concurso')
+            ->whereNotNull('institution')
+            ->distinct()
+            ->orderBy('institution')
+            ->pluck('institution');
+
+        $roles = Question::where('type', 'concurso')
+            ->whereNotNull('role')
+            ->distinct()
+            ->orderBy('role')
+            ->pluck('role');
+
+        $subjects = \App\Models\Subject::where('type', 'concurso')
+            ->orWhereNull('type')
+            ->orderBy('name')
+            ->pluck('name');
+
+        return view('simulations.create', compact('organizations', 'institutions', 'roles', 'subjects'));
     }
 
     public function store(StoreSimulationRequest $request)
