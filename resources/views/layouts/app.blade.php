@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full bg-slate-50">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full bg-slate-50 dark:bg-slate-950">
 
 <head>
     <meta charset="utf-8">
@@ -19,14 +19,34 @@
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @include('partials.analytics')
+
+    <script>
+        // Check for saved user preference, if any, on load of the website
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark')
+        } else {
+            document.documentElement.classList.remove('dark')
+        }
+
+        // Toggle theme function
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+        }
+    </script>
 </head>
 
-<body class="font-sans antialiased h-full text-slate-800">
+<body class="font-sans antialiased h-full text-slate-800 dark:bg-slate-900 dark:text-slate-100">
     <div x-data="{ 
             sidebarOpen: false, 
             sidebarCollapsed: localStorage.getItem('sidebar_collapsed') === 'true'
         }" x-init="$watch('sidebarCollapsed', val => localStorage.setItem('sidebar_collapsed', val))"
-        class="min-h-screen flex bg-slate-50">
+        class="min-h-screen flex bg-slate-50 dark:bg-slate-950">
 
         <!-- Mobile Sidebar Overlay -->
         <div x-show="sidebarOpen" @click="sidebarOpen = false"
@@ -42,19 +62,19 @@
                 'lg:w-72': !sidebarCollapsed,
                 'lg:w-20': sidebarCollapsed
             }"
-            class="fixed inset-y-0 left-0 z-50 bg-white shadow-xl transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:inset-auto lg:flex lg:flex-col border-r border-slate-200">
+            class="fixed inset-y-0 left-0 z-50 bg-white dark:bg-slate-900 shadow-xl transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:inset-auto lg:flex lg:flex-col border-r border-slate-200 dark:border-slate-800">
 
             <!-- Toggle Button (Desktop Only) -->
             <button @click="sidebarCollapsed = !sidebarCollapsed"
-                class="hidden lg:flex absolute -right-3 top-10 w-6 h-6 bg-white border border-slate-200 rounded-full items-center justify-center shadow-sm hover:bg-slate-50 transition-colors z-[60]">
-                <svg class="w-4 h-4 text-slate-500 transform transition-transform duration-300"
+                class="hidden lg:flex absolute -right-3 top-10 w-6 h-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full items-center justify-center shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors z-[60]">
+                <svg class="w-4 h-4 text-slate-500 dark:text-slate-400 transform transition-transform duration-300"
                     :class="sidebarCollapsed ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
             </button>
 
             <!-- Logo Area -->
-            <div class="flex items-center h-20 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-300 overflow-hidden"
+            <div class="flex items-center h-20 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 transition-all duration-300 overflow-hidden"
                 :class="sidebarCollapsed ? 'justify-center px-0' : 'justify-between px-4'">
                 <a href="{{ route('dashboard') }}"
                     class="flex items-center gap-2 text-white font-bold text-xl whitespace-nowrap">
@@ -82,7 +102,7 @@
                     class="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Menu Principal</p>
 
                 <a href="{{ route('dashboard') }}"
-                    class="flex items-center rounded-lg text-sm font-medium transition-all duration-300 {{ request()->routeIs('dashboard') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                    class="flex items-center rounded-lg text-sm font-medium transition-all duration-300 {{ request()->routeIs('dashboard') ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200' }}"
                     :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'" title="Dashboard">
                     <svg class="w-5 h-5 flex-shrink-0 {{ request()->routeIs('dashboard') ? 'text-blue-600' : 'text-slate-400' }}"
                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -93,7 +113,7 @@
                 </a>
 
                 <a href="{{ route('simulations.index') }}"
-                    class="flex items-center rounded-lg text-sm font-medium transition-all duration-300 {{ request()->routeIs('simulations.*') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                    class="flex items-center rounded-lg text-sm font-medium transition-all duration-300 {{ request()->routeIs('simulations.*') ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200' }}"
                     :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'" title="Simulados">
                     <svg class="w-5 h-5 flex-shrink-0 {{ request()->routeIs('simulations.*') ? 'text-blue-600' : 'text-slate-400' }}"
                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -104,7 +124,7 @@
                 </a>
 
                 <a href="{{ route('essays.index') }}"
-                    class="flex items-center rounded-lg text-sm font-medium transition-all duration-300 {{ request()->routeIs('essays.*') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                    class="flex items-center rounded-lg text-sm font-medium transition-all duration-300 {{ request()->routeIs('essays.*') ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200' }}"
                     :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'" title="Redações">
                     <svg class="w-5 h-5 flex-shrink-0 {{ request()->routeIs('essays.*') ? 'text-blue-600' : 'text-slate-400' }}"
                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -130,7 +150,7 @@
                     class="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-6 mb-2">Conta</p>
 
                 <a href="{{ route('plans.index') }}"
-                    class="flex items-center rounded-lg text-sm font-medium transition-all duration-300 {{ request()->routeIs('plans.*') ? 'bg-purple-50 text-purple-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                    class="flex items-center rounded-lg text-sm font-medium transition-all duration-300 {{ request()->routeIs('plans.*') ? 'bg-discord-50 text-discord-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
                     :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'" title="Meu Plano">
                     <svg class="w-5 h-5 flex-shrink-0 {{ request()->routeIs('plans.*') ? 'text-purple-600' : 'text-slate-400' }}"
                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -167,7 +187,9 @@
                     <div x-show="!sidebarCollapsed" class="flex-1 min-w-0"
                         x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
                         x-transition:enter-end="opacity-100">
-                        <p class="text-xs font-semibold text-slate-900 truncate">{{ auth()->user()->name }}</p>
+                        <p class="text-xs font-semibold text-slate-900 truncate">
+                            {{ auth()->user()->name }}
+                        </p>
                     </div>
                     <form method="POST" action="{{ route('logout') }}" class="flex-shrink-0" x-show="!sidebarCollapsed">
                         @csrf
@@ -179,6 +201,9 @@
                             </svg>
                         </button>
                     </form>
+                    </form>
+
+
                 </div>
             </div>
         </aside>
@@ -203,6 +228,7 @@
                     class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
                     {{ substr(auth()->user()->name, 0, 1) }}
                 </div>
+
             </header>
 
             <!-- Page Content -->

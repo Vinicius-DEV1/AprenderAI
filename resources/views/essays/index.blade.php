@@ -104,6 +104,71 @@
             font-weight: 700;
             color: #2563EB;
         }
+
+        /* DARK MODE */
+        :root.dark .essays-list {
+            background: transparent;
+            box-shadow: none;
+        }
+
+        :root.dark .essay-card {
+            background: #1e293b;
+            border-color: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        :root.dark .essays-header h1,
+        :root.dark .essay-title h3 {
+            color: #f1f5f9;
+        }
+
+        :root.dark .essay-theme,
+        :root.dark .essay-preview,
+        :root.dark .essay-date {
+            color: #cbd5e1;
+        }
+
+        :root.dark .essay-footer {
+            border-top-color: rgba(255, 255, 255, 0.08);
+        }
+
+        :root.dark .score-display {
+            color: #60a5fa;
+        }
+
+        :root.dark .btn-new {
+            /* inherited but explicit just in case */
+        }
+
+        /* Badges */
+        :root.dark .status-badge.status-draft {
+            background: rgba(224, 231, 255, 0.1);
+            color: #a5b4fc;
+        }
+
+        :root.dark .status-badge.status-pending {
+            background: rgba(254, 243, 199, 0.1);
+            color: #fde68a;
+        }
+
+        :root.dark .status-badge.status-corrected {
+            background: rgba(209, 250, 229, 0.1);
+            color: #6ee7b7;
+        }
+
+        :root.dark .btn-details {
+            background: #0f172a !important;
+            color: #cbd5e1 !important;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        :root.dark .btn-details:hover {
+            background: #1e293b !important;
+        }
+
+        :root.dark .empty-state-text {
+            color: #64748b !important;
+        }
     </style>
 
     <div class="essays-header">
@@ -141,7 +206,7 @@
                         @if($essay->score)
                             <span class="score-display">{{ $essay->score }}/1000</span>
                         @endif
-                        <a href="{{ route('essays.show', $essay) }}"
+                        <a href="{{ route('essays.show', $essay) }}" class="btn-details"
                             style="padding: 8px 16px; background: #f1f5f9; border-radius: 6px; text-decoration: none; color: #334155; font-size: 14px; font-weight: 500;">
                             Ver detalhes
                         </a>
@@ -149,7 +214,7 @@
                 </div>
             </div>
         @empty
-            <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+            <div class="empty-state-text" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"
                     style="width: 64px; height: 64px; margin: 0 auto 16px; opacity: 0.3;">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

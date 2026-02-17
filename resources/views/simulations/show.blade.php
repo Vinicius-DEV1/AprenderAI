@@ -445,6 +445,74 @@
         .simulation-page #sidebarToggleBtn:hover {
             background: #334155;
         }
+
+        /* DARK MODE */
+        :root.dark .simulation-page .question-nav,
+        :root.dark .simulation-page .question-area {
+            background: #1e293b;
+            color: #f1f5f9;
+        }
+        :root.dark .simulation-page h2 {
+            color: #f1f5f9;
+        }
+        :root.dark .simulation-page .question-statement {
+            color: #e2e8f0;
+        }
+        :root.dark .simulation-page .question-number {
+             color: #94a3b8;
+        }
+        :root.dark .simulation-page .question-header {
+             border-bottom-color: rgba(255,255,255,0.1);
+        }
+        :root.dark .simulation-page .question-actions {
+             border-top-color: rgba(255,255,255,0.1);
+        }
+        :root.dark .simulation-page .alternative label {
+             border-color: rgba(255,255,255,0.1);
+             color: #cbd5e1;
+        }
+        :root.dark .simulation-page .alternative label:hover {
+             background: rgba(255,255,255,0.05);
+             border-color: rgba(255,255,255,0.2);
+        }
+        :root.dark .simulation-page .alternative input[type="radio"]:checked + label {
+             background: rgba(37,99,235,0.2);
+             border-color: #3b82f6;
+             color: #e2e8f0;
+        }
+        :root.dark .simulation-page .nav-btn {
+             background: #0f172a;
+             border-color: rgba(255,255,255,0.1);
+             color: #cbd5e1;
+        }
+        :root.dark .simulation-page .nav-btn:hover {
+             border-color: rgba(255,255,255,0.3);
+        }
+        :root.dark .simulation-page .nav-btn.active {
+             background: #2563EB;
+             color: white;
+             border-color: #2563EB;
+        }
+        :root.dark .simulation-page .nav-btn.answered {
+             background: rgba(6, 95, 70, 0.4);
+             border-color: #059669;
+             color: #a7f3d0;
+        }
+        :root.dark .simulation-page .nav-btn.marked {
+             background: rgba(120, 53, 15, 0.4);
+             border-color: #d97706;
+             color: #fde68a;
+        }
+        :root.dark .simulation-page .legend-item span {
+             color: #94a3b8;
+        }
+        :root.dark .simulation-page .btn-secondary {
+             background: #334155;
+             color: #e2e8f0;
+        }
+        :root.dark .simulation-page .btn-secondary:hover {
+             background: #475569;
+        }
     </style>
 
     <div style="margin-bottom: 20px; display: flex; align-items: center;">

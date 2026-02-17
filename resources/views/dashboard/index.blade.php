@@ -27,6 +27,8 @@
             --ease: cubic-bezier(.2, .8, .2, 1);
         }
 
+
+
         .wrap {
             max-width: 1120px;
             margin: 0 auto;
@@ -56,7 +58,7 @@
             opacity: .55;
         }
 
-        /* Admin CTA (de volta) */
+        /* Admin CTA */
         .admin-cta {
             margin: 6px 0 12px;
         }
@@ -67,7 +69,7 @@
             gap: 10px;
             padding: 12px 16px;
             border-radius: 14px;
-            font-weight: 950;
+            font-weight: 800;
             text-decoration: none;
             color: #fff;
             background: linear-gradient(135deg, var(--indigo) 0%, var(--violet) 60%, #9333ea 100%);
@@ -92,7 +94,7 @@
             opacity: .95;
         }
 
-        /* Hero (compacto) */
+        /* Hero (menos negrito) */
         .hero {
             display: flex;
             align-items: flex-start;
@@ -110,7 +112,7 @@
         .hero h1 {
             margin: 0;
             font-size: 16px;
-            font-weight: 950;
+            font-weight: 700;
             color: var(--text);
             letter-spacing: .2px;
         }
@@ -118,7 +120,7 @@
         .hero p {
             margin: 6px 0 0;
             font-size: 13px;
-            font-weight: 700;
+            font-weight: 500;
             color: var(--muted);
             line-height: 1.45;
         }
@@ -133,7 +135,7 @@
             border: 1px solid rgba(37, 99, 235, .16);
             color: #1e40af;
             font-size: 12px;
-            font-weight: 950;
+            font-weight: 700;
             white-space: nowrap;
         }
 
@@ -146,7 +148,7 @@
             box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
         }
 
-        /* Stats (compacto) */
+        /* Stats (SEM mancha) */
         .stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -166,18 +168,7 @@
             transition: transform .18s var(--ease), box-shadow .18s var(--ease), border-color .18s var(--ease);
         }
 
-        .stat::before {
-            content: "";
-            position: absolute;
-            inset: -70px -90px auto auto;
-            width: 180px;
-            height: 180px;
-            background: radial-gradient(circle,
-                    rgba(37, 99, 235, .10),
-                    rgba(124, 58, 237, .07) 42%,
-                    rgba(37, 99, 235, 0) 72%);
-            pointer-events: none;
-        }
+        /* REMOVIDO: .stat::before (mancha) */
 
         .stat:hover {
             transform: translateY(-2px);
@@ -188,7 +179,7 @@
         .stat .k {
             margin: 0 0 8px;
             font-size: 11px;
-            font-weight: 900;
+            font-weight: 600;
             color: var(--muted);
             letter-spacing: .25px;
             text-transform: uppercase;
@@ -197,7 +188,7 @@
         .stat .v {
             margin: 0;
             font-size: 28px;
-            font-weight: 950;
+            font-weight: 800;
             color: var(--text);
             line-height: 1.1;
         }
@@ -205,11 +196,11 @@
         .stat .l {
             margin: 6px 0 0;
             font-size: 12px;
-            font-weight: 800;
+            font-weight: 500;
             color: var(--muted2);
         }
 
-        /* Cards */
+        /* Cards (SEM mancha) */
         .card {
             border-radius: var(--r2);
             background: linear-gradient(135deg, rgba(255, 255, 255, .86), rgba(255, 255, 255, .96));
@@ -222,18 +213,7 @@
             overflow: hidden;
         }
 
-        .card::before {
-            content: "";
-            position: absolute;
-            inset: -110px -130px auto auto;
-            width: 260px;
-            height: 260px;
-            background: radial-gradient(circle,
-                    rgba(37, 99, 235, .10),
-                    rgba(124, 58, 237, .07) 45%,
-                    rgba(37, 99, 235, 0) 74%);
-            pointer-events: none;
-        }
+        /* REMOVIDO: .card::before (mancha) */
 
         .card-head {
             display: flex;
@@ -246,7 +226,7 @@
         .card h3 {
             margin: 0;
             font-size: 15px;
-            font-weight: 950;
+            font-weight: 700;
             color: var(--text);
             letter-spacing: .2px;
         }
@@ -254,13 +234,13 @@
         .sub {
             margin: 0;
             font-size: 12px;
-            font-weight: 850;
+            font-weight: 500;
             color: var(--muted);
             text-transform: uppercase;
             letter-spacing: .25px;
         }
 
-        /* Charts: tamanho FIXO */
+        /* Charts */
         .charts {
             display: grid;
             grid-template-columns: 1.15fr .85fr;
@@ -280,7 +260,7 @@
             height: 100% !important;
         }
 
-        /* Plan badge */
+        /* Plan badge (menos negrito) */
         .badge {
             display: inline-flex;
             align-items: center;
@@ -291,7 +271,7 @@
             border: 1px solid rgba(37, 99, 235, .18);
             color: #1e40af;
             font-size: 12px;
-            font-weight: 950;
+            font-weight: 700;
             white-space: nowrap;
         }
 
@@ -337,7 +317,7 @@
         .info h4 {
             margin: 0 0 6px;
             font-size: 13px;
-            font-weight: 950;
+            font-weight: 700;
             color: var(--text);
             white-space: nowrap;
             overflow: hidden;
@@ -347,13 +327,13 @@
         .info p {
             margin: 0;
             font-size: 12px;
-            font-weight: 800;
+            font-weight: 500;
             color: var(--muted);
         }
 
         .score {
             font-size: 18px;
-            font-weight: 950;
+            font-weight: 800;
             color: var(--blue);
             white-space: nowrap;
         }
@@ -367,7 +347,7 @@
             background: rgba(245, 158, 11, .12);
             border: 1px solid rgba(245, 158, 11, .22);
             color: #9a3412;
-            font-weight: 950;
+            font-weight: 700;
             font-size: 12px;
             white-space: nowrap;
         }
@@ -389,7 +369,7 @@
             border-radius: 14px;
             color: #fff;
             text-decoration: none;
-            font-weight: 950;
+            font-weight: 800;
             font-size: 14px;
             background: linear-gradient(135deg, var(--blue) 0%, var(--indigo) 45%, var(--violet) 100%);
             box-shadow: 0 14px 22px rgba(37, 99, 235, .18);
@@ -432,8 +412,8 @@
 
         <div class="hero">
             <div>
-                <h1>Dashboard premium — visão clara do seu progresso</h1>
-                <p>Gráficos rápidos, métricas essenciais e histórico recente. Visual que convence.</p>
+                <h1>Visão clara do seu progresso</h1>
+                <p>Gráficos rápidos, métricas essenciais e histórico recente.</p>
             </div>
             <div class="chip">Online</div>
         </div>
@@ -492,9 +472,9 @@
                 <h3>Seu Plano <span class="badge">{{ $user->plan->name }}</span></h3>
             </div>
 
-            <p style="margin:0; font-size:13px; font-weight:800; color:var(--muted); line-height:1.55;">
+            <p style="margin:0; font-size:13px; font-weight:500; color:var(--muted); line-height:1.55;">
                 @if($simulationLimit['can_create'])
-                    Você pode criar mais <strong>{{ $simulationLimit['remaining'] }}</strong>
+                    Você pode criar mais <span style="font-weight:800;">{{ $simulationLimit['remaining'] }}</span>
                     {{ is_numeric($simulationLimit['remaining']) && $simulationLimit['remaining'] == 1 ? 'prova' : 'provas' }}
                     este mês.
                 @else
@@ -531,7 +511,7 @@
                     @endforeach
                 </ul>
             @else
-                <div style="text-align:center; padding:18px 10px; color:var(--muted2); font-weight:900;">
+                <div style="text-align:center; padding:18px 10px; color:var(--muted2); font-weight:600;">
                     Você ainda não realizou nenhuma prova.
                     <div>
                         <a href="{{ route('simulations.create') }}" class="btn" style="margin-top:12px;">Criar Primeira
@@ -560,7 +540,7 @@
         const commonFont = {
             family: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial',
             size: 12,
-            weight: '800'
+            weight: '600'
         };
 
         const safeDestroy = (id) => {
@@ -659,5 +639,7 @@
                 }
             });
         }
+
+
     </script>
 @endsection

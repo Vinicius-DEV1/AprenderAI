@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-slate-800 leading-tight">
+            <h2 class="font-semibold text-xl text-slate-800 dark:text-slate-100 leading-tight">
                 {{ __('Seu Plano de Estudos') }}
             </h2>
             <form action="{{ route('study-plan.update') }}" method="POST">
@@ -77,7 +77,7 @@
 
                             @forelse($dbWeak as $item)
                                 <div class="mb-3 text-sm">
-                                    <div class="font-medium">
+                                    <div class="font-medium text-slate-800">
                                         {{ $item->topic }} — {{ $item->subject }}
                                     </div>
                                     <div class="text-xs text-slate-500">
@@ -98,7 +98,7 @@
 
                             @forelse($dbStrong as $item)
                                 <div class="mb-3 text-sm">
-                                    <div class="font-medium">
+                                    <div class="font-medium text-slate-800">
                                         {{ $item->topic }} — {{ $item->subject }}
                                     </div>
                                     <div class="text-xs text-slate-500">
@@ -172,7 +172,7 @@
 
                             <ul class="space-y-3 text-sm">
                                 @foreach((array) $tasks as $task)
-                                    <li class="flex gap-3 items-start">
+                                    <li class="flex gap-3 items-start text-slate-600">
                                         <span class="mt-1 h-3 w-3 rounded-full bg-blue-500"></span>
                                         <span>{{ $task }}</span>
                                     </li>

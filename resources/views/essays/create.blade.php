@@ -92,12 +92,12 @@
         }
     </style>
 
-    <div class="essay-form">
-        <h1 style="font-size: 28px; font-weight: 700; margin-bottom: 24px;">Nova Redação</h1>
+    <div class="essay-form bg-white">
+        <h1 style="font-size: 28px; font-weight: 700; margin-bottom: 24px;" class="text-slate-900">Nova
+            Redação</h1>
 
         @if ($errors->any())
-            <div
-                style="background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+            <div class="bg-red-50 border border-red-200 text-red-600 p-3 rounded-lg mb-5">
                 <ul style="list-style: none; margin: 0;">
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
@@ -110,20 +110,21 @@
             @csrf
 
             <div class="form-group">
-                <label for="title">Título da Redação</label>
-                <input type="text" id="title" name="title" value="{{ old('title') }}" required>
+                <label for="title" class="text-slate-900">Título da Redação</label>
+                <input type="text" id="title" name="title" value="{{ old('title') }}" required class="">
             </div>
 
             <div class="form-group">
-                <label for="theme">Tema</label>
+                <label for="theme" class="text-slate-900">Tema</label>
                 <input type="text" id="theme" name="theme" value="{{ old('theme') }}" required
-                    placeholder="Ex: Desafios da educação no Brasil">
+                    placeholder="Ex: Desafios da educação no Brasil" class="">
             </div>
 
             <div class="form-group">
-                <label for="content">Texto da Redação</label>
-                <textarea id="content" name="content" required oninput="updateWordCount()">{{ old('content') }}</textarea>
-                <div class="word-count" id="wordCount">0 palavras</div>
+                <label for="content" class="text-slate-900">Texto da Redação</label>
+                <textarea id="content" name="content" required oninput="updateWordCount()"
+                    class="">{{ old('content') }}</textarea>
+                <div class="word-count text-slate-600" id="wordCount">0 palavras</div>
             </div>
 
             <div class="actions">

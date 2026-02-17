@@ -165,10 +165,101 @@
         }
 
         @keyframes blinker {
-            50% { opacity: 0.5; }
+            50% {
+                opacity: 0.5;
+            }
         }
 
-        [x-cloak] { display: none !important; }
+        [x-cloak] {
+            display: none !important;
+        }
+
+        /* DARK MODE OVERRIDES */
+        :root.dark .stat-box {
+            background: #1e293b;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        :root.dark .stat-box h3 {
+            color: #94a3b8;
+        }
+
+        :root.dark .stat-box .value {
+            color: #f1f5f9 !important;
+            /* Force white for general values */
+        }
+
+        /* Exceptions for colored values */
+        :root.dark .stat-box .value-green {
+            color: #34d399 !important;
+        }
+
+        :root.dark .stat-box .value-red {
+            color: #f87171 !important;
+        }
+
+        :root.dark .answers-section {
+            background: #1e293b;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        :root.dark .answers-section h2 {
+            color: #f1f5f9;
+        }
+
+        :root.dark .answer-item {
+            border-color: rgba(255, 255, 255, 0.1);
+            background: #0f172a;
+            /* Slightly darker than card */
+        }
+
+        :root.dark .answer-item.correct {
+            border-color: #059669;
+            background: rgba(6, 95, 70, 0.1);
+        }
+
+        :root.dark .answer-item.incorrect {
+            border-color: #dc2626;
+            background: rgba(153, 27, 27, 0.1);
+        }
+
+        :root.dark .question-statement {
+            color: #e2e8f0;
+            border-bottom-color: rgba(255, 255, 255, 0.1);
+        }
+
+        :root.dark .alternative-box {
+            background: #1e293b;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        :root.dark .alternative-text {
+            color: #cbd5e1;
+        }
+
+        :root.dark .explanation {
+            background: #0f172a;
+        }
+
+        :root.dark .explanation h4 {
+            color: #60a5fa;
+        }
+
+        :root.dark .explanation-text {
+            color: #94a3b8;
+        }
+
+        /* Chat dark mode */
+        :root.dark .chat-container {
+            background: #0f172a;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        :root.dark .chat-input {
+            background: #1e293b;
+            border-color: rgba(255, 255, 255, 0.1);
+            color: #f1f5f9;
+        }
     </style>
 
     <div class="result-header">
@@ -178,21 +269,22 @@
         </p>
         <!-- Alpine Sanity Check -->
         <div x-data="{ alive: true }" class="mt-4 p-2 bg-white/20 rounded inline-block">
-             <span x-show="alive" @click="alert('Alpine JS está ativo e respondendo!')" class="cursor-pointer font-bold text-sm">
+            <span x-show="alive" @click="alert('Alpine JS está ativo e respondendo!')"
+                class="cursor-pointer font-bold text-sm">
                 ✅ Clique aqui para testar o Alpine.js
-             </span>
+            </span>
         </div>
     </div>
 
     <div class="stats-grid">
         <div class="stat-box">
             <h3>Acertos</h3>
-            <div class="value" style="color: #10b981;">{{ $correctAnswers }}</div>
+            <div class="value value-green" style="color: #10b981;">{{ $correctAnswers }}</div>
         </div>
 
         <div class="stat-box">
             <h3>Erros</h3>
-            <div class="value" style="color: #ef4444;">{{ $totalQuestions - $correctAnswers }}</div>
+            <div class="value value-red" style="color: #ef4444;">{{ $totalQuestions - $correctAnswers }}</div>
         </div>
 
         <div class="stat-box">
@@ -206,7 +298,7 @@
                 {{ $totalQuestions > 0 ? gmdate('i:s', ($simulation->time_elapsed ?? 0) / $totalQuestions) : '00:00' }}
             </div>
         </div>
-    </div> 
+    </div>
     <!-- Ended stats-grid -->
 
     <div class="answers-section">
@@ -216,33 +308,38 @@
             <div class="answer-item {{ $answer->is_correct ? 'correct' : 'incorrect' }}">
                 <div class="answer-header">
                     <span class="question-num">Questão {{ $index + 1 }} - {{ ucfirst($answer->question->subject) }}</span>
-                    
+
                     @if($answer->question->source === 'ai_generated')
                         <span class="badge" style="background: #E9D5FF; color: #6B21A8; margin-left: 8px;">✨ INÉDITA</span>
-                    @elseif(!empty($answer->question->origin)) 
-                        <span class="badge" style="background: #E2E8F0; color: #475569; margin-left: 8px;">{{ $answer->question->origin }}</span>
+                    @elseif(!empty($answer->question->origin))
+                        <span class="badge"
+                            style="background: #E2E8F0; color: #475569; margin-left: 8px;">{{ $answer->question->origin }}</span>
                     @endif
-                    
+
                     <span class="badge {{ $answer->is_correct ? 'badge-correct' : 'badge-incorrect' }}">
                         {{ $answer->is_correct ? '✓ Correta' : '✗ Incorreta' }}
                     </span>
                 </div>
 
                 <!-- Question Statement -->
-                <div class="mb-4 text-gray-900 text-base leading-relaxed whitespace-pre-wrap border-b border-gray-100 pb-4">
+                <div
+                    class="question-statement mb-4 text-gray-900 dark:text-gray-100 text-base leading-relaxed whitespace-pre-wrap border-b border-gray-100 pb-4">
                     {!! $answer->question->statement_html ?? nl2br(e($answer->question->statement)) !!}
                 </div>
 
                 <!-- Question Alternatives -->
                 <div class="space-y-2 mb-4">
                     @foreach($answer->question->alternatives as $letter => $text)
-                        <div class="flex items-start gap-2 p-2 rounded-lg border {{ $answer->user_answer === $letter ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-100' }} {{ $answer->question->correct_answer === $letter ? 'ring-2 ring-green-500 ring-offset-1' : '' }}">
-                            <span class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold {{ $answer->user_answer === $letter ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700' }}">
+                        <div
+                            class="flex items-start gap-2 p-2 rounded-lg border {{ $answer->user_answer === $letter ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/40 dark:border-blue-700' : 'bg-gray-50 border-gray-100 alternative-box' }} {{ $answer->question->correct_answer === $letter ? 'ring-2 ring-green-500 ring-offset-1 dark:ring-offset-slate-900' : '' }}">
+                            <span
+                                class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold {{ $answer->user_answer === $letter ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-slate-200' }}">
                                 {{ $letter }}
                             </span>
-                            <span class="text-sm text-gray-800 leading-snug">{{ $text }}</span>
+                            <span class="text-sm text-gray-800 alternative-text leading-snug">{{ $text }}</span>
                             @if($answer->question->correct_answer === $letter)
-                                <svg class="w-4 h-4 text-green-600 ml-auto flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg class="w-4 h-4 text-green-600 ml-auto flex-shrink-0" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                 </svg>
                             @endif
@@ -251,98 +348,108 @@
                 </div>
 
                 <!-- Resolução / Explicação -->
-                <div class="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div class="explanation mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200 dark:border-slate-700">
                     <h4 class="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.364-6.364l-.707-.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M12 11a3 3 0 110-6 3 3 0 010 6z"></path></svg>
+                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.364-6.364l-.707-.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M12 11a3 3 0 110-6 3 3 0 010 6z">
+                            </path>
+                        </svg>
                         Resolução Comentada
                     </h4>
-                    
-                    <div class="text-sm text-gray-600 leading-relaxed markdown-body">
+
+                    <div class="explanation-text text-sm text-gray-600 leading-relaxed markdown-body">
                         @if(!empty($answer->question->explanation))
-                             {!! \Illuminate\Support\Str::markdown($answer->question->explanation) !!}
+                            {!! \Illuminate\Support\Str::markdown($answer->question->explanation) !!}
                         @else
-                             <p class="italic text-gray-500">A resolução comentada para esta questão está sendo processada e estará disponível em breve.</p>
+                            <p class="italic text-gray-500">A resolução comentada para esta questão está sendo processada e estará
+                                disponível em breve.</p>
                         @endif
                     </div>
                 </div>
 
                 <!-- Chat Contextual -->
-                <div class="mt-2 border-t border-gray-100 pt-2" 
-                     x-data="chatComponent({{ $simulation->id }}, {{ $answer->question_id }})">
-                    
-                    <button @click="toggleChat()" 
-                            class="text-xs text-indigo-600 font-medium hover:text-indigo-800 flex items-center gap-1.5 transition-colors">
+                <div class="mt-2 border-t border-gray-100 pt-2"
+                    x-data="chatComponent({{ $simulation->id }}, {{ $answer->question_id }})">
+
+                    <button @click="toggleChat()"
+                        class="text-xs text-indigo-600 font-medium hover:text-indigo-800 flex items-center gap-1.5 transition-colors">
                         <span x-text="showChat ? 'Ocultar Chat' : '💬 Tirar Dúvida com IA'">💬 Tirar Dúvida com IA</span>
                     </button>
 
-                    <div x-show="showChat" 
-                         x-transition.opacity.duration.300ms
-                         x-cloak
-                         class="mt-3 bg-gray-50 rounded-lg p-3 border border-gray-200">
-                        
+                    <div x-show="showChat" x-transition.opacity.duration.300ms x-cloak
+                        class="chat-container mt-3 bg-gray-50 rounded-lg p-3 border border-gray-200">
+
                         <!-- History -->
                         <div class="chat-history space-y-2 mb-3 max-h-48 overflow-y-auto p-1" x-ref="history">
                             <template x-for="msg in messages" :key="msg.id">
-                                <div class="flex flex-col" :class="msg.role === 'user' ? 'items-end' : (msg.role === 'system' ? 'items-center' : 'items-start')">
-                                    
+                                <div class="flex flex-col"
+                                    :class="msg.role === 'user' ? 'items-end' : (msg.role === 'system' ? 'items-center' : 'items-start')">
+
                                     <!-- User Message -->
                                     <template x-if="msg.role === 'user'">
-                                        <div class="bg-indigo-600 text-white rounded-lg px-3 py-1.5 max-w-[85%] text-[11px] shadow-sm break-words leading-tight" 
-                                             style="background-color: #4f46e5 !important; color: white !important;">
+                                        <div class="bg-indigo-600 text-white rounded-lg px-3 py-1.5 max-w-[85%] text-[11px] shadow-sm break-words leading-tight"
+                                            style="background-color: #4f46e5 !important; color: white !important;">
                                             <span x-text="msg.message"></span>
                                         </div>
                                     </template>
 
                                     <!-- AI Message -->
                                     <template x-if="msg.role !== 'user' && msg.role !== 'system'">
-                                        <div class="bg-white text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 max-w-[85%] text-[11px] shadow-sm break-words leading-relaxed markdown-body">
-                                             <div x-html="renderMarkdown(msg.message)"></div>
+                                        <div
+                                            class="bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 max-w-[85%] text-[11px] shadow-sm break-words leading-relaxed markdown-body">
+                                            <div x-html="renderMarkdown(msg.message)"></div>
                                         </div>
                                     </template>
 
                                     <!-- System Message (Quota Exceeded) -->
                                     <template x-if="msg.role === 'system'">
-                                        <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center w-[95%] mx-auto my-2 shadow-sm">
+                                        <div
+                                            class="bg-red-50 border border-red-200 rounded-lg p-4 text-center w-[95%] mx-auto my-2 shadow-sm">
                                             <p class="text-xs text-red-800 font-bold mb-2 break-words" x-text="msg.message"></p>
-                                            <p class="text-[10px] text-red-600 mb-3" x-show="msg.reset_date">Renova em: <span x-text="msg.reset_date"></span></p>
-                                            <a :href="msg.upgrade_url" class="inline-block bg-gradient-to-r from-red-500 to-orange-500 text-white text-[11px] font-bold py-2 px-4 rounded-full shadow hover:scale-105 transition-transform uppercase tracking-wide">
+                                            <p class="text-[10px] text-red-600 mb-3" x-show="msg.reset_date">Renova em: <span
+                                                    x-text="msg.reset_date"></span></p>
+                                            <a :href="msg.upgrade_url"
+                                                class="inline-block bg-gradient-to-r from-red-500 to-orange-500 text-white text-[11px] font-bold py-2 px-4 rounded-full shadow hover:scale-105 transition-transform uppercase tracking-wide">
                                                 🚀 Turbinar meu Plano
                                             </a>
                                         </div>
                                     </template>
 
                                     <!-- Label -->
-                                    <span class="text-[9px] text-gray-400 mt-0.5" x-text="msg.role === 'user' ? 'Você' : (msg.role === 'system' ? 'Sistema' : 'IA')"></span>
+                                    <span class="text-[9px] text-gray-400 mt-0.5"
+                                        x-text="msg.role === 'user' ? 'Você' : (msg.role === 'system' ? 'Sistema' : 'IA')"></span>
                                 </div>
                             </template>
-                            
+
                             <!-- Typing Indicator -->
                             <div x-show="isTyping" class="flex items-start">
-                                <div class="bg-gray-100 rounded-lg px-3 py-2 text-xs text-gray-500 flex items-center gap-2 shadow-sm border border-gray-200">
+                                <div
+                                    class="bg-gray-100 rounded-lg px-3 py-2 text-xs text-gray-500 flex items-center gap-2 shadow-sm border border-gray-200">
                                     <span class="font-medium">IA está digitando</span>
                                     <div class="flex gap-1">
                                         <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></span>
-                                        <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
-                                        <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+                                        <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce"
+                                            style="animation-delay: 0.1s"></span>
+                                        <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce"
+                                            style="animation-delay: 0.2s"></span>
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- Error Message -->
-                            <div x-show="errorMessage" class="text-[10px] text-red-600 text-center mt-2 bg-red-50 p-1 rounded" x-text="errorMessage"></div>
+                            <div x-show="errorMessage" class="text-[10px] text-red-600 text-center mt-2 bg-red-50 p-1 rounded"
+                                x-text="errorMessage"></div>
                         </div>
 
                         <!-- Input Area -->
                         <div class="flex gap-2">
-                            <input type="text" 
-                                x-model="newMessage" 
-                                @keydown.enter.prevent="sendMessage()"
-                                placeholder="Dúvida rápida..." 
-                                class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-xs text-gray-900 h-8"
+                            <input type="text" x-model="newMessage" @keydown.enter.prevent="sendMessage()"
+                                placeholder="Dúvida rápida..."
+                                class="chat-input flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-xs text-gray-900 h-8"
                                 :disabled="isTyping || isLoadingHistory">
-                                
-                            <button @click="sendMessage()" 
-                                type="button"
+
+                            <button @click="sendMessage()" type="button"
                                 class="px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-xs font-medium disabled:opacity-50 transition-all h-8"
                                 :disabled="isTyping || isLoadingHistory || !newMessage.trim()">
                                 Enviar
@@ -371,7 +478,7 @@
             mangle: false
         });
 
-        window.chatComponent = function(simulationId, questionId) {
+        window.chatComponent = function (simulationId, questionId) {
             return {
                 showChat: false,
                 isLoadingHistory: false,
@@ -383,7 +490,7 @@
                 init() {
                     // No automatic init actions needed for basic chat
                 },
-                
+
                 renderMarkdown(text) {
                     if (!text) return '';
                     try {
@@ -392,7 +499,7 @@
                         return text;
                     }
                 },
-                
+
                 toggleChat() {
                     this.showChat = !this.showChat;
                     if (this.showChat && this.messages.length === 0) {
@@ -419,15 +526,15 @@
                     if (!this.newMessage.trim()) return;
 
                     const messageToSend = this.newMessage;
-                    
+
                     // Optimistic Update
-                    this.messages.push({ 
-                        role: 'user', 
-                        message: messageToSend, 
-                        id: Date.now() 
+                    this.messages.push({
+                        role: 'user',
+                        message: messageToSend,
+                        id: Date.now()
                     });
-                    
-                    this.newMessage = ''; 
+
+                    this.newMessage = '';
                     this.$nextTick(() => this.scrollToBottom());
                     this.isTyping = true;
                     this.errorMessage = null;
@@ -474,7 +581,7 @@
                 pollForAnswer() {
                     let attempts = 0;
                     const maxAttempts = 30; // 60 seconds (2s interval)
-                    
+
                     const poller = setInterval(async () => {
                         attempts++;
                         try {
@@ -483,18 +590,18 @@
                                 const history = await response.json();
                                 // Check if the last message is from assistant
                                 const lastMsg = history[history.length - 1];
-                                
+
                                 if (lastMsg && lastMsg.role === 'assistant') {
                                     // Found answer!
                                     // Only append if we haven't already (check ID or length)
                                     // Simplest: just replace messages or append distinct?
                                     // Let's just append the new one since we have local state
-                                    
+
                                     // Check if we already have this message locally (to avoid duplicates if re-render)
                                     // Creating a unique ID based on content/time?
                                     // Actually, replacing `messages` with `history` is safer to sync state.
                                     this.messages = history;
-                                    
+
                                     this.isTyping = false;
                                     this.$nextTick(() => this.scrollToBottom());
                                     clearInterval(poller);
