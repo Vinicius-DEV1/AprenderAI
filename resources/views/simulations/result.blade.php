@@ -316,6 +316,20 @@
                             style="background: #E2E8F0; color: #475569; margin-left: 8px;">{{ $answer->question->origin }}</span>
                     @endif
 
+                    @php
+                        $difficultyColor = match($answer->question->difficulty) {
+                            'easy' => ['bg' => '#d1fae5', 'text' => '#065f46', 'label' => 'Fácil'],
+                            'medium' => ['bg' => '#fef3c7', 'text' => '#92400e', 'label' => 'Média'],
+                            'hard' => ['bg' => '#fee2e2', 'text' => '#991b1b', 'label' => 'Difícil'],
+                            default => null,
+                        };
+                    @endphp
+
+                    @if($difficultyColor)
+                        <span class="badge" style="background: {{ $difficultyColor['bg'] }}; color: {{ $difficultyColor['text'] }}; margin-left: 8px;">
+                            {{ $difficultyColor['label'] }}
+                        </span>
+                    @endif
                     <span class="badge {{ $answer->is_correct ? 'badge-correct' : 'badge-incorrect' }}">
                         {{ $answer->is_correct ? '✓ Correta' : '✗ Incorreta' }}
                     </span>
