@@ -62,7 +62,7 @@ class DashboardController extends Controller
 
         $stats = (object) [
             'total_simulations' => $totalSimulations,
-            'total_essays' => 0, // Mantendo 0 pois não foi solicitado correção de redação
+            'total_essays' => \App\Models\Essay::where('user_id', $user->id)->whereNotNull('submitted_at')->count(),
             'average_math_score' => round($averageMath, 1),
             'average_portuguese_score' => round($averagePortuguese, 1),
             'average_overall_score' => round($averageOverall, 1),

@@ -133,13 +133,42 @@ class User extends Authenticatable
 
     public function canCreateEssay(): bool
     {
-        if (!$this->plan)
+        if (!$this->plan) {
             return false;
-        if ($this->plan->isUnlimited('essays'))
-            return true;
+        }
 
-        $this->resetUsageIfNeeded();
-        return $this->essays_used_this_month < $this->plan->essays_limit;
+        // Free plan: 0 essays
+        if ($this->plan->essays_limit === 0) {
+            return false;
+        }
+
+        // Unlimited check
+        if ($this->plan->isUnlimited('essays')) {
+            return true;
+        }
+
+        // Strict Count: essays where submitted_at is in current month/year
+        $usage = $this->essays()
+            ->whereNotNull('submitted_at')
+            ->whereYear('submitted_at', now()->year)
+            ->whereMonth('submitted_at', now()->month)
+            ->count();
+
+        return $usage < $this->plan->essays_limit;
+    }
+
+    public function monthlyEssayLimit(): int
+    {
+        return $this->plan ? $this->plan->essays_limit : 0;
+    }
+
+    public function monthlyEssayUsed(): int
+    {
+        return $this->essays()
+            ->whereNotNull('submitted_at')
+            ->whereYear('submitted_at', now()->year)
+            ->whereMonth('submitted_at', now()->month)
+            ->count();
     }
 
     public function incrementSimulationUsage(): void
@@ -148,8 +177,10 @@ class User extends Authenticatable
         $this->increment('simulations_used_this_month');
     }
 
+    // Deprecated but kept for backward compatibility if needed, though logic now uses monthlyEssayUsed()
     public function incrementEssayUsage(): void
     {
+        // No-op for new logic, or keep updating for legacy stats
         $this->resetUsageIfNeeded();
         $this->increment('essays_used_this_month');
     }

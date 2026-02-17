@@ -14,6 +14,6 @@ class EssayPolicy
 
     public function update(User $user, Essay $essay): bool
     {
-        return $user->id === $essay->user_id && $essay->status === 'draft';
+        return $user->id === $essay->user_id && in_array($essay->status, ['draft', 'in_progress']);
     }
 }

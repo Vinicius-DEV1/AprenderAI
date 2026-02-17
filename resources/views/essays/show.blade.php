@@ -1,234 +1,166 @@
-@extends('layouts.app')
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+            {{ __('Redação') }}: {{ $essay->title }}
+        </h2>
+    </x-slot>
 
-@section('page-title', 'Redação')
+    <div class="py-12" x-data="{ tab: 'general' }">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
-@section('content')
-    <style>
-        .essay-container {
-            background: white;
-            border-radius: 12px;
-            padding: 32px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        .essay-header {
-            margin-bottom: 32px;
-            padding-bottom: 24px;
-            border-bottom: 2px solid #f1f5f9;
-        }
-
-        .essay-header h1 {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .essay-meta {
-            display: flex;
-            gap: 20px;
-            font-size: 14px;
-            color: #64748b;
-        }
-
-        .status-badge {
-            padding: 6px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .status-draft {
-            background: #e0e7ff;
-            color: #3730a3;
-        }
-
-        .status-pending {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .status-corrected {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .essay-content {
-            font-size: 16px;
-            line-height: 1.8;
-            color: #1e293b;
-            margin-bottom: 32px;
-            white-space: pre-wrap;
-        }
-
-        .score-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 12px;
-            padding: 32px;
-            color: white;
-            text-align: center;
-            margin-bottom: 32px;
-        }
-
-        .score-section h2 {
-            font-size: 48px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .competencies-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 16px;
-            margin-bottom: 32px;
-        }
-
-        .competency {
-            background: #f8fafc;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-        }
-
-        .competency h4 {
-            font-size: 12px;
-            color: #64748b;
-            font-weight: 600;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-        }
-
-        .competency .score {
-            font-size: 32px;
-            font-weight: 700;
-            color: #2563EB;
-        }
-
-        .feedback-section {
-            background: #f8fafc;
-            border-radius: 8px;
-            padding: 24px;
-            margin-bottom: 24px;
-        }
-
-        .feedback-section h3 {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 16px;
-            color: #1e293b;
-        }
-
-        .feedback-text {
-            font-size: 15px;
-            line-height: 1.7;
-            color: #334155;
-        }
-
-        .actions {
-            display: flex;
-            gap: 12px;
-        }
-
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn-primary {
-            background: #2563EB;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #1d4ed8;
-        }
-
-        .btn-secondary {
-            background: #f1f5f9;
-            color: #334155;
-        }
-    </style>
-
-    <div class="essay-container">
-        <div class="essay-header">
-            <h1>{{ $essay->title }}</h1>
-            <div class="essay-meta">
-                <span>Tema: {{ $essay->theme }}</span>
-                <span>•</span>
-                <span>{{ $essay->created_at->format('d/m/Y H:i') }}</span>
-                <span>•</span>
-                <span class="status-badge status-{{ $essay->status }}">
-                    {{ [
-        'draft' => 'Rascunho',
-        'pending' => 'Em correção',
-        'corrected' => 'Corrigida'
-    ][$essay->status] ?? 'Desconhecido' }}
-                </span>
-            </div>
-        </div>
-
-        <div class="essay-content">{{ $essay->content }}</div>
-
-        @if($essay->isCorrected())
-            <div class="score-section">
-                <h2>{{ $essay->score }}/1000</h2>
-                <p style="opacity: 0.9;">Sua nota final</p>
+            <!-- Status / Alert -->
+            <div
+                class="mb-6 p-4 rounded-lg text-center font-bold text-lg
+                {{ $essay->status === 'completed' ? 'bg-green-100 text-green-800 border border-green-200' : '' }}
+                {{ $essay->status === 'evaluating' ? 'bg-purple-100 text-purple-800 border border-purple-200 animate-pulse' : '' }}
+                {{ $essay->status === 'error' ? 'bg-red-100 text-red-800 border border-red-200' : '' }}
+                {{ $essay->status === 'pending' || $essay->status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : '' }}">
+                {{ $statusMessage }}
             </div>
 
-            <div class="competencies-grid">
-                <div class="competency">
-                    <h4>Comp. 1</h4>
-                    <div class="score">{{ $essay->competency_1 ?? 0 }}/200</div>
-                </div>
-                <div class="competency">
-                    <h4>Comp. 2</h4>
-                    <div class="score">{{ $essay->competency_2 ?? 0 }}/200</div>
-                </div>
-                <div class="competency">
-                    <h4>Comp. 3</h4>
-                    <div class="score">{{ $essay->competency_3 ?? 0 }}/200</div>
-                </div>
-                <div class="competency">
-                    <h4>Comp. 4</h4>
-                    <div class="score">{{ $essay->competency_4 ?? 0 }}/200</div>
-                </div>
-                <div class="competency">
-                    <h4>Comp. 5</h4>
-                    <div class="score">{{ $essay->competency_5 ?? 0 }}/200</div>
-                </div>
-            </div>
-
-            @if($essay->feedback)
-                <div class="feedback-section">
-                    <h3>Feedback</h3>
-                    <div class="feedback-text">{{ $essay->feedback }}</div>
+            @if($essay->status === 'error')
+                <div class="mb-6 flex justify-center">
+                    <form action="{{ route('essays.retry-evaluation', $essay) }}" method="POST">
+                        @csrf
+                        <button type="submit"
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow">
+                            Tentar novamente
+                        </button>
+                    </form>
                 </div>
             @endif
 
-            @if($essay->ai_suggestions)
-                <div class="feedback-section" style="background: #eff6ff;">
-                    <h3>💡 Sugestões de Melhoria (Plano {{ $essay->user->plan->name }})</h3>
-                    <div class="feedback-text">{{ $essay->ai_suggestions }}</div>
+            @if($essay->status === 'completed')
+                <!-- Score Card -->
+                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                    <div class="p-6 text-gray-900 dark:text-gray-100 text-center">
+                        <h3 class="text-sm uppercase tracking-widest text-gray-500 font-bold mb-2">Nota Xavier</h3>
+                        <div class="text-6xl font-extrabold text-blue-600">
+                            {{ $essay->score }}
+                            <span class="text-2xl text-gray-400 font-normal">/
+                                {{ $essay->type === 'enem' ? '1000' : '100' }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs Navigation -->
+                <div class="flex space-x-2 mb-6 overflow-x-auto pb-2">
+                    <button @click="tab = 'general'"
+                        :class="{'bg-blue-600 text-white': tab === 'general', 'bg-white text-gray-700 dark:bg-gray-700 dark:text-gray-300': tab !== 'general'}"
+                        class="px-4 py-2 rounded-md font-bold shadow transition">Resumo</button>
+                    <button @click="tab = 'points'"
+                        :class="{'bg-blue-600 text-white': tab === 'points', 'bg-white text-gray-700 dark:bg-gray-700 dark:text-gray-300': tab !== 'points'}"
+                        class="px-4 py-2 rounded-md font-bold shadow transition">Pontos Fortes/Fracos</button>
+                    <button @click="tab = 'corrections'"
+                        :class="{'bg-blue-600 text-white': tab === 'corrections', 'bg-white text-gray-700 dark:bg-gray-700 dark:text-gray-300': tab !== 'corrections'}"
+                        class="px-4 py-2 rounded-md font-bold shadow transition">Correções</button>
+                    <button @click="tab = 'improved'"
+                        :class="{'bg-blue-600 text-white': tab === 'improved', 'bg-white text-gray-700 dark:bg-gray-700 dark:text-gray-300': tab !== 'improved'}"
+                        class="px-4 py-2 rounded-md font-bold shadow transition">Versão Melhorada</button>
+                </div>
+
+                <!-- Tab Contents -->
+                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg min-h-[400px]">
+                    <div class="p-6 text-gray-900 dark:text-gray-100">
+
+                        <!-- General -->
+                        <div x-show="tab === 'general'">
+                            <h3 class="text-xl font-bold mb-4">Resumo da Avaliação</h3>
+                            <p class="mb-4 text-lg leading-relaxed">
+                                {{ $essay->feedback_json['summary'] ?? $essay->feedback ?? 'Sem resumo disponível.' }}
+                            </p>
+
+                            @if(isset($essay->feedback_json['checklist']))
+                                <h4 class="font-bold mt-6 mb-2">Checklist Rápido</h4>
+                                <ul class="space-y-2">
+                                    @foreach($essay->feedback_json['checklist'] as $item)
+                                        <li class="flex items-center">
+                                            @if(strtolower($item['status']) === 'ok')
+                                                <span class="text-green-500 mr-2">✔</span>
+                                            @else
+                                                <span class="text-yellow-500 mr-2">⚠</span>
+                                            @endif
+                                            <span class="font-semibold mr-2">{{ $item['item'] }}:</span> {{ $item['status'] }}
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        </div>
+
+                        <!-- Points -->
+                        <div x-show="tab === 'points'" style="display:none;">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <h3 class="text-green-600 font-bold text-lg mb-3">Pontos Fortes</h3>
+                                    <ul class="list-disc pl-5 space-y-1">
+                                        @foreach($essay->feedback_json['strengths'] ?? [] as $s)
+                                            <li>{{ $s }}</li>
+                                        @endforeach
+                                        @if(empty($essay->feedback_json['strengths']))
+                                            <li class="text-gray-500 italic">Nenhum ponto forte destacado.</li>
+                                        @endif
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h3 class="text-red-500 font-bold text-lg mb-3">A Melhorar</h3>
+                                    <ul class="list-disc pl-5 space-y-1">
+                                        @foreach($essay->feedback_json['weaknesses'] ?? [] as $w)
+                                            <li>{{ $w }}</li>
+                                        @endforeach
+                                        @if(empty($essay->feedback_json['weaknesses']))
+                                            <li class="text-gray-500 italic">Nenhum ponto de melhoria destacado.</li>
+                                        @endif
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Corrections -->
+                        <div x-show="tab === 'corrections'" style="display:none;">
+                            <h3 class="text-xl font-bold mb-4">Correções Pontuais</h3>
+                            <div class="space-y-4">
+                                @foreach($essay->feedback_json['corrections'] ?? [] as $c)
+                                    <div class="border-l-4 border-yellow-400 pl-4 py-2 bg-gray-50 dark:bg-gray-700">
+                                        <p class="font-mono text-sm text-red-600 mb-1">"{{ $c['excerpt'] ?? 'Trecho' }}"</p>
+                                        <p class="font-bold text-gray-800 dark:text-gray-200">{{ $c['issue'] ?? 'Problema' }}
+                                        </p>
+                                        <p class="text-green-600 italic">Sugestão: {{ $c['suggestion'] ?? '' }}</p>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <!-- Improved -->
+                        <div x-show="tab === 'improved'" style="display:none;">
+                            <h3 class="text-xl font-bold mb-4">Versão Sugerida por Xavier</h3>
+                            <div
+                                class="prose dark:prose-invert max-w-none bg-gray-50 dark:bg-gray-900 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                                {!! nl2br(e($essay->feedback_json['improved_version'] ?? 'Versão melhorada indisponível.')) !!}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             @endif
-        @endif
 
-        <div class="actions">
-            @if($essay->status === 'draft')
-                <form method="POST" action="{{ route('essays.submit', $essay) }}">
-                    @csrf
-                    <button type="submit" class="btn btn-primary">Enviar para Correção</button>
-                </form>
-            @endif
-            <a href="{{ route('essays.index') }}" class="btn btn-secondary">Voltar</a>
+            <!-- Original Text (Always visible at bottom) -->
+            <div class="mt-8 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6">
+                    <h3 class="font-bold text-gray-500 uppercase tracking-widest text-sm mb-4">Seu Texto Original</h3>
+                    <div
+                        class="prose dark:prose-invert max-w-none whitespace-pre-line text-gray-700 dark:text-gray-300">
+                        {{ $essay->content }}
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
-@endsection
+
+    @if($essay->status === 'evaluating')
+        <script>
+            setTimeout(() => {
+                window.location.reload();
+            }, 10000); // Auto reload every 10s to check status
+        </script>
+    @endif
+</x-app-layout>
