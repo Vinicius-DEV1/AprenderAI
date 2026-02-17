@@ -11,3 +11,4 @@ use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('metrics:collect')->everyMinute();
 Schedule::command('api:check-health')->everyThirtyMinutes();
+Schedule::command('ai:reset-quotas')->daily();

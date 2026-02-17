@@ -18,16 +18,17 @@ class UserController extends Controller
 
         if ($request->has('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
         if ($request->has('status')) {
             if ($request->status === 'active') {
                 $query->where('is_banned', false);
-            } elseif ($request->status === 'banned') {
+            }
+            elseif ($request->status === 'banned') {
                 $query->where('is_banned', true);
             }
         }
@@ -40,19 +41,19 @@ class UserController extends Controller
     public function show(User $user)
     {
         $user->load(['subscriptions', 'logs' => fn($q) => $q->latest()->take(20)]);
-        
+
         // AI Metrics
         $aiLogsQuery = \App\Models\AiRequestLog::where('user_id', $user->id);
-        
+
         $totalAiCost = $aiLogsQuery->sum('estimated_cost');
         $aiRequestCount = $aiLogsQuery->count();
-        
+
         // Success Rate: defined as requests that don't have "error" in response_text
         // Or more properly if we had a status column. For now let's check for "error" key in JSON or 0 tokens if fails completely.
         $successCount = \App\Models\AiRequestLog::where('user_id', $user->id)
             ->where('tokens_used_total', '>', 0)
             ->count();
-        
+
         $successRate = $aiRequestCount > 0 ? ($successCount / $aiRequestCount) * 100 : 0;
 
         // Peak Usage Hour - Cross-database compatibility
@@ -68,7 +69,7 @@ class UserController extends Controller
         $promptHistory = \App\Models\AiRequestLog::where('user_id', $user->id)
             ->latest()
             ->paginate(10, ['*'], 'ai_page');
-        
+
         $stats = [
             'simulations' => \App\Models\Simulation::where('user_id', $user->id)->count(),
             'essays' => \App\Models\Essay::where('user_id', $user->id)->count(),
@@ -89,16 +90,28 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'phone' => 'nullable|string|max:20',
+            'ai_questions_count' => 'nullable|integer|min:0',
         ]);
 
         $original = $user->getOriginal();
-        $user->update($request->only('name', 'email', 'phone'));
+
+        $data = $request->only('name', 'email', 'phone');
+        if ($request->has('ai_questions_count')) {
+            $data['ai_questions_count'] = $request->ai_questions_count;
+        }
+
+        $user->update($data);
 
         // Description of changes
         $changes = [];
-        if ($original['name'] !== $user->name) $changes[] = "Nome: {$original['name']} -> {$user->name}";
-        if ($original['email'] !== $user->email) $changes[] = "Email: {$original['email']} -> {$user->email}";
-        if ($original['phone'] !== $user->phone) $changes[] = "Telefone: {$original['phone']} -> {$user->phone}";
+        if ($original['name'] !== $user->name)
+            $changes[] = "Nome: {$original['name']} -> {$user->name}";
+        if ($original['email'] !== $user->email)
+            $changes[] = "Email: {$original['email']} -> {$user->email}";
+        if ($original['phone'] !== $user->phone)
+            $changes[] = "Telefone: {$original['phone']} -> {$user->phone}";
+        if ($original['ai_questions_count'] !== $user->ai_questions_count)
+            $changes[] = "Cota IA: {$original['ai_questions_count']} -> {$user->ai_questions_count}";
 
         if (!empty($changes)) {
             UserLog::create([
@@ -149,7 +162,7 @@ class UserController extends Controller
 
         if ($request->has('new_password')) {
             $request->validate(['new_password' => 'required|min:8']);
-            
+
             $user->update(['password' => Hash::make($request->new_password)]);
 
             UserLog::create([
@@ -158,7 +171,7 @@ class UserController extends Controller
                 'description' => 'Senha alterada manualmente pelo Admin.',
                 'ip_address' => $request->ip(),
             ]);
-            
+
             return back()->with('success', 'Senha alterada com sucesso!');
         }
 

@@ -4,6 +4,52 @@
 
 @section('content')
 <div class="simulation-page">
+    @if($simulation->status === 'generating')
+        <div class="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+            <div class="text-center p-8 bg-white rounded-xl shadow-lg max-w-md w-full">
+                <div class="mb-6 relative">
+                    <div class="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto"></div>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <span class="text-xs font-bold text-indigo-600">AI</span>
+                    </div>
+                </div>
+                
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Montando sua Prova...</h2>
+                <p class="text-gray-600 mb-6">
+                    Nossa IA está selecionando e criando questões inéditas baseadas no seu perfil.
+                    <br><span class="text-sm text-gray-400 mt-2 block">(Isso leva cerca de 5 a 10 segundos)</span>
+                </p>
+
+                <!-- Progress Bar Mockup -->
+                <div class="w-full bg-gray-200 rounded-full h-2.5 mb-4 overflow-hidden">
+                    <div class="bg-indigo-600 h-2.5 rounded-full animate-pulse w-2/3"></div>
+                </div>
+
+                <div id="status-debug" class="text-xs text-gray-400 font-mono hidden">Carregando...</div>
+            </div>
+
+            <script>
+                const simulationId = {{ $simulation->id }};
+                
+                function checkStatus() {
+                    fetch(`/simulations/${simulationId}/status`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.simulation_status === 'error') {
+                                alert('Ocorreu um erro ao gerar o simulado. Por favor, tente novamente.');
+                                window.location.href = '/simulations/create'; // Redirect to create or dashboard
+                            } else if (data.simulation_status !== 'generating') {
+                                window.location.reload();
+                            }
+                        })
+                        .catch(err => console.error('Polling error:', err));
+                }
+
+                // Poll every 2 seconds
+                setInterval(checkStatus, 2000);
+            </script>
+        </div>
+    @else
     <style>
         /* Scoped styles for simulation page ONLY */
         .simulation-page .simulation-full-width {
@@ -373,6 +419,7 @@
             @endforeach
         </main>
     </div>
+    @endif
 </div>
 
 <script>

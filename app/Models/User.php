@@ -29,6 +29,8 @@ class User extends Authenticatable
         'google_id',
         'avatar_url',
         'is_banned',
+        'ai_questions_count',
+        'last_reset_at',
     ];
 
     /**
@@ -55,6 +57,7 @@ class User extends Authenticatable
             'plan_expires_at' => 'datetime',
             'is_banned' => 'boolean',
             'usage_reset_at' => 'datetime',
+            'last_reset_at' => 'datetime',
         ];
     }
 
@@ -160,5 +163,21 @@ class User extends Authenticatable
                 'usage_reset_at' => now()->addMonth(),
             ]);
         }
+    }
+
+    public function hasAiQuota(): bool
+    {
+        if (!$this->plan) {
+            return false;
+        }
+        // If plan has no limit defined (null) or 0 (maybe unexpected?), assume limit.
+        // But migration default is 10.
+        // Let's assume -1 or huge number for unlimited if needed, but for now strict comparison.
+        return $this->ai_questions_count < $this->plan->max_ai_questions;
+    }
+
+    public function incrementAiUsage(): void
+    {
+        $this->increment('ai_questions_count');
     }
 }

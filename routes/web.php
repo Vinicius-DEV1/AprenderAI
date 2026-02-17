@@ -13,112 +13,121 @@ Route::get('/', function () {
 Route::view('/privacidade', 'legal.privacy')->name('privacy');
 Route::view('/uso-justo', 'legal.fair-use')->name('fair-use');
 
-Route::post('/webhooks/mercadopago', [\App\Http\Controllers\WebhookController::class, 'handleMercadoPago'])->name('webhooks.mercadopago');
-Route::post('/webhooks/asaas', [\App\Http\Controllers\WebhookController::class, 'handleAsaas'])->name('webhooks.asaas');
+Route::post('/webhooks/mercadopago', [\App\Http\Controllers\WebhookController::class , 'handleMercadoPago'])->name('webhooks.mercadopago');
+Route::post('/webhooks/asaas', [\App\Http\Controllers\WebhookController::class , 'handleAsaas'])->name('webhooks.asaas');
 
 Route::middleware(['auth'])->group(function () {
     // Dashboard
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class , 'index'])->name('dashboard');
 
     // Simulados
     Route::prefix('simulations')->name('simulations.')->group(function () {
-        Route::get('/', [SimulationController::class, 'index'])->name('index');
-        Route::get('/create', [SimulationController::class, 'create'])
-            ->middleware('check.plan.limits:simulation')
-            ->name('create');
-        Route::post('/', [SimulationController::class, 'store'])->name('store');
-        Route::get('/{simulation}', [SimulationController::class, 'show'])->name('show');
-        Route::post('/{simulation}/answer', [SimulationController::class, 'saveAnswer'])->name('answer');
-        Route::post('/{simulation}/finish', [SimulationController::class, 'finish'])->name('finish');
-        Route::get('/{simulation}/result', [SimulationController::class, 'result'])->name('result');
-        Route::get('/{simulation}/status', [SimulationController::class, 'checkCorrectionStatus'])->name('status');
+            Route::get('/', [SimulationController::class , 'index'])->name('index');
+            Route::get('/create', [SimulationController::class , 'create'])
+                ->middleware('check.plan.limits:simulation')
+                ->name('create');
+            Route::post('/', [SimulationController::class , 'store'])->name('store');
+            Route::get('/{simulation}', [SimulationController::class , 'show'])->name('show');
+            Route::post('/{simulation}/answer', [SimulationController::class , 'saveAnswer'])->name('answer');
+            Route::post('/{simulation}/finish', [SimulationController::class , 'finish'])->name('finish');
+            Route::get('/{simulation}/result', [SimulationController::class , 'result'])->name('result');
+            Route::get('/{simulation}/status', [SimulationController::class , 'checkCorrectionStatus'])->name('status');
 
-        // Chat Contextual
-        Route::post('/{simulation}/questions/{question}/chat', [\App\Http\Controllers\QuestionChatController::class, 'store'])->name('questions.chat.store');
-        Route::get('/{simulation}/questions/{question}/chat', [\App\Http\Controllers\QuestionChatController::class, 'index'])->name('questions.chat.index');
-    });
+            // Chat Contextual
+            Route::post('/{simulation}/questions/{question}/chat', [\App\Http\Controllers\QuestionChatController::class , 'store'])->name('questions.chat.store');
+            Route::get('/{simulation}/questions/{question}/chat', [\App\Http\Controllers\QuestionChatController::class , 'index'])->name('questions.chat.index');
+        }
+        );
 
-    // Redações
-    Route::prefix('essays')->name('essays.')->group(function () {
-        Route::get('/', [EssayController::class, 'index'])->name('index');
-        Route::get('/create', [EssayController::class, 'create'])
-            ->middleware('check.plan.limits:essay')
-            ->name('create');
-        Route::post('/', [EssayController::class, 'store'])->name('store');
-        Route::post('/{essay}/submit', [EssayController::class, 'submit'])->name('submit');
-        Route::get('/{essay}', [EssayController::class, 'show'])->name('show');
-    });
+        // Redações
+        Route::prefix('essays')->name('essays.')->group(function () {
+            Route::get('/', [EssayController::class , 'index'])->name('index');
+            Route::get('/create', [EssayController::class , 'create'])
+                ->middleware('check.plan.limits:essay')
+                ->name('create');
+            Route::post('/', [EssayController::class , 'store'])->name('store');
+            Route::post('/{essay}/submit', [EssayController::class , 'submit'])->name('submit');
+            Route::get('/{essay}', [EssayController::class , 'show'])->name('show');
+        }
+        );
 
-    // Plano de Estudos
-    Route::prefix('study-plan')->name('study-plan.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\StudyPlanController::class, 'index'])->name('index');
-        Route::get('/status', [\App\Http\Controllers\StudyPlanController::class, 'status'])->name('status');
-        Route::post('/generate', [\App\Http\Controllers\StudyPlanController::class, 'store'])->name('store');
-        Route::post('/update', [\App\Http\Controllers\StudyPlanController::class, 'update'])->name('update');
-    });
-
-    // Planos
-    Route::prefix('plans')->name('plans.')->group(function () {
-        Route::get('/', [PlanController::class, 'index'])->name('index');
-        Route::get('/{plan}', [PlanController::class, 'show'])->name('show');
-        Route::get('/{plan}/checkout', [\App\Http\Controllers\SubscriptionController::class, 'showCheckout'])->name('checkout');
-        Route::post('/{plan}/validate-coupon', [\App\Http\Controllers\SubscriptionController::class, 'validateCoupon'])->name('validate-coupon');
-        Route::post('/{plan}/checkout', [\App\Http\Controllers\SubscriptionController::class, 'store'])
-            ->middleware('check.payment.active')
-            ->name('store');
-    });
-
-    // Pagamentos
-    Route::prefix('payments')->name('payments.')->group(function () {
-        Route::get('/success', [\App\Http\Controllers\SubscriptionController::class, 'success'])->name('success');
-        Route::get('/failure', [\App\Http\Controllers\SubscriptionController::class, 'failure'])->name('failure');
-        Route::get('/pending', [\App\Http\Controllers\SubscriptionController::class, 'pending'])->name('pending');
-    });
-
-    // Admin
-    Route::middleware(['is.admin'])->prefix('admin')->name('admin.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Admin\AdminController::class, 'dashboard'])->name('dashboard');
-        Route::get('/api-keys', [\App\Http\Controllers\Admin\AdminController::class, 'apiKeys'])->name('api-keys');
-        Route::post('/api-keys', [\App\Http\Controllers\Admin\AdminController::class, 'storeApiKey'])->name('api-keys.store');
-        Route::patch('/api-keys/{apiKey}/toggle', [\App\Http\Controllers\Admin\AdminController::class, 'toggleApiKey'])->name('api-keys.toggle');
-        Route::post('/api-keys/test-connection', [\App\Http\Controllers\Admin\AdminController::class, 'testConnection'])->name('api-keys.test');
-        Route::post('/api-keys/clear-logs', [\App\Http\Controllers\Admin\AdminController::class, 'clearLogs'])->name('api-keys.clear-logs');
-        Route::post('/api-keys/{apiKey}/retest', [\App\Http\Controllers\Admin\AdminController::class, 'retestApiKey'])->name('api-keys.retest');
-        Route::delete('/api-keys/{apiKey}', [\App\Http\Controllers\Admin\AdminController::class, 'destroyApiKey'])->name('api-keys.destroy');
-
-        // Configurações de Pagamento
-        Route::get('/payment-settings', [\App\Http\Controllers\Admin\PaymentSettingController::class, 'index'])->name('payment-settings');
-        Route::post('/payment-settings', [\App\Http\Controllers\Admin\PaymentSettingController::class, 'update'])->name('payment-settings.update');
-
-        // Cupons
-        Route::resource('coupons', \App\Http\Controllers\Admin\CouponController::class);
-
-        // Integrações
-        Route::get('/integrations', [\App\Http\Controllers\Admin\IntegrationController::class, 'index'])->name('integrations');
-        Route::post('/integrations', [\App\Http\Controllers\Admin\IntegrationController::class, 'update'])->name('integrations.update');
-
-        // Usuários
-        Route::get('/users', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('users.index');
-        Route::get('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'show'])->name('users.show');
-        Route::put('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'update'])->name('users.update');
-        Route::patch('/users/{user}/toggle-status', [\App\Http\Controllers\Admin\UserController::class, 'toggleStatus'])->name('users.toggle-status');
-        Route::post('/users/{user}/reset-password', [\App\Http\Controllers\Admin\UserController::class, 'resetPassword'])->name('users.reset-password');
+        // Plano de Estudos
+        Route::prefix('study-plan')->name('study-plan.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\StudyPlanController::class , 'index'])->name('index');
+            Route::get('/status', [\App\Http\Controllers\StudyPlanController::class , 'status'])->name('status');
+            Route::post('/generate', [\App\Http\Controllers\StudyPlanController::class , 'store'])->name('store');
+            Route::post('/update', [\App\Http\Controllers\StudyPlanController::class , 'update'])->name('update');
+        }
+        );
 
         // Planos
-        Route::resource('plans', \App\Http\Controllers\Admin\PlanController::class);
+        Route::prefix('plans')->name('plans.')->group(function () {
+            Route::get('/', [PlanController::class , 'index'])->name('index');
+            Route::get('/{plan}', [PlanController::class , 'show'])->name('show');
+            Route::get('/{plan}/checkout', [\App\Http\Controllers\SubscriptionController::class , 'showCheckout'])->name('checkout');
+            Route::post('/{plan}/validate-coupon', [\App\Http\Controllers\SubscriptionController::class , 'validateCoupon'])->name('validate-coupon');
+            Route::post('/{plan}/checkout', [\App\Http\Controllers\SubscriptionController::class , 'store'])
+                ->middleware('check.payment.active')
+                ->name('store');
+        }
+        );
 
-        // Monitoramento
-        Route::get('/monitor', [\App\Http\Controllers\Admin\MonitorController::class, 'index'])->name('monitor.index');
-        Route::get('/monitor/realtime', [\App\Http\Controllers\Admin\MonitorController::class, 'realtime'])->name('monitor.realtime');
-        Route::get('/monitor/history', [\App\Http\Controllers\Admin\MonitorController::class, 'history'])->name('monitor.history');
+        // Pagamentos
+        Route::prefix('payments')->name('payments.')->group(function () {
+            Route::get('/success', [\App\Http\Controllers\SubscriptionController::class , 'success'])->name('success');
+            Route::get('/failure', [\App\Http\Controllers\SubscriptionController::class , 'failure'])->name('failure');
+            Route::get('/pending', [\App\Http\Controllers\SubscriptionController::class , 'pending'])->name('pending');
+        }
+        );
 
-        // Questões (Banco de Questões)
-        Route::resource('questions', \App\Http\Controllers\Admin\QuestionController::class);
+        // Admin
+        Route::middleware(['is.admin'])->prefix('admin')->name('admin.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\AdminController::class , 'dashboard'])->name('dashboard');
+            Route::get('/api-keys', [\App\Http\Controllers\Admin\AdminController::class , 'apiKeys'])->name('api-keys');
+            Route::post('/api-keys', [\App\Http\Controllers\Admin\AdminController::class , 'storeApiKey'])->name('api-keys.store');
+            Route::patch('/api-keys/{apiKey}/toggle', [\App\Http\Controllers\Admin\AdminController::class , 'toggleApiKey'])->name('api-keys.toggle');
+            Route::post('/api-keys/test-connection', [\App\Http\Controllers\Admin\AdminController::class , 'testConnection'])->name('api-keys.test');
+            Route::post('/api-keys/clear-logs', [\App\Http\Controllers\Admin\AdminController::class , 'clearLogs'])->name('api-keys.clear-logs');
+            Route::post('/api-keys/{apiKey}/retest', [\App\Http\Controllers\Admin\AdminController::class , 'retestApiKey'])->name('api-keys.retest');
+            Route::delete('/api-keys/{apiKey}', [\App\Http\Controllers\Admin\AdminController::class , 'destroyApiKey'])->name('api-keys.destroy');
+
+            // Configurações de Pagamento
+            Route::get('/payment-settings', [\App\Http\Controllers\Admin\PaymentSettingController::class , 'index'])->name('payment-settings');
+            Route::post('/payment-settings', [\App\Http\Controllers\Admin\PaymentSettingController::class , 'update'])->name('payment-settings.update');
+
+            // Cupons
+            Route::resource('coupons', \App\Http\Controllers\Admin\CouponController::class);
+
+            // Integrações
+            Route::get('/integrations', [\App\Http\Controllers\Admin\IntegrationController::class , 'index'])->name('integrations');
+            Route::post('/integrations', [\App\Http\Controllers\Admin\IntegrationController::class , 'update'])->name('integrations.update');
+
+            // Usuários
+            Route::get('/users', [\App\Http\Controllers\Admin\UserController::class , 'index'])->name('users.index');
+            Route::get('/users/{user}', [\App\Http\Controllers\Admin\UserController::class , 'show'])->name('users.show');
+            Route::put('/users/{user}', [\App\Http\Controllers\Admin\UserController::class , 'update'])->name('users.update');
+            Route::patch('/users/{user}/toggle-status', [\App\Http\Controllers\Admin\UserController::class , 'toggleStatus'])->name('users.toggle-status');
+            Route::post('/users/{user}/reset-password', [\App\Http\Controllers\Admin\UserController::class , 'resetPassword'])->name('users.reset-password');
+
+            // Planos
+            Route::resource('plans', \App\Http\Controllers\Admin\PlanController::class);
+
+            // Monitoramento
+            Route::get('/monitor', [\App\Http\Controllers\Admin\MonitorController::class , 'index'])->name('monitor.index');
+            Route::get('/monitor/realtime', [\App\Http\Controllers\Admin\MonitorController::class , 'realtime'])->name('monitor.realtime');
+            Route::get('/monitor/history', [\App\Http\Controllers\Admin\MonitorController::class , 'history'])->name('monitor.history');
+
+            // Questões (Banco de Questões)
+            Route::resource('questions', \App\Http\Controllers\Admin\QuestionController::class);
+
+            // Chat Logs
+            Route::get('/chat-logs/{id}', [\App\Http\Controllers\Admin\ChatLogController::class , 'show'])->name('chat-logs.show');
+        }
+        );
     });
-});
 
 // Google Auth
-Route::get('auth/google', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'redirect'])->name('auth.google');
-Route::get('auth/google/callback', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'callback'])->name('auth.google.callback');
+Route::get('auth/google', [\App\Http\Controllers\Auth\GoogleAuthController::class , 'redirect'])->name('auth.google');
+Route::get('auth/google/callback', [\App\Http\Controllers\Auth\GoogleAuthController::class , 'callback'])->name('auth.google.callback');
 
 require __DIR__ . '/auth.php';

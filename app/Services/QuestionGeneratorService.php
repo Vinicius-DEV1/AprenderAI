@@ -39,13 +39,15 @@ class QuestionGeneratorService
             foreach ($questions as $qData) {
                 // Ensure correct structure and values
                 $qData['type'] = 'concurso';
-                $qData['source'] = 'generated_system';
+                $qData['source'] = 'ai_generated';
+                $qData['origin'] = 'IA';
                 // theme includes banca
                 $qData['theme'] = 'banca:' . $banca;
 
                 // Duplication check
                 $exists = Question::where('type', 'concurso')
                     ->where('statement', $qData['statement'])
+                    ->where('source', 'ai_generated')
                     ->exists();
 
                 if (!$exists) {
@@ -54,7 +56,8 @@ class QuestionGeneratorService
                 }
             }
             DB::commit();
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             DB::rollBack();
             Log::error("Failed to save generated questions: " . $e->getMessage());
             throw $e;
@@ -130,7 +133,8 @@ class QuestionGeneratorService
                         'status' => 'pending', // Default status in migration
                     ]);
                 }
-            } catch (\Exception $e) {
+            }
+            catch (\Exception $e) {
                 Log::error("Failed to save essay: " . $e->getMessage());
             }
 
@@ -159,6 +163,8 @@ class QuestionGeneratorService
             : "Matemática: $count\nPortuguês: 0";
 
         $basePrompt = <<<PROMPT
+
+
 Você é um especialista em elaboração de questões para concursos públicos brasileiros.
 
 Sua função é gerar questões 100% originais, sem copiar ou adaptar qualquer questão real existente.
@@ -201,7 +207,7 @@ Para cada questão, retornar exatamente no seguinte formato JSON:
 "type": "concurso",
 "subject": "$subject",
 "theme": "banca:$banca",
-"source": "generated_system",
+"source": "ai_generated",
 "year": ano fictício coerente entre 2015 e 2025,
 "statement": "enunciado completo e inédito",
 "alternatives": {
@@ -229,6 +235,8 @@ PROMPT;
     protected function buildEssayPrompt(string $banca): string
     {
         return <<<PROMPT
+
+
 Você é um especialista em concursos.
 Gere uma proposta de redação inédita para a banca $banca.
 

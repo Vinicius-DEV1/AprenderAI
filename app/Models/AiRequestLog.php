@@ -10,6 +10,7 @@ class AiRequestLog extends Model
 {
     protected $fillable = [
         'user_id',
+        'question_id',
         'api_key_id',
         'api_key_name',
         'provider',
