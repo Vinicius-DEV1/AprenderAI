@@ -11,7 +11,7 @@ class Question extends Model
 
     protected $fillable = [
         'type',
-        'subject',
+        // 'subject' removed
         'theme',
         'difficulty',
         'year',
@@ -22,6 +22,10 @@ class Question extends Model
         'source',
         'topic',
         'origin',
+        'organization',
+        'institution',
+        'role',
+        'external_id',
     ];
 
     protected $casts = [
@@ -38,6 +42,29 @@ class Question extends Model
         return strtoupper($answer) === strtoupper($this->correct_answer);
     }
 
+    /**
+     * Get the subjects associated with the question.
+     * This defines the Many-to-Many relationship using the 'question_subject' pivot table.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function subjects()
+    {
+        return $this->belongsToMany(Subject::class);
+    }
+
+    /**
+     * Legacy Accessor for backward compatibility.
+     * Returns the first subject name or the old column value.
+     */
+    public function getSubjectAttribute($value)
+    {
+        if ($this->relationLoaded('subjects') && $this->subjects->isNotEmpty()) {
+            return $this->subjects->first()->name;
+        }
+        return $value;
+    }
+
     public function getStatementHtmlAttribute(): string
     {
         if (empty($this->statement)) {
@@ -50,12 +77,6 @@ class Question extends Model
             '<img src="$2" alt="$1" class="max-w-full h-auto rounded-lg my-4 mx-auto block shadow-sm" loading="lazy">',
             $this->statement
         );
-
-        // 2. Quebras de linha para <br> ou parágrafos (opcional, mas bom para garantir)
-        // Como o blade já usava whitespace-pre-wrap, talvez não precise de nl2br se mantivermos a classe CSS.
-        // Mas se tivermos tags HTML misturadas com texto puro, o whitespace-pre-wrap pode não ser ideal para a imagem.
-        // A melhor abordagem é escapar o texto HTML *antes*, exceto as imagens que acabamos de gerar.
-        // Mas para simplificar e seguir o pedido: focar nas imagens.
 
         return $html;
     }

@@ -307,7 +307,7 @@
         @foreach($simulation->answers as $index => $answer)
             <div class="answer-item {{ $answer->is_correct ? 'correct' : 'incorrect' }}">
                 <div class="answer-header">
-                    <span class="question-num">Questão {{ $index + 1 }} - {{ ucfirst($answer->question->subject) }}</span>
+                    <span class="question-num">Questão {{ $index + 1 }} - {{ $answer->question->subjects->pluck('name')->join(', ') }}</span>
 
                     @if($answer->question->source === 'ai_generated')
                         <span class="badge" style="background: #E9D5FF; color: #6B21A8; margin-left: 8px;">✨ INÉDITA</span>
@@ -316,6 +316,20 @@
                             style="background: #E2E8F0; color: #475569; margin-left: 8px;">{{ $answer->question->origin }}</span>
                     @endif
 
+                    @php
+                        $difficultyColor = match($answer->question->difficulty) {
+                            'easy' => ['bg' => '#d1fae5', 'text' => '#065f46', 'label' => 'Fácil'],
+                            'medium' => ['bg' => '#fef3c7', 'text' => '#92400e', 'label' => 'Média'],
+                            'hard' => ['bg' => '#fee2e2', 'text' => '#991b1b', 'label' => 'Difícil'],
+                            default => null,
+                        };
+                    @endphp
+
+                    @if($difficultyColor)
+                        <span class="badge" style="background: {{ $difficultyColor['bg'] }}; color: {{ $difficultyColor['text'] }}; margin-left: 8px;">
+                            {{ $difficultyColor['label'] }}
+                        </span>
+                    @endif
                     <span class="badge {{ $answer->is_correct ? 'badge-correct' : 'badge-incorrect' }}">
                         {{ $answer->is_correct ? '✓ Correta' : '✗ Incorreta' }}
                     </span>
