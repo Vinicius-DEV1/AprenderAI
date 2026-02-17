@@ -5,27 +5,164 @@
 @section('content')
 <div class="simulation-page">
     @if($simulation->status === 'generating')
-        <div class="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-            <div class="text-center p-8 bg-white rounded-xl shadow-lg max-w-md w-full">
-                <div class="mb-6 relative">
-                    <div class="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto"></div>
-                    <div class="absolute inset-0 flex items-center justify-center">
-                        <span class="text-xs font-bold text-indigo-600">AI</span>
+        <div class="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-6" x-data="{ 
+            messages: [
+                'Analisando seu desempenho histórico...',
+                'Selecionando questões inéditas...',
+                'Equilibrando níveis de dificuldade...',
+                'Construindo seu DNA pedagógico...',
+                'Finalizando a estrutura da prova...',
+                'Quase lá! Preparando seu ambiente...'
+            ],
+            currentMessage: 0,
+            init() {
+                setInterval(() => {
+                    this.currentMessage = (this.currentMessage + 1) % this.messages.length;
+                }, 3000);
+            }
+        }">
+            <style>
+                @keyframes pulse-glow {
+                    0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(79, 70, 229, 0.4); }
+                    50% { transform: scale(1.05); box-shadow: 0 0 40px rgba(79, 70, 229, 0.6); }
+                }
+
+                @keyframes rotate-ring {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+
+                @keyframes shimmer {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(100%); }
+                }
+
+                .ai-orb-container {
+                    position: relative;
+                    width: 120px;
+                    height: 120px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-bottom: 2rem;
+                }
+
+                .ai-orb {
+                    width: 80px;
+                    height: 80px;
+                    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-weight: 800;
+                    letter-spacing: 1px;
+                    z-index: 10;
+                    animation: pulse-glow 3s ease-in-out infinite;
+                    position: relative;
+                }
+
+                .ai-ring {
+                    position: absolute;
+                    width: 110px;
+                    height: 110px;
+                    border: 2px solid transparent;
+                    border-top-color: #4f46e5;
+                    border-right-color: rgba(79, 70, 229, 0.2);
+                    border-bottom-color: #7c3aed;
+                    border-left-color: rgba(124, 58, 237, 0.2);
+                    border-radius: 50%;
+                    animation: rotate-ring 4s linear infinite;
+                }
+
+                .ai-ring-outer {
+                    position: absolute;
+                    width: 120px;
+                    height: 120px;
+                    border: 1px dashed rgba(79, 70, 229, 0.3);
+                    border-radius: 50%;
+                    animation: rotate-ring 12s linear infinite reverse;
+                }
+
+                .progress-bar-container {
+                    width: 100%;
+                    max-width: 350px;
+                    height: 8px;
+                    background: #e2e8f0;
+                    border-radius: 10px;
+                    overflow: hidden;
+                    position: relative;
+                }
+
+                .progress-bar-fill {
+                    height: 100%;
+                    width: 100%;
+                    background: linear-gradient(90deg, #4f46e5, #7c3aed, #4f46e5);
+                    background-size: 200% 100%;
+                    animation: bg-move 3s linear infinite;
+                    border-radius: 10px;
+                    position: relative;
+                }
+
+                @keyframes bg-move {
+                    0% { background-position: 0% 0%; }
+                    100% { background-position: -200% 0%; }
+                }
+
+                .shimmer-overlay {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: linear-gradient(
+                        90deg,
+                        transparent,
+                        rgba(255, 255, 255, 0.4),
+                        transparent
+                    );
+                    animation: shimmer 1.5s infinite;
+                }
+            </style>
+
+            <div class="text-center p-10 bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-100">
+                <div class="ai-orb-container mx-auto">
+                    <div class="ai-ring-outer"></div>
+                    <div class="ai-ring"></div>
+                    <div class="ai-orb">
+                        <span class="text-xl">AI</span>
                     </div>
                 </div>
                 
-                <h2 class="text-2xl font-bold text-gray-800 mb-2">Montando sua Prova...</h2>
-                <p class="text-gray-600 mb-6">
-                    Nossa IA está selecionando e criando questões inéditas baseadas no seu perfil.
-                    <br><span class="text-sm text-gray-400 mt-2 block">(Isso leva cerca de 5 a 10 segundos)</span>
-                </p>
-
-                <!-- Progress Bar Mockup -->
-                <div class="w-full bg-gray-200 rounded-full h-2.5 mb-4 overflow-hidden">
-                    <div class="bg-indigo-600 h-2.5 rounded-full animate-pulse w-2/3"></div>
+                <h2 class="text-2xl font-extrabold text-slate-800 mb-2">Construindo seu Simulado</h2>
+                
+                <div class="h-12 flex items-center justify-center mb-6 relative">
+                    <template x-for="(msg, index) in messages" :key="index">
+                        <p x-show="currentMessage === index" 
+                           x-transition:enter="transition ease-out duration-500"
+                           x-transition:enter-start="opacity-0 transform translate-y-2"
+                           x-transition:enter-end="opacity-100 transform translate-y-0"
+                           x-transition:leave="transition ease-in duration-300"
+                           x-transition:leave-start="opacity-100 transform translate-y-0"
+                           x-transition:leave-end="opacity-0 transform -translate-y-2"
+                           class="text-indigo-600 font-medium text-lg absolute"
+                           x-text="msg">
+                        </p>
+                    </template>
                 </div>
 
-                <div id="status-debug" class="text-xs text-gray-400 font-mono hidden">Carregando...</div>
+                <div class="progress-bar-container mx-auto mb-4">
+                    <div class="progress-bar-fill">
+                        <div class="shimmer-overlay"></div>
+                    </div>
+                </div>
+
+                <p class="text-slate-400 text-sm">
+                    Isso geralmente leva menos de 10 segundos.
+                </p>
+
+                <div id="status-debug" class="text-xs text-gray-300 font-mono mt-4 hidden">Polling active...</div>
             </div>
 
             <script>
@@ -37,7 +174,7 @@
                         .then(data => {
                             if (data.simulation_status === 'error') {
                                 alert('Ocorreu um erro ao gerar o simulado. Por favor, tente novamente.');
-                                window.location.href = '/simulations/create'; // Redirect to create or dashboard
+                                window.location.href = '/simulations/create';
                             } else if (data.simulation_status !== 'generating') {
                                 window.location.reload();
                             }
