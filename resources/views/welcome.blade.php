@@ -44,7 +44,7 @@
             <!-- Stats -->
             <div class="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8 text-center border-t border-white/20 pt-8">
                 <div>
-                    <div class="text-3xl font-bold text-white">50k+</div>
+                    <div class="text-3xl font-bold text-white">200k+</div>
                     <div class="text-blue-200 text-sm">Questões</div>
                 </div>
                 <div>

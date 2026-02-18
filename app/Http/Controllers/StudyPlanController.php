@@ -6,6 +6,7 @@ use App\Models\StudyPlan;
 use App\Services\StudyPlanService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class StudyPlanController extends Controller
 {
@@ -36,8 +37,10 @@ class StudyPlanController extends Controller
             return view('study_plans.wizard');
         }
 
-        // 4. Dashboard
-        return view('study_plans.dashboard', compact('plan'));
+        // 4. Build all dashboard data via service
+        $data = $this->studyPlanService->buildDashboardData($user, $plan);
+
+        return view('study_plans.dashboard', $data);
     }
 
     public function store(Request $request)
@@ -58,16 +61,20 @@ class StudyPlanController extends Controller
             // 2. Dispatch Job
             \App\Jobs\GenerateStudyPlanJob::dispatch($plan->id);
 
-            // 3. Return Response associated with Request Type
+            // 3. Bust dashboard cache
+            Cache::forget("study_plan_dashboard_{$user->id}");
+
+            // 4. Return Response
             if ($request->expectsJson()) {
                 return response()->json([
                     'status' => 'queued',
                     'study_plan_id' => $plan->id,
-                    'message' => 'Plano em processamento...'
+                    'message' => 'Plano em processamento...',
                 ], 202);
             }
 
-            return redirect()->route('study-plan.index')->with('success', 'Seu plano está sendo gerado! Aguarde alguns instantes no dashboard.');
+            return redirect()->route('study-plan.index')
+                ->with('success', 'Seu plano está sendo gerado! Aguarde alguns instantes no dashboard.');
 
         } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
             throw $e;
@@ -96,9 +103,9 @@ class StudyPlanController extends Controller
 
         return response()->json([
             'status' => $plan->status,
-            'message' => $plan->error_message, // Null if not failed
+            'message' => $plan->error_message,
             'generated_at' => $plan->generated_at,
-            'study_plan_id' => $plan->id
+            'study_plan_id' => $plan->id,
         ]);
     }
 
@@ -106,9 +113,27 @@ class StudyPlanController extends Controller
     {
         $user = Auth::user();
 
+        // Enforce 14-day rule
+        if (!$this->studyPlanService->canUpdate($user)) {
+            $plan = $user->studyPlans()->latest()->first();
+            $nextDate = $plan?->next_update_at?->format('d/m/Y') ?? 'em breve';
+            $message = "Seu plano só pode ser atualizado em {$nextDate}. O cronograma semanal permanece protegido até essa data.";
+
+            if ($request->expectsJson()) {
+                return response()->json(['error' => $message], 403);
+            }
+            return back()->with('error', $message);
+        }
+
         try {
             $this->studyPlanService->update($user);
-            return redirect()->route('study-plan.index')->with('success', 'Plano atualizado com base no seu desempenho recente!');
+
+            // Bust dashboard cache after update
+            Cache::forget("study_plan_dashboard_{$user->id}");
+
+            return redirect()->route('study-plan.index')
+                ->with('success', 'Plano atualizado com base no seu desempenho recente!');
+
         } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
             throw $e;
         } catch (\Exception $e) {
