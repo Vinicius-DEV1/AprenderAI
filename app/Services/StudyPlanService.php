@@ -375,12 +375,7 @@ class StudyPlanService
 
             $accuracy = $attempts > 0
                 ? round(($correct / $attempts) * 100, 1)
-                : null;
-
-            // Force accuracy to not be 0% if at least one is correct
-            if ($attempts > 0 && $correct >= 1 && $accuracy < 1) {
-                $accuracy = 1.0;
-            }
+                : 0;
 
             $meta = $this->resolveSubjectMeta($normalizedName);
             $target = $meta['target'];
@@ -394,7 +389,7 @@ class StudyPlanService
                 'attempts' => $attempts,
                 'correct' => $correct, // Standardizing contract
                 'status' => $accuracy !== null ? $this->resolveAccuracyStatus($accuracy, $attempts) : 'observacao',
-                'gap' => $accuracy !== null ? round($accuracy - $target, 1) : null,
+                'gap' => round($accuracy - $target, 1),
             ];
         }
 
