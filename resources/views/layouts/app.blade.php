@@ -41,9 +41,20 @@
     | 3. Fallback: light mode
     --}}
     <script>
+        /**
+         * SCRIPT DE PERSISTÊNCIA DE TEMA (DARK MODE)
+         * 
+         * Este script é executado IMEDIATAMENTE no <head> para prevenir o "flash" de 
+         * fundo branco antes do CSS/Vite ser carregado.
+         * 
+         * Hierarquia:
+         * 1. Verifica localStorage (escolha explícita do usuário)
+         * 2. Verifica preferência do Sistema Operacional (matchMedia)
+         */
         (function() {
             const saved = localStorage.getItem('theme');
             if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                // Adiciona a classe .dark na raiz (<html>) para ativar as variantes dark: do Tailwind
                 document.documentElement.classList.add('dark');
             } else {
                 document.documentElement.classList.remove('dark');
@@ -81,15 +92,21 @@
     <div x-data="{
             sidebarOpen: false,
             sidebarCollapsed: localStorage.getItem('sidebar_collapsed') === 'true',
+            // Sincroniza o estado inicial do Alpine com a classe presente no <html>
             darkMode: document.documentElement.classList.contains('dark'),
 
             /**
              * Alterna entre light e dark mode.
-             * Atualiza: classe no <html>, localStorage, e estado Alpine.
+             * 
+             * A correção do bug estrutural consistiu em garantir que a classe .dark
+             * seja aplicada no elemento <html>, permitindo que TODOS os componentes
+             * (incluindo Sidebar e Modais) herdem o contexto dark corretamente.
              */
             toggleTheme() {
                 this.darkMode = !this.darkMode;
+                // Alterna a classe na raiz do DOM
                 document.documentElement.classList.toggle('dark', this.darkMode);
+                // Persiste a escolha para futuras visitas
                 localStorage.setItem('theme', this.darkMode ? 'dark' : 'light');
             }
         }"
