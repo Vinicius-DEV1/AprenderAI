@@ -326,8 +326,16 @@
                     @endphp
 
                     @if($difficultyColor)
-                        <span class="badge" style="background: {{ $difficultyColor['bg'] }}; color: {{ $difficultyColor['text'] }}; margin-left: 8px;">
+                        <span class="badge cursor-help group relative" 
+                              style="background: {{ $difficultyColor['bg'] }}; color: {{ $difficultyColor['text'] }}; margin-left: 8px;"
+                              title="IA: {{ $answer->question->difficulty_reasoning ?? 'Análise automática processada pela IA.' }}">
                             {{ $difficultyColor['label'] }}
+                            @if($answer->question->difficulty_reasoning)
+                                <span class="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-gray-800 text-white text-[10px] rounded shadow-lg w-48 z-50 text-center leading-tight">
+                                    {{ $answer->question->difficulty_reasoning }}
+                                    <span class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></span>
+                                </span>
+                            @endif
                         </span>
                     @endif
                     <span class="badge {{ $answer->is_correct ? 'badge-correct' : 'badge-incorrect' }}">

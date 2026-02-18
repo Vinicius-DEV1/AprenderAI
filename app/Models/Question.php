@@ -26,6 +26,7 @@ class Question extends Model
         'institution',
         'role',
         'external_id',
+        'difficulty_reasoning',
     ];
 
     protected $casts = [
@@ -35,6 +36,11 @@ class Question extends Model
     public function simulationAnswers()
     {
         return $this->hasMany(SimulationAnswer::class);
+    }
+
+    public function userAnswers()
+    {
+        return $this->hasMany(UserQuestionAnswer::class);
     }
 
     public function isCorrect(string $answer): bool
@@ -63,6 +69,46 @@ class Question extends Model
             return $this->subjects->first()->name;
         }
         return $value;
+    }
+
+    /**
+     * Scope: questões com QUALQUER campo pendente (para fila de triagem).
+     */
+    public function scopeIncomplete($query)
+    {
+        return $query->where(function ($q) {
+            $q->where(function ($sub) {
+                    $sub->whereNull('difficulty_reasoning')
+                        ->orWhereRaw("TRIM(difficulty_reasoning) = ''");
+                }
+                )->orWhere(function ($sub) {
+                    $sub->whereNull('explanation')
+                        ->orWhereRaw("TRIM(explanation) = ''");
+                }
+                );
+            });
+    }
+
+    /**
+     * Scope: questões 100% completas (para Banco Geral).
+     */
+    public function scopeComplete($query)
+    {
+        return $query->whereNotNull('difficulty_reasoning')
+            ->whereRaw("TRIM(difficulty_reasoning) != ''")
+            ->whereNotNull('explanation')
+            ->whereRaw("TRIM(explanation) != ''");
+    }
+
+    /**
+     * Scope: questões com um campo específico faltando.
+     * @param string $field 'difficulty_reasoning' ou 'explanation'
+     */
+    public function scopeMissingField($query, string $field)
+    {
+        return $query->where(function ($q) use ($field) {
+            $q->whereNull($field)->orWhereRaw("TRIM({$field}) = ''");
+        });
     }
 
     public function getStatementHtmlAttribute(): string
