@@ -14,12 +14,41 @@
             box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.05);
         }
 
+        /* Dark mode: glass-card com fundo slate-900 */
+        :root.dark .glass-card {
+            background: rgba(15, 23, 42, 0.95);
+            border-color: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.3);
+        }
+
         /* TomSelect Customization */
         .ts-control {
             border-radius: 0.5rem;
             padding: 0.6rem 0.75rem;
             border-color: #e2e8f0;
             box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        :root.dark .ts-control {
+            background: #1e293b;
+            border-color: #334155;
+            color: #e2e8f0;
+        }
+
+        :root.dark .ts-dropdown {
+            background: #1e293b;
+            border-color: #334155;
+            color: #e2e8f0;
+        }
+
+        :root.dark .ts-dropdown .active {
+            background: #334155;
+            color: #f1f5f9;
+        }
+
+        :root.dark .ts-wrapper.multi .ts-control > div {
+            background: rgba(99, 102, 241, 0.2);
+            color: #a5b4fc;
         }
 
         /* Range Slider */
@@ -52,13 +81,17 @@
             background: #e2e8f0;
             border-radius: 2px;
         }
+
+        :root.dark input[type=range]::-webkit-slider-runnable-track {
+            background: #334155;
+        }
     </style>
 
     <div class="max-w-4xl mx-auto py-8" x-data="simulationForm()">
 
         <!-- Header -->
         <div class="mb-8 text-center">
-            <h1 class="text-3xl font-bold text-slate-800 mb-2">Configurar Simulado</h1>
+            <h1 class="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2">Configurar Simulado</h1>
             <p class="text-slate-500">Personalize sua experiência de treino com foco total.</p>
         </div>
 
@@ -67,21 +100,21 @@
 
             <!-- Type Selector -->
             <div class="mb-10">
-                <label class="block text-sm font-semibold text-slate-700 mb-4 uppercase tracking-wider">Tipo de
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 uppercase tracking-wider">Tipo de
                     Prova</label>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- ENEM Option -->
                     <label
                         class="relative flex items-center p-4 cursor-pointer rounded-xl border-2 transition-all duration-200"
-                        :class="type === 'enem' ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200 hover:border-slate-300'">
+                        :class="type === 'enem' ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'">
                         <input type="radio" name="type" value="enem" class="sr-only" x-model="type">
                         <div class="flex-1">
                             <div class="flex items-center justify-between mb-1">
-                                <span class="font-bold text-slate-900">ENEM</span>
-                                <span class="text-xs font-semibold px-2 py-1 rounded-full bg-blue-100 text-blue-700"
+                                <span class="font-bold text-slate-900 dark:text-white">ENEM</span>
+                                <span class="text-xs font-semibold px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
                                     x-show="type === 'enem'">Selecionado</span>
                             </div>
-                            <p class="text-sm text-slate-500">Padrão oficial. 90 questões fixas (Matemática e Linguagens).
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Padrão oficial. 90 questões fixas (Matemática e Linguagens).
                             </p>
                         </div>
                     </label>
@@ -124,7 +157,7 @@
                                 <input type="radio" name="enem_mode" :value="mode.value" x-model="selectedEnemMode"
                                     class="sr-only">
                                 <div class="px-4 py-3 rounded-lg border text-center transition-colors"
-                                    :class="selectedEnemMode === mode.value ? 'bg-white border-indigo-500 shadow-sm text-indigo-700' : 'border-slate-200 text-slate-600 hover:bg-white'">
+                                    :class="selectedEnemMode === mode.value ? 'bg-white dark:bg-slate-800 border-indigo-500 shadow-sm dark:shadow-none text-indigo-700 dark:text-indigo-300' : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800'">
                                     <span class="block font-medium" x-text="mode.label"></span>
                                     <span class="text-xs opacity-75" x-text="mode.desc"></span>
                                 </div>

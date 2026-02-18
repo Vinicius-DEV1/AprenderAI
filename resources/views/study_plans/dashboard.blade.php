@@ -2,10 +2,10 @@
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-                <h2 class="font-bold text-xl text-slate-800 leading-tight">
+                <h2 class="font-bold text-xl text-slate-800 dark:text-slate-200 leading-tight">
                     Plano de Estudos
                 </h2>
-                <p class="text-sm text-slate-500 mt-0.5">
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                     Diagnóstico personalizado baseado no seu desempenho real
                 </p>
             </div>
@@ -25,7 +25,7 @@
                 @else
                     <div class="text-right">
                         <button type="button" disabled
-                            class="inline-flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-400 text-sm font-semibold rounded-lg cursor-not-allowed">
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 text-sm font-semibold rounded-lg cursor-not-allowed">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -51,38 +51,38 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
 
             @if(session('success'))
-                <div class="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+                <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 flex items-center gap-3">
                     <svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd"
                             d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
                             clip-rule="evenodd" />
                     </svg>
-                    <p class="text-sm text-green-800 font-medium">{{ session('success') }}</p>
+                    <p class="text-sm text-green-800 dark:text-green-300 font-medium">{{ session('success') }}</p>
                 </div>
             @endif
 
             @if(session('error'))
-                <div class="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+                <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-center gap-3">
                     <svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd"
                             d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
                             clip-rule="evenodd" />
                     </svg>
-                    <p class="text-sm text-red-800 font-medium">{{ session('error') }}</p>
+                    <p class="text-sm text-red-800 dark:text-red-300 font-medium">{{ session('error') }}</p>
                 </div>
             @endif
 
             {{-- Low confidence warning --}}
             @if($confidence['warning'])
-                <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex items-start gap-3">
                     <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor"
                         viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     <div>
-                        <p class="text-sm font-semibold text-amber-800">{{ $confidence['warning'] }}</p>
-                        <p class="text-xs text-amber-600 mt-0.5">Questões respondidas: {{ $confidence['total'] }} / 100
+                        <p class="text-sm font-semibold text-amber-800 dark:text-amber-300">{{ $confidence['warning'] }}</p>
+                        <p class="text-xs text-amber-600 dark:text-amber-400 mt-0.5">Questões respondidas: {{ $confidence['total'] }} / 100
                             mínimas</p>
                     </div>
                 </div>
@@ -90,8 +90,8 @@
 
             {{-- Introductory Message --}}
             @if(!empty($plan->plan_json['overview']))
-                <div class="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm mt-6">
-                    <p class="text-slate-800 leading-relaxed text-base">
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-8 shadow-sm dark:shadow-none mt-6">
+                    <p class="text-slate-800 dark:text-slate-200 leading-relaxed text-base">
                         @php
                             $overviewText = trim($plan->plan_json['overview']);
                             // Ensure it starts with "Olá!" as per user recommendation if not already there
@@ -107,8 +107,8 @@
             {{-- =====================================================
             SECTION 1 — DIAGNÓSTICO ATUAL
             ===================================================== --}}
-            <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm dark:shadow-none overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
                             <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,7 +117,7 @@
                             </svg>
                         </div>
                         <div>
-                            <h3 class="font-bold text-slate-900 text-base">Diagnóstico Atual</h3>
+                            <h3 class="font-bold text-slate-900 dark:text-slate-100 text-base">Diagnóstico Atual</h3>
                             <p class="text-xs text-slate-500">Atualizado em tempo real</p>
                         </div>
                     </div>
@@ -144,17 +144,17 @@
                                 @endphp
                                 <div class="rounded-xl border {{ $sc['border'] }} {{ $sc['bg'] }} p-4">
                                     <div class="flex items-start justify-between mb-3">
-                                        <span class="font-semibold text-slate-800 text-sm">{{ $subj['label'] }}</span>
+                                        <span class="font-semibold text-slate-800 dark:text-slate-200 text-sm">{{ $subj['label'] }}</span>
                                         <span class="text-xs px-2 py-0.5 rounded-full font-medium {{ $sc['badge'] }}">
                                             {{ $sc['label'] }}
                                         </span>
                                     </div>
                                     <div class="flex items-end gap-2 mb-2">
                                         <span
-                                            class="text-2xl font-bold text-slate-900">{{ $subj['accuracy'] !== null ? number_format((float)$subj['accuracy'], 1, ',', '.') : '—' }}{{ $subj['accuracy'] !== null ? '%' : '' }}</span>
+                                            class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ $subj['accuracy'] !== null ? number_format((float)$subj['accuracy'], 1, ',', '.') : '—' }}{{ $subj['accuracy'] !== null ? '%' : '' }}</span>
                                         <span class="text-xs text-slate-500 mb-1">meta {{ $subj['target'] }}%</span>
                                     </div>
-                                    <div class="w-full bg-slate-200 rounded-full h-1.5 mb-2">
+                                    <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 mb-2">
                                         <div class="{{ $sc['bar'] }} h-1.5 rounded-full transition-all"
                                             style="width: {{ $subj['accuracy'] !== null ? min(100, $subj['accuracy']) : 0 }}%">
                                         </div>
@@ -190,26 +190,26 @@
                         {{-- Summary metrics --}}
                         <div class="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
                             @if($diagnostics['sim_avg'])
-                                <div class="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
-                                    <p class="text-xl font-bold text-slate-900">{{ $diagnostics['sim_avg'] }}</p>
+                                <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 text-center border border-slate-100 dark:border-slate-700">
+                                    <p class="text-xl font-bold text-slate-900 dark:text-slate-100">{{ $diagnostics['sim_avg'] }}</p>
                                     <p class="text-xs text-slate-500 mt-0.5">Nota média simulados</p>
                                 </div>
                             @endif
                             @if($diagnostics['essay_avg'])
                                 <div class="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
-                                    <p class="text-xl font-bold text-slate-900">{{ $diagnostics['essay_avg'] }}</p>
+                                    <p class="text-xl font-bold text-slate-900 dark:text-slate-100">{{ $diagnostics['essay_avg'] }}</p>
                                     <p class="text-xs text-slate-500 mt-0.5">Média redações (/1000)</p>
                                 </div>
                             @endif
                             @if($diagnostics['perf_7days'])
                                 <div class="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
-                                    <p class="text-xl font-bold text-slate-900">{{ $diagnostics['perf_7days'] }}%</p>
+                                    <p class="text-xl font-bold text-slate-900 dark:text-slate-100">{{ $diagnostics['perf_7days'] }}%</p>
                                     <p class="text-xs text-slate-500 mt-0.5">Acerto últimos 7 dias</p>
                                 </div>
                             @endif
                             @if($diagnostics['perf_14days'])
                                 <div class="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
-                                    <p class="text-xl font-bold text-slate-900">{{ $diagnostics['perf_14days'] }}%</p>
+                                    <p class="text-xl font-bold text-slate-900 dark:text-slate-100">{{ $diagnostics['perf_14days'] }}%</p>
                                     <p class="text-xs text-slate-500 mt-0.5">Acerto últimos 14 dias</p>
                                 </div>
                             @endif
@@ -231,8 +231,8 @@
             {{-- =====================================================
             SECTION 2 — PROJEÇÃO DE DESEMPENHO
             ===================================================== --}}
-            <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm dark:shadow-none overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
                     <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
                         <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -240,7 +240,7 @@
                         </svg>
                     </div>
                     <div>
-                        <h3 class="font-bold text-slate-900 text-base">Projeção de Desempenho</h3>
+                        <h3 class="font-bold text-slate-900 dark:text-slate-100 text-base">Projeção de Desempenho</h3>
                         <p class="text-xs text-slate-500">Baseada em tendência real das últimas 2 semanas</p>
                     </div>
                 </div>
@@ -305,8 +305,8 @@
             {{-- =====================================================
             SECTION 3 — PONTOS FRACOS E FORTES
             ===================================================== --}}
-            <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm dark:shadow-none overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
                     <div class="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center">
                         <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -314,7 +314,7 @@
                         </svg>
                     </div>
                     <div>
-                        <h3 class="font-bold text-slate-900 text-base">Pontos Fracos e Fortes</h3>
+                        <h3 class="font-bold text-slate-900 dark:text-slate-100 text-base">Pontos Fracos e Fortes</h3>
                         <p class="text-xs text-slate-500">Mínimo 5 questões por tópico para classificação</p>
                     </div>
                 </div>
@@ -391,8 +391,8 @@
             {{-- =====================================================
             SECTION 4 — ESTRATÉGIA DE PROVA
             ===================================================== --}}
-            <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm dark:shadow-none overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
                     <div class="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
                         <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -400,7 +400,7 @@
                         </svg>
                     </div>
                     <div>
-                        <h3 class="font-bold text-slate-900 text-base">Estratégia de Prova</h3>
+                        <h3 class="font-bold text-slate-900 dark:text-slate-100 text-base">Estratégia de Prova</h3>
                         <p class="text-xs text-slate-500">Ordem e tempo sugeridos baseados no seu perfil</p>
                     </div>
                 </div>
@@ -466,8 +466,8 @@
             {{-- =====================================================
             SECTION 5 — CRONOGRAMA SEMANAL (PROTEGIDO)
             ===================================================== --}}
-            <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm dark:shadow-none overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
                             <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -476,7 +476,7 @@
                             </svg>
                         </div>
                         <div>
-                            <h3 class="font-bold text-slate-900 text-base">Cronograma Semanal</h3>
+                            <h3 class="font-bold text-slate-900 dark:text-slate-100 text-base">Cronograma Semanal</h3>
                             <p class="text-xs text-slate-500">
                                 @if(!$can_update && $next_update_at)
                                     Plano fixo até {{ $next_update_at->format('d/m/Y') }} · Disponível em
@@ -561,14 +561,14 @@
                                         }
                                     }
                                 @endphp
-                                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5">
-                                    <h4 class="text-sm font-bold text-slate-700 mb-4 capitalize flex items-center gap-2">
+                                <div class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+                                    <h4 class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 capitalize flex items-center gap-2">
                                         <span>{{ $icon }}</span>
                                         {{ $day }}
                                     </h4>
                                     <ul class="space-y-2.5">
                                         @foreach((array) $tasks as $task)
-                                            <li class="flex gap-2.5 items-start text-sm text-slate-600">
+                                            <li class="flex gap-2.5 items-start text-sm text-slate-600 dark:text-slate-400">
                                                 <span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0"></span>
                                                 <span>{{ $task }}</span>
                                             </li>
@@ -588,8 +588,8 @@
             {{-- =====================================================
             SECTION 6 — RECOMENDAÇÕES DA SEMANA
             ===================================================== --}}
-            <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm dark:shadow-none overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
                     <div class="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center">
                         <svg class="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -597,7 +597,7 @@
                         </svg>
                     </div>
                     <div>
-                        <h3 class="font-bold text-slate-900 text-base">Recomendações da Semana</h3>
+                        <h3 class="font-bold text-slate-900 dark:text-slate-100 text-base">Recomendações da Semana</h3>
                         <p class="text-xs text-slate-500">Ações práticas baseadas nos seus dados recentes · Não altera o
                             cronograma</p>
                     </div>
@@ -647,15 +647,15 @@
             {{-- =====================================================
             SECTION 7 — JANELA DE ATUALIZAÇÃO
             ===================================================== --}}
-            <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm dark:shadow-none overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
                     <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
                         <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
                     </div>
-                    <h3 class="font-bold text-slate-900 text-base">Janela de Atualização do Plano</h3>
+                    <h3 class="font-bold text-slate-900 dark:text-slate-100 text-base">Janela de Atualização do Plano</h3>
                 </div>
 
                 <div class="p-6">
@@ -664,18 +664,18 @@
                             @if($can_update)
                                 <div class="flex items-center gap-3 mb-2">
                                     <span class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></span>
-                                    <p class="text-sm font-semibold text-green-700">Atualização disponível agora</p>
+                                    <p class="text-sm font-semibold text-green-700 dark:text-green-400">Atualização disponível agora</p>
                                 </div>
-                                <p class="text-sm text-slate-600">
+                                <p class="text-sm text-slate-600 dark:text-slate-400">
                                     Você pode regenerar o cronograma semanal com base no seu desempenho mais recente.
                                     Após a atualização, o plano ficará protegido por mais 14 dias.
                                 </p>
                             @else
                                 <div class="flex items-center gap-3 mb-2">
                                     <span class="w-3 h-3 rounded-full bg-slate-400"></span>
-                                    <p class="text-sm font-semibold text-slate-700">Plano protegido</p>
+                                    <p class="text-sm font-semibold text-slate-700 dark:text-slate-300">Plano protegido</p>
                                 </div>
-                                <p class="text-sm text-slate-600">
+                                <p class="text-sm text-slate-600 dark:text-slate-400">
                                     O cronograma semanal permanece fixo até
                                     <strong>{{ $next_update_at?->format('d/m/Y') ?? 'em breve' }}</strong>.
                                     Faltam <strong>{{ $days_until_update }}
@@ -712,26 +712,26 @@
             {{-- =====================================================
             SECTION 8 — METODOLOGIA + MENSAGEM MOTIVACIONAL
             ===================================================== --}}
-            <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm dark:shadow-none overflow-hidden">
                 <div class="p-6 sm:p-8">
                     <div class="grid md:grid-cols-2 gap-6">
                         {{-- Methodology --}}
                         <div>
-                            <h4 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3">
+                            <h4 class="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider mb-3">
                                 Metodologia Sugerida
                             </h4>
-                            <p class="text-slate-700 leading-relaxed text-sm">
+                            <p class="text-slate-700 dark:text-slate-300 leading-relaxed text-sm">
                                 {{ $plan->plan_json['methodology'] ?? 'Metodologia baseada em revisão espaçada, prática deliberada e foco nos pontos de maior impacto no seu desempenho.' }}
                             </p>
                         </div>
 
                         {{-- Motivational message --}}
                         @if($motivation)
-                            <div class="border-l border-slate-100 pl-6">
-                                <h4 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3">
+                            <div class="border-l border-slate-100 dark:border-slate-700 pl-6">
+                                <h4 class="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider mb-3">
                                     Sua Evolução
                                 </h4>
-                                <p class="text-slate-700 leading-relaxed text-sm font-medium">
+                                <p class="text-slate-700 dark:text-slate-300 leading-relaxed text-sm font-medium">
                                     "{{ $motivation }}"
                                 </p>
                             </div>

@@ -5,7 +5,7 @@
 @section('content')
 <div class="simulation-page">
     @if($simulation->status === 'generating')
-        <div class="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-6" x-data="{ 
+        <div class="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950 p-6" x-data="{ 
             messages: [
                 'Analisando seu desempenho histórico...',
                 'Selecionando questões inéditas...',
@@ -95,6 +95,10 @@
                     position: relative;
                 }
 
+                :root.dark .progress-bar-container {
+                    background: #334155;
+                }
+
                 .progress-bar-fill {
                     height: 100%;
                     width: 100%;
@@ -126,7 +130,7 @@
                 }
             </style>
 
-            <div class="text-center p-10 bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-100">
+            <div class="text-center p-10 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl dark:shadow-none dark:border dark:border-slate-700 max-w-md w-full border border-slate-100 dark:border-slate-700">
                 <div class="ai-orb-container mx-auto">
                     <div class="ai-ring-outer"></div>
                     <div class="ai-ring"></div>
@@ -135,7 +139,7 @@
                     </div>
                 </div>
                 
-                <h2 class="text-2xl font-extrabold text-slate-800 mb-2">Construindo seu Simulado</h2>
+                <h2 class="text-2xl font-extrabold text-slate-800 dark:text-slate-100 mb-2">Construindo seu Simulado</h2>
                 
                 <div class="h-12 flex items-center justify-center mb-6 relative">
                     <template x-for="(msg, index) in messages" :key="index">
@@ -146,7 +150,7 @@
                            x-transition:leave="transition ease-in duration-300"
                            x-transition:leave-start="opacity-100 transform translate-y-0"
                            x-transition:leave-end="opacity-0 transform -translate-y-2"
-                           class="text-indigo-600 font-medium text-lg absolute"
+                           class="text-indigo-600 dark:text-indigo-400 font-medium text-lg absolute"
                            x-text="msg">
                         </p>
                     </template>
@@ -519,7 +523,7 @@
         <button type="button" id="sidebarToggleBtn" onclick="toggleAppSidebar()">
             ☰ Menu Painel
         </button>
-        <h2 class="text-xl font-bold text-gray-800">Simulado em Progresso</h2>
+        <h2 class="text-xl font-bold text-gray-800 dark:text-slate-200">Simulado em Progresso</h2>
     </div>
 
     <div class="simulation-container">
