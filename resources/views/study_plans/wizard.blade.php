@@ -1,14 +1,14 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-slate-800 leading-tight">
+        <h2 class="font-semibold text-xl text-slate-800 dark:text-slate-200 leading-tight">
             {{ __('Gerar Seu Plano de Estudos') }}
         </h2>
     </x-slot>
 
     <div class="py-12">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 bg-white border-b border-slate-200">
+            <div class="bg-white dark:bg-slate-900 overflow-hidden shadow-sm dark:shadow-none sm:rounded-lg">
+                <div class="p-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
                     <div x-data="{
                         loading: false,
                         error: null,
@@ -79,20 +79,20 @@
                             @csrf
 
                             <!-- Error Message -->
-                            <div x-show="error" class="mb-4 bg-red-50 border-l-4 border-red-500 p-4 text-red-700"
+                            <div x-show="error" class="mb-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 text-red-700 dark:text-red-400"
                                 style="display: none;">
                                 <p x-text="error"></p>
                             </div>
 
                             <!-- Step 1: Availability -->
                             <div class="mb-8">
-                                <h3 class="text-lg font-medium leading-6 text-slate-900 mb-4">
+                                <h3 class="text-lg font-medium leading-6 text-slate-900 dark:text-slate-100 mb-4">
                                     Disponibilidade</h3>
-                                <label for="hours_per_day" class="block text-sm font-medium text-slate-700">Quantas
+                                <label for="hours_per_day" class="block text-sm font-medium text-slate-700 dark:text-slate-300">Quantas
                                     horas
                                     por dia você pode estudar?</label>
                                 <select id="hours_per_day" name="hours_per_day" x-model="hours"
-                                    class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                                    class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                                     @for ($i = 1; $i <= 10; $i++)
                                         <option value="{{ $i }}">{{ $i }} hora{{ $i > 1 ? 's' : '' }}</option>
                                     @endfor
@@ -101,7 +101,7 @@
 
                             <!-- Step 2: Goal -->
                             <div class="mb-8">
-                                <h3 class="text-lg font-medium leading-6 text-slate-900 mb-4">
+                                <h3 class="text-lg font-medium leading-6 text-slate-900 dark:text-slate-100 mb-4">
                                     Objetivo Principal</h3>
 
                                 <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
@@ -109,7 +109,7 @@
                                         <label for="exam_type" class="block text-sm font-medium text-slate-700">Tipo de
                                             Prova</label>
                                         <select id="exam_type" name="exam_type" x-model="examType"
-                                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                                             <option value="enem">ENEM</option>
                                             <option value="concurso">Concurso Público</option>
                                         </select>
@@ -119,7 +119,7 @@
                                         <label for="exam_name" class="block text-sm font-medium text-slate-700">Nome do
                                             Concurso (opcional)</label>
                                         <input type="text" name="exam_name" id="exam_name"
-                                            class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-slate-300 bg-white text-slate-900 rounded-md"
+                                            class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 rounded-md"
                                             placeholder="Ex: Receita Federal">
                                     </div>
                                 </div>
@@ -127,7 +127,7 @@
 
                             <!-- Step 3: Date -->
                             <div class="mb-8">
-                                <h3 class="text-lg font-medium leading-6 text-slate-900 mb-4">Data
+                                <h3 class="text-lg font-medium leading-6 text-slate-900 dark:text-slate-100 mb-4">Data
                                     da Prova (Opcional)
                                 </h3>
                                 <div class="max-w-xs">
@@ -135,13 +135,13 @@
                                         a
                                         prova?</label>
                                     <input type="date" name="exam_date" id="exam_date"
-                                        class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-slate-300 bg-white text-slate-900 rounded-md">
+                                        class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 rounded-md">
                                 </div>
                             </div>
 
                     </div>
 
-                    <div class="pt-5 border-t border-slate-200">
+                    <div class="pt-5 border-t border-slate-200 dark:border-slate-700">
                         <div class="flex justify-end">
                             <button type="submit" :disabled="loading"
                                 class="ml-3 inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all"

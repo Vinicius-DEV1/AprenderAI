@@ -1,15 +1,15 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-slate-800 leading-tight">
+        <h2 class="font-semibold text-xl text-slate-800 dark:text-slate-200 leading-tight">
             {{ __('Plano de Estudos Personalizado') }}
         </h2>
     </x-slot>
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-8 text-center relative border">
+            <div class="bg-white dark:bg-slate-900 overflow-hidden shadow-xl dark:shadow-none sm:rounded-lg p-8 text-center relative border dark:border-slate-700">
                 <!-- Lock Icon -->
-                <div class="absolute top-4 right-4 text-slate-100">
+                <div class="absolute top-4 right-4 text-slate-100 dark:text-slate-800">
                     <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M12 17a2 2 0 100-4 2 2 0 000 4zm6-9v2H6V8h12zm2-2H4v2h16V6zM4 22v-8h16v8H4z" />
                     </svg>
@@ -25,13 +25,13 @@
 
                 </div>
 
-                <h3 class="text-3xl font-bold text-slate-900 mb-4">
+                <h3 class="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-4">
                     Desbloqueie seu Potencial Máximo
                 </h3>
 
                 </h3>
 
-                <p class="text-lg text-slate-600 mb-8">
+                <p class="text-lg text-slate-600 dark:text-slate-400 mb-8">
                     O Plano de Estudos Personalizado com IA é um recurso exclusivo para membros
                     <span class="font-bold text-purple-600">PLUS</span>.
                 </p>
@@ -43,8 +43,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>
                         <div>
-                            <h4 class="font-semibold text-slate-900">Cronograma Inteligente</h4>
-                            <p class="text-sm text-slate-500">A IA organiza sua rotina baseada nos
+                            <h4 class="font-semibold text-slate-900 dark:text-slate-200">Cronograma Inteligente</h4>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">A IA organiza sua rotina baseada nos
                                 seus horários.
                             </p>
                         </div>
@@ -55,8 +55,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>
                         <div>
-                            <h4 class="font-semibold text-slate-900">Foco nas Dificuldades</h4>
-                            <p class="text-sm text-slate-500">Cronograma adaptado aos seus pontos
+                            <h4 class="font-semibold text-slate-900 dark:text-slate-200">Foco nas Dificuldades</h4>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Cronograma adaptado aos seus pontos
                                 fracos.</p>
                         </div>
                     </div>
@@ -66,8 +66,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>
                         <div>
-                            <h4 class="font-semibold text-slate-900">Evolução Constante</h4>
-                            <p class="text-sm text-slate-500">O plano se atualiza conforme você
+                            <h4 class="font-semibold text-slate-900 dark:text-slate-200">Evolução Constante</h4>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">O plano se atualiza conforme você
                                 estuda.</p>
                         </div>
                     </div>
@@ -77,8 +77,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>
                         <div>
-                            <h4 class="font-semibold text-slate-900">Estratégia de Aprovação</h4>
-                            <p class="text-sm text-slate-500">Metodologia validada por
+                            <h4 class="font-semibold text-slate-900 dark:text-slate-200">Estratégia de Aprovação</h4>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Metodologia validada por
                                 especialistas.</p>
                         </div>
                     </div>
