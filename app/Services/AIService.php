@@ -245,33 +245,11 @@ class AIService
         $decryptedKey = $apiKey->decrypted_key;
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$decryptedKey}";
 
-<<<<<<< HEAD
-        try {
-            $response = Http::timeout(60)
-                ->connectTimeout(15)
-                ->withoutVerifying() // Disable SSL for local dev
-                ->withHeaders([
-                    'Content-Type' => 'application/json',
-                ])->post($url, $payload);
-
-            Log::info("[{$requestId}] DEBUG: Gemini Response Status: " . $response->status());
-
-            // Log Headers (x-ratelimit)
-            $headers = $response->headers();
-            Log::info("[{$requestId}] DEBUG: Gemini Headers: " . json_encode($headers));
-
-            Log::debug("[{$requestId}] DEBUG: Gemini Raw Body: " . $response->body());
-            Log::info("==== AI DEBUG END: Gemini [{$requestId}] ====");
-        } catch (\Exception $e) {
-            Log::error("[{$requestId}] Gemini: Request FAILED inside Http::post. Error: " . $e->getMessage());
-            throw $e;
-        }
-=======
         $response = Http::timeout(120)
+            ->connectTimeout(15)
             ->withoutVerifying()
             ->withHeaders(['Content-Type' => 'application/json'])
             ->post($url, $payload);
->>>>>>> 29a065f (feat(ai): implement AIService with validation and classification command)
 
         if ($response->failed()) {
             throw new \Exception("Gemini API Error: " . $response->body());
@@ -302,22 +280,7 @@ class AIService
         return [];
     }
 
-<<<<<<< HEAD
-    protected function getFirstAvailableProvider(): ?string
-    {
-        // Priorizar Gemini
-        if (ApiKey::getActiveKeyForProvider('gemini')) {
-            return 'gemini';
-        }
 
-        foreach ($this->providers as $provider) {
-            if ($provider !== 'gemini' && ApiKey::getActiveKeyForProvider($provider)) {
-                return $provider;
-            }
-        }
-
-        return null;
-    }
 
     protected function buildSimulationCorrectionPrompt(array $questionsAndAnswers, string $plan): string
     {
@@ -576,8 +539,6 @@ class AIService
     /**
      * Limpa a resposta da IA de blocos de markdown e tenta o parse do JSON.
      */
-=======
->>>>>>> 29a065f (feat(ai): implement AIService with validation and classification command)
     protected function sanitizeAIResponse(?string $text): array
     {
         if (!$text) return [];

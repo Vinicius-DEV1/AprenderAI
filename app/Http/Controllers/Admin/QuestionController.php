@@ -96,38 +96,7 @@ class QuestionController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'subject' => 'required|in:matemática,português',
-            'type' => 'required|in:enem,concurso',
-            'statement' => 'required|string',
-            'alternatives' => 'required|array|min:5', // A, B, C, D, E
-            'alternatives.A' => 'required|string',
-            'alternatives.B' => 'required|string',
-            'alternatives.C' => 'required|string',
-            'alternatives.D' => 'required|string',
-            'alternatives.E' => 'required|string',
-            'correct_answer' => 'required|in:A,B,C,D,E',
-            'explanation' => 'nullable|string',
-            'source' => 'required|in:manual,ai_generated',
-            'year' => 'nullable|integer',
-            'difficulty' => 'required|in:easy,medium,hard',
-            'origin' => 'nullable|string|max:255',
-        ]);
-
-        Question::create($validated);
-
-        return redirect()->route('admin.questions.index')
-            ->with('success', 'Questão criada com sucesso!');
-    }
-
-    public function edit(Question $question)
-    {
-        return view('admin.questions.form', compact('question'));
-    }
-
-    public function update(Request $request, Question $question)
-    {
-        $validated = $request->validate([
-            'subject' => 'required|in:matemática,português',
+            'subject' => 'required|string', // Name of the subject
             'type' => 'required|in:enem,concurso',
             'statement' => 'required|string',
             'alternatives' => 'required|array|min:5',
@@ -141,10 +110,63 @@ class QuestionController extends Controller
             'source' => 'required|in:manual,ai_generated',
             'year' => 'nullable|integer',
             'difficulty' => 'required|in:easy,medium,hard',
+            'difficulty_reasoning' => 'nullable|string',
             'origin' => 'nullable|string|max:255',
         ]);
 
+        // Remove subject from validated before creation as column is dropped
+        $subjectName = $validated['subject'];
+        unset($validated['subject']);
+
+        $question = Question::create($validated);
+
+        // Sync Subject
+        $subject = \App\Models\Subject::where('name', 'like', $subjectName)->first();
+        if ($subject) {
+            $question->subjects()->sync([$subject->id]);
+        }
+
+        return redirect()->route('admin.questions.index')
+            ->with('success', 'Questão criada com sucesso!');
+    }
+
+    public function edit(Question $question)
+    {
+        return view('admin.questions.form', compact('question'));
+    }
+
+    public function update(Request $request, Question $question)
+    {
+        $validated = $request->validate([
+            'subject' => 'required|string', // Name of the subject
+            'type' => 'required|in:enem,concurso',
+            'statement' => 'required|string',
+            'alternatives' => 'required|array|min:5',
+            'alternatives.A' => 'required|string',
+            'alternatives.B' => 'required|string',
+            'alternatives.C' => 'required|string',
+            'alternatives.D' => 'required|string',
+            'alternatives.E' => 'required|string',
+            'correct_answer' => 'required|in:A,B,C,D,E',
+            'explanation' => 'nullable|string',
+            'source' => 'required|in:manual,ai_generated',
+            'year' => 'nullable|integer',
+            'difficulty' => 'required|in:easy,medium,hard',
+            'difficulty_reasoning' => 'nullable|string',
+            'origin' => 'nullable|string|max:255',
+        ]);
+
+        // Remove subject from validated before update as column is dropped
+        $subjectName = $validated['subject'];
+        unset($validated['subject']);
+
         $question->update($validated);
+
+        // Sync Subject
+        $subject = \App\Models\Subject::where('name', 'like', $subjectName)->first();
+        if ($subject) {
+            $question->subjects()->sync([$subject->id]);
+        }
 
         return redirect()->route('admin.questions.index')
             ->with('success', 'Questão atualizada com sucesso!');
