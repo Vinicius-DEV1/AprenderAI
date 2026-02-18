@@ -45,6 +45,8 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/', [\App\Http\Controllers\QuestionBankController::class , 'index'])->name('index');
             Route::post('/{question}/answer', [\App\Http\Controllers\QuestionBankController::class , 'answer'])->name('answer');
             Route::get('/stats', [\App\Http\Controllers\QuestionBankController::class , 'stats'])->name('stats');
+            // Histórico individual de respostas (AJAX)
+            Route::get('/{question}/history', [\App\Http\Controllers\QuestionBankController::class , 'history'])->name('history');
             // Chat Standalone (Tirar Dúvida)
             Route::post('/{question}/chat', [\App\Http\Controllers\QuestionChatController::class , 'storeStandalone'])->name('chat.store');
             Route::get('/{question}/chat', [\App\Http\Controllers\QuestionChatController::class , 'indexStandalone'])->name('chat.index');
