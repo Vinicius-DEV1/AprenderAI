@@ -27,7 +27,93 @@
             --ease: cubic-bezier(.2, .8, .2, 1);
         }
 
+        /*
+        |------------------------------------------------------------------
+        | Dark Mode — Paleta "Deep Blue"
+        |------------------------------------------------------------------
+        |
+        | Sobrescreve as variáveis de cor quando a classe .dark está na <html>.
+        | Usa tons de azul profundo (slate-950, slate-900) para fundos e
+        | tons claros (slate-200, slate-400) para texto e muteds.
+        |
+        | Os gradientes de background (wrap::before, wrap::after) também
+        | são ajustados para manter a profundidade visual sem claridade.
+        */
+        :root.dark {
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --muted2: #64748b;
 
+            --bg0: #020617;
+            --bg1: #0f172a;
+
+            --border: rgba(255, 255, 255, 0.08);
+            --ring: 0 0 0 4px rgba(99, 102, 241, 0.2);
+
+            --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 22px rgba(0, 0, 0, 0.2);
+            --shadow2: 0 18px 40px rgba(0, 0, 0, 0.3), 0 6px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        :root.dark .wrap::before {
+            background:
+                radial-gradient(1000px 480px at 18% -5%, rgba(37, 99, 235, .12), rgba(37, 99, 235, 0) 60%),
+                radial-gradient(900px 480px at 86% 5%, rgba(124, 58, 237, .10), rgba(124, 58, 237, 0) 60%),
+                linear-gradient(180deg, var(--bg0) 0%, #050d1d 45%, var(--bg1) 100%);
+        }
+
+        :root.dark .wrap::after {
+            background:
+                radial-gradient(circle at 26% 32%, rgba(37, 99, 235, .06), transparent 58%),
+                radial-gradient(circle at 72% 28%, rgba(124, 58, 237, .05), transparent 62%);
+            opacity: .4;
+        }
+
+        :root.dark .hero {
+            background: linear-gradient(135deg, rgba(30, 41, 59, .9), rgba(15, 23, 42, .95));
+            border-color: rgba(255, 255, 255, 0.06);
+        }
+
+        :root.dark .stat {
+            background: linear-gradient(135deg, rgba(30, 41, 59, .85), rgba(15, 23, 42, .95));
+            border-color: rgba(255, 255, 255, 0.06);
+        }
+
+        :root.dark .card {
+            background: linear-gradient(135deg, rgba(30, 41, 59, .85), rgba(15, 23, 42, .95));
+            border-color: rgba(255, 255, 255, 0.06);
+        }
+
+        :root.dark .item {
+            border-color: rgba(255, 255, 255, 0.06);
+            background: linear-gradient(180deg, rgba(30, 41, 59, .5), rgba(15, 23, 42, .8));
+        }
+
+        :root.dark .item:hover {
+            border-color: rgba(99, 102, 241, .3);
+            box-shadow: 0 10px 22px rgba(0, 0, 0, .3);
+        }
+
+        :root.dark .chip {
+            background: rgba(99, 102, 241, .15);
+            border-color: rgba(99, 102, 241, .3);
+            color: #a5b4fc;
+        }
+
+        :root.dark .badge {
+            background: rgba(99, 102, 241, .15);
+            border-color: rgba(99, 102, 241, .3);
+            color: #a5b4fc;
+        }
+
+        :root.dark .pending {
+            background: rgba(245, 158, 11, .15);
+            border-color: rgba(245, 158, 11, .25);
+            color: #fbbf24;
+        }
+
+        :root.dark .stat:hover {
+            border-color: rgba(99, 102, 241, .3);
+        }
 
         .wrap {
             max-width: 1120px;
@@ -543,6 +629,12 @@
             weight: '600'
         };
 
+        // Dark mode: adapta cores dos gráficos ao tema atual
+        const isDark = document.documentElement.classList.contains('dark');
+        const gridColor = isDark ? 'rgba(255,255,255,.06)' : 'rgba(15,23,42,.06)';
+        const tickColor = isDark ? 'rgba(255,255,255,.45)' : 'rgba(15,23,42,.55)';
+        const legendColor = isDark ? 'rgba(255,255,255,.6)' : 'rgba(15,23,42,.68)';
+
         const safeDestroy = (id) => {
             const existing = Chart.getChart(id);
             if (existing) existing.destroy();
@@ -584,14 +676,14 @@
                     },
                     scales: {
                         x: {
-                            grid: { color: 'rgba(15,23,42,.06)' },
-                            ticks: { color: 'rgba(15,23,42,.55)', font: commonFont }
+                            grid: { color: gridColor },
+                            ticks: { color: tickColor, font: commonFont }
                         },
                         y: {
                             beginAtZero: true,
                             suggestedMax: 100,
-                            grid: { color: 'rgba(15,23,42,.06)' },
-                            ticks: { color: 'rgba(15,23,42,.55)', font: commonFont, callback: v => v + '%' }
+                            grid: { color: gridColor },
+                            ticks: { color: tickColor, font: commonFont, callback: v => v + '%' }
                         }
                     }
                 }
@@ -620,7 +712,7 @@
                         legend: {
                             position: 'bottom',
                             labels: {
-                                color: 'rgba(15,23,42,.68)',
+                                color: legendColor,
                                 font: commonFont,
                                 boxWidth: 10,
                                 boxHeight: 10
