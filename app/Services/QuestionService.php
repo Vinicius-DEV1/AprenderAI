@@ -6,83 +6,63 @@ use App\Models\Question;
 use App\Models\UserQuestionAnswer;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class QuestionService
 {
     /**
-     * Busca questões completas com filtros dinâmicos.
-     * Retorna paginação com questões prontas para resolução.
+     * Busca questões com filtros dinâmicos e cumulativos.
+     * Cada filtro é opcional — apenas os preenchidos são aplicados.
      */
     public function search(Request $request, ?int $userId = null): LengthAwarePaginator
     {
         $query = Question::with('subjects')
-            ->complete() // Só questões com explicação + dificuldade
-            ->orderByDesc('id');
-
-        // Keyword (enunciado)
-        if ($request->filled('keyword')) {
-            $query->where('statement', 'like', '%' . $request->keyword . '%');
-        }
-
-        // Matéria (Subject via M2M)
-        if ($request->filled('subject')) {
-            $query->whereHas('subjects', function ($q) use ($request) {
-                $q->where('subjects.name', $request->subject);
-            });
-        }
-
-        // Assunto (Topic)
-        if ($request->filled('topic')) {
-            $query->where('topic', $request->topic);
-        }
-
-        // Ano
-        if ($request->filled('year')) {
-            $query->where('year', $request->year);
-        }
-
-        // Banca (Organization)
-        if ($request->filled('organization')) {
-            $query->where('organization', $request->organization);
-        }
-
-        // Órgão (Institution)
-        if ($request->filled('institution')) {
-            $query->where('institution', $request->institution);
-        }
-
-        // Cargo (Role)
-        if ($request->filled('role')) {
-            $query->where('role', $request->role);
-        }
-
-        // Dificuldade
-        if ($request->filled('difficulty')) {
-            $query->where('difficulty', $request->difficulty);
-        }
-
-        // Tipo
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
-        }
-
-        // Status (respondida/não respondida/acertei/errei) — requer userId
-        if ($request->filled('status') && $userId) {
+            ->complete()
+            ->when($request->filled('keyword'), fn($q) =>
+        $q->where('statement', 'like', '%' . $request->keyword . '%')
+        )
+            ->when($request->filled('type'), fn($q) =>
+        $q->where('type', $request->type)
+        )
+            ->when($request->filled('subject'), fn($q) =>
+        $q->whereHas('subjects', fn($s) =>
+        $s->where('subjects.name', $request->subject)
+        )
+        )
+            ->when($request->filled('topic'), fn($q) =>
+        $q->where('topic', $request->topic)
+        )
+            ->when($request->filled('year'), fn($q) =>
+        $q->where('year', $request->year)
+        )
+            ->when($request->filled('difficulty'), fn($q) =>
+        $q->where('difficulty', $request->difficulty)
+        )
+            // Concurso-only filters — ignored when type=enem
+            ->when($request->filled('organization') && $request->type !== 'enem', fn($q) =>
+        $q->where('organization', $request->organization)
+        )
+            ->when($request->filled('institution') && $request->type !== 'enem', fn($q) =>
+        $q->where('institution', $request->institution)
+        )
+            ->when($request->filled('role') && $request->type !== 'enem', fn($q) =>
+        $q->where('role', $request->role)
+        )
+            ->when($request->filled('status') && $userId, function ($q) use ($request, $userId) {
             match ($request->status) {
-                    'unanswered' => $query->whereDoesntHave('userAnswers', fn($q) => $q->where('user_id', $userId)),
-                    'correct' => $query->whereHas('userAnswers', fn($q) => $q->where('user_id', $userId)->where('is_correct', true)),
-                    'incorrect' => $query->whereHas('userAnswers', fn($q) => $q->where('user_id', $userId)->where('is_correct', false)),
-                    'answered' => $query->whereHas('userAnswers', fn($q) => $q->where('user_id', $userId)),
+                    'unanswered' => $q->whereDoesntHave('userAnswers', fn($r) => $r->where('user_id', $userId)),
+                    'correct' => $q->whereHas('userAnswers', fn($r) => $r->where('user_id', $userId)->where('is_correct', true)),
+                    'incorrect' => $q->whereHas('userAnswers', fn($r) => $r->where('user_id', $userId)->where('is_correct', false)),
+                    'answered' => $q->whereHas('userAnswers', fn($r) => $r->where('user_id', $userId)),
                     default => null,
                 };
-        }
+        })
+            ->orderByDesc('id');
 
         return $query->paginate(15)->withQueryString();
     }
 
     /**
-     * Retorna as opções de filtro disponíveis para a UI.
+     * Opções de filtro globais para a UI.
      */
     public function getFilterOptions(): array
     {
@@ -108,12 +88,19 @@ class QuestionService
             'roles' => Question::select('role')
             ->whereNotNull('role')->where('role', '!=', '')
             ->distinct()->orderBy('role')->pluck('role'),
+
+            // Mapa de matérias por tipo — para Alpine.js filtrar dinamicamente
+            'subjectsByType' => [
+                'enem' => \App\Models\Subject::whereHas('questions', fn($q) => $q->where('type', 'enem'))
+                ->orderBy('name')->pluck('name'),
+                'concurso' => \App\Models\Subject::whereHas('questions', fn($q) => $q->where('type', 'concurso'))
+                ->orderBy('name')->pluck('name'),
+            ],
         ];
     }
 
     /**
      * Registra a resposta do aluno para uma questão avulsa.
-     * Retorna os dados de feedback.
      */
     public function answerQuestion(int $userId, Question $question, string $selectedAnswer): array
     {
