@@ -169,14 +169,20 @@
                                         @endif
                                     </p>
 
-                                    {{-- UX Premium for 0% Accuracy --}}
-                                    @if($subj['accuracy'] !== null && $subj['accuracy'] == 0 && $subj['attempts'] >= 20)
-                                        <div class="mt-2 p-2 bg-white/50 rounded-lg border border-red-100">
-                                            <p class="text-[10px] leading-tight text-red-600 font-medium">
+                                    {{-- UX Premium — Hit/Miss Logical Message --}}
+                                    <div class="mt-2 p-2 bg-white/50 rounded-lg border {{ $subj['attempts'] < 20 ? 'border-slate-100' : ($subj['correct'] == 0 ? 'border-red-100' : 'border-blue-100') }}">
+                                        <p class="text-[10px] leading-tight {{ $subj['attempts'] < 20 ? 'text-slate-500' : ($subj['correct'] == 0 ? 'text-red-600' : 'text-blue-600') }} font-medium">
+                                            @if($subj['attempts'] < 20)
+                                                Responda mais questões para aumentar a confiabilidade do diagnóstico.
+                                            @elseif($subj['correct'] == 0)
                                                 🚨 Você errou todas as {{ $subj['attempts'] }} questões. Recomendamos exercícios guiados e revisão de fundamentos nesta disciplina.
-                                            </p>
-                                        </div>
-                                    @endif
+                                            @elseif($subj['correct'] == 1)
+                                                ✅ Você acertou 1 questão de {{ $subj['attempts'] }}.
+                                            @else
+                                                ✅ Você acertou {{ $subj['correct'] }} questões de {{ $subj['attempts'] }}.
+                                            @endif
+                                        </p>
+                                    </div>
                                 </div>
                             @endforeach
                         </div>
