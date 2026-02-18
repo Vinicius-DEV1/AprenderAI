@@ -1,30 +1,51 @@
-@extends('layouts.app')
+{{--
+|--------------------------------------------------------------------------
+| Banco de Questões — Página Principal (questions/index.blade.php)
+|--------------------------------------------------------------------------
+|
+| VISÃO GERAL:
+| Esta view implementa a interface completa do banco de questões estilo
+| Qconcursos. Permite que o aluno filtre, resolva questões, veja feedback
+| com explicação IA, tire dúvidas via chat, e consulte seu histórico.
+|
+| COMPONENTES ALPINE.JS:
+| - statsSlideOver()  → Painel lateral de desempenho (Chart.js)
+| - filterPanel()     → Filtros adaptativos com tipo como mestre
+| - questionCard()    → Card interativo com resolução, chat e histórico
+|
+| DEPENDÊNCIAS:
+| - Alpine.js (já carregado no layout)
+| - Chart.js (CDN, carregado sob demanda no slide-over)
+| - Marked.js (CDN, para renderizar Markdown das respostas IA)
+--}}
 
+@extends('layouts.app')
 @section('page-title', 'Banco de Questões')
 
 @section('content')
+{{-- ===== ESTILOS DO MÓDULO ===== --}}
 <style>
-    /* ===== BASE ===== */
+    /* ── Header ── */
     .qb-header { background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%); border-radius: 16px; padding: 28px 32px; color: white; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
     .qb-header-left h1 { font-size: 26px; font-weight: 700; margin-bottom: 2px; }
-    .qb-header-left p  { font-size: 13px; opacity: 0.85; }
-    .qb-header-stats   { display: flex; gap: 10px; flex-wrap: wrap; }
+    .qb-header-left p { font-size: 13px; opacity: 0.85; }
+    .qb-header-stats { display: flex; gap: 10px; flex-wrap: wrap; }
     .qb-stat { background: rgba(255,255,255,0.15); backdrop-filter: blur(8px); border-radius: 10px; padding: 10px 18px; text-align: center; min-width: 90px; }
     .qb-stat .val { font-size: 22px; font-weight: 700; }
     .qb-stat .lbl { font-size: 10px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px; }
     .qb-btn-desempenho { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; border-radius: 10px; padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
     .qb-btn-desempenho:hover { background: rgba(255,255,255,0.3); }
 
-    /* ===== FILTERS ===== */
+    /* ── Filters ── */
     .qb-filters { background: white; border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.07); margin-bottom: 20px; border: 1px solid #e2e8f0; }
     .qb-filter-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
     .qb-filter-row + .qb-filter-row { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e2e8f0; }
     .qb-filter-item { flex: 1; min-width: 140px; }
     .qb-filter-item label { display: block; font-size: 10px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
-    .qb-filter-item select,
-    .qb-filter-item input  { width: 100%; padding: 8px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 13px; color: #334155; background: #f8fafc; transition: border-color 0.2s, box-shadow 0.2s; }
-    .qb-filter-item select:focus,
-    .qb-filter-item input:focus  { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+    .qb-filter-item select, .qb-filter-item input { width: 100%; padding: 8px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 13px; color: #334155; background: #f8fafc; transition: border-color 0.2s, box-shadow 0.2s; }
+    .qb-filter-item select:focus, .qb-filter-item input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+    /* Tipo é o filtro mestre — destaque visual */
+    .qb-filter-master select { border-color: #6366f1; border-width: 2px; font-weight: 600; }
     .qb-filter-actions { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
     .qb-btn { padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; }
     .qb-btn-primary { background: #6366f1; color: white; }
@@ -35,13 +56,12 @@
     .qb-filter-toggle:hover { text-decoration: underline; }
     .qb-result-count { font-size: 12px; color: #94a3b8; margin-left: auto; }
 
-    /* ===== SLIDE-OVER (Stats) ===== */
+    /* ── Slide-over (Stats) ── */
     .qb-slideover-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,0.5); z-index: 100; backdrop-filter: blur(2px); }
     .qb-slideover { position: fixed; top: 0; right: 0; height: 100vh; width: min(520px, 95vw); background: white; z-index: 101; box-shadow: -8px 0 32px rgba(0,0,0,0.15); display: flex; flex-direction: column; overflow: hidden; }
     .qb-slideover-header { padding: 20px 24px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #3b82f6, #6366f1); color: white; }
     .qb-slideover-header h2 { font-size: 18px; font-weight: 700; }
-    .qb-slideover-close { background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 8px; width: 32px; height: 32px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
-    .qb-slideover-close:hover { background: rgba(255,255,255,0.35); }
+    .qb-slideover-close { background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 8px; width: 32px; height: 32px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
     .qb-slideover-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
     .qb-overview-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
     .qb-overview-card { background: #f8fafc; border-radius: 10px; padding: 14px 16px; border: 1px solid #e2e8f0; text-align: center; }
@@ -50,7 +70,7 @@
     .qb-chart-section { margin-bottom: 20px; }
     .qb-chart-section h3 { font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 10px; }
 
-    /* ===== QUESTION CARDS ===== */
+    /* ── Question Cards ── */
     .qb-card { background: white; border-radius: 12px; padding: 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 14px; border: 1px solid #e2e8f0; transition: box-shadow 0.2s; }
     .qb-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
     .qb-card-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -93,12 +113,16 @@
     .qb-difficulty-box { background: #fefce8; border-radius: 8px; padding: 10px 14px; margin-top: 8px; border: 1px solid #fde68a; }
     .qb-difficulty-box h5 { font-size: 11px; font-weight: 700; color: #92400e; margin-bottom: 3px; }
     .qb-difficulty-box p { font-size: 12px; line-height: 1.5; color: #78350f; }
+    /* ── Histórico popover ── */
+    .qb-history-popover { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); margin-top: 8px; animation: fadeSlideIn 0.2s ease; }
+    .qb-history-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f1f5f9; font-size: 12px; }
+    .qb-history-row:last-child { border-bottom: none; }
+    /* ── Chat ── */
     .qb-chat-container { margin-top: 10px; background: #f8fafc; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; }
     .qb-chat-history { max-height: 200px; overflow-y: auto; margin-bottom: 8px; }
-
     @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* ===== DARK MODE ===== */
+    /* ── Dark Mode ── */
     :root.dark .qb-filters { background: #1e293b; border-color: rgba(255,255,255,0.08); }
     :root.dark .qb-filter-item select, :root.dark .qb-filter-item input { background: #0f172a; border-color: rgba(255,255,255,0.1); color: #e2e8f0; }
     :root.dark .qb-filter-row + .qb-filter-row { border-top-color: rgba(255,255,255,0.08); }
@@ -116,82 +140,54 @@
     :root.dark .qb-overview-card .lbl { color: #94a3b8; }
     :root.dark .qb-chart-section h3 { color: #e2e8f0; }
     :root.dark .qb-slideover-body { background: #1e293b; }
-    :root.dark .qb-slideover-header { border-bottom-color: rgba(255,255,255,0.08); }
     :root.dark .qb-chat-container { background: #0f172a; border-color: rgba(255,255,255,0.08); }
+    :root.dark .qb-history-popover { background: #1e293b; border-color: rgba(255,255,255,0.08); }
+    :root.dark .qb-history-row { border-bottom-color: rgba(255,255,255,0.08); color: #cbd5e1; }
     :root.dark .qb-difficulty-box { background: rgba(254,243,199,0.08); border-color: rgba(253,230,138,0.2); }
     :root.dark .qb-difficulty-box h5 { color: #fcd34d; }
     :root.dark .qb-difficulty-box p { color: #fde68a; }
     [x-cloak] { display: none !important; }
 </style>
 
-{{-- ===== SLIDE-OVER: Desempenho ===== --}}
+{{-- ============================================================
+     SLIDE-OVER: Painel lateral de desempenho
+     Aberto pelo botão "Ver Meu Desempenho" no header.
+     Os gráficos Chart.js são carregados sob demanda via AJAX
+     apenas quando o painel é aberto pela primeira vez.
+     ============================================================ --}}
 <div x-data="statsSlideOver()" x-cloak>
-    {{-- Backdrop --}}
-    <div x-show="open" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150"
-         x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-         class="qb-slideover-backdrop" @click="close()" style="display:none"></div>
-
-    {{-- Panel --}}
+    <div x-show="open" x-transition.opacity class="qb-slideover-backdrop" @click="close()" style="display:none"></div>
     <div x-show="open" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-x-full"
          x-transition:enter-end="translate-x-0" x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
          class="qb-slideover" style="display:none">
         <div class="qb-slideover-header">
             <h2>📊 Meu Desempenho</h2>
             <button class="qb-slideover-close" @click="close()">✕</button>
         </div>
         <div class="qb-slideover-body">
-            {{-- Overview --}}
             <div class="qb-overview-grid">
-                <div class="qb-overview-card">
-                    <div class="val">{{ $overview['total'] }}</div>
-                    <div class="lbl">Questões Respondidas</div>
-                </div>
-                <div class="qb-overview-card">
-                    <div class="val" style="color:#10b981">{{ $overview['accuracy'] }}%</div>
-                    <div class="lbl">Taxa de Acerto</div>
-                </div>
-                <div class="qb-overview-card">
-                    <div class="val" style="color:#10b981">{{ $overview['correct'] }}</div>
-                    <div class="lbl">Acertos</div>
-                </div>
-                <div class="qb-overview-card">
-                    <div class="val" style="color:#ef4444">{{ $overview['incorrect'] }}</div>
-                    <div class="lbl">Erros</div>
-                </div>
+                <div class="qb-overview-card"><div class="val">{{ $overview['total'] }}</div><div class="lbl">Respondidas</div></div>
+                <div class="qb-overview-card"><div class="val" style="color:#10b981">{{ $overview['accuracy'] }}%</div><div class="lbl">Taxa de Acerto</div></div>
+                <div class="qb-overview-card"><div class="val" style="color:#10b981">{{ $overview['correct'] }}</div><div class="lbl">Acertos</div></div>
+                <div class="qb-overview-card"><div class="val" style="color:#ef4444">{{ $overview['incorrect'] }}</div><div class="lbl">Erros</div></div>
             </div>
-
-            {{-- Charts --}}
-            <div class="qb-chart-section">
-                <h3>Acerto por Matéria</h3>
-                <canvas id="chartSubject" height="180"></canvas>
-            </div>
-            <div class="qb-chart-section">
-                <h3>Evolução (últimos 30 dias)</h3>
-                <canvas id="chartTemporal" height="160"></canvas>
-            </div>
-            <div class="qb-chart-section">
-                <h3>Heatmap de Dificuldade</h3>
-                <canvas id="chartDifficulty" height="160"></canvas>
-            </div>
+            <div class="qb-chart-section"><h3>Acerto por Matéria</h3><canvas id="chartSubject" height="180"></canvas></div>
+            <div class="qb-chart-section"><h3>Evolução (30 dias)</h3><canvas id="chartTemporal" height="160"></canvas></div>
+            <div class="qb-chart-section"><h3>Heatmap de Dificuldade</h3><canvas id="chartDifficulty" height="160"></canvas></div>
         </div>
     </div>
 </div>
 
-{{-- ===== HEADER ===== --}}
+{{-- ============================================================
+     HEADER — Resumo rápido + botão de desempenho
+     ============================================================ --}}
 <div class="qb-header">
     <div class="qb-header-left">
         <h1>📋 Banco de Questões</h1>
         <p>Resolva questões, veja explicações e tire dúvidas com IA</p>
     </div>
     <div style="display:flex; flex-direction:column; align-items:flex-end; gap:12px">
-        <button class="qb-btn-desempenho" @click="$dispatch('open-stats')">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-            </svg>
-            Ver Meu Desempenho
-        </button>
+        <button class="qb-btn-desempenho" @click="$dispatch('open-stats')">📊 Ver Meu Desempenho</button>
         <div class="qb-header-stats">
             <div class="qb-stat"><div class="val">{{ $overview['total'] }}</div><div class="lbl">Respondidas</div></div>
             <div class="qb-stat"><div class="val">{{ $overview['accuracy'] }}%</div><div class="lbl">Acerto</div></div>
@@ -201,68 +197,62 @@
     </div>
 </div>
 
-{{-- ===== FILTERS ===== --}}
-<div class="qb-filters"
-     x-data="filterPanel(
-        {{ json_encode(request()->all()) }},
-        {{ json_encode($filterOptions['subjectsByType']) }}
-     )">
-
-    {{-- Row 1: Primary filters (always visible) --}}
+{{-- ============================================================
+     FILTROS ADAPTATIVOS
+     - Linha 1 (sempre visível): Tipo (mestre), Matéria, Assunto, Busca
+     - Linha 2 (colapsável): Ano, Dificuldade, Status, Banca*, Órgão*, Cargo*
+     * Campos marcados com * são exclusivos de concurso e desaparecem
+       automaticamente quando Tipo=ENEM via x-show do Alpine.js.
+     ============================================================ --}}
+<div class="qb-filters" x-data="filterPanel({{ json_encode(request()->all()) }})">
     <form method="GET" action="{{ route('questions.index') }}" @submit.prevent="submitForm($el)">
+        {{-- Linha 1: Filtros primários --}}
         <div class="qb-filter-row">
-            {{-- Tipo (master filter) --}}
-            <div class="qb-filter-item" style="max-width:130px">
-                <label>Tipo</label>
+            {{-- TIPO — Filtro mestre: determina quais campos aparecem --}}
+            <div class="qb-filter-item qb-filter-master" style="max-width:130px">
+                <label>⭐ Tipo</label>
                 <select name="type" x-model="filters.type" @change="onTypeChange()">
                     <option value="">Todos</option>
                     <option value="enem">ENEM</option>
                     <option value="concurso">Concurso</option>
                 </select>
             </div>
-
-            {{-- Matéria (filtered by type) --}}
+            {{-- MATÉRIA — Lista unificada de subjects --}}
             <div class="qb-filter-item" style="max-width:200px">
                 <label>Matéria</label>
                 <select name="subject" x-model="filters.subject">
                     <option value="">Todas</option>
-                    <template x-for="s in availableSubjects" :key="s">
-                        <option :value="s" x-text="s" :selected="filters.subject === s"></option>
-                    </template>
+                    @foreach($filterOptions['subjects'] as $s)
+                        <option value="{{ $s }}" {{ request('subject') == $s ? 'selected' : '' }}>{{ $s }}</option>
+                    @endforeach
                 </select>
             </div>
-
-            {{-- Assunto --}}
+            {{-- ASSUNTO/TÓPICO --}}
             <div class="qb-filter-item">
                 <label>Assunto</label>
                 <select name="topic" x-model="filters.topic">
-                    <option value="">Todos</option>
+                    <option value="">Ex: Trigonometria, Funções...</option>
                     @foreach($filterOptions['topics'] as $t)
                         <option value="{{ $t }}" {{ request('topic') == $t ? 'selected' : '' }}>{{ $t }}</option>
                     @endforeach
                 </select>
             </div>
-
-            {{-- Keyword --}}
+            {{-- BUSCA POR PALAVRA-CHAVE --}}
             <div class="qb-filter-item" style="min-width:200px">
-                <label>Busca no enunciado</label>
-                <input type="text" name="keyword" x-model="filters.keyword" placeholder="Digite palavras-chave...">
+                <label>Busca</label>
+                <input type="text" name="keyword" x-model="filters.keyword" placeholder="Palavras-chave no enunciado...">
             </div>
-
-            {{-- Toggle Mais Filtros --}}
+            {{-- Toggle para mais filtros --}}
             <div style="display:flex; align-items:flex-end; padding-bottom:2px">
                 <button type="button" class="qb-filter-toggle" @click="moreFilters = !moreFilters">
-                    <svg class="w-4 h-4 transition-transform" :class="moreFilters ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
+                    <svg class="w-4 h-4" :class="moreFilters ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:14px;height:14px;transition:transform 0.2s"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                     <span x-text="moreFilters ? 'Menos filtros' : 'Mais filtros'"></span>
                 </button>
             </div>
         </div>
 
-        {{-- Row 2: Secondary filters (collapsible) --}}
+        {{-- Linha 2: Filtros secundários (colapsável) --}}
         <div x-show="moreFilters" x-transition class="qb-filter-row">
-            {{-- Ano --}}
             <div class="qb-filter-item" style="max-width:110px">
                 <label>Ano</label>
                 <select name="year" x-model="filters.year">
@@ -272,63 +262,56 @@
                     @endforeach
                 </select>
             </div>
-
-            {{-- Dificuldade --}}
             <div class="qb-filter-item" style="max-width:130px">
                 <label>Dificuldade</label>
                 <select name="difficulty" x-model="filters.difficulty">
                     <option value="">Todas</option>
-                    <option value="easy" {{ request('difficulty') == 'easy' ? 'selected' : '' }}>Fácil</option>
-                    <option value="medium" {{ request('difficulty') == 'medium' ? 'selected' : '' }}>Média</option>
-                    <option value="hard" {{ request('difficulty') == 'hard' ? 'selected' : '' }}>Difícil</option>
+                    <option value="easy" {{ request('difficulty')=='easy'?'selected':'' }}>Fácil</option>
+                    <option value="medium" {{ request('difficulty')=='medium'?'selected':'' }}>Média</option>
+                    <option value="hard" {{ request('difficulty')=='hard'?'selected':'' }}>Difícil</option>
                 </select>
             </div>
-
-            {{-- Status --}}
             <div class="qb-filter-item" style="max-width:160px">
                 <label>Status</label>
                 <select name="status" x-model="filters.status">
                     <option value="">Todos</option>
-                    <option value="unanswered" {{ request('status') == 'unanswered' ? 'selected' : '' }}>Não respondidas</option>
-                    <option value="answered" {{ request('status') == 'answered' ? 'selected' : '' }}>Respondidas</option>
-                    <option value="correct" {{ request('status') == 'correct' ? 'selected' : '' }}>Acertei</option>
-                    <option value="incorrect" {{ request('status') == 'incorrect' ? 'selected' : '' }}>Errei</option>
+                    <option value="unanswered" {{ request('status')=='unanswered'?'selected':'' }}>Não respondidas</option>
+                    <option value="answered" {{ request('status')=='answered'?'selected':'' }}>Respondidas</option>
+                    <option value="correct" {{ request('status')=='correct'?'selected':'' }}>Acertei</option>
+                    <option value="incorrect" {{ request('status')=='incorrect'?'selected':'' }}>Errei</option>
                 </select>
             </div>
-
-            {{-- Concurso-only filters (hidden when type=enem) --}}
+            {{-- Campos exclusivos de concurso — desaparecem quando tipo=enem --}}
             <div class="qb-filter-item" x-show="filters.type !== 'enem'" x-transition>
                 <label>Banca</label>
                 <select name="organization" x-model="filters.organization">
                     <option value="">Todas</option>
                     @foreach($filterOptions['organizations'] as $o)
-                        <option value="{{ $o }}" {{ request('organization') == $o ? 'selected' : '' }}>{{ $o }}</option>
+                        <option value="{{ $o }}" {{ request('organization')==$o?'selected':'' }}>{{ $o }}</option>
                     @endforeach
                 </select>
             </div>
-
             <div class="qb-filter-item" x-show="filters.type !== 'enem'" x-transition>
                 <label>Órgão</label>
                 <select name="institution" x-model="filters.institution">
                     <option value="">Todos</option>
                     @foreach($filterOptions['institutions'] as $i)
-                        <option value="{{ $i }}" {{ request('institution') == $i ? 'selected' : '' }}>{{ $i }}</option>
+                        <option value="{{ $i }}" {{ request('institution')==$i?'selected':'' }}>{{ $i }}</option>
                     @endforeach
                 </select>
             </div>
-
             <div class="qb-filter-item" x-show="filters.type !== 'enem'" x-transition>
                 <label>Cargo</label>
                 <select name="role" x-model="filters.role">
                     <option value="">Todos</option>
                     @foreach($filterOptions['roles'] as $r)
-                        <option value="{{ $r }}" {{ request('role') == $r ? 'selected' : '' }}>{{ $r }}</option>
+                        <option value="{{ $r }}" {{ request('role')==$r?'selected':'' }}>{{ $r }}</option>
                     @endforeach
                 </select>
             </div>
         </div>
 
-        {{-- Actions --}}
+        {{-- Botões de ação --}}
         <div class="qb-filter-actions">
             <button type="submit" class="qb-btn qb-btn-primary">🔍 Filtrar</button>
             <button type="button" class="qb-btn qb-btn-ghost" @click="clearFilters()">✕ Limpar</button>
@@ -337,44 +320,44 @@
     </form>
 </div>
 
-{{-- ===== QUESTIONS FEED ===== --}}
+{{-- ============================================================
+     FEED DE QUESTÕES — Cards interativos
+     Cada card é um componente Alpine.js independente que gerencia:
+     - Seleção de alternativa e envio da resposta (AJAX)
+     - Exibição de feedback (acertou/errou + explicação)
+     - Chat de mentoria com IA (AJAX com polling)
+     - Histórico individual de respostas (AJAX sob demanda)
+     ============================================================ --}}
 @forelse($questions as $question)
     <div class="qb-card" x-data="questionCard({{ $question->id }}, {{ json_encode(isset($answeredMap[$question->id])) }}, {{ json_encode($answeredMap[$question->id] ?? null) }})">
-        {{-- Meta --}}
+        {{-- Meta: ID, badges de origem, dificuldade, status --}}
         <div class="qb-card-meta">
             <span class="qb-card-id">#{{ $question->external_id ?? $question->id }}</span>
-            @if($question->origin)
-                <span class="qb-badge qb-badge-origin">{{ $question->origin }}</span>
-            @elseif($question->source === 'ai_generated')
+            @if($question->source === 'ai_generated')
                 <span class="qb-badge qb-badge-ai">✨ INÉDITA</span>
             @endif
-            @if($question->year)
-                <span class="qb-badge qb-badge-origin">{{ $question->year }}</span>
-            @endif
-            @if($question->organization)
-                <span class="qb-badge qb-badge-origin">{{ $question->organization }}</span>
-            @endif
+            @if($question->year)<span class="qb-badge qb-badge-origin">{{ $question->year }}</span>@endif
+            @if($question->organization)<span class="qb-badge qb-badge-origin">{{ $question->organization }}</span>@endif
             <span class="qb-badge qb-badge-origin">{{ $question->subjects->pluck('name')->join(', ') }}</span>
             @php
                 $dc = match($question->difficulty) {
-                    'easy'   => ['class' => 'qb-badge-easy',   'label' => 'Fácil'],
+                    'easy' => ['class' => 'qb-badge-easy', 'label' => 'Fácil'],
                     'medium' => ['class' => 'qb-badge-medium', 'label' => 'Média'],
-                    'hard'   => ['class' => 'qb-badge-hard',   'label' => 'Difícil'],
-                    default  => null,
+                    'hard' => ['class' => 'qb-badge-hard', 'label' => 'Difícil'],
+                    default => null,
                 };
             @endphp
-            @if($dc)
-                <span class="qb-badge {{ $dc['class'] }}" title="{{ $question->difficulty_reasoning ?? '' }}">{{ $dc['label'] }}</span>
-            @endif
+            @if($dc)<span class="qb-badge {{ $dc['class'] }}">{{ $dc['label'] }}</span>@endif
+            {{-- Badge dinâmico de status (Acertou/Errou) via Alpine --}}
             <template x-if="alreadyAnswered">
                 <span class="qb-badge" :class="wasCorrect ? 'qb-badge-correct' : 'qb-badge-incorrect'" x-text="wasCorrect ? '✓ Acertou' : '✗ Errou'"></span>
             </template>
         </div>
 
-        {{-- Statement --}}
+        {{-- Enunciado da questão --}}
         <div class="qb-statement">{!! nl2br(e($question->statement)) !!}</div>
 
-        {{-- Alternatives --}}
+        {{-- Alternativas (A-E) --}}
         @foreach($question->alternatives as $letter => $text)
             <div class="qb-alt"
                  :class="{
@@ -386,26 +369,27 @@
                  @click="!answered ? selectAnswer('{{ $letter }}') : null">
                 <div class="qb-alt-letter">{{ $letter }}</div>
                 <div class="qb-alt-text">{{ $text }}</div>
-                <template x-if="answered && '{{ $letter }}' === correctAnswer">
-                    <svg class="w-5 h-5 text-green-600 ml-auto flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                    </svg>
-                </template>
             </div>
         @endforeach
 
-        {{-- Actions --}}
+        {{-- Botões de ação --}}
         <div class="qb-card-actions">
-            <button class="qb-action-btn primary" @click="submitAnswer()" :disabled="!selectedAnswer || answered || submitting" x-show="!answered">
+            {{-- Botão Responder (visível antes de responder) --}}
+            <button class="qb-action-btn primary" x-show="!answered" @click="submitAnswer()" :disabled="!selectedAnswer || submitting">
                 <span x-show="!submitting">📝 Responder</span>
                 <span x-show="submitting">⏳ Enviando...</span>
             </button>
-            <button class="qb-action-btn" @click="toggleChat()" x-show="answered">
-                <span x-text="showChat ? '▲ Ocultar Chat' : '💬 Tirar Dúvida com IA'"></span>
+            {{-- Botão Tirar Dúvida com IA (visível após responder) --}}
+            <button class="qb-action-btn" x-show="answered" @click="toggleChat()">
+                <span x-text="showChat ? '▲ Ocultar Chat' : '💬 Tirar Dúvida'"></span>
+            </button>
+            {{-- Botão Meu Histórico (visível após responder) --}}
+            <button class="qb-action-btn" x-show="answered" @click="toggleHistory()">
+                📜 Meu Histórico
             </button>
         </div>
 
-        {{-- Feedback --}}
+        {{-- Feedback de resposta (acertou/errou + explicação + dificuldade) --}}
         <template x-if="answered">
             <div class="qb-feedback" :class="isCorrect ? 'correct' : 'incorrect'">
                 <div class="qb-feedback-title">
@@ -425,20 +409,34 @@
             </div>
         </template>
 
-        {{-- Chat --}}
+        {{-- Popover de histórico individual (carregado via AJAX) --}}
+        <div x-show="showHistory" x-transition x-cloak class="qb-history-popover">
+            <h4 style="font-size:13px; font-weight:700; color:#6366f1; margin-bottom:8px">📜 Seu Histórico nesta Questão</h4>
+            <template x-if="historyLoading">
+                <p style="font-size:12px; color:#94a3b8">Carregando...</p>
+            </template>
+            <template x-if="!historyLoading && historyData.length === 0">
+                <p style="font-size:12px; color:#94a3b8">Nenhum registro encontrado.</p>
+            </template>
+            <template x-for="h in historyData" :key="h.answered_at">
+                <div class="qb-history-row">
+                    <span style="color:#64748b" x-text="formatDate(h.answered_at)"></span>
+                    <span>Resposta: <strong x-text="h.selected_answer"></strong></span>
+                    <span class="qb-badge" :class="h.is_correct ? 'qb-badge-correct' : 'qb-badge-incorrect'" x-text="h.is_correct ? 'Acerto' : 'Erro'"></span>
+                </div>
+            </template>
+        </div>
+
+        {{-- Chat de mentoria com IA --}}
         <div x-show="showChat" x-transition x-cloak class="qb-chat-container">
             <div class="qb-chat-history space-y-2 p-1" x-ref="chatHistory">
                 <template x-for="msg in chatMessages" :key="msg.id || msg.created_at">
                     <div :class="msg.role === 'user' ? 'flex justify-end' : (msg.role === 'system' ? 'flex justify-center' : 'flex justify-start')">
                         <template x-if="msg.role === 'user'">
-                            <div class="rounded-lg px-3 py-1.5 max-w-[85%] text-xs shadow-sm" style="background:#4f46e5;color:white">
-                                <span x-text="msg.message"></span>
-                            </div>
+                            <div class="rounded-lg px-3 py-1.5 max-w-[85%] text-xs shadow-sm" style="background:#4f46e5;color:white" x-text="msg.message"></div>
                         </template>
                         <template x-if="msg.role === 'assistant'">
-                            <div class="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 max-w-[85%] text-xs shadow-sm">
-                                <div x-html="renderMd(msg.message)"></div>
-                            </div>
+                            <div class="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 max-w-[85%] text-xs shadow-sm" x-html="renderMd(msg.message)"></div>
                         </template>
                         <template x-if="msg.role === 'system'">
                             <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-center w-[90%]">
@@ -448,6 +446,7 @@
                         </template>
                     </div>
                 </template>
+                {{-- Indicador de "IA digitando..." --}}
                 <div x-show="chatTyping" class="flex items-start">
                     <div class="bg-gray-100 dark:bg-slate-700 rounded-lg px-3 py-2 text-xs text-gray-500 flex items-center gap-2 border border-gray-200">
                         <span class="font-medium">IA digitando</span>
@@ -460,13 +459,10 @@
                 </div>
             </div>
             <div class="flex gap-2 mt-2">
-                <input type="text" x-model="chatInput" @keydown.enter.prevent="sendChat()"
-                    placeholder="Tire sua dúvida..." :disabled="chatTyping"
+                <input type="text" x-model="chatInput" @keydown.enter.prevent="sendChat()" placeholder="Tire sua dúvida..." :disabled="chatTyping"
                     class="flex-1 rounded-md border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 shadow-sm text-xs px-3 py-2 focus:border-indigo-500 focus:ring-indigo-500">
                 <button @click="sendChat()" :disabled="chatTyping || !chatInput.trim()"
-                    class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-xs font-medium disabled:opacity-50 transition-all">
-                    Enviar
-                </button>
+                    class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-xs font-medium disabled:opacity-50">Enviar</button>
             </div>
         </div>
     </div>
@@ -477,31 +473,39 @@
     </div>
 @endforelse
 
-{{-- Pagination --}}
-<div style="display:flex; justify-content:center; margin-top:20px">
-    {{ $questions->links() }}
-</div>
+{{-- Paginação --}}
+<div style="display:flex; justify-content:center; margin-top:20px">{{ $questions->links() }}</div>
 
-{{-- ===== SCRIPTS ===== --}}
+{{-- ============================================================
+     SCRIPTS — Componentes Alpine.js + Chart.js
+     ============================================================ --}}
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 marked.setOptions({ breaks: true, gfm: true });
 
-// ===== STATS SLIDE-OVER =====
+/**
+ * statsSlideOver() — Painel lateral de desempenho
+ *
+ * Abre um slide-over com 4 cards de resumo + 3 gráficos Chart.js.
+ * Os dados são carregados uma única vez via AJAX quando o painel
+ * é aberto pela primeira vez (lazy loading).
+ */
 function statsSlideOver() {
     return {
         open: false,
         chartsLoaded: false,
+
         init() {
+            // Escuta o evento 'open-stats' disparado pelo botão no header
             window.addEventListener('open-stats', () => {
                 this.open = true;
-                if (!this.chartsLoaded) {
-                    this.$nextTick(() => this.loadStats());
-                }
+                if (!this.chartsLoaded) this.$nextTick(() => this.loadStats());
             });
         },
+
         close() { this.open = false; },
+
         async loadStats() {
             try {
                 const res = await fetch('/questions/stats');
@@ -512,19 +516,17 @@ function statsSlideOver() {
                 this.chartsLoaded = true;
             } catch (e) { console.error('Stats error', e); }
         },
+
         renderSubjectChart(data) {
             const ctx = document.getElementById('chartSubject');
             if (!ctx || !data.length) return;
             new Chart(ctx, {
                 type: 'bar',
-                data: {
-                    labels: data.map(d => d.subject),
-                    datasets: [
-                        { label: 'Acertos', data: data.map(d => d.correct), backgroundColor: '#10b981', borderRadius: 5 },
-                        { label: 'Total', data: data.map(d => d.total), backgroundColor: '#e2e8f0', borderRadius: 5 },
-                    ]
-                },
-                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, scales: { y: { beginAtZero: true } } }
+                data: { labels: data.map(d=>d.subject), datasets: [
+                    { label: 'Acertos', data: data.map(d=>d.correct), backgroundColor: '#10b981', borderRadius: 5 },
+                    { label: 'Total', data: data.map(d=>d.total), backgroundColor: '#e2e8f0', borderRadius: 5 },
+                ]},
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
             });
         },
         renderTemporalChart(data) {
@@ -532,41 +534,38 @@ function statsSlideOver() {
             if (!ctx || !data.length) return;
             new Chart(ctx, {
                 type: 'line',
-                data: {
-                    labels: data.map(d => d.date),
-                    datasets: [
-                        { label: 'Resolvidas', data: data.map(d => d.total), borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.1)', fill: true, tension: 0.3, pointRadius: 3 },
-                        { label: 'Acertos', data: data.map(d => d.correct), borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.3, pointRadius: 3 },
-                    ]
-                },
-                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, scales: { y: { beginAtZero: true } } }
+                data: { labels: data.map(d=>d.date), datasets: [
+                    { label: 'Resolvidas', data: data.map(d=>d.total), borderColor: '#6366f1', fill: true, tension: 0.3, pointRadius: 3 },
+                    { label: 'Acertos', data: data.map(d=>d.correct), borderColor: '#10b981', fill: true, tension: 0.3, pointRadius: 3 },
+                ]},
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
             });
         },
         renderDifficultyChart(data) {
             const ctx = document.getElementById('chartDifficulty');
             if (!ctx || !data.length) return;
-            const labels = { easy: 'Fácil', medium: 'Média', hard: 'Difícil' };
-            const colors = { easy: '#10b981', medium: '#f59e0b', hard: '#ef4444' };
+            const labels = { easy:'Fácil', medium:'Média', hard:'Difícil' };
+            const colors = { easy:'#10b981', medium:'#f59e0b', hard:'#ef4444' };
             new Chart(ctx, {
                 type: 'doughnut',
-                data: {
-                    labels: data.map(d => labels[d.difficulty] || d.difficulty),
-                    datasets: [{ data: data.map(d => d.accuracy), backgroundColor: data.map(d => colors[d.difficulty] || '#94a3b8'), borderWidth: 2, borderColor: '#fff' }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { font: { size: 11 } } },
-                        tooltip: { callbacks: { label: (ctx) => { const item = data[ctx.dataIndex]; return `${ctx.label}: ${item.accuracy}% (${item.correct}/${item.total})`; } } }
-                    }
-                }
+                data: { labels: data.map(d=>labels[d.difficulty]||d.difficulty), datasets: [{ data: data.map(d=>d.accuracy), backgroundColor: data.map(d=>colors[d.difficulty]||'#94a3b8') }] },
+                options: { responsive: true, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: (c) => `${c.label}: ${data[c.dataIndex].accuracy}% (${data[c.dataIndex].correct}/${data[c.dataIndex].total})` } } } }
             });
         }
     };
 }
 
-// ===== FILTER PANEL =====
-function filterPanel(currentFilters, subjectsByType) {
+/**
+ * filterPanel() — Painel de filtros adaptativos
+ *
+ * O "Tipo" é o filtro mestre. Quando Tipo=enem:
+ * - Campos de Banca/Órgão/Cargo ficam ocultos (x-show)
+ * - Valores desses campos são resetados no Alpine state
+ *
+ * clearFilters() reseta todos os campos e redireciona para a URL limpa.
+ * submitForm() constrói a URL apenas com campos preenchidos (sem lixo).
+ */
+function filterPanel(currentFilters) {
     return {
         filters: {
             type: currentFilters.type || '',
@@ -580,20 +579,14 @@ function filterPanel(currentFilters, subjectsByType) {
             institution: currentFilters.institution || '',
             role: currentFilters.role || '',
         },
+        // Auto-expandir filtros secundários se algum deles estiver ativo
         moreFilters: !!(currentFilters.year || currentFilters.difficulty || currentFilters.status || currentFilters.organization || currentFilters.institution || currentFilters.role),
-        allSubjects: @json($filterOptions['subjects']),
-        subjectsByType: subjectsByType,
 
-        get availableSubjects() {
-            if (this.filters.type === 'enem') return this.subjectsByType.enem || this.allSubjects;
-            if (this.filters.type === 'concurso') return this.subjectsByType.concurso || this.allSubjects;
-            return this.allSubjects;
-        },
-
+        /**
+         * Quando o aluno troca o Tipo, reseta campos irrelevantes.
+         * Se mudar para ENEM, limpa Banca/Órgão/Cargo.
+         */
         onTypeChange() {
-            // Reset subject when type changes (may no longer be valid)
-            this.filters.subject = '';
-            // Clear concurso-only filters when switching to ENEM
             if (this.filters.type === 'enem') {
                 this.filters.organization = '';
                 this.filters.institution = '';
@@ -601,41 +594,47 @@ function filterPanel(currentFilters, subjectsByType) {
             }
         },
 
+        /** Reseta todos os filtros e recarrega a lista completa */
         clearFilters() {
             Object.keys(this.filters).forEach(k => this.filters[k] = '');
             window.location.href = '{{ route("questions.index") }}';
         },
 
+        /** Submete o form construindo URL limpa (sem campos vazios) */
         submitForm(form) {
-            // Remove empty fields before submitting to keep URL clean
             const url = new URL(form.action);
-            Object.entries(this.filters).forEach(([k, v]) => {
-                if (v) url.searchParams.set(k, v);
-            });
+            Object.entries(this.filters).forEach(([k, v]) => { if (v) url.searchParams.set(k, v); });
             window.location.href = url.toString();
         }
     };
 }
 
-// ===== QUESTION CARD =====
+/**
+ * questionCard() — Card interativo de questão
+ *
+ * Gerencia o ciclo de vida completo da interação do aluno com uma questão:
+ * 1. Seleção de alternativa → submitAnswer() via AJAX
+ * 2. Exibição de feedback (acertou/errou + explicação + dificuldade)
+ * 3. Chat de mentoria com IA (AJAX + polling)
+ * 4. Histórico individual (AJAX sob demanda)
+ */
 function questionCard(questionId, alreadyAnswered, wasCorrect) {
     return {
         questionId, alreadyAnswered, wasCorrect,
-        selectedAnswer: null,
-        answered: alreadyAnswered,
-        isCorrect: wasCorrect,
-        correctAnswer: null,
-        explanation: null,
-        difficultyReasoning: null,
+        selectedAnswer: null, answered: alreadyAnswered,
+        isCorrect: wasCorrect, correctAnswer: null,
+        explanation: null, difficultyReasoning: null,
         submitting: false,
-        showChat: false,
-        chatMessages: [],
-        chatInput: '',
-        chatTyping: false,
-        chatLoaded: false,
+
+        // Chat state
+        showChat: false, chatMessages: [], chatInput: '', chatTyping: false, chatLoaded: false,
+
+        // History state
+        showHistory: false, historyData: [], historyLoading: false, historyLoaded: false,
 
         selectAnswer(letter) { this.selectedAnswer = letter; },
 
+        /** Envia a resposta do aluno via AJAX (POST) */
         async submitAnswer() {
             if (!this.selectedAnswer || this.answered || this.submitting) return;
             this.submitting = true;
@@ -653,17 +652,17 @@ function questionCard(questionId, alreadyAnswered, wasCorrect) {
                 this.difficultyReasoning = data.difficulty_reasoning || '';
                 this.alreadyAnswered = true;
                 this.wasCorrect = data.correct;
-            } catch (e) {
-                alert('Erro ao enviar resposta. Tente novamente.');
-            } finally {
-                this.submitting = false;
-            }
+            } catch (e) { alert('Erro ao enviar resposta.'); }
+            finally { this.submitting = false; }
         },
 
+        /** Renderiza Markdown usando marked.js */
         renderMd(text) {
             if (!text) return '';
             try { return marked.parse(text); } catch (e) { return text; }
         },
+
+        // ── Chat de Mentoria ──
 
         async toggleChat() {
             this.showChat = !this.showChat;
@@ -693,16 +692,16 @@ function questionCard(questionId, alreadyAnswered, wasCorrect) {
                 const data = await res.json();
                 if (data.status === 'quota_exceeded') {
                     this.chatMessages.push({ role: 'system', message: data.message, upgrade_url: data.upgrade_url, id: Date.now() });
-                    this.chatTyping = false;
-                    return;
+                    this.chatTyping = false; return;
                 }
                 this.pollChat();
             } catch (e) {
                 this.chatTyping = false;
-                this.chatMessages.push({ role: 'assistant', message: 'Erro ao processar. Tente novamente.', id: Date.now() });
+                this.chatMessages.push({ role: 'assistant', message: 'Erro ao processar.', id: Date.now() });
             }
         },
 
+        /** Polling: verifica a cada 2s se a IA já respondeu */
         pollChat() {
             let attempts = 0;
             const poller = setInterval(async () => {
@@ -716,15 +715,38 @@ function questionCard(questionId, alreadyAnswered, wasCorrect) {
                             this.chatMessages = history;
                             this.chatTyping = false;
                             clearInterval(poller);
-                            this.$nextTick(() => {
-                                const el = this.$refs.chatHistory;
-                                if (el) el.scrollTop = el.scrollHeight;
-                            });
+                            this.$nextTick(() => { const el = this.$refs.chatHistory; if (el) el.scrollTop = el.scrollHeight; });
                         }
                     }
-                } catch (e) { console.error('Poll error', e); }
+                } catch (e) { /* retry */ }
                 if (attempts >= 30) { clearInterval(poller); this.chatTyping = false; }
             }, 2000);
+        },
+
+        // ── Histórico Individual ──
+
+        /**
+         * Abre/fecha o popover de histórico.
+         * Carrega via AJAX na primeira vez (lazy loading).
+         */
+        async toggleHistory() {
+            this.showHistory = !this.showHistory;
+            if (this.showHistory && !this.historyLoaded) {
+                this.historyLoading = true;
+                try {
+                    const res = await fetch(`/questions/${this.questionId}/history`);
+                    if (res.ok) this.historyData = await res.json();
+                    this.historyLoaded = true;
+                } catch (e) { console.error('History error', e); }
+                finally { this.historyLoading = false; }
+            }
+        },
+
+        /** Formata data ISO para formato legível (dd/mm/yyyy HH:mm) */
+        formatDate(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         }
     };
 }
