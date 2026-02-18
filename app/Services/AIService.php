@@ -42,129 +42,88 @@ class AIService
         return false;
     }
 
-    public function correctSimulation(array $questionsAndAnswers, string $plan, ?int $userId = null): ?array
+    public function evaluateQuestionDifficulty(\App\Models\Question $question): ?array
     {
         if (!$this->hasActiveKey()) {
+            Log::warning('AI Difficulty Evaluation failed: No active API key.');
             return null;
         }
 
         $provider = $this->getFirstAvailableProvider();
         if (!$provider) {
+            Log::warning('AI Difficulty Evaluation failed: No available provider.');
             return null;
         }
 
         $apiKey = ApiKey::getActiveKeyForProvider($provider);
 
         try {
-            $prompt = $this->buildSimulationCorrectionPrompt($questionsAndAnswers, $plan);
-            $result = $this->callAI($provider, $apiKey, $prompt, $userId);
+            $prompt = "Avalie o nÃ­vel de dificuldade desta questÃ£o de concurso/ENEM.\n\n" .
+                "QuestÃ£o: {$question->statement}\n" .
+                "Alternativas: " . json_encode($question->alternatives) . "\n\n" .
+                "REGRAS:\n" .
+                "1. Analise o conteÃºdo tÃ©cnico, a complexidade do enunciado e as pegadinhas.\n" .
+                "2. Retorne APENAS um JSON vÃ¡lido com: { 'difficulty': 'easy/medium/hard', 'reasoning': 'Uma frase curta explicando o porquÃª' }.\n" .
+                "3. Use portuguÃªs claro e didÃ¡tico.";
 
-            return [
-                'provider' => $provider,
-                'response' => $result['content'],
-                'usage' => $result['usage'] ?? [
-                    'input_tokens' => 0,
-                    'output_tokens' => 0,
-                    'total_tokens' => 0,
-                ],
-            ];
-        } catch (\Exception $e) {
-            // CRITICAL: Propagate 429 for Job Retry
-            if (str_contains($e->getMessage(), '429')) {
-                throw $e;
-            }
-
-            Log::error('AI Correction failed', [
-                'provider' => $provider,
-                'error' => $e->getMessage()
-            ]);
-            return null;
-        } finally {
-            // Count usage regardless of success
-            if (isset($apiKey)) {
-                $apiKey->incrementUsage();
-            }
-        }
-    }
-
-    public function correctEssay(string $title, string $content, string $plan, ?int $userId = null): ?array
-    {
-        if (!$this->hasActiveKey()) {
-            return null;
-        }
-
-        $provider = $this->getFirstAvailableProvider();
-        if (!$provider) {
-            return null;
-        }
-
-        $apiKey = ApiKey::getActiveKeyForProvider($provider);
-
-        try {
-            $prompt = $this->buildEssayCorrectionPrompt($title, $content, $plan);
-            $result = $this->callAI($provider, $apiKey, $prompt, $userId);
-
-            return [
-                'provider' => $provider,
-                'response' => $result['content'],
-                'usage' => $result['usage'] ?? [
-                    'input_tokens' => 0,
-                    'output_tokens' => 0,
-                    'total_tokens' => 0,
-                ],
-            ];
-        } catch (\Exception $e) {
-            Log::error('Essay correction failed', [
-                'provider' => $provider,
-                'error' => $e->getMessage()
-            ]);
-            return null;
-        } finally {
-            // Count usage regardless of success
-            if (isset($apiKey)) {
-                $apiKey->incrementUsage();
-            }
-        }
-    }
-
-    public function generateStudyPlan(array $stats, array $inputs): ?array
-    {
-        if (!$this->hasActiveKey()) {
-            return null;
-        }
-
-        $provider = $this->getFirstAvailableProvider();
-        if (!$provider)
-            return null;
-
-        $apiKey = ApiKey::getActiveKeyForProvider($provider);
-
-        $prompt = "Crie um Plano de Estudos personalizado.\n\n";
-        $prompt .= "PERFIL DO ALUNO:\n" . json_encode($stats) . "\n\n";
-        $prompt .= "OBJETIVOS e DISPONIBILIDADE:\n" . json_encode($inputs) . "\n\n";
-        $prompt .= "REGRAS:\n";
-        $prompt .= "1. Retorne APENAS um JSON válido.\n";
-        $prompt .= "2. Estrutura obrigatória: { 'overview': 'texto motivacional', 'weekly_schedule': { 'segunda': ['atividade 1', 'atividade 2'], ... }, 'focus_points': ['ponto 1', 'ponto 2'], 'methodology': 'pomodoro/intercalado/etc' }.\n";
-        $prompt .= "3. Seja estratégico focado nos pontos fracos.\n";
-
-        try {
             $result = $this->callAI($provider, $apiKey, $prompt);
             $apiKey->incrementUsage();
 
-            // callAI returns ['content' => (json or text), 'usage' => ...]
-            // sanitizeAIResponse inside callGemini handles JSON parsing
-
             $content = $result['content'];
-            if (is_array($content))
-                return $content;
 
-            // Should be covered by sanitize, but double check
-            return json_decode(json_encode($content), true) ?: [];
+            // Validate response has non-empty values
+            if (isset($content['difficulty']) && 
+                isset($content['reasoning']) && 
+                !empty(trim($content['reasoning']))) { // Check for non-empty reasoning
+                
+                $difficulty = match($content['difficulty']) {
+                    'easy' => 'easy',
+                    'medium' => 'medium',
+                    'hard' => 'hard',
+                    default => 'medium'
+                };
+
+                $question->update([
+                    'difficulty' => $difficulty,
+                    'difficulty_reasoning' => trim($content['reasoning']) // Trim whitespace
+                ]);
+
+                Log::info('AI Difficulty Evaluation succeeded', [
+                    'question_id' => $question->id,
+                    'difficulty' => $difficulty
+                ]);
+
+                return $content;
+            }
+
+            Log::error('AI Difficulty Evaluation failed: Invalid response format.', [
+                'question_id' => $question->id,
+                'response' => $content
+            ]);
+            return null;
 
         } catch (\Exception $e) {
-            Log::error("Study Plan AI Error: " . $e->getMessage());
+            Log::error('AI Difficulty Evaluation failed: Exception', [
+                'question_id' => $question->id,
+                'error' => $e->getMessage()
+            ]);
             return null;
         }
+    }
+
+    protected function getFirstAvailableProvider(): ?string
+    {
+        if (ApiKey::getActiveKeyForProvider('gemini')) {
+            return 'gemini';
+        }
+
+        foreach ($this->providers as $provider) {
+            if ($provider !== 'gemini' && ApiKey::getActiveKeyForProvider($provider)) {
+                return $provider;
+            }
+        }
+
+        return null;
     }
 
     protected function callAI(string $provider, ApiKey $apiKey, string $prompt, ?int $userId = null): array
@@ -187,12 +146,10 @@ class AIService
         } catch (\Exception $e) {
             $executionTime = microtime(true) - $startTime;
 
-            // Log partial result on error if possible
             if (!str_contains($e->getMessage(), '429')) {
                 $this->logAiRequest($apiKey, $prompt, ['content' => ['error' => $e->getMessage()], 'usage' => []], $executionTime, $userId);
             }
 
-            // Se for erro de quota (429), APENAS LOGA e REPASSA O ERRO para o Job tratar (release).
             if (str_contains($e->getMessage(), '429')) {
                 $this->log($provider, 'warning', "QUOTA EXHAUSTED: 429 received. Key ID: {$apiKey->id}. Job should retry.", 429, null, $apiKey->id);
             }
@@ -222,11 +179,9 @@ class AIService
         }
 
         $data = $response->json();
-
         $usage = $data['usage'] ?? [];
         $content = $data['choices'][0]['message']['content'] ?? '';
 
-        // Sanitize
         $json = $this->sanitizeAIResponse($content);
         if (empty($json)) {
             $json = ['text' => $content];
@@ -242,26 +197,9 @@ class AIService
         ];
     }
 
-    // ... (rest of the file) ...
-
-    // WAIT, I need to be careful with replace_file_content.
-    // I will target specific blocks.
-
     protected function callGemini(ApiKey $apiKey, string $prompt): array
     {
-        static $callCounter = 0;
-        $callCounter++;
-        $requestId = uniqid('req_', true);
-        $timestamp = microtime(true);
-        $dateTime = date('Y-m-d H:i:s.u');
-
         $model = $apiKey->preferred_model;
-        Log::info("[{$requestId}] [{$dateTime}] [Call #{$callCounter}] Utilizando modelo configurado: {$model}");
-
-        Log::info("==== AI DEBUG START: Gemini Request [{$requestId}] ====");
-        Log::info("DEBUG: Model: [{$model}]");
-
-        // Multimodality: Extract images from prompt
         $imageUrls = $this->extractImages($prompt);
         $parts = [['text' => $prompt]];
 
@@ -277,7 +215,6 @@ class AIService
                         $mimeType = $response->header('Content-Type') ?: 'image/jpeg';
                     }
                 } else {
-                    // Normalize path for public storage
                     $cleanUrl = ltrim($url, '/');
                     $path = public_path($cleanUrl);
 
@@ -294,30 +231,21 @@ class AIService
                             'data' => $imageData
                         ]
                     ];
-                    Log::info("[{$requestId}] DEBUG: Image attached successfully: $url");
                 }
             } catch (\Exception $e) {
-                Log::warning("[{$requestId}] Failed to attach image: $url. Error: " . $e->getMessage());
+                Log::warning("Failed to attach image: $url. Error: " . $e->getMessage());
             }
         }
 
-        // Log Full Payload
         $payload = [
-            'contents' => [
-                [
-                    'parts' => $parts
-                ]
-            ],
-            'generationConfig' => [
-                'temperature' => 0.7,
-            ]
+            'contents' => [['parts' => $parts]],
+            'generationConfig' => ['temperature' => 0.7]
         ];
-        Log::info("DEBUG: Payload structure prepared. Part count: " . count($parts));
-
 
         $decryptedKey = $apiKey->decrypted_key;
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$decryptedKey}";
 
+<<<<<<< HEAD
         try {
             $response = Http::timeout(60)
                 ->connectTimeout(15)
@@ -338,30 +266,25 @@ class AIService
             Log::error("[{$requestId}] Gemini: Request FAILED inside Http::post. Error: " . $e->getMessage());
             throw $e;
         }
+=======
+        $response = Http::timeout(120)
+            ->withoutVerifying()
+            ->withHeaders(['Content-Type' => 'application/json'])
+            ->post($url, $payload);
+>>>>>>> 29a065f (feat(ai): implement AIService with validation and classification command)
 
         if ($response->failed()) {
-            Log::error("[{$requestId}] Gemini API Error", [
-                'status' => $response->status(),
-                'body' => $response->body()
-            ]);
             throw new \Exception("Gemini API Error: " . $response->body());
         }
 
         $data = $response->json();
-
-        // Extrair texto da resposta
         $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
-
-        // Tentar decodificar e limpar se houver blocos de código
         $json = $this->sanitizeAIResponse($text);
 
-        // Se falhar a sanitização/decodificação
         if (empty($json)) {
-            Log::warning("[{$requestId}] Gemini: Failed to parse JSON from response. Length: " . strlen($text));
             $json = ['text' => $text];
         }
 
-        // Extract Usage Metadata (Gemini returns usageMetadata)
         $usageMeta = $data['usageMetadata'] ?? [];
 
         return [
@@ -374,69 +297,12 @@ class AIService
         ];
     }
 
-    public function validateKey(string $provider, string $apiKey): array
-    {
-        return match ($provider) {
-            'gemini' => $this->validateGeminiKey($apiKey),
-            'openai' => $this->validateOpenAIKey($apiKey),
-            'grok' => ['is_valid' => true, 'models' => ['grok-1']], // Placeholder
-            default => ['is_valid' => false, 'error' => 'Provedor desconhecido']
-        };
-    }
-
-    protected function validateGeminiKey(string $apiKey): array
-    {
-        try {
-            $url = "https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}";
-            $response = Http::withoutVerifying()->get($url);
-
-            if ($response->failed()) {
-                $this->log('gemini', 'error', 'Validation Failed: ' . $response->body(), $response->status());
-                return ['is_valid' => false, 'error' => $response->body()];
-            }
-
-            $this->log('gemini', 'success', 'Key Validation Success', 200);
-
-            $data = $response->json();
-            $models = [];
-
-            foreach ($data['models'] ?? [] as $model) {
-                // Filter for generateContent supported models
-                if (in_array('generateContent', $model['supportedGenerationMethods'] ?? []) || str_contains($model['name'], 'gemini')) {
-                    $models[] = [
-                        'id' => str_replace('models/', '', $model['name']),
-                        'name' => $model['displayName'] ?? $model['name']
-                    ];
-                }
-            }
-
-            return ['is_valid' => true, 'models' => $models];
-
-        } catch (\Exception $e) {
-            return ['is_valid' => false, 'error' => $e->getMessage()];
-        }
-    }
-
-    protected function validateOpenAIKey(string $apiKey): array
-    {
-        // OpenAI testing logic (simplified)
-        try {
-            $response = Http::withToken($apiKey)->get('https://api.openai.com/v1/models');
-            if ($response->failed()) {
-                return ['is_valid' => false, 'error' => 'Chave inválida ou erro na API'];
-            }
-            return ['is_valid' => true, 'models' => [['id' => 'gpt-4o', 'name' => 'GPT-4o'], ['id' => 'gpt-4-turbo', 'name' => 'GPT-4 Turbo']]];
-        } catch (\Exception $e) {
-            return ['is_valid' => false, 'error' => $e->getMessage()];
-        }
-    }
-
     protected function callGrok(ApiKey $apiKey, string $prompt): array
     {
-        // Placeholder para Grok
         return [];
     }
 
+<<<<<<< HEAD
     protected function getFirstAvailableProvider(): ?string
     {
         // Priorizar Gemini
@@ -710,18 +576,17 @@ class AIService
     /**
      * Limpa a resposta da IA de blocos de markdown e tenta o parse do JSON.
      */
+=======
+>>>>>>> 29a065f (feat(ai): implement AIService with validation and classification command)
     protected function sanitizeAIResponse(?string $text): array
     {
-        if (!$text)
-            return [];
+        if (!$text) return [];
 
-        // 1. First, try to decode the text directly (cleanest case)
         $decoded = json_decode($text, true);
         if (json_last_error() === JSON_ERROR_NONE) {
             return $decoded;
         }
 
-        // 2. Identify the start of JSON object or array
         $p1 = strpos($text, '{');
         $p2 = strpos($text, '[');
         $start = -1;
@@ -734,7 +599,6 @@ class AIService
             $start = $p2;
         }
 
-        // 3. Identify the end (search backwards)
         $p3 = strrpos($text, '}');
         $p4 = strrpos($text, ']');
         $end = -1;
@@ -756,7 +620,6 @@ class AIService
             }
         }
 
-        // 4. Fallback: Try regex for wrapped markdown if simple substring failed
         $cleanText = preg_replace('/^```[a-z]*\s*|\s*```$/i', '', trim($text));
         $decoded = json_decode($cleanText, true);
 
@@ -772,7 +635,6 @@ class AIService
 
     protected function extractImages(string $text): array
     {
-        // Regex para capturar ![...] (URL) ou apenas a URL se seguir o padrão markdown
         preg_match_all('/\!\[.*?\]\((.*?)\)/', $text, $matches);
         return array_unique($matches[1] ?? []);
     }
@@ -782,7 +644,7 @@ class AIService
         try {
             $inputTokens = $result['usage']['input_tokens'] ?? 0;
             $outputTokens = $result['usage']['output_tokens'] ?? 0;
-            $model = $apiKey->preferred_model ?? 'padrão';
+            $model = $apiKey->preferred_model ?? 'padrÃ£o';
 
             $estimatedCost = $this->costCalculator->calculateCost($model, $inputTokens, $outputTokens);
 
@@ -792,7 +654,7 @@ class AIService
                 'api_key_name' => $apiKey->provider . ' (' . $model . ')',
                 'provider' => $apiKey->provider,
                 'model' => $model,
-                'prompt_text' => substr($prompt, 0, 10000), // Safety limit
+                'prompt_text' => substr($prompt, 0, 10000),
                 'response_text' => is_array($result['content']) ? json_encode($result['content']) : (string) $result['content'],
                 'tokens_used_input' => $inputTokens,
                 'tokens_used_output' => $outputTokens,
