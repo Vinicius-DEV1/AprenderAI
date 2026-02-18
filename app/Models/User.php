@@ -97,6 +97,11 @@ class User extends Authenticatable
         return $this->hasMany(StudyPlan::class);
     }
 
+    public function questionAnswers()
+    {
+        return $this->hasMany(UserQuestionAnswer::class);
+    }
+
     // Métodos auxiliares
     public function hasPlusPlan(): bool
     {

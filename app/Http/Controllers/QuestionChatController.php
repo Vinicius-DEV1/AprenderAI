@@ -99,4 +99,87 @@ class QuestionChatController extends Controller
 
         return response()->json($history);
     }
+
+    /**
+     * Envia mensagem de chat avulso (sem simulado).
+     */
+    public function storeStandalone(Request $request, Question $question)
+    {
+        $request->validate([
+            'message' => 'required|string|max:1000',
+        ]);
+
+        $user = $request->user();
+        Log::info("Standalone Chat Request - User: {$user->id} - Question: {$question->id} - Message: {$request->message}");
+
+        // Check AI Quota
+        if (!$user->hasAiQuota()) {
+            $resetDate = $user->last_reset_at
+                ? $user->last_reset_at->addMonth()->format('d/m/Y')
+                : now()->addMonth()->format('d/m/Y');
+
+            return response()->json([
+                'status' => 'quota_exceeded',
+                'message' => 'Você atingiu o limite de dúvidas do seu plano.',
+                'quota_max' => $user->plan->max_ai_questions,
+                'quota_used' => $user->ai_questions_count,
+                'reset_date' => $resetDate,
+                'upgrade_url' => route('dashboard'),
+            ]);
+        }
+
+        $user->incrementAiUsage();
+
+        // Save User Message (simulation_id = null for standalone)
+        QuestionInteraction::create([
+            'simulation_id' => null,
+            'question_id' => $question->id,
+            'user_id' => $user->id,
+            'role' => 'user',
+            'message' => $request->message,
+        ]);
+
+        // Load History (standalone: simulation_id IS NULL)
+        $history = QuestionInteraction::whereNull('simulation_id')
+            ->where('question_id', $question->id)
+            ->where('user_id', $user->id)
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(fn($i) => ['role' => $i->role, 'message' => $i->message])
+            ->toArray();
+
+        // Get user's answer from user_question_answers
+        $userAnswer = \App\Models\UserQuestionAnswer::where('user_id', $user->id)
+            ->where('question_id', $question->id)
+            ->first();
+
+        $userAnswerText = $userAnswer ? $userAnswer->selected_answer : 'Não respondida';
+
+        // Dispatch Job
+        \App\Jobs\RespondToStandaloneChatJob::dispatch(
+            $question,
+            $userAnswerText,
+            $request->message,
+            $history,
+            $user->id
+        );
+
+        return response()->json(['status' => 'queued']);
+    }
+
+    /**
+     * Histórico de chat avulso (sem simulado).
+     */
+    public function indexStandalone(Request $request, Question $question)
+    {
+        $user = $request->user();
+
+        $history = QuestionInteraction::whereNull('simulation_id')
+            ->where('question_id', $question->id)
+            ->where('user_id', $user->id)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        return response()->json($history);
+    }
 }

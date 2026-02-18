@@ -54,6 +54,12 @@
                                     <option value="hard" {{ old('difficulty', $question->difficulty ?? '') == 'hard' ? 'selected' : '' }}>Difícil</option>
                                 </select>
                             </div>
+
+                            <div class="md:col-span-2 bg-blue-50 p-4 rounded-lg">
+                                <x-input-label for="difficulty_reasoning" value="Justificativa da IA (Dificuldade)" />
+                                <textarea id="difficulty_reasoning" name="difficulty_reasoning" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm placeholder-gray-500" placeholder="Explicação da IA sobre a dificuldade...">{{ old('difficulty_reasoning', $question->difficulty_reasoning ?? '') }}</textarea>
+                                <p class="text-sm text-gray-500 mt-1">Este texto é gerado automaticamente pela IA, mas pode ser editado para refinar a explicação.</p>
+                            </div>
                         </div>
 
                         <!-- Enunciado -->
