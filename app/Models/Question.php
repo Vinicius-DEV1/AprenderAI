@@ -26,6 +26,7 @@ class Question extends Model
         'institution',
         'role',
         'external_id',
+        'difficulty_reasoning',
     ];
 
     protected $casts = [
