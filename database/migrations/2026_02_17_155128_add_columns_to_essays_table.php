@@ -10,9 +10,12 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        // Modify status to string/varchar to allow new statuses without dbal issues
-        // We use raw statement because strict mode or lack of dbal prevents ->change()
-        \Illuminate\Support\Facades\DB::statement("ALTER TABLE essays MODIFY COLUMN status VARCHAR(50) DEFAULT 'pending'");
+        // Modify status to string/varchar to allow new statuses
+        // MODIFY COLUMN is MySQL-only; SQLite already accepts any string value, so skip it there
+        $driver = \Illuminate\Support\Facades\DB::getDriverName();
+        if (in_array($driver, ['mysql', 'mariadb'])) {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE essays MODIFY COLUMN status VARCHAR(50) DEFAULT 'pending'");
+        }
 
         Schema::table('essays', function (Blueprint $table) {
             // New columns
@@ -62,7 +65,7 @@ return new class extends Migration {
             ]);
         });
 
-        // Revert status to enum if possible, or leave as string (safer to leave as string to avoid data loss on rollback if statuses greatly differ)
-        // \Illuminate\Support\Facades\DB::statement("ALTER TABLE essays MODIFY COLUMN status ENUM('pending', 'correcting', 'corrected') DEFAULT 'pending'");
+    // Revert status to enum if possible, or leave as string (safer to leave as string to avoid data loss on rollback if statuses greatly differ)
+    // \Illuminate\Support\Facades\DB::statement("ALTER TABLE essays MODIFY COLUMN status ENUM('pending', 'correcting', 'corrected') DEFAULT 'pending'");
     }
 };

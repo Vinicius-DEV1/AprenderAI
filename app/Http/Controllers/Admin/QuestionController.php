@@ -12,25 +12,42 @@ class QuestionController extends Controller
 {
     public function index(Request $request)
     {
-        // === AI TRIAGE QUEUE ===
-        // Questions without AI evaluation (difficulty_reasoning is null or empty)
-        $pendingQuery = Question::with('subjects')
-            ->where(function ($q) {
-            $q->whereNull('difficulty_reasoning')
-                ->orWhere('difficulty_reasoning', '')
-                ->orWhereRaw("TRIM(difficulty_reasoning) = ''");
-        })
-            ->orderByDesc('id');
+        // === AI TRIAGE QUEUE (Unified: missing difficulty OR explanation) ===
+        $pendingQuery = Question::with('subjects')->incomplete()->orderByDesc('id');
+
+        // Triage-specific filters
+        if ($request->filled('triage_search')) {
+            $pendingQuery->where('statement', 'like', '%' . $request->triage_search . '%');
+        }
+        if ($request->filled('triage_status')) {
+            match ($request->triage_status) {
+                    'missing_difficulty' => $pendingQuery->missingField('difficulty_reasoning'),
+                    'missing_explanation' => $pendingQuery->missingField('explanation'),
+                    'both_missing' => $pendingQuery->missingField('difficulty_reasoning')
+                    ->missingField('explanation'),
+                    default => null,
+                };
+        }
+        if ($request->filled('triage_subject')) {
+            $pendingQuery->whereHas('subjects', function ($q) use ($request) {
+                $q->where('subjects.name', $request->triage_subject);
+            });
+        }
+        if ($request->filled('triage_origin')) {
+            $pendingQuery->where('origin', $request->triage_origin);
+        }
 
         $pendingCount = $pendingQuery->count();
-        $pendingQuestions = $pendingQuery->limit(5)->get(); // Initial 5 for preview
+        $pendingQuestions = $pendingQuery->paginate(10, ['*'], 'triage_page');
 
-        // === GENERAL BANK ===
-        // Questions that have been evaluated by AI (with non-empty reasoning)
-        $query = Question::with('subjects')
-            ->whereNotNull('difficulty_reasoning')
-            ->where('difficulty_reasoning', '!=', '')
-            ->whereRaw("TRIM(difficulty_reasoning) != ''"); // Exclude pending and empty
+        // Sub-counters by type (global, unfiltered)
+        $missingDifficultyCount = Question::missingField('difficulty_reasoning')->count();
+        $missingExplanationCount = Question::missingField('explanation')->count();
+        $bothMissingCount = Question::missingField('difficulty_reasoning')
+            ->missingField('explanation')->count();
+
+        // === GENERAL BANK (Only 100% complete questions) ===
+        $query = Question::with('subjects')->complete();
 
         // Apply existing filters (only to general bank)
         if ($request->filled('search')) {
@@ -47,14 +64,7 @@ class QuestionController extends Controller
             $query->where('source', $request->source);
         }
 
-        // Filter for missing explanations (to help admin prioritize)
-        if ($request->boolean('missing_explanation')) {
-            $query->where(function ($q) {
-                $q->whereNull('explanation')->orWhere('explanation', '');
-            });
-        }
-
-        // Filter by origin (new)
+        // Filter by origin
         if ($request->filled('origin')) {
             $query->where('origin', $request->origin);
         }
@@ -64,11 +74,19 @@ class QuestionController extends Controller
         // Fetch all unique subject names for the filter
         $availableSubjects = \App\Models\Subject::orderBy('name')->pluck('name');
 
+        // Fetch unique origins for triage filter
+        $availableOrigins = Question::select('origin')
+            ->whereNotNull('origin')
+            ->where('origin', '!=', '')
+            ->distinct()
+            ->orderBy('origin')
+            ->pluck('origin');
+
         // --- Mini-Dashboard Stats ---
         $totalQuestions = Question::count();
         $aiQuestions = Question::where('source', 'ai_generated')->count();
 
-        // Group by origin (excluding null/empty which are likely generic manual or AI)
+        // Group by origin
         $questionsByOrigin = Question::select('origin', DB::raw('count(*) as total'))
             ->whereNotNull('origin')
             ->where('origin', '!=', '')
@@ -81,10 +99,14 @@ class QuestionController extends Controller
             'questions',
             'pendingQuestions',
             'pendingCount',
+            'missingDifficultyCount',
+            'missingExplanationCount',
+            'bothMissingCount',
             'totalQuestions',
             'aiQuestions',
             'questionsByOrigin',
-            'availableSubjects'
+            'availableSubjects',
+            'availableOrigins'
         ));
     }
 
@@ -189,7 +211,35 @@ class QuestionController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Avaliação iniciada em segundo plano. A questão será processada em breve.'
+            'message' => 'Avaliação de dificuldade iniciada em segundo plano.'
+        ]);
+    }
+
+    public function generateExplanation(Question $question)
+    {
+        Log::info('[IA_QUEUE] Despachando geração de explicação para fila', [
+            'question_id' => $question->id
+        ]);
+
+        \App\Jobs\GenerateExplanationJob::dispatch($question);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Geração de explicação iniciada em segundo plano.'
+        ]);
+    }
+
+    public function completeQuestion(Question $question)
+    {
+        Log::info('[IA_QUEUE] Despachando completar questão para fila', [
+            'question_id' => $question->id
+        ]);
+
+        \App\Jobs\CompleteQuestionJob::dispatch($question);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Processamento completo iniciado em segundo plano. Dificuldade e explicação serão preenchidas.'
         ]);
     }
 
@@ -209,6 +259,26 @@ class QuestionController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'O processamento em lote foi iniciado em segundo plano. Isso levará alguns minutos.',
+            'total_pending' => $count
+        ]);
+    }
+
+    public function batchCompleteQuestions()
+    {
+        $count = Question::incomplete()->count();
+
+        if ($count === 0) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Não há questões pendentes para completar.'
+            ]);
+        }
+
+        \App\Jobs\ProcessTriageBatchJob::dispatch(10);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'O processamento em lote foi iniciado em segundo plano. Dificuldade e explicação serão preenchidas.',
             'total_pending' => $count
         ]);
     }
