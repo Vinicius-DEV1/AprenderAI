@@ -135,6 +135,12 @@
 
             <!-- Main Content -->
             <main class="flex-1 p-8 lg:ml-0 ml-64">
+                @isset($header)
+                    <header class="mb-8">
+                        {{ $header }}
+                    </header>
+                @endisset
+
                 <!-- Success/Error Messages -->
                 @if (session('success'))
                     <div class="mb-6 p-4 bg-green-50 border-l-4 border-green-500 rounded-lg">
@@ -152,6 +158,7 @@
             </main>
         </div>
     </div>
+    @stack('scripts')
 </body>
 
 </html>

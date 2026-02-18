@@ -135,6 +135,8 @@ Route::middleware(['auth'])->group(function () {
 
             // Questões (Banco de Questões)
             Route::resource('questions', \App\Http\Controllers\Admin\QuestionController::class);
+            Route::post('questions/{question}/evaluate-difficulty', [\App\Http\Controllers\Admin\QuestionController::class , 'evaluateDifficulty'])->name('questions.evaluate-difficulty');
+            Route::post('questions/batch-evaluate-difficulty', [\App\Http\Controllers\Admin\QuestionController::class , 'batchEvaluateDifficulty'])->name('questions.batch-evaluate-difficulty');
 
             // Chat Logs
             Route::get('/chat-logs/{id}', [\App\Http\Controllers\Admin\ChatLogController::class, 'show'])->name('chat-logs.show');

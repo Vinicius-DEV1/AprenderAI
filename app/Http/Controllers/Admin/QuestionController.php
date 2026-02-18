@@ -6,19 +6,41 @@ use App\Http\Controllers\Controller;
 use App\Models\Question;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class QuestionController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Question::query();
+        // === AI TRIAGE QUEUE ===
+        // Questions without AI evaluation (difficulty_reasoning is null or empty)
+        $pendingQuery = Question::with('subjects')
+            ->where(function ($q) {
+            $q->whereNull('difficulty_reasoning')
+                ->orWhere('difficulty_reasoning', '')
+                ->orWhereRaw("TRIM(difficulty_reasoning) = ''");
+        })
+            ->orderByDesc('id');
 
+        $pendingCount = $pendingQuery->count();
+        $pendingQuestions = $pendingQuery->limit(5)->get(); // Initial 5 for preview
+
+        // === GENERAL BANK ===
+        // Questions that have been evaluated by AI (with non-empty reasoning)
+        $query = Question::with('subjects')
+            ->whereNotNull('difficulty_reasoning')
+            ->where('difficulty_reasoning', '!=', '')
+            ->whereRaw("TRIM(difficulty_reasoning) != ''"); // Exclude pending and empty
+
+        // Apply existing filters (only to general bank)
         if ($request->filled('search')) {
             $query->where('statement', 'like', '%' . $request->search . '%');
         }
 
         if ($request->filled('subject')) {
-            $query->where('subject', $request->subject);
+            $query->whereHas('subjects', function ($q) use ($request) {
+                $q->where('subjects.name', $request->subject);
+            });
         }
 
         if ($request->filled('source')) {
@@ -39,21 +61,31 @@ class QuestionController extends Controller
 
         $questions = $query->orderByDesc('id')->paginate(15);
 
+        // Fetch all unique subject names for the filter
+        $availableSubjects = \App\Models\Subject::orderBy('name')->pluck('name');
+
         // --- Mini-Dashboard Stats ---
         $totalQuestions = Question::count();
         $aiQuestions = Question::where('source', 'ai_generated')->count();
 
         // Group by origin (excluding null/empty which are likely generic manual or AI)
-        // We only want explicit origins for the cards like "ENEM 2012"
         $questionsByOrigin = Question::select('origin', DB::raw('count(*) as total'))
             ->whereNotNull('origin')
             ->where('origin', '!=', '')
-            ->where('origin', '!=', 'IA') // Fix: Exclude 'IA' as it has its own dedicated card
+            ->where('origin', '!=', 'IA')
             ->groupBy('origin')
             ->orderByDesc('total')
             ->get();
 
-        return view('admin.questions.index', compact('questions', 'totalQuestions', 'aiQuestions', 'questionsByOrigin'));
+        return view('admin.questions.index', compact(
+            'questions',
+            'pendingQuestions',
+            'pendingCount',
+            'totalQuestions',
+            'aiQuestions',
+            'questionsByOrigin',
+            'availableSubjects'
+        ));
     }
 
     public function create()
@@ -123,5 +155,39 @@ class QuestionController extends Controller
         $question->delete();
         return redirect()->route('admin.questions.index')
             ->with('success', 'Questão removida!');
+    }
+
+    public function evaluateDifficulty(Question $question)
+    {
+        Log::info('[IA_QUEUE] Despachando avaliação individual para fila', [
+            'question_id' => $question->id
+        ]);
+
+        \App\Jobs\EvaluateQuestionDifficultyJob::dispatch($question);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Avaliação iniciada em segundo plano. A questão será processada em breve.'
+        ]);
+    }
+
+    public function batchEvaluateDifficulty(\App\Services\AIService $aiService)
+    {
+        $count = Question::whereNull('difficulty_reasoning')->count();
+
+        if ($count === 0) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Não há questões pendentes para processar.'
+            ]);
+        }
+
+        \App\Jobs\ProcessDifficultyBatchJob::dispatch(10);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'O processamento em lote foi iniciado em segundo plano. Isso levará alguns minutos.',
+            'total_pending' => $count
+        ]);
     }
 }
