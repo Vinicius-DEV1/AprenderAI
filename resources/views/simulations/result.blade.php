@@ -174,91 +174,11 @@
             display: none !important;
         }
 
-        /* DARK MODE OVERRIDES */
-        :root.dark .stat-box {
-            background: #1e293b;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-        }
-
-        :root.dark .stat-box h3 {
-            color: #94a3b8;
-        }
-
-        :root.dark .stat-box .value {
-            color: #f1f5f9 !important;
-            /* Force white for general values */
-        }
-
-        /* Exceptions for colored values */
-        :root.dark .stat-box .value-green {
-            color: #34d399 !important;
-        }
-
-        :root.dark .stat-box .value-red {
-            color: #f87171 !important;
-        }
-
-        :root.dark .answers-section {
-            background: #1e293b;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-        }
-
-        :root.dark .answers-section h2 {
-            color: #f1f5f9;
-        }
-
-        :root.dark .answer-item {
-            border-color: rgba(255, 255, 255, 0.1);
-            background: #0f172a;
-            /* Slightly darker than card */
-        }
-
-        :root.dark .answer-item.correct {
-            border-color: #059669;
-            background: rgba(6, 95, 70, 0.1);
-        }
-
-        :root.dark .answer-item.incorrect {
-            border-color: #dc2626;
-            background: rgba(153, 27, 27, 0.1);
-        }
-
-        :root.dark .question-statement {
-            color: #e2e8f0;
-            border-bottom-color: rgba(255, 255, 255, 0.1);
-        }
-
-        :root.dark .alternative-box {
-            background: #1e293b;
-            border-color: rgba(255, 255, 255, 0.1);
-        }
-
-        :root.dark .alternative-text {
-            color: #cbd5e1;
-        }
-
-        :root.dark .explanation {
-            background: #0f172a;
-        }
-
-        :root.dark .explanation h4 {
-            color: #60a5fa;
-        }
-
-        :root.dark .explanation-text {
-            color: #94a3b8;
-        }
-
-        /* Chat dark mode */
-        :root.dark .chat-container {
-            background: #0f172a;
-            border-color: rgba(255, 255, 255, 0.1);
-        }
-
-        :root.dark .chat-input {
-            background: #1e293b;
-            border-color: rgba(255, 255, 255, 0.1);
-            color: #f1f5f9;
+        /* Chat configuration */
+        .chat-input {
+            background: #fff;
+            border-color: #e2e8f0;
+            color: #1e293b;
         }
     </style>
 
@@ -307,7 +227,8 @@
         @foreach($simulation->answers as $index => $answer)
             <div class="answer-item {{ $answer->is_correct ? 'correct' : 'incorrect' }}">
                 <div class="answer-header">
-                    <span class="question-num">Questão {{ $index + 1 }} - {{ $answer->question->subjects->pluck('name')->join(', ') }}</span>
+                    <span class="question-num">Questão {{ $index + 1 }} -
+                        {{ $answer->question->subjects->pluck('name')->join(', ') }}</span>
 
                     @if($answer->question->source === 'ai_generated')
                         <span class="badge" style="background: #E9D5FF; color: #6B21A8; margin-left: 8px;">✨ INÉDITA</span>
@@ -317,7 +238,7 @@
                     @endif
 
                     @php
-                        $difficultyColor = match($answer->question->difficulty) {
+                        $difficultyColor = match ($answer->question->difficulty) {
                             'easy' => ['bg' => '#d1fae5', 'text' => '#065f46', 'label' => 'Fácil'],
                             'medium' => ['bg' => '#fef3c7', 'text' => '#92400e', 'label' => 'Média'],
                             'hard' => ['bg' => '#fee2e2', 'text' => '#991b1b', 'label' => 'Difícil'],
@@ -326,14 +247,16 @@
                     @endphp
 
                     @if($difficultyColor)
-                        <span class="badge cursor-help group relative" 
-                              style="background: {{ $difficultyColor['bg'] }}; color: {{ $difficultyColor['text'] }}; margin-left: 8px;"
-                              title="IA: {{ $answer->question->difficulty_reasoning ?? 'Análise automática processada pela IA.' }}">
+                        <span class="badge cursor-help group relative"
+                            style="background: {{ $difficultyColor['bg'] }}; color: {{ $difficultyColor['text'] }}; margin-left: 8px;"
+                            title="IA: {{ $answer->question->difficulty_reasoning ?? 'Análise automática processada pela IA.' }}">
                             {{ $difficultyColor['label'] }}
                             @if($answer->question->difficulty_reasoning)
-                                <span class="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-gray-800 text-white text-[10px] rounded shadow-lg w-48 z-50 text-center leading-tight">
+                                <span
+                                    class="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-gray-800 text-white text-[10px] rounded shadow-lg w-48 z-50 text-center leading-tight">
                                     {{ $answer->question->difficulty_reasoning }}
-                                    <span class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></span>
+                                    <span
+                                        class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></span>
                                 </span>
                             @endif
                         </span>
@@ -345,7 +268,7 @@
 
                 <!-- Question Statement -->
                 <div
-                    class="question-statement mb-4 text-gray-900 dark:text-gray-100 text-base leading-relaxed whitespace-pre-wrap border-b border-gray-100 pb-4">
+                    class="question-statement mb-4 text-gray-900 text-base leading-relaxed whitespace-pre-wrap border-b border-gray-100 pb-4">
                     {!! $answer->question->statement_html ?? nl2br(e($answer->question->statement)) !!}
                 </div>
 
@@ -353,7 +276,7 @@
                 <div class="space-y-2 mb-4">
                     @foreach($answer->question->alternatives as $letter => $text)
                         <div
-                            class="flex items-start gap-2 p-2 rounded-lg border {{ $answer->user_answer === $letter ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/40 dark:border-blue-700' : 'bg-gray-50 border-gray-100 alternative-box' }} {{ $answer->question->correct_answer === $letter ? 'ring-2 ring-green-500 ring-offset-1 dark:ring-offset-slate-900' : '' }}">
+                            class="flex items-start gap-2 p-2 rounded-lg border {{ $answer->user_answer === $letter ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-100 alternative-box' }} {{ $answer->question->correct_answer === $letter ? 'ring-2 ring-green-500 ring-offset-1' : '' }}">
                             <span
                                 class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold {{ $answer->user_answer === $letter ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-slate-200' }}">
                                 {{ $letter }}
@@ -370,7 +293,7 @@
                 </div>
 
                 <!-- Resolução / Explicação -->
-                <div class="explanation mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200 dark:border-slate-700">
+                <div class="explanation mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <h4 class="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                         <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

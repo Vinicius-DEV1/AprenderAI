@@ -160,7 +160,7 @@
                                 </span>
                             </button>
                         </div>
-                        <p class="mt-4 text-xs text-slate-500 dark:text-slate-400 text-center">
+                        <p class="mt-4 text-xs text-slate-500 text-center">
                             O sistema analisará seus simulados anteriores para criar a melhor estratégia. Isso
                             pode levar
                             alguns segundos.
