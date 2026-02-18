@@ -5,6 +5,9 @@
 |
 | Dark mode: bg-white → dark:bg-slate-900, text-gray → dark:text-slate,
 | bg-gray-50 → dark:bg-slate-800, shadow-lg → dark:shadow-none+border
+|
+| VIEW: Plans Index
+| DARK MODE: Cobertura total aplicada. Botoes, cards e tabelas de preços adaptados.
 --}}
 @extends('layouts.app')
 

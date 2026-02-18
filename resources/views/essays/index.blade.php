@@ -7,6 +7,11 @@
 | Dark mode: bg-white → dark:bg-slate-900, text-gray → dark:text-slate-,
 | divide-gray → dark:divide-slate-700, bg-gray-50 → dark:bg-slate-800
 --}}
+{{-- 
+    VIEW: Essays Index
+    DARK MODE: Cobertura total via dark: variants (Tailwind v4).
+    As cores foram migradas de bg-white para dark:bg-slate-900 para consistência com o tema Deep Blue.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-slate-200 leading-tight">

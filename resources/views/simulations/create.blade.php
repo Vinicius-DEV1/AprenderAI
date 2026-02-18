@@ -1,3 +1,7 @@
+{{-- 
+    VIEW: Simulations Create
+    DARK MODE: Inclui overrides para Glass Card e estilização para TomSelect e Range Slider no modo escuro.
+--}}
 @extends('layouts.app')
 
 @section('page-title', 'Nova Prova')

@@ -12,6 +12,7 @@
 | Isso permite usar o prefixo dark: em qualquer utilitário, e o dark mode
 | é ativado quando a tag <html> possui a classe .dark.
 |
+| VERIFICAÇÃO: Procure por ":where(.dark,.dark *)" no CSS compilado para confirmar.
 | Exemplo: class="bg-white dark:bg-slate-900"
 */
 @custom-variant dark (&:where(.dark, .dark *));

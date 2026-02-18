@@ -1,3 +1,8 @@
+{{-- 
+    VIEW: Study Plan Dashboard
+    DARK MODE: Refatoração completa de 8 seções. 
+    Correção aplicada em: Cards de Diagnóstico, Projeções, Pontos Fracos/Fortes e Cronograma Geral.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

@@ -1,3 +1,7 @@
+{{-- 
+    VIEW: Simulations Show
+    DARK MODE: Corrigido "white spots" no estado de geração de simulado (barra de progresso e cartões).
+--}}
 @extends('layouts.app')
 
 @section('page-title', 'Realizando Prova')

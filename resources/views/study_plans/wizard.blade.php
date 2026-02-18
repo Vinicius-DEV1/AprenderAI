@@ -1,3 +1,7 @@
+{{-- 
+    VIEW: Study Plan Wizard
+    DARK MODE: Garantido que inputs nativos (select, date) e cards herdem bg-slate-800 e bordas 700.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-slate-800 dark:text-slate-200 leading-tight">
