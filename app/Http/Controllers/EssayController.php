@@ -81,11 +81,12 @@ class EssayController extends Controller
     {
         $this->authorize('update', $essay);
 
-        if ($essay->status !== 'in_progress') {
+        // Ambiguous state fix: If topic is missing, we must be here, regardless of status being 'error' or 'in_progress'
+        // But if we have a topic, we shouldn't be here
+        if ($essay->topic_description && $essay->topic_description !== '') {
             return redirect()->route('essays.show', $essay);
         }
 
-        // Logic handled by view/JS now (polling or starting)
         return view('essays.topic', compact('essay'));
     }
 
@@ -100,9 +101,6 @@ class EssayController extends Controller
                 'message' => 'Limite de tentativas atingido.'
             ], 429);
         }
-
-        // Idempotency check?
-        // If already has topic, user might be regenerating. That is allowed if count < 3.
 
         // Dispatch Job
         \App\Jobs\GenerateEssayTopicJob::dispatch($essay->id);
@@ -125,17 +123,23 @@ class EssayController extends Controller
         ]);
     }
 
-    // Deprecated method - kept only if necessary for old references, but routes point to new methods now.
-    // If strict removal is needed, I can remove it. But keeping it as a stub or removed is safer.
-    // I'll remove it to be clean as per "Implementation Exata" which generally means clean code.
-    // Actually, I'll remove generateTopic entirely as it contained the sync logic we want to kill.
-
     public function write(Request $request, Essay $essay)
     {
         $this->authorize('update', $essay);
 
-        if ($essay->status !== 'in_progress') {
+        // State check: If submitted, we shouldn't be here
+        if ($essay->submitted_at) {
             return redirect()->route('essays.show', $essay);
+        }
+
+        // State check: If no topic, go back to topic
+        if (!$essay->topic_description) {
+            return redirect()->route('essays.topic', $essay);
+        }
+
+        if (!$essay->started_at) {
+            $essay->update(['started_at' => now()]);
+            $essay->refresh(); // Ensure strict sync
         }
 
         return view('essays.write', compact('essay'));
@@ -144,6 +148,11 @@ class EssayController extends Controller
     public function submit(Request $request, Essay $essay)
     {
         $this->authorize('update', $essay);
+
+        // Prevent double submission
+        if ($essay->submitted_at) {
+            return redirect()->route('essays.show', $essay);
+        }
 
         // Final limit check before submission
         if (!$request->user()->canCreateEssay()) {
@@ -169,18 +178,29 @@ class EssayController extends Controller
     {
         $this->authorize('view', $essay);
 
-        // Helper text for status
+        // 1. Topic Check: If no topic, go to topic generation
+        if (is_null($essay->topic_description) || trim($essay->topic_description) === '') {
+            return redirect()->route('essays.topic', $essay);
+        }
+
+        // 2. Submission Check: If not submitted, go to write
+        if (is_null($essay->submitted_at)) {
+            return redirect()->route('essays.write', $essay);
+        }
+
+        // 3. Status Display (Evaluating, Completed, Error)
+        // Helper text for status (used in show.blade.php)
         $statusMessage = match ($essay->status) {
-            'pending' => 'Aguardando envio...',
-            'in_progress' => 'Em andamento',
+            'pending' => 'Aguardando processamento...',
             'evaluating' => 'Xavier está corrigindo sua redação...',
             'completed' => 'Correção concluída',
             'error' => 'Houve um erro na correção. Tente novamente.',
-            default => 'Status desconhecido'
+            default => 'Status: ' . $essay->status
         };
 
         return view('essays.show', compact('essay', 'statusMessage'));
     }
+
     public function retryEvaluation(Request $request, Essay $essay)
     {
         $this->authorize('update', $essay);
