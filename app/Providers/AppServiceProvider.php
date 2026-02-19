@@ -21,5 +21,14 @@ class AppServiceProvider extends ServiceProvider
     {
         \Illuminate\Support\Facades\Blade::component('layouts.app', 'layouts.app');
         \Illuminate\Support\Facades\Blade::component('layouts.admin', 'layouts.admin');
+
+        // Compartilhar nome do site globalmente
+        view()->composer('*', function ($view) {
+            $siteName = \Illuminate\Support\Facades\Cache::remember('site_name', 3600, function () {
+                    return \App\Models\Setting::where('key', 'site_name')->value('value') ?? config('app.name');
+                }
+                );
+                $view->with('siteName', $siteName);
+            });
     }
 }

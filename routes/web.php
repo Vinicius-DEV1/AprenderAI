@@ -170,6 +170,10 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/prompts/{systemPrompt}/edit', [\App\Http\Controllers\Admin\SystemPromptController::class , 'edit'])->name('prompts.edit');
             Route::put('/prompts/{systemPrompt}', [\App\Http\Controllers\Admin\SystemPromptController::class , 'update'])->name('prompts.update');
             Route::post('/prompts/{systemPrompt}/clear-cache', [\App\Http\Controllers\Admin\SystemPromptController::class , 'clearCache'])->name('prompts.clear-cache');
+
+            // Configurações do Site
+            Route::get('/settings', [\App\Http\Controllers\Admin\SettingController::class , 'index'])->name('settings.index');
+            Route::post('/settings', [\App\Http\Controllers\Admin\SettingController::class , 'update'])->name('settings.update');
         }
         );
     });
