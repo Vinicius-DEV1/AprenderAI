@@ -109,6 +109,12 @@ Route::middleware(['auth'])->group(function () {
         }
         );
 
+        // Checkout Intermediário (Conversão)
+        Route::prefix('checkout')->name('checkout.')->group(function () {
+            Route::get('/welcome', [\App\Http\Controllers\CheckoutController::class, 'welcome'])->name('welcome');
+            Route::get('/skip', [\App\Http\Controllers\CheckoutController::class, 'skip'])->name('skip');
+        });
+
         // Admin
         Route::middleware(['is.admin'])->prefix('admin')->name('admin.')->group(
             function () {

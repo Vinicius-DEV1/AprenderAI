@@ -24,7 +24,7 @@ class SubscriptionController extends Controller
     public function validateCoupon(Request $request, Plan $plan)
     {
         $request->validate(['code' => 'required|string']);
-        
+
         $coupon = \App\Models\Coupon::where('code', $request->code)->first();
 
         // Verifica validade do cupom (data, status, limite de uso)
@@ -39,7 +39,8 @@ class SubscriptionController extends Controller
         $newPrice = $plan->price;
         if ($coupon->type === 'percent') {
             $newPrice = $plan->price * (1 - ($coupon->value / 100));
-        } else {
+        }
+        else {
             $newPrice = max(0, $plan->price - $coupon->value);
         }
 
@@ -90,7 +91,7 @@ class SubscriptionController extends Controller
                     ];
                 }
             }
-            
+
             // Dados do Cartão (se aplicável)
             $cardData = [];
             if ($request->payment_method === 'credit_card') {
@@ -127,7 +128,7 @@ class SubscriptionController extends Controller
             // Fluxo Pix: Gera QR Code e Exibe
             if ($request->payment_method === 'pix') {
                 $payment = $this->asaasService->getFirstPendingPayment($asaasSubscription['id']);
-                
+
                 if ($payment) {
                     $pixData = $this->asaasService->getPixQrCode($payment['id']);
                     if ($pixData) {
@@ -139,14 +140,18 @@ class SubscriptionController extends Controller
                         ]);
                     }
                 }
-                
+
                 return redirect()->route('dashboard')->with('warning', 'Assinatura criada via Pix, mas houve erro ao gerar QR Code. Verifique seu email.');
             }
+
+            // Limpa o plano da sessão após iniciar o checkout
+            session()->forget('selected_plan');
 
             // Fluxo Cartão: Sucesso (Processamento em Background/Webhook confirmará)
             return view('subscriptions.success', compact('subscription'));
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             Log::error('Erro no Checkout', ['error' => $e->getMessage()]);
             return back()->with('error', 'Erro ao processar pagamento: ' . $e->getMessage())->withInput();
         }

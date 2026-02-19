@@ -18,8 +18,10 @@ return new class extends Migration {
         // Allowed values: 'generating', 'pending', 'in_progress', 'finished', 'error'
         DB::statement("UPDATE simulations SET status = 'pending' WHERE status NOT IN ('generating', 'pending', 'in_progress', 'finished', 'error')");
 
-        // 3. Modify the column to the new ENUM definition
-        DB::statement("ALTER TABLE simulations MODIFY status ENUM('generating', 'pending', 'in_progress', 'finished', 'error') NOT NULL DEFAULT 'generating'");
+        if (DB::getDriverName() !== 'sqlite') {
+            // 3. Modify the column to the new ENUM definition
+            DB::statement("ALTER TABLE simulations MODIFY status ENUM('generating', 'pending', 'in_progress', 'finished', 'error') NOT NULL DEFAULT 'generating'");
+        }
     }
 
     /**
@@ -31,7 +33,9 @@ return new class extends Migration {
         // Convert 'generating', 'error' or others to 'pending'
         DB::statement("UPDATE simulations SET status = 'pending' WHERE status NOT IN ('pending', 'in_progress', 'finished', 'corrected')");
 
-        // Revert to the previous ENUM definition
-        DB::statement("ALTER TABLE simulations MODIFY status ENUM('pending', 'in_progress', 'finished', 'corrected') NOT NULL DEFAULT 'pending'");
+        if (DB::getDriverName() !== 'sqlite') {
+            // Revert to the previous ENUM definition
+            DB::statement("ALTER TABLE simulations MODIFY status ENUM('pending', 'in_progress', 'finished', 'corrected') NOT NULL DEFAULT 'pending'");
+        }
     }
 };

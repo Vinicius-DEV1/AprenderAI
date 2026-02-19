@@ -31,7 +31,7 @@
                 estudos personalizado.
             </p>
             <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="{{ route('register') }}"
+                <a href="{{ route('register', ['plan' => 'free']) }}"
                     class="px-8 py-4 bg-white text-blue-700 font-bold rounded-lg text-lg shadow-lg hover:bg-blue-50 transition transform hover:-translate-y-1">
                     Começar Gratuitamente
                 </a>
@@ -289,7 +289,7 @@
                         </li>
                     </ul>
 
-                    <a href="{{ route('register') }}"
+                    <a href="{{ route('register', ['plan' => 'free']) }}"
                         class="block w-full py-3 px-4 bg-white border border-slate-300 rounded-lg text-slate-700 font-bold text-center hover:bg-slate-50 transition">
                         Começar Agora
                     </a>
@@ -356,7 +356,7 @@
                         </li>
                     </ul>
 
-                    <a href="{{ route('register') }}"
+                    <a href="{{ route('register', ['plan' => 'basic']) }}"
                         class="block w-full py-3 px-4 bg-blue-600 rounded-lg text-white font-bold text-center hover:bg-blue-700 transition shadow-lg">
                         Assinar Agora
                     </a>
@@ -429,7 +429,7 @@
                         Uso sujeito à Política de Uso Justo
                     </div>
 
-                    <a href="{{ route('register') }}"
+                    <a href="{{ route('register', ['plan' => 'plus']) }}"
                         class="block w-full py-3 px-4 bg-slate-800 rounded-lg text-white font-bold text-center hover:bg-slate-900 transition">
                         Assinar Agora
                     </a>
