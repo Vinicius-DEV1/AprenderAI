@@ -14,6 +14,9 @@
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <!-- Alpine.js (necessário para interatividade nesta página standalone) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
 </head>
 
 <body class="font-sans antialiased text-slate-800 bg-white">
@@ -232,62 +235,104 @@
         </div>
     </section>
 
-    <!-- Plans Section (CARDS ATUALIZADOS) -->
-    <section class="py-20 bg-white" id="plans">
+    <!-- Plans Section -->
+    @php
+        $freePlan = $plans->where('slug', 'free')->first();
+        $basicPlan = $plans->where('slug', 'basic')->first();
+        $plusPlan = $plans->where('slug', 'plus')->first();
+        $basicAnual = $plans->where('slug', 'basic-annual')->first();
+        $plusAnual = $plans->where('slug', 'plus-annual')->first();
+
+        // Calcular economia anual (valor cheio - valor com desconto)
+        $basicSaving = ($basicPlan->price * 12) - $basicAnual->price; // 300 - 240 = 60
+        $plusSaving = ($plusPlan->price * 12) - $plusAnual->price;     // 600 - 480 = 120
+    @endphp
+    
+    <section class="py-20 bg-white" id="plans" x-data="{ 
+        periodo: 'anual',
+        basic: { 
+            monthly: '{{ number_format($basicPlan->price, 2, ',', '.') }}',
+            annual_monthly: '{{ number_format($basicAnual->price / 12, 2, ',', '.') }}',
+            total_annual: '{{ number_format($basicAnual->price, 2, ',', '.') }}',
+            saving: '{{ number_format($basicSaving, 2, ',', '.') }}',
+            discount: {{ $basicAnual->discount_percentage }}
+        },
+        plus: {
+            monthly: '{{ number_format($plusPlan->price, 2, ',', '.') }}',
+            annual_monthly: '{{ number_format($plusAnual->price / 12, 2, ',', '.') }}',
+            total_annual: '{{ number_format($plusAnual->price, 2, ',', '.') }}',
+            saving: '{{ number_format($plusSaving, 2, ',', '.') }}',
+            discount: {{ $plusAnual->discount_percentage }}
+        }
+    }">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
+            <div class="text-center mb-8">
                 <h2 class="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Escolha seu plano</h2>
-                <p class="text-lg text-slate-600">Investimento acessível para o seu futuro.</p>
+                <p class="text-lg text-slate-600 mb-8">Investimento acessível para o seu futuro.</p>
+
+                <!-- Toggle -->
+                <div class="flex justify-center items-center gap-4 mb-12">
+                    <span class="text-sm font-medium transition-colors duration-200" :class="periodo === 'mensal' ? 'text-slate-900 font-bold' : 'text-slate-400'">Mensal</span>
+
+                    <!-- Toggle Switch -->
+                    <button 
+                        type="button"
+                        @click="periodo = (periodo === 'mensal' ? 'anual' : 'mensal')"
+                        class="relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        :class="periodo === 'anual' ? 'bg-blue-600' : 'bg-slate-300'"
+                        role="switch" 
+                        :aria-checked="periodo === 'anual' ? 'true' : 'false'">
+                        <span 
+                            class="pointer-events-none inline-block h-5 w-5 mt-px ml-px transform rounded-full bg-white shadow-md ring-0 transition-transform duration-300 ease-in-out"
+                            :class="periodo === 'anual' ? 'translate-x-6' : 'translate-x-0'">
+                        </span>
+                    </button>
+
+                    <span class="text-sm font-medium flex items-center gap-2 transition-colors duration-200" :class="periodo === 'anual' ? 'text-slate-900 font-bold' : 'text-slate-400'">
+                        Anual
+                        <template x-if="periodo === 'anual'">
+                            <span class="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full">-{{ $basicAnual->discount_percentage }}% OFF</span>
+                        </template>
+                    </span>
+                </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
 
                 <!-- Gratuito -->
-                <div class="bg-slate-50 rounded-2xl p-8 border border-slate-200">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-lg">🟢</span>
-                        <h3 class="text-2xl font-bold text-slate-900">Gratuito</h3>
-                    </div>
+                <div class="bg-slate-50 rounded-2xl p-8 border border-slate-200 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-lg text-green-500">🟢</span>
+                            <h3 class="text-2xl font-bold text-slate-900">Gratuito</h3>
+                        </div>
 
-                    <div class="flex items-baseline mb-6">
-                        <span class="text-4xl font-extrabold text-slate-900">R$ 0</span>
-                        <span class="text-slate-500 ml-1">/mês</span>
-                    </div>
+                        <div class="flex items-baseline mb-6">
+                            <span class="text-4xl font-extrabold text-slate-900">R$ 0</span>
+                            <span class="text-slate-500 ml-1">/mês</span>
+                        </div>
 
-                    <ul class="space-y-4 mb-8 text-slate-600">
-                        <li class="flex items-center">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            5 provas/mês
-                        </li>
-                        <li class="flex items-center">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            Correção básica
-                        </li>
-                        <li class="flex items-center">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            Estatísticas simples
-                        </li>
-                        <li class="flex items-center text-slate-400">
-                            <svg class="w-5 h-5 text-slate-300 mr-2" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                            Sem redações
-                        </li>
-                    </ul>
+                        <ul class="space-y-4 mb-8 text-slate-600">
+                            <li class="flex items-center">
+                                <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                5 provas/mês
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Correção básica
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Estatísticas simples
+                            </li>
+                        </ul>
+                    </div>
 
                     <a href="{{ route('register', ['plan' => 'free']) }}"
                         class="block w-full py-3 px-4 bg-white border border-slate-300 rounded-lg text-slate-700 font-bold text-center hover:bg-slate-50 transition">
@@ -295,149 +340,136 @@
                     </a>
                 </div>
 
-                <!-- Básico (Mais Popular) -->
-                <div
-                    class="bg-white rounded-2xl p-8 border-2 border-blue-600 shadow-xl transform md:-translate-y-4 relative">
-                    <div
-                        class="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-bold uppercase tracking-wide">
-                        Mais Popular
+                <!-- Básico -->
+                <div class="bg-white rounded-2xl p-8 border-2 border-slate-200 hover:border-blue-600 transition-all duration-300 flex flex-col justify-between shadow-sm hover:shadow-xl">
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-lg text-blue-500">🔵</span>
+                            <h3 class="text-2xl font-bold text-slate-900">Básico</h3>
+                        </div>
+
+                        <div class="flex flex-col mb-6">
+                            <div class="flex items-baseline">
+                                <span class="text-4xl font-extrabold text-slate-900">R$&nbsp;<span x-text="periodo === 'anual' ? basic.annual_monthly : basic.monthly">{{ number_format($basicAnual->price / 12, 2, ',', '.') }}</span></span>
+                                <span class="text-slate-500 ml-1">/mês</span>
+                            </div>
+                            <!-- Legenda Dinâmica -->
+                            <template x-if="periodo === 'anual'">
+                                <div class="mt-1">
+                                    <p class="text-xs text-green-600 font-bold mb-0.5">Economize R$ <span x-text="basic.saving"></span>/ano</p>
+                                    <p class="text-xs text-slate-400">Pagamento único de R$ <span x-text="basic.total_annual"></span></p>
+                                </div>
+                            </template>
+                            <template x-if="periodo === 'mensal'">
+                                <p class="text-xs text-slate-400 mt-1">Cobrança mensal recorrente</p>
+                            </template>
+                        </div>
+
+                        <ul class="space-y-4 mb-8 text-slate-600">
+                            <li class="flex items-center">
+                                <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                10 provas/mês
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Correção detalhada
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                2 redações/mês
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Estatísticas completas
+                            </li>
+                        </ul>
                     </div>
 
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-lg">🔵</span>
-                        <h3 class="text-2xl font-bold text-slate-900">Básico</h3>
-                    </div>
-
-                    <div class="flex items-baseline mb-6">
-                        <span class="text-4xl font-extrabold text-slate-900">R$ 20</span>
-                        <span class="text-slate-500 ml-1">/mês</span>
-                    </div>
-
-                    <ul class="space-y-4 mb-8 text-slate-600">
-                        <li class="flex items-center">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            10 provas/mês
-                        </li>
-                        <li class="flex items-center">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            Correção detalhada
-                        </li>
-                        <li class="flex items-center">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            2 redações/mês
-                        </li>
-                        <li class="flex items-center">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            Estatísticas completas
-                        </li>
-                        <li class="flex items-center">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            Histórico de evolução
-                        </li>
-                    </ul>
-
-                    <a href="{{ route('register', ['plan' => 'basic']) }}"
+                    <a :href="'{{ route('register') }}?plan=' + (periodo === 'anual' ? 'basic-annual' : 'basic')"
                         class="block w-full py-3 px-4 bg-blue-600 rounded-lg text-white font-bold text-center hover:bg-blue-700 transition shadow-lg">
                         Assinar Agora
                     </a>
                 </div>
 
                 <!-- Plus -->
-                <div class="bg-slate-50 rounded-2xl p-8 border border-slate-200">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-lg">🟣</span>
-                        <h3 class="text-2xl font-bold text-slate-900">Plus</h3>
+                <div class="bg-white rounded-2xl p-8 border-2 border-blue-600 shadow-xl transform md:-translate-y-4 relative flex flex-col justify-between">
+                    <div class="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-bold uppercase tracking-wide">
+                        Melhor Valor
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-lg text-purple-500">🟣</span>
+                            <h3 class="text-2xl font-bold text-slate-900">Plus</h3>
+                        </div>
+
+                        <div class="flex flex-col mb-6">
+                            <div class="flex items-baseline">
+                                <span class="text-4xl font-extrabold text-slate-900">R$&nbsp;<span x-text="periodo === 'anual' ? plus.annual_monthly : plus.monthly">{{ number_format($plusAnual->price / 12, 2, ',', '.') }}</span></span>
+                                <span class="text-slate-500 ml-1">/mês</span>
+                                <!-- Badge de Vantagem -->
+                                <template x-if="periodo === 'anual'">
+                                    <span class="ml-2 bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter">Melhor Preço</span>
+                                </template>
+                            </div>
+                            <!-- Legenda Dinâmica -->
+                            <template x-if="periodo === 'anual'">
+                                <div class="mt-1">
+                                    <p class="text-xs text-green-600 font-bold mb-0.5">Economize R$ <span x-text="plus.saving"></span>/ano</p>
+                                    <p class="text-xs text-slate-400">Pagamento único de R$ <span x-text="plus.total_annual"></span></p>
+                                </div>
+                            </template>
+                            <template x-if="periodo === 'mensal'">
+                                <p class="text-xs text-slate-400 mt-1">Cobrança mensal recorrente</p>
+                            </template>
+                        </div>
+
+                        <ul class="space-y-4 mb-8 text-slate-600">
+                            <li class="flex items-center">
+                                <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                <strong>Simulados ilimitados</strong>
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                <strong>15 redações/mês</strong>
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Plano personalizado
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Análise estratégica
+                            </li>
+                        </ul>
                     </div>
 
-                    <div class="flex items-baseline mb-6">
-                        <span class="text-4xl font-extrabold text-slate-900">R$ 49,90</span>
-                        <span class="text-slate-500 ml-1">/mês</span>
-                    </div>
-
-                    <ul class="space-y-4 mb-8 text-slate-600">
-                        <li class="flex items-center">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            Simulados ilimitados
-                        </li>
-                        <li class="flex items-center">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            Correção premium
-                        </li>
-                        <li class="flex items-center">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            15 redações/mês
-                        </li>
-                        <li class="flex items-center">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            Plano de estudos personalizado
-                        </li>
-                        <li class="flex items-center">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            Análise estratégica
-                        </li>
-                        <li class="flex items-center">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            Prioridade de processamento
-                        </li>
-                    </ul>
-
-                    <div class="text-xs text-slate-500 mb-6">
-                        Uso sujeito à Política de Uso Justo
-                    </div>
-
-                    <a href="{{ route('register', ['plan' => 'plus']) }}"
-                        class="block w-full py-3 px-4 bg-slate-800 rounded-lg text-white font-bold text-center hover:bg-slate-900 transition">
+                    <a :href="'{{ route('register') }}?plan=' + (periodo === 'anual' ? 'plus-annual' : 'plus')"
+                        class="block w-full py-3 px-4 bg-slate-800 text-white rounded-lg font-bold text-center hover:bg-slate-900 transition">
                         Assinar Agora
                     </a>
                 </div>
-
             </div>
         </div>
     </section>
+
+
+
 
     <!-- Footer (Produto + Uso Legal) -->
     <footer class="bg-slate-900 text-white">

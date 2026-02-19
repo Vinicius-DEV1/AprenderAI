@@ -20,7 +20,15 @@
     },
 
     get filteredPlans() {
-        return this.allPlans.filter(p => p.interval === this.currentInterval);
+        // Find distinct base plans (by comparing monthly_price/annual_price mapping if we had it, but let's use slug logic)
+        // Actually, $paidPlans contains both monthly and yearly versions usually.
+        // We want to show the monthly version if currentInterval is 'month' and yearly if 'year'.
+        return this.allPlans.filter(p => {
+            if (this.currentInterval === 'year') {
+                return p.interval === 'yearly';
+            }
+            return p.interval === 'monthly';
+        });
     },
 
     get activePlan() { 
@@ -44,7 +52,6 @@
     
     setInterval(val) {
         this.currentInterval = val;
-        // Try to stay on the same tier if possible
     },
 
     labels: {
@@ -66,8 +73,8 @@
     formatPrice(price) {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price);
     },
-    getMonthlyEquivalent(plan) {
-        if (plan.interval === 'year') {
+    getDisplayPrice(plan) {
+        if (this.currentInterval === 'year') {
             return this.formatPrice(plan.price / 12);
         }
         return this.formatPrice(plan.price);
@@ -94,9 +101,10 @@
                         :class="currentInterval === 'year' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
                         class="px-6 py-2 rounded-xl text-sm font-bold transition-all duration-200 focus:outline-none relative">
                     Anual
-                    <span class="absolute -top-3 -right-2 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-lg transform rotate-12">
-                        -20% OFF
-                    </span>
+                    <template x-if="activePlan && activePlan.discount_percentage > 0">
+                        <span class="absolute -top-3 -right-2 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-lg transform rotate-12" x-text="'-' + activePlan.discount_percentage + '% OFF'">
+                        </span>
+                    </template>
                 </button>
             </div>
         </div>
@@ -125,15 +133,17 @@
                     
                     <div class="flex flex-col items-center justify-center mb-8">
                         <div class="flex items-baseline">
-                            <span class="text-6xl font-black text-slate-900 dark:text-white" x-text="formatPrice(activePlan.price)"></span>
-                            <span class="text-slate-500 dark:text-slate-400 ml-2 text-xl" x-text="'/' + (activePlan.interval === 'year' ? 'ano' : 'mês')"></span>
+                            <span class="text-6xl font-black text-slate-900 dark:text-white">
+                                R$&nbsp;<span x-text="currentInterval === 'year' ? (activePlan.price / 12).toFixed(2).replace('.', ',') : activePlan.price.replace('.', ',')"></span>
+                            </span>
+                            <span class="text-slate-500 dark:text-slate-400 ml-2 text-xl">/mês</span>
                         </div>
-                        <template x-if="activePlan.interval === 'year'">
+                        <template x-if="currentInterval === 'year'">
                             <div class="mt-2 text-green-600 dark:text-green-400 font-semibold flex items-center gap-1 text-sm bg-green-50 dark:bg-green-950/30 px-3 py-1 rounded-full">
                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1a1 1 0 112 0v1a1 1 0 11-2 0zM14.243 14.243a1 1 0 111.414 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707zM16 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1z" />
                                 </svg>
-                                Apenas <span x-text="getMonthlyEquivalent(activePlan)"></span> por mês
+                                Faturado anualmente (<span x-text="formatPrice(activePlan.price)"></span>)
                             </div>
                         </template>
                     </div>
