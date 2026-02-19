@@ -19,14 +19,23 @@ class CheckoutController extends Controller
             return redirect()->route('dashboard');
         }
 
-        $plan = Plan::where('slug', $planSlug)->first();
+        // Busca o plano selecionado
+        $selectedPlan = Plan::where('slug', $planSlug)->first();
 
-        if (!$plan || $plan->slug === 'free') {
+        if (!$selectedPlan || $selectedPlan->slug === 'free') {
             session()->forget('selected_plan');
             return redirect()->route('dashboard');
         }
 
-        return view('checkout.welcome', compact('plan'));
+        // Busca todos os planos pagos para o carrossel
+        $paidPlans = Plan::where('slug', '!=', 'free')
+            ->orderBy('price', 'asc')
+            ->get();
+
+        return view('checkout.welcome', [
+            'plan' => $selectedPlan,
+            'paidPlans' => $paidPlans
+        ]);
     }
 
     /**
