@@ -1,7 +1,7 @@
-# DOCUMENTAÇÃO MESTRA DO PROJETO APROVADO AI
+# DOCUMENTAÇÃO MESTRA DO PROJETO APRENDER AI
 
 ## 1. Visão Geral
-O **AprovadoAI** é uma plataforma SaaS desenvolvida com **Laravel 11**, **Tailwind CSS**, e **MySQL**. O sistema oferece funcionalidades de simulados, redações e planos de assinatura.
+O **aprenderAI** é uma plataforma SaaS desenvolvida com **Laravel 11**, **Tailwind CSS**, e **MySQL**. O sistema oferece funcionalidades de simulados, redações e planos de assinatura.
 
 Esta documentação serve como guia centralizado para **Administradores do Sistema** configurarem as integrações (Google, Pagamentos) e para **Desenvolvedores** entenderem a arquitetura implementada.
 
@@ -18,7 +18,7 @@ Necessário para habilitar o botão "Entrar com Google" na tela de login.
 2.  Crie um novo projeto (ex: `AprovadoAI-Prod`).
 3.  No menu lateral, vá em **APIs e Serviços > Tela de permissão OAuth**.
     *   Selecione **Externo** e clique em Criar.
-    *   Preencha o nome do App (`AprovadoAI`) e emails de contato.
+    *   Preencha o nome do App (`aprenderAI`) e emails de contato.
     *   Salve e continue.
 4.  No menu lateral, vá em **Credenciais**.
     *   Clique em **+ CRIAR CREDENCIAIS** > **ID do cliente OAuth**.

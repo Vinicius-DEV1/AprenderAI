@@ -1,4 +1,4 @@
-# AprovadoAI 🎓
+# aprenderAI 🎓
 > **Sua jornada rumo à aprovação potencializada por Inteligência Artificial.**
 
 [![Laravel Version](https://img.shields.io/badge/Laravel-11.x-FF2D20?style=flat-square&logo=laravel)](https://laravel.com)
