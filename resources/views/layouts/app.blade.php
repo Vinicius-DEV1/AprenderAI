@@ -24,7 +24,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>@yield('title', config('app.name', 'AprovadoAI'))</title>
+    <title>@yield('title', config('app.name', $siteName))</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
 
     {{--
     |----------------------------------------------------------------------
@@ -162,7 +163,7 @@
                     </svg>
                     <span x-show="!sidebarCollapsed" x-transition:enter="transition ease-out duration-200"
                         x-transition:enter-start="opacity-0 translate-x-1"
-                        x-transition:enter-end="opacity-100 translate-x-0">AprovadoAI</span>
+                        x-transition:enter-end="opacity-100 translate-x-0">{{ $siteName }}</span>
                 </a>
                 <button @click="sidebarOpen = false" class="lg:hidden text-white hover:text-slate-200">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -363,7 +364,7 @@
                                 d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
-                    <span class="font-bold text-lg text-slate-800 dark:text-slate-100">AprovadoAI</span>
+                    <span class="font-bold text-lg text-slate-800 dark:text-slate-100">{{ $siteName }}</span>
                 </div>
                 <div class="flex items-center gap-2">
                     {{-- Mobile theme toggle --}}

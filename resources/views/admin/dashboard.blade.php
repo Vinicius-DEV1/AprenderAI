@@ -3,7 +3,7 @@
     <div class="mb-8 flex justify-between items-end">
         <div>
             <h1 class="text-3xl font-bold text-gray-800 mb-2">Dashboard Analítico 🚀</h1>
-            <p class="text-gray-600">Visão geral da performance do AprovadoAI</p>
+            <p class="text-gray-600">Visão geral da performance do {{ $siteName }}</p>
         </div>
         <div class="text-sm text-gray-500">
             Atualizado em: {{ now()->format('d/m/Y H:i') }}

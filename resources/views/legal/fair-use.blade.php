@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Política de Uso Justo - AprovadoAI</title>
+    <title>Política de Uso Justo - {{ $siteName }}</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,7 +22,7 @@
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
             <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-8 sm:p-10">
                 <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 mb-3">
-                    Política de Uso Justo – AprovadoAI
+                    Política de Uso Justo – {{ $siteName }}
                 </h1>
 
                 <p class="text-slate-600 mb-6">

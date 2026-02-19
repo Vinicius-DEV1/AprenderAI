@@ -4,7 +4,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>AprovadoAI - Prepare-se para o ENEM e Concursos</title>
+    <title>{{ $siteName }} - Prepare-se para o ENEM e Concursos</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -70,7 +71,7 @@
     <section class="py-20 bg-slate-50" id="features">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16">
-                <h2 class="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Por que escolher o AprovadoAI?</h2>
+                <h2 class="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Por que escolher o {{ $siteName }}?</h2>
                 <p class="text-lg text-slate-600 max-w-2xl mx-auto">Tecnologia de ponta aliada à metodologia de ensino
                     comprovada para acelerar seus resultados.</p>
             </div>
@@ -138,7 +139,7 @@
             <div class="text-center mb-16">
                 <h2 class="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Quem usa, recomenda</h2>
                 <p class="text-lg text-slate-600 max-w-2xl mx-auto">
-                    Resultados reais e uma rotina de estudo mais estratégica com o AprovadoAI.
+                    Resultados reais e uma rotina de estudo mais estratégica com o {{ $siteName }}.
                 </p>
             </div>
 
@@ -477,7 +478,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-10">
                 <div class="md:col-span-2">
-                    <h3 class="text-2xl font-extrabold tracking-tight">AprovadoAI</h3>
+                    <h3 class="text-2xl font-extrabold tracking-tight">{{ $siteName }}</h3>
                     <p class="mt-4 text-slate-400 max-w-md leading-relaxed">
                         A plataforma que usa tecnologia para democratizar o acesso à aprovação.
                     </p>
@@ -516,7 +517,7 @@
             <div
                 class="mt-12 border-t border-slate-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <p class="text-slate-500 text-sm">
-                    &copy; {{ date('Y') }} AprovadoAI. Todos os direitos reservados.
+                    &copy; {{ date('Y') }} {{ $siteName }}. Todos os direitos reservados.
                 </p>
                 <p class="text-slate-600 text-xs">
                     Experiência premium focada em performance.
