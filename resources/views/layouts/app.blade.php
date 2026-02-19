@@ -3,7 +3,7 @@
 | Layout Principal — app.blade.php
 |--------------------------------------------------------------------------
 |
-| Layout master da plataforma AprovadoAI. Inclui:
+| Layout master da plataforma {{ $siteName }}. Inclui:
 | - Script de persistência de tema (dark mode) no <head>
 | - Sidebar com navegação principal
 | - Header mobile
@@ -25,7 +25,14 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>@yield('title', config('app.name', $siteName))</title>
+    <meta name="description" content="Estude com a inteligência artificial do {{ $siteName }}.">
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="@yield('title', $siteName)">
+    <meta property="og:description" content="Plataforma de estudos com correção por IA.">
+    <meta property="og:image" content="{{ asset('favicon.ico') }}">
 
     {{--
     |----------------------------------------------------------------------
