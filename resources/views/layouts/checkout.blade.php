@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>@yield('title', config('app.name', 'AprovadoAI'))</title>
+    <title>@yield('title', config('app.name', $siteName))</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
 
     <script>
         (function() {
@@ -42,7 +43,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                     </div>
-                    <span class="font-bold text-xl tracking-tight dark:text-white">AprovadoAI</span>
+                    <span class="font-bold text-xl tracking-tight dark:text-white">{{ $siteName }}</span>
                 </div>
                 
                 <div class="flex items-center gap-4">
@@ -78,7 +79,7 @@
         <!-- Minimal Footer -->
         <footer class="py-6 border-t border-slate-200 dark:border-slate-800 text-center">
             <p class="text-sm text-slate-500 dark:text-slate-400">
-                &copy; {{ date('Y') }} AprovadoAI. Todos os direitos reservados.
+                &copy; {{ date('Y') }} {{ $siteName }}. Todos os direitos reservados.
             </p>
         </footer>
     </div>

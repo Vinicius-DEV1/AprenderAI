@@ -4,7 +4,7 @@
 
 @section('content')
     <div class="logo">
-        <h1>AprovadoAI</h1>
+        <h1>{{ $siteName }}</h1>
         <p>Entre na sua conta</p>
     </div>
 

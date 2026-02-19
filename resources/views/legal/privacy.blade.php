@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Política de Privacidade - AprovadoAI</title>
+    <title>Política de Privacidade - {{ $siteName }}</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,7 +23,7 @@
             <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-8 sm:p-10">
 
                 <h1 class="text-3xl font-extrabold text-slate-900 mb-2">
-                    Política de Privacidade – AprovadoAI
+                    Política de Privacidade – {{ $siteName }}
                 </h1>
 
                 <p class="text-sm text-slate-500 mb-8">
@@ -35,7 +35,7 @@
                     <section>
                         <h2 class="font-bold text-slate-900 mb-2">1. Introdução</h2>
                         <p>
-                            O AprovadoAI valoriza sua privacidade. Esta política explica como coletamos,
+                            O {{ $siteName }} valoriza sua privacidade. Esta política explica como coletamos,
                             utilizamos e protegemos suas informações ao utilizar nossa plataforma.
                         </p>
                     </section>
