@@ -28,9 +28,9 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'Básico',
                 'slug' => 'basic',
-                'price' => 25.00, // Preço mensal
+                'price' => 25.00,
                 'monthly_price' => 25.00,
-                'annual_price' => 240.00, // 25*12 = 300, -20% = 240
+                'annual_price' => 240.00,
                 'discount_percentage' => 0,
                 'interval' => 'monthly',
                 'simulations_limit' => 10,
@@ -45,12 +45,12 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'Plus',
                 'slug' => 'plus',
-                'price' => 49.90, // Voltando ao valor original
-                'monthly_price' => 49.90,
-                'annual_price' => 479.00,
+                'price' => 50.00,
+                'monthly_price' => 50.00,
+                'annual_price' => 480.00,
                 'discount_percentage' => 0,
                 'interval' => 'monthly',
-                'simulations_limit' => 0, // Ilimitado
+                'simulations_limit' => 0,
                 'essays_limit' => 15,
                 'features' => [
                     'advanced_correction',
@@ -66,9 +66,9 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'Básico Anual',
                 'slug' => 'basic-annual',
-                'price' => 240.00, // Total cobrado no ato (anual)
-                'monthly_price' => 25.00, // Referência mensal sem desconto
-                'annual_price' => 240.00, // Total cobrado
+                'price' => 240.00,
+                'monthly_price' => 25.00,
+                'annual_price' => 240.00,
                 'discount_percentage' => 20,
                 'interval' => 'yearly',
                 'simulations_limit' => 10,
@@ -83,9 +83,9 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'Plus Anual',
                 'slug' => 'plus-annual',
-                'price' => 479.00, // Voltando ao valor original
-                'monthly_price' => 49.90,
-                'annual_price' => 479.00,
+                'price' => 480.00,
+                'monthly_price' => 50.00,
+                'annual_price' => 480.00,
                 'discount_percentage' => 20,
                 'interval' => 'yearly',
                 'simulations_limit' => 0,
