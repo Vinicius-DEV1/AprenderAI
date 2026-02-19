@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Question;
+use App\Models\Subject;
 use Illuminate\Database\Seeder;
 use Faker\Factory as Faker;
 
@@ -15,46 +16,33 @@ class QuestionSeeder extends Seeder
         $this->faker = Faker::create('pt_BR');
 
         // Clean previous generated questions
-        Question::where('type', 'enem')->where('source', 'generated_system')->delete();
+        Question::where('source', 'generated_system')->delete();
+
+        // Ensure subjects exist
+        $portSubject = Subject::where('name', 'Português')->first();
+        $mathSubject = Subject::where('name', 'Matemática')->first();
+
+        if (!$portSubject || !$mathSubject) {
+            $this->command->error('Subjects "Português" or "Matemática" not found. Run SubjectSeeder first.');
+            return;
+        }
 
         // Generate Português
-        $this->generatePortuguese(50); // 50 templates * variations
+        $this->generatePortuguese($portSubject);
 
         // Generate Matemática
-        $this->generateMath(50); // 50 templates * variations
+        $this->generateMath($mathSubject);
 
-        $this->command->info('Dados gerados com sucesso!');
+        $this->command->info('Questões geradas com sucesso!');
     }
 
-    private function generatePortuguese($count)
+    private function generatePortuguese($subject)
     {
         $templates = $this->getPortugueseTemplates();
 
         foreach ($templates as $i => $tpl) {
-            // Generate variations
-            Question::create([
+            $question = Question::create([
                 'type' => 'enem',
-                'subject' => 'português',
-                'theme' => $tpl['theme'],
-                'difficulty' => $tpl['difficulty'] ?? 'medium',
-                'year' => $this->faker->numberBetween(2024, 2026), // Future years to distinguish
-                'statement' => $tpl['statement'],
-                'alternatives' => $tpl['alternatives'],
-                'correct_answer' => $tpl['correct_answer'],
-                'explanation' => $tpl['explanation'],
-                'source' => 'generated_system',
-            ]);
-        }
-    }
-
-    private function generateMath($count)
-    {
-        $templates = $this->getMathTemplates();
-
-        foreach ($templates as $i => $tpl) {
-            Question::create([
-                'type' => 'enem',
-                'subject' => 'matemática',
                 'theme' => $tpl['theme'],
                 'difficulty' => $tpl['difficulty'] ?? 'medium',
                 'year' => $this->faker->numberBetween(2024, 2026),
@@ -62,8 +50,33 @@ class QuestionSeeder extends Seeder
                 'alternatives' => $tpl['alternatives'],
                 'correct_answer' => $tpl['correct_answer'],
                 'explanation' => $tpl['explanation'],
+                'difficulty_reasoning' => $tpl['difficulty_reasoning'] ?? 'Esta questão avalia competências básicas de interpretação.',
                 'source' => 'generated_system',
             ]);
+
+            $question->subjects()->attach($subject->id);
+        }
+    }
+
+    private function generateMath($subject)
+    {
+        $templates = $this->getMathTemplates();
+
+        foreach ($templates as $i => $tpl) {
+            $question = Question::create([
+                'type' => 'enem',
+                'theme' => $tpl['theme'],
+                'difficulty' => $tpl['difficulty'] ?? 'medium',
+                'year' => $this->faker->numberBetween(2024, 2026),
+                'statement' => $tpl['statement'],
+                'alternatives' => $tpl['alternatives'],
+                'correct_answer' => $tpl['correct_answer'],
+                'explanation' => $tpl['explanation'],
+                'difficulty_reasoning' => $tpl['difficulty_reasoning'] ?? 'Esta questão exige raciocínio lógico e aplicação de fórmulas.',
+                'source' => 'generated_system',
+            ]);
+
+            $question->subjects()->attach($subject->id);
         }
     }
 
@@ -101,32 +114,14 @@ class QuestionSeeder extends Seeder
             'explanation' => 'As gírias funcionam como identidade de grupo.',
         ];
 
-        // TEMPLATE 3: Funções da Linguagem
-        $data[] = [
-            'theme' => 'Funções da Linguagem',
-            'statement' => "Alô? Está me ouvindo? Hein? Câmbio!\n\nNo trecho acima, predomina a função da linguagem:",
-            'alternatives' => [
-                'A' => 'Metalinguística, focada no código.',
-                'B' => 'Fática, focada no canal de comunicação.',
-                'C' => 'Poética, focada na mensagem.',
-                'D' => 'Referencial, focada no contexto.',
-                'E' => 'Emotiva, focada no emissor.',
-            ],
-            'correct_answer' => 'B',
-            'explanation' => 'A função fática testa o canal de comunicação.',
-        ];
-
-        // ... Add 47 more templates here with varying structures ...
-        // Generating programmatically to ensure volume with diversity
-
         $themes = ['Interpretação', 'Gêneros Textuais', 'Literatura', 'Gramática Aplicada', 'Artes'];
 
-        for ($i = 0; $i < 50; $i++) {
+        for ($i = 0; $i < 20; $i++) {
             $topic = $this->faker->randomElement($themes);
             $author = $this->faker->name;
             $data[] = [
                 'theme' => $topic,
-                'statement' => "TEXTO I\n\nA cultura digital transformou o modo como lemos e escrevemos. Segundo {$author}, \"a  hipertextualidade permite uma leitura não linear, exigindo do leitor maior autonomia\". Diante desse cenário, a escola enfrenta o desafio de:\n\n(Adaptado de Ensaio sobre Educação, 2023).",
+                'statement' => "TEXTO I\n\nA cultura digital transformou o modo como lemos e escrevemos. Segundo {$author}, \"a hipertextualidade permite uma leitura não linear, exigindo do leitor maior autonomia\". Diante desse cenário, a plataforma aprenderAI oferece recursos que auxiliam a escola no desafio de:",
                 'alternatives' => [
                     'A' => 'Proibir o uso de tecnologias para focar na leitura tradicional.',
                     'B' => 'Integrar o letramento digital às práticas pedagógicas convencionais.',
@@ -162,33 +157,14 @@ class QuestionSeeder extends Seeder
             'explanation' => 'Aumento de 20% = 1.2x. Desconto de 20% = 0.8x. Final = 1.2 * 0.8 = 0.96x (96% do original), logo menor.',
         ];
 
-        // TEMPLATE 2: Geometria
-        $side = $this->faker->numberBetween(5, 15);
-        $area = $side * $side;
-        $data[] = [
-            'theme' => 'Geometria',
-            'statement' => "Um terreno quadrado tem lado de {$side} metros. Se duplicarmos a medida do lado, a nova área será:",
-            'alternatives' => [
-                'A' => "Duas vezes a área original ({$area} m²).",
-                'B' => "Quatro vezes a área original.",
-                'C' => "Oito vezes a área original.",
-                'D' => "A mesma área, pois é quadrado.",
-                'E' => "Três vezes a área original.",
-            ],
-            'correct_answer' => 'B',
-            'explanation' => 'Área = L². Se L vira 2L, Área = (2L)² = 4L².',
-        ];
-
-        // ... Add 48 more templates ... using a loop for meaningful variation
-
-        for ($i = 0; $i < 50; $i++) {
+        for ($i = 0; $i < 20; $i++) {
             $a = $this->faker->numberBetween(2, 10);
             $b = $this->faker->numberBetween(10, 50);
             $ans = $a * $b;
 
             $data[] = [
                 'theme' => 'Aritmética',
-                'statement' => "Em um estoque, há {$a} caixas, e cada caixa contém {$b} unidades de um produto. Se forem vendidas 10% das unidades totais, quantas restarão?",
+                'statement' => "Em um estoque de materiais do aprenderAI, há {$a} caixas, e cada caixa contém {$b} unidades de um fanzine educacional. Se forem vendidas 10% das unidades totais, quantas restarão?",
                 'alternatives' => [
                     'A' => ($ans * 0.9),
                     'B' => ($ans * 0.1),
