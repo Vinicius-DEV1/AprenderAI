@@ -402,7 +402,7 @@
                 </template>
                 <div x-show="chatTyping" class="flex items-start">
                     <div class="bg-gray-100 dark:bg-slate-700 rounded-lg px-3 py-2 text-xs text-gray-500 flex items-center gap-2 border border-gray-200">
-                        <span class="font-medium">IA digitando</span>
+                        <span class="font-medium">Xavier digitando</span>
                         <span class="flex gap-1">
                             <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></span>
                             <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style="animation-delay:0.1s"></span>
@@ -412,7 +412,7 @@
                 </div>
             </div>
             <div class="flex gap-2 mt-2">
-                <input type="text" x-model="chatInput" @keydown.enter.prevent="sendChat()" placeholder="Tire sua dúvida..." :disabled="chatTyping" class="flex-1 rounded-md border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 shadow-sm text-xs px-3 py-2">
+                <input type="text" x-model="chatInput" x-ref="chatInput" @keydown.enter.prevent="sendChat()" placeholder="Qual sua dúvida, @auth {{ auth()->user()->first_name }}? @else estudante? @endauth" :disabled="chatTyping" class="flex-1 rounded-md border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 shadow-sm text-xs px-3 py-2">
                 <button @click="sendChat()" :disabled="chatTyping || !chatInput.trim()" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-xs font-medium disabled:opacity-50">Enviar</button>
             </div>
         </div>
@@ -495,19 +495,46 @@ function questionCard(questionId, alreadyAnswered, wasCorrect) {
             } catch (e) { alert('Erro ao enviar resposta.'); } finally { this.submitting = false; }
         },
         renderMd(text) { if (!text) return ''; try { return marked.parse(text); } catch (e) { return text; } },
-        async toggleChat() { this.showChat = !this.showChat; if (this.showChat && !this.chatLoaded) await this.loadChatHistory(); },
+        async toggleChat() { 
+            this.showChat = !this.showChat; 
+            if (this.showChat) {
+                if (!this.chatLoaded) await this.loadChatHistory();
+                this.$nextTick(() => {
+                    if (this.$refs.chatInput) this.$refs.chatInput.focus();
+                    this.scrollToBottom();
+                });
+            }
+        },
         async loadChatHistory() {
-            try { const res = await fetch(`/questions/${this.questionId}/chat`); if (res.ok) { this.chatMessages = await res.json(); this.chatLoaded = true; } } catch (e) { console.error('Chat load error', e); }
+            try { 
+                const res = await fetch(`/questions/${this.questionId}/chat`); 
+                if (res.ok) { 
+                    const history = await res.json();
+                    if (history.length === 0) {
+                        // Injecting welcome message ONLY visuals
+                        this.chatMessages = [{
+                            role: 'assistant',
+                            message: 'Olá! Eu sou o Xavier. Qual sua dúvida sobre essa questão?',
+                            created_at: new Date().toISOString()
+                        }];
+                    } else {
+                        this.chatMessages = history;
+                    }
+                    this.chatLoaded = true;
+                    this.$nextTick(() => this.scrollToBottom());
+                } 
+            } catch (e) { console.error('Chat load error', e); }
         },
         async sendChat() {
             if (!this.chatInput.trim()) return; if (!this.chatLoaded) await this.loadChatHistory();
             const msg = this.chatInput; this.chatMessages.push({ role: 'user', message: msg, id: Date.now() });
             this.chatInput = ''; this.chatTyping = true;
+            this.$nextTick(() => this.scrollToBottom());
             try {
                 const res = await fetch(`/questions/${this.questionId}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }, body: JSON.stringify({ message: msg }) });
-                const data = await res.json(); if (data.status === 'quota_exceeded') { this.chatMessages.push({ role: 'system', message: data.message, upgrade_url: data.upgrade_url, id: Date.now() }); this.chatTyping = false; return; }
+                const data = await res.json(); if (data.status === 'quota_exceeded') { this.chatMessages.push({ role: 'system', message: data.message, upgrade_url: data.upgrade_url, id: Date.now() }); this.chatTyping = false; this.$nextTick(() => this.scrollToBottom()); return; }
                 this.pollChat();
-            } catch (e) { this.chatTyping = false; this.chatMessages.push({ role: 'assistant', message: 'Erro ao processar.', id: Date.now() }); }
+            } catch (e) { this.chatTyping = false; this.chatMessages.push({ role: 'assistant', message: 'Erro ao processar.', id: Date.now() }); this.$nextTick(() => this.scrollToBottom()); }
         },
         pollChat() {
             let attempts = 0; const poller = setInterval(async () => {
@@ -516,7 +543,7 @@ function questionCard(questionId, alreadyAnswered, wasCorrect) {
                     const res = await fetch(`/questions/${this.questionId}/chat`);
                     if (res.ok) {
                         const history = await res.json(); const last = history[history.length - 1];
-                        if (last && last.role === 'assistant') { this.chatMessages = history; this.chatTyping = false; clearInterval(poller); }
+                        if (last && last.role === 'assistant') { this.chatMessages = history; this.chatTyping = false; this.$nextTick(() => this.scrollToBottom()); clearInterval(poller); }
                     }
                 } catch (e) {}
                 if (attempts >= 30) { clearInterval(poller); this.chatTyping = false; }
@@ -528,6 +555,12 @@ function questionCard(questionId, alreadyAnswered, wasCorrect) {
                 this.historyLoading = true;
                 try { const res = await fetch(`/questions/${this.questionId}/history`); if (res.ok) this.historyData = await res.json(); this.historyLoaded = true; }
                 catch (e) {} finally { this.historyLoading = false; }
+            }
+        },
+        scrollToBottom() {
+            const container = this.$refs.chatHistory;
+            if (container) {
+                container.scrollTop = container.scrollHeight;
             }
         },
         formatDate(iso) { if (!iso) return ''; const d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }

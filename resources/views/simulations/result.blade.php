@@ -319,7 +319,7 @@
 
                     <button @click="toggleChat()"
                         class="text-xs text-indigo-600 font-medium hover:text-indigo-800 flex items-center gap-1.5 transition-colors">
-                        <span x-text="showChat ? 'Ocultar Chat' : '💬 Tirar Dúvida com IA'">💬 Tirar Dúvida com IA</span>
+                        <span x-text="showChat ? 'Ocultar Chat' : '💬 Tirar Dúvida com Xavier'">💬 Tirar Dúvida com Xavier</span>
                     </button>
 
                     <div x-show="showChat" x-transition.opacity.duration.300ms x-cloak
@@ -363,7 +363,7 @@
 
                                     <!-- Label -->
                                     <span class="text-[9px] text-gray-400 mt-0.5"
-                                        x-text="msg.role === 'user' ? 'Você' : (msg.role === 'system' ? 'Sistema' : 'IA')"></span>
+                                        x-text="msg.role === 'user' ? 'Você' : (msg.role === 'system' ? 'Sistema' : 'Xavier')"></span>
                                 </div>
                             </template>
 
@@ -371,7 +371,7 @@
                             <div x-show="isTyping" class="flex items-start">
                                 <div
                                     class="bg-gray-100 rounded-lg px-3 py-2 text-xs text-gray-500 flex items-center gap-2 shadow-sm border border-gray-200">
-                                    <span class="font-medium">IA está digitando</span>
+                                    <span class="font-medium">Xavier está digitando</span>
                                     <div class="flex gap-1">
                                         <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></span>
                                         <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce"
@@ -389,8 +389,8 @@
 
                         <!-- Input Area -->
                         <div class="flex gap-2">
-                            <input type="text" x-model="newMessage" @keydown.enter.prevent="sendMessage()"
-                                placeholder="Dúvida rápida..."
+                            <input type="text" x-model="newMessage" x-ref="chatInput" @keydown.enter.prevent="sendMessage()"
+                                placeholder="Dúvida rápida com Xavier..."
                                 class="chat-input flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-xs text-gray-900 h-8"
                                 :disabled="isTyping || isLoadingHistory">
 
@@ -447,8 +447,14 @@
 
                 toggleChat() {
                     this.showChat = !this.showChat;
-                    if (this.showChat && this.messages.length === 0) {
-                        this.loadHistory();
+                    if (this.showChat) {
+                        if (this.messages.length === 0) {
+                            this.loadHistory();
+                        }
+                        this.$nextTick(() => {
+                            if (this.$refs.chatInput) this.$refs.chatInput.focus();
+                            this.scrollToBottom();
+                        });
                     }
                 },
 
@@ -457,7 +463,16 @@
                     try {
                         const response = await fetch(`/simulations/${simulationId}/questions/${questionId}/chat`);
                         if (response.ok) {
-                            this.messages = await response.json();
+                            const history = await response.json();
+                            if (history.length === 0) {
+                                this.messages = [{
+                                    role: 'assistant',
+                                    message: 'Olá! Eu sou o Xavier. Qual sua dúvida sobre essa questão?',
+                                    id: Date.now()
+                                }];
+                            } else {
+                                this.messages = history;
+                            }
                             this.$nextTick(() => this.scrollToBottom());
                         }
                     } catch (error) {
