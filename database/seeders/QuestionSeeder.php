@@ -16,7 +16,7 @@ class QuestionSeeder extends Seeder
         $this->faker = Faker::create('pt_BR');
 
         // Clean previous generated questions
-        Question::where('source', 'generated_system')->delete();
+        Question::where('source', 'ai_generated')->delete();
 
         // Ensure subjects exist
         $portSubject = Subject::where('name', 'Português')->first();
@@ -51,7 +51,7 @@ class QuestionSeeder extends Seeder
                 'correct_answer' => $tpl['correct_answer'],
                 'explanation' => $tpl['explanation'],
                 'difficulty_reasoning' => $tpl['difficulty_reasoning'] ?? 'Esta questão avalia competências básicas de interpretação.',
-                'source' => 'generated_system',
+                'source' => 'ai_generated',
             ]);
 
             $question->subjects()->attach($subject->id);
@@ -73,7 +73,7 @@ class QuestionSeeder extends Seeder
                 'correct_answer' => $tpl['correct_answer'],
                 'explanation' => $tpl['explanation'],
                 'difficulty_reasoning' => $tpl['difficulty_reasoning'] ?? 'Esta questão exige raciocínio lógico e aplicação de fórmulas.',
-                'source' => 'generated_system',
+                'source' => 'ai_generated',
             ]);
 
             $question->subjects()->attach($subject->id);
