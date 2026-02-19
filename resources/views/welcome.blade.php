@@ -5,7 +5,22 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $siteName }} - Prepare-se para o ENEM e Concursos</title>
+    <meta name="description" content="A plataforma completa de preparação para ENEM e Concursos Públicos com correção instantânea por IA e plano de estudos personalizado.">
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:title" content="{{ $siteName }} - Inteligência Artificial para sua Aprovação">
+    <meta property="og:description" content="Prepare-se para o ENEM e Concursos com correção instantânea e feedbacks personalizados da nossa IA.">
+    <meta property="og:image" content="{{ asset('img/social-preview.png') }}">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="{{ url()->current() }}">
+    <meta property="twitter:title" content="{{ $siteName }} - Inteligência Artificial para sua Aprovação">
+    <meta property="twitter:description" content="Prepare-se para o ENEM e Concursos com correção instantânea e feedbacks personalizados da nossa IA.">
+    <meta property="twitter:image" content="{{ asset('img/social-preview.png') }}">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
