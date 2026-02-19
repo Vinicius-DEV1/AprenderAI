@@ -157,6 +157,12 @@ Route::middleware(['auth'])->group(function () {
 
             // Chat Logs
             Route::get('/chat-logs/{id}', [\App\Http\Controllers\Admin\ChatLogController::class , 'show'])->name('chat-logs.show');
+
+            // Gerenciador de Prompts
+            Route::get('/prompts', [\App\Http\Controllers\Admin\SystemPromptController::class , 'index'])->name('prompts.index');
+            Route::get('/prompts/{systemPrompt}/edit', [\App\Http\Controllers\Admin\SystemPromptController::class , 'edit'])->name('prompts.edit');
+            Route::put('/prompts/{systemPrompt}', [\App\Http\Controllers\Admin\SystemPromptController::class , 'update'])->name('prompts.update');
+            Route::post('/prompts/{systemPrompt}/clear-cache', [\App\Http\Controllers\Admin\SystemPromptController::class , 'clearCache'])->name('prompts.clear-cache');
         }
         );
     });
