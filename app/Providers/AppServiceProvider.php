@@ -28,6 +28,10 @@ class AppServiceProvider extends ServiceProvider
                     return \App\Models\Setting::where('key', 'site_name')->value('value') ?? config('app.name');
                 }
                 );
+
+                // Update config dynamically for emails and other components
+                config(['app.name' => $siteName]);
+
                 $view->with('siteName', $siteName);
             });
     }

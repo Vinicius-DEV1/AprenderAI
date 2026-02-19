@@ -27,6 +27,8 @@ class SettingController extends Controller
         );
 
         Cache::forget('site_name');
+        \Illuminate\Support\Facades\Artisan::call('config:clear');
+        \Illuminate\Support\Facades\Artisan::call('view:clear');
 
         return redirect()->back()->with('success', 'Configurações atualizadas com sucesso!');
     }
