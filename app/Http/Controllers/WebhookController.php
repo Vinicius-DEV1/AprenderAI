@@ -14,7 +14,7 @@ class WebhookController extends Controller
     {
         $data = $request->all();
         $event = $data['event'] ?? null;
-        
+
         Log::info('Asaas Webhook:', $data);
 
         if (!$event) {
@@ -65,7 +65,7 @@ class WebhookController extends Controller
                 // We might want to keep user access until grace period ends, or cut immediately.
                 // For now, let's not remove plan_id immediately but plan_expires_at handles access.
                 break;
-                
+
             case 'PAYMENT_DELETED':
                 $subscription->update(['status' => 'canceled']);
                 break;
@@ -74,26 +74,4 @@ class WebhookController extends Controller
         return response()->json(['status' => 'ok']);
     }
 
-    public function handleMercadoPago(Request $request)
-    {
-        // Validar origem se possível (HMAC ou IP)
-        // Mercado Pago envia notificações com 'topic' ou 'type'
-
-        $data = $request->all();
-        Log::info('Mercado Pago Webhook:', $data);
-
-        // Lógica simplificada para sandbox:
-        // Se receber notificação de pagamento aprovado, ativar assinatura
-
-        $type = $data['type'] ?? $data['topic'] ?? null;
-
-        if ($type === 'payment') {
-            $paymentId = $data['data']['id'] ?? $data['id'] ?? null;
-            if ($paymentId) {
-                // ... (existing logic commented out)
-            }
-        }
-
-        return response()->json(['status' => 'ok']);
-    }
 }
