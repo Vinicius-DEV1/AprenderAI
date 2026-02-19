@@ -15,7 +15,7 @@ Para que o sistema funcione corretamente, é necessário configurar serviços ex
 Necessário para habilitar o botão "Entrar com Google" na tela de login.
 
 1.  Acesse o [Google Cloud Console](https://console.cloud.google.com/).
-2.  Crie um novo projeto (ex: `AprovadoAI-Prod`).
+2.  Crie um novo projeto (ex: `aprenderAI-Prod`).
 3.  No menu lateral, vá em **APIs e Serviços > Tela de permissão OAuth**.
     *   Selecione **Externo** e clique em Criar.
     *   Preencha o nome do App (`aprenderAI`) e emails de contato.
@@ -23,7 +23,7 @@ Necessário para habilitar o botão "Entrar com Google" na tela de login.
 4.  No menu lateral, vá em **Credenciais**.
     *   Clique em **+ CRIAR CREDENCIAIS** > **ID do cliente OAuth**.
     *   **Tipo de aplicativo**: Aplicação da Web.
-    *   **Nome**: `AprovadoAI Web`.
+    *   **Nome**: `aprenderAI Web`.
     *   **Origens JavaScript autorizadas**: Adicione a URL do seu site (ex: `https://seusite.com` e `http://localhost:8000` para testes).
     *   **URIs de redirecionamento autorizados**: Adicione a URL de callback exata:
         *   Produção: `https://seusite.com/auth/google/callback`

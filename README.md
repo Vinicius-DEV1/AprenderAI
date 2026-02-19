@@ -9,9 +9,9 @@
 
 ## 📝 Sobre o Projeto
 
-O **AprovadoAI** é uma plataforma brasileira de vanguarda projetada para revolucionar a preparação de estudantes para o ENEM e concursos públicos. Ao integrar modelos de linguagem de última geração (LLMs), o sistema oferece feedbacks instantâneos e personalizados, transformando o erro em uma oportunidade real de aprendizado.
+O **aprenderAI** é uma plataforma brasileira de vanguarda projetada para revolucionar a preparação de estudantes para o ENEM e concursos públicos. Ao integrar modelos de linguagem de última geração (LLMs), o sistema oferece feedbacks instantâneos e personalizados, transformando o erro em uma oportunidade real de aprendizado.
 
-A plataforma automatiza a correção de redações e simulados, permitindo que o estudante foque no que realmente importa: a evolução constante. Com uma arquitetura moderna e escalável, o AprovadoAI une a robustez do ecossistema Laravel com a agilidade do Tailwind CSS 4 para entregar uma experiência de usuário (UX) fluida e focada na produtividade.
+A plataforma automatiza a correção de redações e simulados, permitindo que o estudante foque no que realmente importa: a evolução constante. Com uma arquitetura moderna e escalável, o aprenderAI une a robustez do ecossistema Laravel com a agilidade do Tailwind CSS 4 para entregar uma experiência de usuário (UX) fluida e focada na produtividade.
 
 ---
 
@@ -29,7 +29,7 @@ A plataforma automatiza a correção de redações e simulados, permitindo que o
 
 ## 🚀 Arquitetura & Funcionalidades
 
-O diferencial técnico do AprovadoAI reside na sua capacidade de orquestrar diferentes provedores de IA de forma transparente para o usuário final:
+O diferencial técnico do aprenderAI reside na sua capacidade de orquestrar diferentes provedores de IA de forma transparente para o usuário final:
 
 -   🧠 **Correção Inteligente**: Feedback detalhado de pontos de melhoria em redações baseados em critérios oficiais.
 -   📊 **Gestão de Simulados**: Geração e acompanhamento de desempenho em baterias de questões por matéria.
@@ -51,8 +51,11 @@ Siga os passos abaixo para configurar o ambiente de desenvolvimento. Este projet
 ### 2. Configuração do Projeto
 ```powershell
 # Clonar o repositório
-git clone https://github.com/Antonio7s/AprovadoAI.git
-cd AprovadoAI
+1.  Clone o repositório:
+    ```bash
+    git clone https://github.com/Antonio7s/AprovadoAI.git
+    cd AprovadoAI
+    ```
 
 # Instalar dependências do PHP (via Laragon ou Global)
 composer install
