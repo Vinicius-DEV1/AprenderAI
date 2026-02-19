@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ApiKey;
+use App\Models\Question;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -23,7 +24,8 @@ class AIService
     }
 
     /**
-     * Logs internal API health checks and provider status.
+     * Logs internal API health checks and provider status to the 'ApiLog' table.
+     * This feeds the "Logs de Eventos da API" section in the Admin Dashboard.
      */
     protected function log(string $provider, string $type, string $message, ?int $statusCode = null, ?array $payload = null, ?int $apiKeyId = null): void
     {
@@ -86,10 +88,9 @@ class AIService
 
             $content = $result['content'];
 
-            // Validate response has non-empty values
             if (isset($content['difficulty']) && 
                 isset($content['reasoning']) && 
-                !empty(trim($content['reasoning']))) { // Check for non-empty reasoning
+                !empty(trim($content['reasoning']))) {
                 
                 $difficulty = match($content['difficulty']) {
                     'easy' => 'easy',
@@ -100,7 +101,7 @@ class AIService
 
                 $question->update([
                     'difficulty' => $difficulty,
-                    'difficulty_reasoning' => trim($content['reasoning']) // Trim whitespace
+                    'difficulty_reasoning' => trim($content['reasoning'])
                 ]);
 
                 Log::info('AI Difficulty Evaluation succeeded', [
@@ -146,6 +147,7 @@ class AIService
 
     /**
      * Orchestrates AI calls and logs execution details.
+     * Captures non-200 responses for robust telemetry.
      */
     protected function callAI(string $provider, ApiKey $apiKey, string $prompt, ?int $userId = null): array
     {
@@ -166,15 +168,26 @@ class AIService
             return $result;
         } catch (\Exception $e) {
             $executionTime = microtime(true) - $startTime;
+            $statusCode = 500;
+            $errorMessage = $e->getMessage();
 
-            // Log error except for quota limits (handled below)
-            if (!str_contains($e->getMessage(), '429')) {
-                $this->logAiRequest($apiKey, $prompt, ['content' => ['error' => $e->getMessage()], 'usage' => []], $executionTime, $userId);
+            // Detect Status Code if hidden in message
+            if (preg_match('/Status Code: (\d+)/', $errorMessage, $matches)) {
+                $statusCode = (int) $matches[1];
+            } elseif (str_contains($errorMessage, '429')) {
+                $statusCode = 429;
+                $errorMessage = " Limite de Requisições Atingido (Quota Exceeded)";
+            } elseif (str_contains($errorMessage, '401') || str_contains($errorMessage, '403')) {
+                $statusCode = 403;
+                $errorMessage = " Erro de Autenticação/Permissão (Invalid Key)";
             }
 
-            // Specific handling for Quota limits to signal retryable jobs
-            if (str_contains($e->getMessage(), '429')) {
-                $this->log($provider, 'warning', "QUOTA EXHAUSTED: 429 received. Key ID: {$apiKey->id}. Job should retry.", 429, null, $apiKey->id);
+            // Persistence for Admin Dashboard (ApiLog)
+            $this->log($provider, 'error', $errorMessage, $statusCode, ['error_detail' => $e->getMessage()], $apiKey->id);
+
+            // Conditional logging for AI Request Log (Transaction log)
+            if ($statusCode !== 429) {
+                $this->logAiRequest($apiKey, $prompt, ['content' => ['error' => $e->getMessage()], 'usage' => []], $executionTime, $userId);
             }
 
             throw $e;
@@ -201,7 +214,7 @@ class AIService
             ]);
 
         if ($response->failed()) {
-            throw new \Exception("OpenAI API Error: " . $response->body());
+            throw new \Exception("OpenAI API Error: " . $response->body() . " (Status Code: " . $response->status() . ")");
         }
 
         $data = $response->json();
@@ -281,7 +294,7 @@ class AIService
             ->post($url, $payload);
 
         if ($response->failed()) {
-            throw new \Exception("Gemini API Error: " . $response->body());
+            throw new \Exception("Gemini API Error: " . $response->body() . " (Status Code: " . $response->status() . ")");
         }
 
         $data = $response->json();
@@ -311,7 +324,6 @@ class AIService
 
     protected function buildSimulationCorrectionPrompt(array $questionsAndAnswers, string $plan): string
     {
-        // Estrutura Base Obrigatória (Imutável)
         $baseStructure = "Retorne APENAS um JSON válido com esta estrutura exata: {
             'total_correct': int, 
             'total_questions': int, 
@@ -320,7 +332,6 @@ class AIService
             ]
         }";
 
-        // Instruções de Profundidade (Variável por Plano)
         $depthInstruction = match ($plan) {
             'free', 'basic' => "Para 'errors_explanation', forneça explicações CURTAS e DIRETAS (máximo 1 frase). Ex: 'A alternativa correta é B porque X.' foco apenas nas questões erradas.",
             'plus' => "Para 'errors_explanation', forneça explicações DETALHADAS e PEDAGÓGICAS. Explique o conceito por trás do erro e dê uma dica de estudo.",
@@ -330,9 +341,6 @@ class AIService
         return "Corrija as questões abaixo. $baseStructure\n\n$depthInstruction\n\nDados:\n" . json_encode($questionsAndAnswers);
     }
 
-    /**
-     * Generates an essay topic themed by the "Professor Xavier" persona.
-     */
     public function generateEssayTopic(string $type): array
     {
         if (!$this->hasActiveKey()) {
@@ -378,9 +386,6 @@ class AIService
         }
     }
 
-    /**
-     * Evaluates a user essay based on specific exam criteria (ENEM or Public Service).
-     */
     public function evaluateEssay(string $title, string $content, string $type): ?array
     {
         if (!$this->hasActiveKey())
@@ -398,7 +403,6 @@ class AIService
             $apiKey->incrementUsage();
 
             $content = $result['content'];
-            // Ensure we have the structure
             if (!isset($content['score']))
                 $content['score'] = 0;
 
@@ -418,7 +422,7 @@ class AIService
 
     protected function buildXavierEvaluationPrompt(string $title, string $content, string $type): string
     {
-        $maxScore = ($type === 'enem') ? 1000 : 100; // Concurso 0-100 standard
+        $maxScore = ($type === 'enem') ? 1000 : 100;
 
         return "Você é o Professor Xavier, corretor oficial de redações.\n" .
             "Corrija este texto seguindo rigorosamente os critérios do {$type}.\n" .
@@ -432,14 +436,11 @@ class AIService
             "  'weaknesses': ['ponto a melhorar 1', 'ponto a melhorar 2'],\n" .
             "  'checklist': [ {'item': 'Coesão', 'status': 'ok'/'atenção'}, {'item': 'Gramática', 'status': 'ok'/'atenção'} ],\n" .
             "  'corrections': [ {'excerpt': 'trecho erro', 'issue': 'explicação erro', 'suggestion': 'sugestão correção'} ],\n" .
-            "  'improved_version': 'Reescreva a redação mantendo a ideia do aluno, mas elevando para nota máxima. Não mude os fatos, melhore a forma/coesão.'\n" .
+            "  'improved_version': 'Reescreva a redação mantendo a ideia do aluno, mas elevando para nota máxima.'\n" .
             "}\n" .
-            "Seja polido, didático e motive o aluno. Nunca mencione ser uma IA.";
+            "Seja polido, didático e motive o aluno.";
     }
 
-    /**
-     * Generates a batch of multiple-choice questions for a specific subject.
-     */
     public function generateQuestions(string $subject, int $quantity = 1): array
     {
         if (!$this->hasActiveKey()) {
@@ -459,7 +460,6 @@ class AIService
 
             $content = $result['content'];
 
-            // Validate structure
             if (isset($content['questions']) && is_array($content['questions'])) {
                 return $content['questions'];
             }
@@ -479,12 +479,11 @@ class AIService
     {
         return "Gere {$quantity} questões inéditas estilo ENEM de {$subject}.\n" .
             "Retorne APENAS um JSON válido com a chave 'questions' contendo uma lista de objetos.\n" .
-            "Cada objeto deve ter: 'statement' (enunciado), 'alternatives' (objeto A:texto, B:texto...), 'correct_answer' (A,B,C,D ou E), 'explanation' (breve explicação).\n" .
-            "Seja criativo e siga a matriz de referência do ENEM.";
+            "Cada objeto deve ter: 'statement' (enunciado), 'alternatives' (objeto A:texto, B:texto...), 'correct_answer' (A,B,C,D ou E), 'explanation' (breve explicação).";
     }
 
     /**
-     * Interaction chat focusing on a specific exam question.
+     * Interaction chat focusing on a specific exam question (Simulations context).
      */
     public function chatAboutQuestion(mixed $question, mixed $simulation, string $userMessage, array $history): ?string
     {
@@ -500,12 +499,10 @@ class AIService
         $apiKey = ApiKey::getActiveKeyForProvider($provider);
 
         try {
-            // Build Prompt
             $questionText = $question->statement;
             $alternatives = json_encode($question->alternatives);
             $correctAnswer = $question->correct_answer;
 
-            // Find user answer
             $userAnswer = $simulation->answers()->where('question_id', $question->id)->first();
             $userAnswerText = $userAnswer ? $userAnswer->user_answer : 'Não respondida';
 
@@ -524,33 +521,85 @@ class AIService
             $baseContext .= "Aluno: $userMessage\n";
             $baseContext .= "Professor (responda de forma concisa e didática):";
 
-            Log::info("Chat Prompt Sent to AI: " . $baseContext);
-
-            // Call AI
             $result = $this->callAI($provider, $apiKey, $baseContext, $simulation->user_id);
-
-            Log::info("Chat AI Response Raw: " . json_encode($result));
-
             $content = $result['content'];
 
             if (is_array($content) && isset($content['text'])) {
                 return $content['text'];
             }
 
-            if (empty($content) && isset($result['content']['text'])) {
-                return $result['content']['text'];
+            return $content['text'] ?? "Erro ao interpretar resposta.";
+
+        } catch (\Exception $e) {
+            if (str_contains($e->getMessage(), '429')) {
+                throw $e;
+            }
+            Log::error('AI Chat failed', ['error' => $e->getMessage()]);
+            return "Desculpe, ocorreu um erro ao processar sua dúvida.";
+        } finally {
+            if (isset($apiKey)) {
+                $apiKey->incrementUsage();
+            }
+        }
+    }
+
+    /**
+     * Interaction chat for standalone questions (outside simulations).
+     * @param Question $question
+     * @param string $userAnswer
+     * @param string $userMessage
+     * @param array $history
+     * @return string|null
+     */
+    public function chatAboutStandaloneQuestion(Question $question, string $userAnswer, string $userMessage, array $history): ?string
+    {
+        if (!$this->hasActiveKey()) {
+            return "Desculpe, o sistema de IA está offline no momento.";
+        }
+
+        $provider = $this->getFirstAvailableProvider();
+        if (!$provider) {
+            return "Nenhum provedor de IA disponível.";
+        }
+
+        $apiKey = ApiKey::getActiveKeyForProvider($provider);
+
+        try {
+            $questionText = $question->statement;
+            $alternatives = json_encode($question->alternatives);
+            $correctAnswer = $question->correct_answer;
+
+            $baseContext = "Você é um professor particular explicando uma questão de prova.\n";
+            $baseContext .= "Questão: $questionText\n";
+            $baseContext .= "Alternativas: $alternatives\n";
+            $baseContext .= "Resposta Correta: $correctAnswer\n";
+            $baseContext .= "Resposta Escolhida pelo Aluno: $userAnswer\n\n";
+            $baseContext .= "Histórico da conversa:\n";
+
+            foreach ($history as $msg) {
+                $role = ($msg['role'] ?? 'user') === 'user' ? 'Aluno' : 'Professor';
+                $text = $msg['message'] ?? $msg['content'] ?? '';
+                $baseContext .= "$role: $text\n";
+            }
+
+            $baseContext .= "Aluno: $userMessage\n";
+            $baseContext .= "Professor (responda de forma concisa e didática):";
+
+            $result = $this->callAI($provider, $apiKey, $baseContext);
+            $content = $result['content'];
+
+            if (is_array($content) && isset($content['text'])) {
+                return $content['text'];
             }
 
             return $content['text'] ?? "Erro ao interpretar resposta.";
 
         } catch (\Exception $e) {
-            // Re-throw 429 to let controller handle UI feedback
-            if (str_contains($e->getMessage(), '429')) {
-                Log::warning("AI Chat 429 - Provider: $provider - Error: " . $e->getMessage());
-                throw $e;
-            }
-            Log::error('AI Chat failed', ['error' => $e->getMessage()]);
-            return "Desculpe, ocorreu um erro ao processar sua dúvida.";
+            Log::error('AI Standalone Chat failed', [
+                'question_id' => $question->id,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
         } finally {
             if (isset($apiKey)) {
                 $apiKey->incrementUsage();
@@ -656,10 +705,6 @@ class AIService
     /**
      * Dispatcher for API key validation.
      * Uses a LIGHTWEIGHT strategy by listing models instead of generating content.
-     * 
-     * @param string $provider
-     * @param string $key
-     * @return array {is_valid: bool, models?: array, error?: string}
      */
     public function validateKey(string $provider, string $key): array
     {
@@ -689,10 +734,6 @@ class AIService
         return ['data' => $result['content']];
     }
 
-    /**
-     * Validates OpenAI key via the /v1/models endpoint.
-     * Lightweight approach: confirm presence of GPT models without token generation.
-     */
     protected function validateOpenAIKey(string $key): array
     {
         try {
@@ -704,8 +745,6 @@ class AIService
             if ($response->failed()) {
                 $status = $response->status();
                 $errorData = $response->json();
-                
-                // Connection or authentication error (401, 403, 429)
                 $error = $errorData['error']['message'] ?? $response->body() ?? 'Erro desconhecido';
                 return ['is_valid' => false, 'error' => "OpenAI Error ($status): $error"];
             }
@@ -728,10 +767,6 @@ class AIService
         }
     }
 
-    /**
-     * Validates Gemini key via the /v1beta/models endpoint.
-     * Lightweight approach: Fetch models to verify key without restricted content generation.
-     */
     protected function validateGeminiKey(string $key): array
     {
         try {
@@ -744,7 +779,6 @@ class AIService
                 $status = $response->status();
                 $errorData = $response->json();
                 
-                // Robust parsing for Gemini's varied error structures
                 $error = 'Erro desconhecido';
                 if (isset($errorData['error']['message'])) {
                     $error = $errorData['error']['message'];
