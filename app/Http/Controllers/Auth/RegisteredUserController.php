@@ -20,8 +20,11 @@ class RegisteredUserController extends Controller
         $this->planService = $planService;
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        if ($request->has('plan')) {
+            session(['selected_plan' => $request->plan]);
+        }
         return view('auth.register');
     }
 
@@ -46,6 +49,11 @@ class RegisteredUserController extends Controller
         event(new Registered($user));
 
         Auth::login($user);
+
+        // Lógica de redirecionamento baseada no plano selecionado
+        if (session()->has('selected_plan') && session('selected_plan') !== 'free') {
+            return redirect()->route('checkout.welcome');
+        }
 
         return redirect()->route('dashboard')->with('success', 'Bem-vindo ao AprovaAI! Você está no plano Gratuito.');
     }
