@@ -7,13 +7,13 @@ use App\Http\Controllers\PlanController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    $plans = \App\Models\Plan::where('is_active', true)->get();
+    return view('welcome', compact('plans'));
 })->name('home');
 
 Route::view('/privacidade', 'legal.privacy')->name('privacy');
 Route::view('/uso-justo', 'legal.fair-use')->name('fair-use');
 
-Route::post('/webhooks/mercadopago', [\App\Http\Controllers\WebhookController::class , 'handleMercadoPago'])->name('webhooks.mercadopago');
 Route::post('/webhooks/asaas', [\App\Http\Controllers\WebhookController::class , 'handleAsaas'])->name('webhooks.asaas');
 
 Route::middleware(['auth'])->group(function () {
@@ -111,9 +111,10 @@ Route::middleware(['auth'])->group(function () {
 
         // Checkout Intermediário (Conversão)
         Route::prefix('checkout')->name('checkout.')->group(function () {
-            Route::get('/welcome', [\App\Http\Controllers\CheckoutController::class, 'welcome'])->name('welcome');
-            Route::get('/skip', [\App\Http\Controllers\CheckoutController::class, 'skip'])->name('skip');
-        });
+            Route::get('/welcome', [\App\Http\Controllers\CheckoutController::class , 'welcome'])->name('welcome');
+            Route::get('/skip', [\App\Http\Controllers\CheckoutController::class , 'skip'])->name('skip');
+        }
+        );
 
         // Admin
         Route::middleware(['is.admin'])->prefix('admin')->name('admin.')->group(
