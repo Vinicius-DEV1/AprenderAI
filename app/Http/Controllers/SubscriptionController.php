@@ -116,7 +116,7 @@ class SubscriptionController extends Controller
                 'gateway' => 'asaas',
                 'gateway_id' => $asaasSubscription['id'],
                 'current_period_start' => now(),
-                'current_period_end' => now()->addMonth(), // Webhook atualizará datas reais
+                'current_period_end' => $plan->interval === 'yearly' ? now()->addYear() : now()->addMonth(), // Webhook atualizará datas reais
             ]);
 
             // Registra Uso do Cupom
