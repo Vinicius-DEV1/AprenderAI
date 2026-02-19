@@ -14,6 +14,9 @@ class Plan extends Model
         'name',
         'slug',
         'price',
+        'monthly_price',
+        'annual_price',
+        'discount_percentage',
         'interval',
         'simulations_limit',
         'essays_limit',
@@ -24,6 +27,8 @@ class Plan extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
+        'monthly_price' => 'decimal:2',
+        'annual_price' => 'decimal:2',
         'features' => 'array',
         'is_active' => 'boolean',
     ];
