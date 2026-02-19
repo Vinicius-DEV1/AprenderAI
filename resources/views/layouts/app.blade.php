@@ -290,21 +290,6 @@
                         </svg>
                         <span x-show="!sidebarCollapsed" class="whitespace-nowrap">Admin</span>
                     </a>
-
-                    {{-- Gerenciador de Prompts --}}
-                    <a href="{{ route('admin.prompts.index') }}"
-                        class="flex items-center rounded-lg text-sm font-medium transition-all duration-300
-                            {{ request()->routeIs('admin.prompts.*')
-                                ? 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300'
-                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200' }}"
-                        :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'" title="Gerenciador de Prompts">
-                        <svg class="w-5 h-5 flex-shrink-0 {{ request()->routeIs('admin.prompts.*') ? 'text-red-600 dark:text-red-400' : 'text-slate-400 dark:text-slate-500' }}"
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span x-show="!sidebarCollapsed" class="whitespace-nowrap text-xs">Gerenciador de Prompts</span>
-                    </a>
                 @endif
             </nav>
 
