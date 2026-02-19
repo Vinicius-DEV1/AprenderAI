@@ -17,10 +17,12 @@ class AIService
 {
     protected $providers = ['openai', 'gemini', 'grok'];
     protected $costCalculator;
+    protected $promptService;
 
-    public function __construct(CostCalculatorService $costCalculator)
+    public function __construct(CostCalculatorService $costCalculator, PromptService $promptService)
     {
         $this->costCalculator = $costCalculator;
+        $this->promptService = $promptService;
     }
 
     /**
@@ -75,13 +77,10 @@ class AIService
         $apiKey = ApiKey::getActiveKeyForProvider($provider);
 
         try {
-            $prompt = "Avalie o nível de dificuldade desta questão de concurso/ENEM.\n\n" .
-                "Questão: {$question->statement}\n" .
-                "Alternativas: " . json_encode($question->alternatives) . "\n\n" .
-                "REGRAS:\n" .
-                "1. Analise o conteúdo técnico, a complexidade do enunciado e as pegadinhas.\n" .
-                "2. Retorne APENAS um JSON válido com: { 'difficulty': 'easy/medium/hard', 'reasoning': 'Uma frase curta explicando o porquê' }.\n" .
-                "3. Use português claro e didático.";
+            $prompt = $this->promptService->get('question_difficulty_evaluator', [
+                'question_text' => $question->statement,
+                'alternatives' => json_encode($question->alternatives)
+            ]);
 
             $result = $this->callAI($provider, $apiKey, $prompt);
             $apiKey->incrementUsage();
@@ -324,21 +323,16 @@ class AIService
 
     protected function buildSimulationCorrectionPrompt(array $questionsAndAnswers, string $plan): string
     {
-        $baseStructure = "Retorne APENAS um JSON válido com esta estrutura exata: {
-            'total_correct': int, 
-            'total_questions': int, 
-            'errors_explanation': [
-                { 'question_id': id_da_questao, 'why_wrong': 'motivo do erro', 'correct_approach': 'como resolver' }
-            ]
-        }";
-
         $depthInstruction = match ($plan) {
             'free', 'basic' => "Para 'errors_explanation', forneça explicações CURTAS e DIRETAS (máximo 1 frase). Ex: 'A alternativa correta é B porque X.' foco apenas nas questões erradas.",
             'plus' => "Para 'errors_explanation', forneça explicações DETALHADAS e PEDAGÓGICAS. Explique o conceito por trás do erro e dê uma dica de estudo.",
             default => "Explicações concisas."
         };
 
-        return "Corrija as questões abaixo. $baseStructure\n\n$depthInstruction\n\nDados:\n" . json_encode($questionsAndAnswers);
+        return $this->promptService->get('simulation_corrector', [
+            'depth_instruction' => $depthInstruction,
+            'data' => json_encode($questionsAndAnswers)
+        ]);
     }
 
     public function generateEssayTopic(string $type): array
@@ -353,21 +347,23 @@ class AIService
 
         $apiKey = ApiKey::getActiveKeyForProvider($provider);
 
-        $prompt = "Você é o Professor Xavier, um avaliador experiente de redações.\n";
-        $prompt .= "Sua tarefa: Criar um tema de redação inédito para $type.\n";
-        $prompt .= "Regras:\n";
+        $rules = "";
         if ($type === 'enem') {
-            $prompt .= "- Estilo ENEM: Um problema social/ambiental/cultural brasileiro.\n";
-            $prompt .= "- Inclua um 'Texto Motivador 1' (max 2 frases).\n";
-            $prompt .= "- Inclua 3 'Tópicos de Apoio' (bullets).\n";
-            $prompt .= "- Inclua a frase tema explícita.\n";
+            $rules .= "- Estilo ENEM: Um problema social/ambiental/cultural brasileiro.\n";
+            $rules .= "- Inclua um 'Texto Motivador 1' (max 2 frases).\n";
+            $rules .= "- Inclua 3 'Tópicos de Apoio' (bullets).\n";
+            $rules .= "- Inclua a frase tema explícita.\n";
         } else {
-            $prompt .= "- Estilo CONCURSO PÚBLICO: Tema técnico ou atualidade (ex: Adm Pública, Direito, Tecnologia).\n";
-            $prompt .= "- Comando direto: 'Disserte sobre...'.\n";
+            $rules .= "- Estilo CONCURSO PÚBLICO: Tema técnico ou atualidade (ex: Adm Pública, Direito, Tecnologia).\n";
+            $rules .= "- Comando direto: 'Disserte sobre...'.\n";
         }
-        $prompt .= "\nRetorne APENAS um objeto JSON válido. NÃO use markdown. NÃO use código ```json.\nEstrutura: { \"title\": \"Titulo do Tema\", \"description\": \"Texto completo do tema\" }.";
 
         try {
+            $prompt = $this->promptService->get('essay_topic_generator', [
+                'essay_type' => $type,
+                'rules' => $rules
+            ]);
+
             $result = $this->callAI($provider, $apiKey, $prompt);
             $apiKey->incrementUsage();
 
@@ -424,21 +420,12 @@ class AIService
     {
         $maxScore = ($type === 'enem') ? 1000 : 100;
 
-        return "Você é o Professor Xavier, corretor oficial de redações.\n" .
-            "Corrija este texto seguindo rigorosamente os critérios do {$type}.\n" .
-            "Tema: $title\n" .
-            "Texto do Aluno:\n$content\n\n" .
-            "Retorne APENAS JSON válido com esta estrutura exata:\n" .
-            "{\n" .
-            "  'score': (inteiro 0-$maxScore),\n" .
-            "  'summary': 'Resumo geral em 1 parágrafo',\n" .
-            "  'strengths': ['ponto forte 1', 'ponto forte 2'],\n" .
-            "  'weaknesses': ['ponto a melhorar 1', 'ponto a melhorar 2'],\n" .
-            "  'checklist': [ {'item': 'Coesão', 'status': 'ok'/'atenção'}, {'item': 'Gramática', 'status': 'ok'/'atenção'} ],\n" .
-            "  'corrections': [ {'excerpt': 'trecho erro', 'issue': 'explicação erro', 'suggestion': 'sugestão correção'} ],\n" .
-            "  'improved_version': 'Reescreva a redação mantendo a ideia do aluno, mas elevando para nota máxima.'\n" .
-            "}\n" .
-            "Seja polido, didático e motive o aluno.";
+        return $this->promptService->get('essay_evaluator', [
+            'essay_type' => $type,
+            'essay_title' => $title,
+            'essay_content' => $content,
+            'max_score' => $maxScore
+        ]);
     }
 
     public function generateQuestions(string $subject, int $quantity = 1): array
@@ -477,9 +464,10 @@ class AIService
 
     protected function buildQuestionGenerationPrompt(string $subject, int $quantity): string
     {
-        return "Gere {$quantity} questões inéditas estilo ENEM de {$subject}.\n" .
-            "Retorne APENAS um JSON válido com a chave 'questions' contendo uma lista de objetos.\n" .
-            "Cada objeto deve ter: 'statement' (enunciado), 'alternatives' (objeto A:texto, B:texto...), 'correct_answer' (A,B,C,D ou E), 'explanation' (breve explicação).";
+        return $this->promptService->get('question_generator_standard', [
+            'quantity' => $quantity,
+            'subject' => $subject
+        ]);
     }
 
     /**
@@ -506,22 +494,14 @@ class AIService
             $userAnswer = $simulation->answers()->where('question_id', $question->id)->first();
             $userAnswerText = $userAnswer ? $userAnswer->user_answer : 'Não respondida';
 
-            $baseContext = "Você é um professor particular explicando uma questão de prova.\n";
-            $baseContext .= "Questão: $questionText\n";
-            $baseContext .= "Alternativas: $alternatives\n";
-            $baseContext .= "Resposta Correta: $correctAnswer\n";
-            $baseContext .= "Resposta do Aluno: $userAnswerText\n\n";
-            $baseContext .= "Histórico da conversa:\n";
-
-            foreach ($history as $msg) {
-                $role = $msg['role'] === 'user' ? 'Aluno' : 'Professor';
-                $baseContext .= "$role: {$msg['message']}\n";
-            }
-
-            $baseContext .= "Aluno: $userMessage\n";
-            $baseContext .= "Professor (responda de forma concisa e didática):";
-
-            $result = $this->callAI($provider, $apiKey, $baseContext, $simulation->user_id);
+            $result = $this->callAI($provider, $apiKey, $this->promptService->get('xavier_tutor', [
+                'question_text' => $questionText,
+                'alternatives' => $alternatives,
+                'correct_answer' => $correctAnswer,
+                'user_answer' => $userAnswerText,
+                'chat_history' => $this->formatChatHistory($history),
+                'user_message' => $userMessage
+            ]), $simulation->user_id);
             $content = $result['content'];
 
             if (is_array($content) && isset($content['text'])) {
@@ -569,23 +549,14 @@ class AIService
             $alternatives = json_encode($question->alternatives);
             $correctAnswer = $question->correct_answer;
 
-            $baseContext = "Você é um professor particular explicando uma questão de prova.\n";
-            $baseContext .= "Questão: $questionText\n";
-            $baseContext .= "Alternativas: $alternatives\n";
-            $baseContext .= "Resposta Correta: $correctAnswer\n";
-            $baseContext .= "Resposta Escolhida pelo Aluno: $userAnswer\n\n";
-            $baseContext .= "Histórico da conversa:\n";
-
-            foreach ($history as $msg) {
-                $role = ($msg['role'] ?? 'user') === 'user' ? 'Aluno' : 'Professor';
-                $text = $msg['message'] ?? $msg['content'] ?? '';
-                $baseContext .= "$role: $text\n";
-            }
-
-            $baseContext .= "Aluno: $userMessage\n";
-            $baseContext .= "Professor (responda de forma concisa e didática):";
-
-            $result = $this->callAI($provider, $apiKey, $baseContext);
+            $result = $this->callAI($provider, $apiKey, $this->promptService->get('xavier_tutor', [
+                'question_text' => $questionText,
+                'alternatives' => $alternatives,
+                'correct_answer' => $correctAnswer,
+                'user_answer' => $userAnswer,
+                'chat_history' => $this->formatChatHistory($history),
+                'user_message' => $userMessage
+            ]));
             $content = $result['content'];
 
             if (is_array($content) && isset($content['text'])) {
@@ -817,5 +788,19 @@ class AIService
     protected function validateGrokKey(string $key): array
     {
         return ['is_valid' => false, 'error' => 'Grok validation not yet implemented.'];
+    }
+
+    /**
+     * Formats chat history array into a readable string for the prompt.
+     */
+    protected function formatChatHistory(array $history): string
+    {
+        $formatted = "";
+        foreach ($history as $msg) {
+            $role = ($msg['role'] ?? 'user') === 'user' ? 'Aluno' : 'Professor';
+            $text = $msg['message'] ?? $msg['content'] ?? '';
+            $formatted .= "$role: $text\n";
+        }
+        return $formatted;
     }
 }

@@ -6,6 +6,13 @@ use App\Models\SystemPrompt;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * PromptService - Orchestrates dynamic prompt retrieval, caching, and variable injection.
+ * 
+ * DESIGN RATIONALE:
+ * Moving prompts to the database allows real-time adjustments without code deployments.
+ * Caching is essential to avoid redundant DB queries on every AI interaction.
+ */
 class PromptService
 {
     /**
@@ -13,18 +20,21 @@ class PromptService
      *
      * @param string $slug
      * @param array $variables
-     * @param string|null $fallback
+     * @param string|null $fallback  A string to return if the prompt is missing from DB.
      * @return string
      */
     public function get(string $slug, array $variables = [], ?string $fallback = null): string
     {
         try {
+            // PROMPT CACHING: Stores the SystemPrompt object for 1 hour.
+            // In case of high concurrency, this significantly reduces DB load.
             $prompt = Cache::remember("system_prompt_{$slug}", 3600, function () use ($slug) {
                 return SystemPrompt::where('slug', $slug)->first();
             });
 
             if (!$prompt) {
                 if ($fallback) {
+                    // SAFE FALLBACK: If DB is empty or slug is wrong, uses the hardcoded string provided.
                     return $this->replaceVariables($fallback, $variables);
                 }
                 Log::warning("System prompt with slug '{$slug}' not found.");
@@ -39,6 +49,7 @@ class PromptService
             return "";
         }
         catch (\Exception $e) {
+            // ROBUSTNESS: If Redis or DB fails, we still try to return the fallback to keep the service running.
             Log::error("Error retrieving system prompt '{$slug}': " . $e->getMessage());
             return $fallback ? $this->replaceVariables($fallback, $variables) : "";
         }
@@ -46,10 +57,11 @@ class PromptService
 
     /**
      * Replace placeholders in the format {variable_name} with actual values.
-     *
-     * @param string $content
-     * @param array $variables
-     * @return string
+     * 
+     * HOW IT WORKS:
+     * It scans the template for curly braces and performs a direct string replacement.
+     * If a variable is missing from the $variables array, the placeholder remains in the string
+     * (the AI usually handles this gracefully or ignores it).
      */
     protected function replaceVariables(string $content, array $variables): string
     {
@@ -64,6 +76,10 @@ class PromptService
 
     /**
      * Clear the cache for a specific prompt or all prompts.
+     * 
+     * CACHE INVALIDATION:
+     * To manually clear via terminal: php artisan cache:forget system_prompt_{slug}
+     * Or clear everything: php artisan cache:clear
      *
      * @param string|null $slug
      * @return void
@@ -74,9 +90,7 @@ class PromptService
             Cache::forget("system_prompt_{$slug}");
         }
         else {
-            // This is a bit aggressive but works if we don't have a list of all slugs.
-            // Better to use tags if cache driver supports it.
-            Log::info("Clearing all system prompt caches could be expensive depending on driver.");
+            Log::info("Global clearing of system prompts should be done via artisan cache:clear.");
         }
     }
 }
