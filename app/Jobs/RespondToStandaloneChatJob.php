@@ -29,9 +29,17 @@ class RespondToStandaloneChatJob implements ShouldQueue
     {
     }
 
+    /**
+     * Executes the AI response job.
+     * Wrapped in a global try/catch for "indestructible" telemetry.
+     */
     public function handle(AIService $aiService): void
     {
         try {
+            // Identify active key for logging purposes in case of failure
+            $provider = \App\Models\ApiKey::getActiveKeyForProvider('gemini') ? 'gemini' : 'openai';
+            $apiKey = \App\Models\ApiKey::getActiveKeyForProvider($provider);
+
             $response = $aiService->chatAboutStandaloneQuestion(
                 $this->question,
                 $this->userAnswer,
@@ -39,7 +47,7 @@ class RespondToStandaloneChatJob implements ShouldQueue
                 $this->history
             );
 
-            // Save AI response
+            // Save AI response to the interaction table
             QuestionInteraction::create([
                 'simulation_id' => null,
                 'question_id' => $this->question->id,
@@ -49,20 +57,43 @@ class RespondToStandaloneChatJob implements ShouldQueue
             ]);
 
         }
-        catch (\Exception $e) {
-            Log::error("RespondToStandaloneChatJob failed", [
+        catch (\Throwable $e) {
+            // 1. Log to Laravel Log for debugging
+            Log::error("RespondToStandaloneChatJob Critical Failure", [
                 'question_id' => $this->question->id,
                 'user_id' => $this->userId,
-                'error' => $e->getMessage(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
+            // 2. Persist to ApiLog (SRE Dashboard)
+            // Note: AIService::callAI already logs API-level errors. 
+            // This catch handles logic errors, formatting issues, or unexpected crashes.
+            try {
+                \App\Models\ApiLog::create([
+                    'api_key_id' => isset($apiKey) ? $apiKey->id : null,
+                    'provider' => $provider ?? 'system',
+                    'type' => 'error',
+                    'status_code' => 500,
+                    'message' => "Job Failure: " . substr($e->getMessage(), 0, 200),
+                    'payload' => ['trace' => substr($e->getTraceAsString(), 0, 1000)]
+                ]);
+            }
+            catch (\Exception $logEx) {
+                Log::error("Failed to persist SRE log: " . $logEx->getMessage());
+            }
+
+            // 3. User feedback (Save a failure message in the chat)
             QuestionInteraction::create([
                 'simulation_id' => null,
                 'question_id' => $this->question->id,
                 'user_id' => $this->userId,
                 'role' => 'assistant',
-                'message' => 'Desculpe, ocorreu um erro ao processar sua dúvida. Tente novamente.',
+                'message' => 'Desculpe, ocorreu um erro técnico ao processar sua dúvida. O administrador foi notificado.',
             ]);
+
+            // Allow the job to fail and be retried by the queue if appropriate
+            throw $e;
         }
     }
 }

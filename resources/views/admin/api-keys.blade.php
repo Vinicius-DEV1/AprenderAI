@@ -388,9 +388,13 @@
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-600">
                                     <span class="font-bold text-gray-800 capitalize">{{ $log->provider }}:</span>
-                                    {{ $log->message }}
+                                    <span class="{{ $log->status_code == 429 ? 'text-red-700 font-bold' : '' }}">
+                                        {{ $log->message }}
+                                    </span>
                                     @if($log->status_code)
-                                        <span class="text-xs bg-gray-100 px-1 rounded">Code: {{ $log->status_code }}</span>
+                                        <span class="text-xs {{ $log->status_code == 429 ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-gray-100' }} px-1 rounded">
+                                            Code: {{ $log->status_code }}
+                                        </span>
                                     @endif
                                 </td>
                             </tr>
