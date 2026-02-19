@@ -471,7 +471,7 @@
                     btnSave.disabled = false;
                     btnSave.classList.remove('opacity-50', 'cursor-not-allowed');
                 } else {
-                    throw new Error(result.error || 'Chave inválida');
+                    throw new Error(result.error || 'Erro desconhecido no servidor');
                 }
             } catch (error) {
                 feedback.className = 'p-4 rounded-md text-sm bg-red-50 text-red-700 block border border-red-100';

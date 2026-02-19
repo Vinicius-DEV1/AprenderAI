@@ -140,6 +140,10 @@ class AdminController extends Controller
         return back()->with('success', 'Status da chave atualizado!');
     }
 
+    /**
+     * Proxies the connection test to AIService.
+     * Returms list of models on success, enabling dynamic selection in the UI.
+     */
     public function testConnection(Request $request)
     {
         $request->validate([
@@ -168,6 +172,10 @@ class AdminController extends Controller
         return back()->with('success', 'Chave removida!');
     }
 
+    /**
+     * Executes an asynchronous health check on an existing key.
+     * Updates status to 'online', 'offline', or 'quota_exceeded' based on model listing.
+     */
     public function retestApiKey(ApiKey $apiKey)
     {
         $aiService = app(\App\Services\AIService::class);
