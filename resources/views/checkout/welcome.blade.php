@@ -1,19 +1,52 @@
 @extends('layouts.checkout')
 
 @section('content')
+@php
+    // Find initial index for Plus Annual if available, otherwise find Plus
+    $initialPlan = $paidPlans->firstWhere('slug', 'plus-annual') ?? $paidPlans->firstWhere('slug', 'plus') ?? $plan;
+@endphp
+
 <div x-data="{ 
-    plans: {{ $paidPlans->toJson() }},
-    currentIndex: {{ $paidPlans->search(fn($p) => $p->id === $plan->id) }},
-    get activePlan() { return this.plans[this.currentIndex] },
-    get checkoutUrl() { return '{{ route('plans.checkout', ':id') }}'.replace(':id', this.activePlan.id) },
+    allPlans: {{ $paidPlans->toJson() }},
+    currentInterval: 'year',
+    currentIndex: 0,
+    
+    init() {
+        // Set initial index to the plan that matches current selection logic
+        const initialSlug = '{{ $initialPlan->slug }}';
+        const filtered = this.filteredPlans;
+        const index = filtered.findIndex(p => p.slug === initialSlug || p.slug === initialSlug.replace('-annual', ''));
+        this.currentIndex = index !== -1 ? index : 0;
+    },
+
+    get filteredPlans() {
+        return this.allPlans.filter(p => p.interval === this.currentInterval);
+    },
+
+    get activePlan() { 
+        const filtered = this.filteredPlans;
+        if (this.currentIndex >= filtered.length) this.currentIndex = 0;
+        return filtered[this.currentIndex];
+    },
+
+    get checkoutUrl() { 
+        return '{{ route('plans.checkout', ':id') }}'.replace(':id', this.activePlan.id) 
+    },
     
     next() {
-        this.currentIndex = (this.currentIndex + 1) % this.plans.length;
+        const len = this.filteredPlans.length;
+        this.currentIndex = (this.currentIndex + 1) % len;
     },
     prev() {
-        this.currentIndex = (this.currentIndex - 1 + this.plans.length) % this.plans.length;
+        const len = this.filteredPlans.length;
+        this.currentIndex = (this.currentIndex - 1 + len) % len;
     },
     
+    setInterval(val) {
+        this.currentInterval = val;
+        // Try to stay on the same tier if possible
+    },
+
     labels: {
         'basic_correction': 'Correção Básica',
         'detailed_correction': 'Correções Detalhadas',
@@ -32,6 +65,12 @@
     },
     formatPrice(price) {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price);
+    },
+    getMonthlyEquivalent(plan) {
+        if (plan.interval === 'year') {
+            return this.formatPrice(plan.price / 12);
+        }
+        return this.formatPrice(plan.price);
     }
 }" class="max-w-2xl mx-auto">
 
@@ -42,6 +81,25 @@
         <p class="text-lg text-slate-600 dark:text-slate-400">
             Você está a um passo de transformar sua preparação.
         </p>
+
+        <!-- Interval Toggle -->
+        <div class="mt-8 flex justify-center">
+            <div class="relative bg-slate-200 dark:bg-slate-800 p-1 rounded-2xl flex items-center shadow-inner">
+                <button @click="setInterval('month')" 
+                        :class="currentInterval === 'month' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+                        class="px-6 py-2 rounded-xl text-sm font-bold transition-all duration-200 focus:outline-none">
+                    Mensal
+                </button>
+                <button @click="setInterval('year')" 
+                        :class="currentInterval === 'year' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+                        class="px-6 py-2 rounded-xl text-sm font-bold transition-all duration-200 focus:outline-none relative">
+                    Anual
+                    <span class="absolute -top-3 -right-2 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-lg transform rotate-12">
+                        -20% OFF
+                    </span>
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Carousel Container -->
@@ -62,12 +120,22 @@
         <!-- Content -->
         <div class="p-8 sm:p-12">
             <template x-if="activePlan">
-                <div class="text-center animate-fade-in" :key="activePlan.id">
+                <div class="text-center animate-fade-in" :key="activePlan.id + currentInterval">
                     <div class="inline-block px-4 py-1.5 mb-4 rounded-full text-xs font-bold uppercase tracking-widest bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" x-text="activePlan.name"></div>
                     
-                    <div class="flex items-baseline justify-center mb-8">
-                        <span class="text-6xl font-black text-slate-900 dark:text-white" x-text="formatPrice(activePlan.price)"></span>
-                        <span class="text-slate-500 dark:text-slate-400 ml-2 text-xl">/mês</span>
+                    <div class="flex flex-col items-center justify-center mb-8">
+                        <div class="flex items-baseline">
+                            <span class="text-6xl font-black text-slate-900 dark:text-white" x-text="formatPrice(activePlan.price)"></span>
+                            <span class="text-slate-500 dark:text-slate-400 ml-2 text-xl" x-text="'/' + (activePlan.interval === 'year' ? 'ano' : 'mês')"></span>
+                        </div>
+                        <template x-if="activePlan.interval === 'year'">
+                            <div class="mt-2 text-green-600 dark:text-green-400 font-semibold flex items-center gap-1 text-sm bg-green-50 dark:bg-green-950/30 px-3 py-1 rounded-full">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1a1 1 0 112 0v1a1 1 0 11-2 0zM14.243 14.243a1 1 0 111.414 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707zM16 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1z" />
+                                </svg>
+                                Apenas <span x-text="getMonthlyEquivalent(activePlan)"></span> por mês
+                            </div>
+                        </template>
                     </div>
 
                     <div class="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 mb-8 border border-slate-100 dark:border-slate-700">
@@ -106,7 +174,7 @@
                     <div class="flex flex-col gap-4">
                         <a :href="checkoutUrl" 
                            class="flex justify-center items-center px-8 py-5 bg-blue-600 text-white font-black rounded-2xl text-xl shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:shadow-blue-600/30 transition transform hover:-translate-y-1">
-                            Confirmar Assinatura ⚡
+                            Confirmar Assinatura <span class="ml-2" x-text="currentInterval === 'year' ? 'Anual ⚡' : 'Mensal ⚡'"></span>
                         </a>
                         
                         <a href="{{ route('checkout.skip') }}" 
@@ -123,6 +191,7 @@
         Garantia total de satisfação. Cancele sua assinatura com um clique a qualquer momento.
     </p>
 </div>
+
 
 <style>
     @keyframes fade-in {
