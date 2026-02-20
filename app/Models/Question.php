@@ -14,6 +14,7 @@ class Question extends Model
         'format',
         'theme',
         'difficulty',
+        'difficulty_reasoning',
         'year',
         'statement',
         'explanation',
@@ -24,9 +25,10 @@ class Question extends Model
         'institution',
         'role',
         'external_id',
-        'difficulty_reasoning',
         'alternatives',
         'correct_answer',
+        'review_status',
+        'image_path',
     ];
 
     protected $casts = [
@@ -37,6 +39,58 @@ class Question extends Model
     public function alternatives()
     {
         return $this->hasMany(QuestionAlternative::class);
+    }
+
+    /**
+     * Accessor de compatibilidade: retorna a letra do gabarito (ex: 'C').
+     *
+     * MOTIVO: A coluna `correct_answer` foi removida da tabela `questions`
+     * quando as alternativas migraram para a tabela `question_alternatives`.
+     * O gabarito agora é determinado por `is_correct = true` na tabela relacional.
+     *
+     * Código legado que usa `$question->correct_answer` continua funcionando
+     * sem precisar ser alterado, desde que a relação alternatives esteja carregada.
+     */
+    public function getCorrectAnswerAttribute(): ?string
+    {
+        // Tenta usar a coleção já carregada (evita N+1)
+        if ($this->relationLoaded('alternatives')) {
+            $correct = $this->alternatives->firstWhere('is_correct', true);
+            return $correct?->label;
+        }
+        // Fallback: faz uma query pontual se a relação não estiver em memória
+        return $this->alternatives()->where('is_correct', true)->value('label');
+    }
+
+    /**
+     * Formata as alternativas como mapa associativo para uso em prompts de IA.
+     *
+     * PROBLEMA RESOLVIDO:
+     * json_encode($question->alternatives) serializa uma Collection de objetos
+     * QuestionAlternative (com id, question_id, label, content, is_correct...),
+     * gerando um JSON verboso e confuso para os LLMs.
+     *
+     * RETORNO ESPERADO:
+     * ["A" => "Texto da alternativa A", "B" => "Texto da alternativa B", ...]
+     *
+     * @return array<string, string>  ['A' => '...', 'B' => '...', ...]
+     */
+    public function alternativesAsMap(): array
+    {
+        $alts = $this->relationLoaded('alternatives')
+            ? $this->alternatives
+            : $this->alternatives()->get();
+
+        return $alts->pluck('content', 'label')->toArray();
+    }
+
+    /**
+     * Item de auditoria desta questão no módulo de importação.
+     * Permite saber quem aprovou, quando, e em qual lote a questão foi importada.
+     */
+    public function importItem()
+    {
+        return $this->hasOne(\App\Models\QuestionImportItem::class);
     }
 
     public function simulationAnswers()
@@ -109,6 +163,19 @@ class Question extends Model
             ->whereRaw("TRIM(difficulty_reasoning) != ''")
             ->whereNotNull('explanation')
             ->whereRaw("TRIM(explanation) != ''");
+    }
+
+    /**
+     * Scope: filtra questões visíveis para os alunos no banco público.
+     * Exclui questões importadas que ainda estão pendentes de revisão.
+     * Questões sem review_status (criadas manualmente) são sempre visíveis.
+     */
+    public function scopePublished($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('review_status')       // Questões manuais (pré-importador)
+              ->orWhere('review_status', 'approved'); // Questões importadas e aprovadas
+        });
     }
 
     /**
