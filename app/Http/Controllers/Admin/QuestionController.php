@@ -118,31 +118,42 @@ class QuestionController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'subject' => 'required|string', // Name of the subject
-            'type' => 'required|in:enem,concurso',
-            'statement' => 'required|string',
-            'alternatives' => 'required|array|min:5',
-            'alternatives.A' => 'required|string',
-            'alternatives.B' => 'required|string',
-            'alternatives.C' => 'required|string',
-            'alternatives.D' => 'required|string',
-            'alternatives.E' => 'required|string',
-            'correct_answer' => 'required|in:A,B,C,D,E',
-            'explanation' => 'nullable|string',
-            'source' => 'required|in:manual,ai_generated',
-            'year' => 'nullable|integer',
-            'difficulty' => 'required|in:easy,medium,hard',
-            'difficulty_reasoning' => 'nullable|string',
-            'origin' => 'nullable|string|max:255',
+            'subject'               => 'required|string',
+            'type'                  => 'required|in:enem,concurso',
+            'statement'             => 'required|string',
+            'alternatives'          => 'required|array|min:5',
+            'alternatives.A'        => 'required|string',
+            'alternatives.B'        => 'required|string',
+            'alternatives.C'        => 'required|string',
+            'alternatives.D'        => 'required|string',
+            'alternatives.E'        => 'required|string',
+            'correct_answer'        => 'required|in:A,B,C,D,E',
+            'explanation'           => 'nullable|string',
+            'source'                => 'required|in:manual,ai_generated',
+            'year'                  => 'nullable|integer',
+            'difficulty'            => 'required|in:easy,medium,hard',
+            'difficulty_reasoning'  => 'nullable|string',
+            'origin'                => 'nullable|string|max:255',
         ]);
 
-        // Remove subject from validated before creation as column is dropped
-        $subjectName = $validated['subject'];
-        unset($validated['subject']);
+        // Extrai campos que NÃO são colunas da tabela questions (foram migrados)
+        $subjectName   = $validated['subject'];      // → question_subject pivot
+        $alternativas  = $validated['alternatives']; // → tabela question_alternatives
+        $correctAnswer = $validated['correct_answer']; // → is_correct na question_alternatives
+        unset($validated['subject'], $validated['alternatives'], $validated['correct_answer']);
 
         $question = Question::create($validated);
 
-        // Sync Subject
+        // Salva cada alternativa como uma linha em question_alternatives
+        foreach ($alternativas as $label => $content) {
+            $question->alternatives()->create([
+                'label'      => strtoupper($label),
+                'content'    => $content,
+                'is_correct' => (strtoupper($label) === strtoupper($correctAnswer)),
+            ]);
+        }
+
+        // Vincula a disciplina via pivot question_subject
         $subject = \App\Models\Subject::where('name', 'like', $subjectName)->first();
         if ($subject) {
             $question->subjects()->sync([$subject->id]);
@@ -160,31 +171,43 @@ class QuestionController extends Controller
     public function update(Request $request, Question $question)
     {
         $validated = $request->validate([
-            'subject' => 'required|string', // Name of the subject
-            'type' => 'required|in:enem,concurso',
-            'statement' => 'required|string',
-            'alternatives' => 'required|array|min:5',
-            'alternatives.A' => 'required|string',
-            'alternatives.B' => 'required|string',
-            'alternatives.C' => 'required|string',
-            'alternatives.D' => 'required|string',
-            'alternatives.E' => 'required|string',
-            'correct_answer' => 'required|in:A,B,C,D,E',
-            'explanation' => 'nullable|string',
-            'source' => 'required|in:manual,ai_generated',
-            'year' => 'nullable|integer',
-            'difficulty' => 'required|in:easy,medium,hard',
-            'difficulty_reasoning' => 'nullable|string',
-            'origin' => 'nullable|string|max:255',
+            'subject'               => 'required|string',
+            'type'                  => 'required|in:enem,concurso',
+            'statement'             => 'required|string',
+            'alternatives'          => 'required|array|min:5',
+            'alternatives.A'        => 'required|string',
+            'alternatives.B'        => 'required|string',
+            'alternatives.C'        => 'required|string',
+            'alternatives.D'        => 'required|string',
+            'alternatives.E'        => 'required|string',
+            'correct_answer'        => 'required|in:A,B,C,D,E',
+            'explanation'           => 'nullable|string',
+            'source'                => 'required|in:manual,ai_generated',
+            'year'                  => 'nullable|integer',
+            'difficulty'            => 'required|in:easy,medium,hard',
+            'difficulty_reasoning'  => 'nullable|string',
+            'origin'                => 'nullable|string|max:255',
         ]);
 
-        // Remove subject from validated before update as column is dropped
-        $subjectName = $validated['subject'];
-        unset($validated['subject']);
+        // Extrai campos que NÃO são colunas da tabela questions
+        $subjectName   = $validated['subject'];
+        $alternativas  = $validated['alternatives'];
+        $correctAnswer = $validated['correct_answer'];
+        unset($validated['subject'], $validated['alternatives'], $validated['correct_answer']);
 
         $question->update($validated);
 
-        // Sync Subject
+        // Substitui todas as alternativas: apaga as antigas e recria
+        $question->alternatives()->delete();
+        foreach ($alternativas as $label => $content) {
+            $question->alternatives()->create([
+                'label'      => strtoupper($label),
+                'content'    => $content,
+                'is_correct' => (strtoupper($label) === strtoupper($correctAnswer)),
+            ]);
+        }
+
+        // Atualiza a disciplina via pivot
         $subject = \App\Models\Subject::where('name', 'like', $subjectName)->first();
         if ($subject) {
             $question->subjects()->sync([$subject->id]);
