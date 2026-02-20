@@ -64,7 +64,10 @@ class AIService
         try {
             $prompt = $this->promptService->get('question_difficulty_evaluator', [
                 'question_text' => $question->statement,
-                'alternatives' => json_encode($question->alternatives)
+                // alternativesAsMap(): retorna ['A'=>'texto', 'B'=>'texto'...]
+                // Substitui json_encode($question->alternatives) que serializava
+                // a Collection de objetos QuestionAlternative — confuso para a IA.
+                'alternatives' => json_encode($question->alternativesAsMap())
             ]);
 
             $result = $this->callAI($provider, $apiKey, $prompt);
@@ -470,7 +473,9 @@ class AIService
 
         try {
             $questionText = $question->statement;
-            $alternatives = json_encode($question->alternatives);
+            // alternativesAsMap(): ['A'=>'texto', 'B'=>'texto'...] — limpo para o prompt
+            $alternatives = json_encode($question->alternativesAsMap());
+            // correct_answer agora é um accessor virtual que lê is_correct da tabela relacional
             $correctAnswer = $question->correct_answer;
 
             $userAnswer = $simulation->answers()->where('question_id', $question->id)->first();
@@ -528,7 +533,9 @@ class AIService
 
         try {
             $questionText = $question->statement;
-            $alternatives = json_encode($question->alternatives);
+            // alternativesAsMap(): ['A'=>'texto', 'B'=>'texto'...] — limpo para o prompt
+            $alternatives = json_encode($question->alternativesAsMap());
+            // correct_answer agora é um accessor virtual que lê is_correct da tabela relacional
             $correctAnswer = $question->correct_answer;
 
             $result = $this->callAI($provider, $apiKey, $this->promptService->get('xavier_tutor', [
