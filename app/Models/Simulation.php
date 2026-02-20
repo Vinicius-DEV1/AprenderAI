@@ -46,6 +46,11 @@ class Simulation extends Model
         return $this->morphOne(Correction::class, 'correctable');
     }
 
+    public function essay()
+    {
+        return $this->hasOne(Essay::class);
+    }
+
     public function isFinished(): bool
     {
         return in_array($this->status, ['finished', 'corrected']);
