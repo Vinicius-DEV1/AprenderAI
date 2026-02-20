@@ -11,13 +11,11 @@ class Question extends Model
 
     protected $fillable = [
         'type',
-        // 'subject' removed
+        'format',
         'theme',
         'difficulty',
         'year',
         'statement',
-        'alternatives',
-        'correct_answer',
         'explanation',
         'source',
         'topic',
@@ -30,8 +28,13 @@ class Question extends Model
     ];
 
     protected $casts = [
-        'alternatives' => 'array',
+        'format' => 'string',
     ];
+
+    public function alternatives()
+    {
+        return $this->hasMany(QuestionAlternative::class);
+    }
 
     public function simulationAnswers()
     {
@@ -45,7 +48,10 @@ class Question extends Model
 
     public function isCorrect(string $answer): bool
     {
-        return strtoupper($answer) === strtoupper($this->correct_answer);
+        return $this->alternatives()
+            ->where('label', strtoupper($answer))
+            ->where('is_correct', true)
+            ->exists();
     }
 
     /**
