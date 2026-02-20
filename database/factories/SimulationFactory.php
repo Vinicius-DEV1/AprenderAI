@@ -15,12 +15,22 @@ class SimulationFactory extends Factory
         return [
             'user_id' => User::factory(),
             'type' => 'enem',
-            'score' => $this->faker->numberBetween(400, 800),
-            'status' => 'finished',
-            'started_at' => now()->subHour(),
-            'finished_at' => now(),
-            'time_elapsed' => 3600,
+            'score' => null,
+            'status' => 'pending', // Default to pending
+            'started_at' => now(),
+            'finished_at' => null,
+            'time_elapsed' => 0,
             'configuration' => json_encode([]),
         ];
+    }
+
+    public function finished(): static
+    {
+        return $this->state(fn(array $attributes) => [
+        'status' => 'finished',
+        'finished_at' => now(),
+        'score' => $this->faker->numberBetween(400, 800),
+        'time_elapsed' => 3600,
+        ]);
     }
 }

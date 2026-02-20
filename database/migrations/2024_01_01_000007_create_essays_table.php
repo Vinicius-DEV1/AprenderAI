@@ -13,7 +13,7 @@ return new class extends Migration {
             $table->foreignId('simulation_id')->nullable()->constrained()->nullOnDelete();
             $table->string('title'); // Tema da redação
             $table->text('content'); // Texto da redação
-            $table->enum('status', ['pending', 'correcting', 'corrected'])->default('pending');
+            $table->enum('status', ['pending', 'in_progress', 'evaluating', 'correcting', 'corrected', 'completed', 'error'])->default('pending');
             $table->integer('score')->nullable(); // 0 a 1000
             $table->json('competencies')->nullable(); // {C1: 5, C2: 4, C3: 5, C4: 4, C5: 3}
             $table->text('feedback')->nullable(); // Comentários gerais
