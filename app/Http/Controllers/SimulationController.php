@@ -61,26 +61,34 @@ class SimulationController extends Controller
             ->orderBy('name')
             ->pluck('name');
 
-        return view('simulations.create', compact('organizations', 'institutions', 'roles', 'subjects'));
+        $canUseEssayInSimulation = $request->user()->hasEssayAccess();
+
+        return view('simulations.create', compact('organizations', 'institutions', 'roles', 'subjects', 'canUseEssayInSimulation'));
     }
 
     public function store(StoreSimulationRequest $request)
     {
         try {
+            $validated = $request->validated();
+
+            // Backend guard: free plan users cannot include essay even if they bypass front-end
+            if (!$request->user()->hasEssayAccess()) {
+                $validated['include_essay'] = false;
+            }
+
             // 1. Create Simulation (Sync - Status: generating)
             $simulation = $this->simulationService->createPendingSimulation(
                 $request->user(),
-                $request->validated()
+                $validated
             );
 
             // 2. Dispatch Job (Async)
-            \App\Jobs\GenerateSimulationQuestions::dispatch($simulation, $request->validated());
+            \App\Jobs\GenerateSimulationQuestions::dispatch($simulation, $validated);
 
             // 3. Redirect to Show (Loading Screen)
             return redirect()->route('simulations.show', $simulation);
 
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             return back()
                 ->withInput()
                 ->with('error', 'Erro ao iniciar simulado: ' . $e->getMessage());
@@ -194,12 +202,14 @@ class SimulationController extends Controller
     {
         $this->authorize('view', $simulation);
 
-        $simulation->load(['answers.question.subjects', 'user.plan', 'correction']);
+        $simulation->load(['answers.question.subjects', 'user.plan', 'correction', 'essay']);
 
         $totalQuestions = $simulation->answers()->count();
         $correctAnswers = $simulation->answers()->where('is_correct', true)->count();
         $percentageScore = $totalQuestions > 0 ? ($correctAnswers / $totalQuestions) * 100 : 0;
 
-        return view('simulations.result', compact('simulation', 'totalQuestions', 'correctAnswers', 'percentageScore'));
+        $linkedEssay = $simulation->essay;
+
+        return view('simulations.result', compact('simulation', 'totalQuestions', 'correctAnswers', 'percentageScore', 'linkedEssay'));
     }
 }

@@ -162,6 +162,11 @@ class User extends Authenticatable
         return $usage < $this->plan->essays_limit;
     }
 
+    public function hasEssayAccess(): bool
+    {
+        return $this->plan && $this->plan->essays_limit !== 0;
+    }
+
     public function monthlyEssayLimit(): int
     {
         return $this->plan ? $this->plan->essays_limit : 0;

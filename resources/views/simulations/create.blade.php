@@ -1,6 +1,6 @@
-{{-- 
-    VIEW: Simulations Create
-    DARK MODE: Inclui overrides para Glass Card e estilização para TomSelect e Range Slider no modo escuro.
+{{--
+VIEW: Simulations Create
+DARK MODE: Inclui overrides para Glass Card e estilização para TomSelect e Range Slider no modo escuro.
 --}}
 @extends('layouts.app')
 
@@ -50,7 +50,7 @@
             color: #f1f5f9;
         }
 
-        :root.dark .ts-wrapper.multi .ts-control > div {
+        :root.dark .ts-wrapper.multi .ts-control>div {
             background: rgba(99, 102, 241, 0.2);
             color: #a5b4fc;
         }
@@ -104,7 +104,9 @@
 
             <!-- Type Selector -->
             <div class="mb-10">
-                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 uppercase tracking-wider">Tipo de
+                <label
+                    class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 uppercase tracking-wider">Tipo
+                    de
                     Prova</label>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- ENEM Option -->
@@ -115,10 +117,12 @@
                         <div class="flex-1">
                             <div class="flex items-center justify-between mb-1">
                                 <span class="font-bold text-slate-900 dark:text-white">ENEM</span>
-                                <span class="text-xs font-semibold px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
+                                <span
+                                    class="text-xs font-semibold px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
                                     x-show="type === 'enem'">Selecionado</span>
                             </div>
-                            <p class="text-sm text-slate-500 dark:text-slate-400">Padrão oficial. 90 questões fixas (Matemática e Linguagens).
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Padrão oficial. 90 questões fixas
+                                (Matemática e Linguagens).
                             </p>
                         </div>
                     </label>
@@ -359,19 +363,40 @@
             <!-- Footer -->
             <div
                 class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700 flex flex-col md:flex-row items-center justify-between gap-4">
-                <label class="flex items-center gap-3 cursor-pointer group">
-                    <div class="relative">
-                        <input type="checkbox" name="include_essay" value="1" class="sr-only peer">
-                        <div
-                            class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600">
+                @if($canUseEssayInSimulation)
+                    {{-- Paid plan: normal interactive toggle --}}
+                    <label class="flex items-center gap-3 cursor-pointer group">
+                        <div class="relative">
+                            <input type="checkbox" name="include_essay" value="1" class="sr-only peer">
+                            <div
+                                class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600">
+                            </div>
+                        </div>
+                        <div>
+                            <span class="block text-sm font-medium text-slate-700 dark:text-slate-300">Incluir Redação</span>
+                            <span class="block text-xs text-slate-500 dark:text-slate-400">Gera um tema dissertativo
+                                extra</span>
+                        </div>
+                    </label>
+                @else
+                    {{-- Free plan: disabled toggle with upgrade message --}}
+                    <div class="flex items-center gap-3 opacity-60 cursor-not-allowed"
+                        onclick="alert('Esta funcionalidade está disponível nos planos Básico e Plus. Faça upgrade para incluir uma redação no simulado!')">
+                        <div class="relative pointer-events-none">
+                            <input type="checkbox" disabled class="sr-only peer">
+                            <div
+                                class="w-11 h-6 bg-slate-200 rounded-full dark:bg-slate-700 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5">
+                            </div>
+                        </div>
+                        <div>
+                            <span class="block text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                🔒 Incluir Redação
+                            </span>
+                            <span class="block text-xs text-indigo-500 dark:text-indigo-400 font-semibold">Disponível nos planos
+                                Básico e Plus</span>
                         </div>
                     </div>
-                    <div>
-                        <span class="block text-sm font-medium text-slate-700 dark:text-slate-300">Incluir Redação</span>
-                        <span class="block text-xs text-slate-500 dark:text-slate-400">Gera um tema dissertativo
-                            extra</span>
-                    </div>
-                </label>
+                @endif
 
                 <button type="submit" :disabled="(type === 'concurso' && totalAllocated !== totalQuestions) || submitting"
                     class="w-full md:w-auto px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/30 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2">

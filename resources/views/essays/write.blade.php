@@ -25,6 +25,15 @@
                     </div>
                 </div>
 
+                @if($essay->simulation_id)
+                    <div class="px-4 pt-3 pb-0">
+                        <a href="{{ route('simulations.show', $essay->simulation_id) }}"
+                            class="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800">
+                            &larr; Voltar para a prova
+                        </a>
+                    </div>
+                @endif
+
                 <div class="p-6 text-gray-900 dark:text-gray-100">
 
                     <!-- Timer & Info -->
