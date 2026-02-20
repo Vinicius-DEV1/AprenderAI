@@ -42,7 +42,7 @@ class SimulationCreationService
                 'institution' => $data['institution'] ?? [],
                 'role' => $data['role'] ?? [],
             ],
-            'status' => 'generating', // Initial status for async flow
+            'status' => 'pending', // Initial status (mapped to generating via empty answers check)
         ]);
     }
 

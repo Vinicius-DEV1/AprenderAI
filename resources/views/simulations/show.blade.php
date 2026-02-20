@@ -8,7 +8,7 @@
 
 @section('content')
 <div class="simulation-page">
-    @if($simulation->status === 'generating')
+    @if($simulation->status === 'generating' || ($simulation->status === 'pending' && $simulation->answers->isEmpty()))
         <div class="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950 p-6" x-data="{ 
             messages: [
                 'Analisando seu desempenho histórico...',
@@ -25,6 +25,7 @@
                 }, 3000);
             }
         }">
+            <!-- ... existing styles ... -->
             <style>
                 @keyframes pulse-glow {
                     0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(79, 70, 229, 0.4); }
@@ -181,10 +182,19 @@
                         .then(response => response.json())
                         .then(data => {
                             if (data.simulation_status === 'error') {
-                                alert('Ocorreu um erro ao gerar o simulado. Por favor, tente novamente.');
-                                window.location.href = '/simulations/create';
-                            } else if (data.simulation_status !== 'generating') {
-                                window.location.reload();
+                                clearInterval(pollingInterval);
+                                if (confirm('Ocorreu um erro ao gerar o simulado. Deseja tentar novamente?')) {
+                                    window.location.href = '{{ route('simulations.create') }}';
+                                }
+                            } 
+                            // Check if still generating (generating status OR pending with 0 answers)
+                            else if (data.simulation_status === 'generating' || (data.simulation_status === 'pending' && data.answers_count === 0)) {
+                                // Still generating... logic to stay on page is implicit
+                                console.log('Ainda gerando...');
+                            } 
+                            else {
+                                // Ready! Redirect to the simulation page
+                                window.location.href = '{{ route('simulations.show', $simulation->id) }}';
                             }
                         })
                         .catch(err => console.error('Polling error:', err));
