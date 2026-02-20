@@ -9,11 +9,6 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class PlanFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
@@ -25,6 +20,39 @@ class PlanFactory extends Factory
             'essays_limit' => 0,
             'features' => [],
             'is_active' => true,
+            'max_ai_questions' => 10,
         ];
+    }
+
+    /**
+     * State: Plus plan with essays and study plan.
+     */
+    public function plus(): static
+    {
+        return $this->state(fn() => [
+        'name' => 'Plus',
+        'slug' => 'plus',
+        'price' => 29.90,
+        'simulations_limit' => 0,
+        'essays_limit' => 10,
+        'features' => ['study_plan', 'detailed_correction'],
+        'max_ai_questions' => 100,
+        ]);
+    }
+
+    /**
+     * State: Basic plan.
+     */
+    public function basic(): static
+    {
+        return $this->state(fn() => [
+        'name' => 'Básico',
+        'slug' => 'basico',
+        'price' => 14.90,
+        'simulations_limit' => 20,
+        'essays_limit' => 3,
+        'features' => [],
+        'max_ai_questions' => 30,
+        ]);
     }
 }

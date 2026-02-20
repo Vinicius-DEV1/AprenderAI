@@ -2,26 +2,36 @@
 
 namespace Database\Factories;
 
+use App\Models\Simulation;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Essay>
- */
 class EssayFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
-            'user_id' => \App\Models\User::factory(),
-            'title' => $this->faker->sentence,
-            'theme' => $this->faker->sentence,
+            'user_id' => User::factory(),
+            'simulation_id' => Simulation::factory(),
+            'type' => 'enem',
+            'title' => $this->faker->sentence(),
             'content' => $this->faker->paragraphs(3, true),
-            'status' => 'draft',
+            'status' => 'pending',
+            'score' => null,
+            'time_limit' => 3600,
+            'topic_description' => $this->faker->paragraph(),
+            'created_at' => now(),
+            'updated_at' => now(),
         ];
+    }
+
+    public function corrected(): static
+    {
+        return $this->state(fn(array $attributes) => [
+        'status' => 'corrected',
+        'score' => $this->faker->numberBetween(400, 1000),
+        'feedback' => $this->faker->paragraph(),
+        'evaluated_at' => now(),
+        ]);
     }
 }

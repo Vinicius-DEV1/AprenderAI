@@ -15,7 +15,7 @@ return new class extends Migration {
             $table->timestamp('started_at')->nullable();
             $table->timestamp('finished_at')->nullable();
             $table->integer('time_elapsed')->default(0); // em segundos
-            $table->enum('status', ['pending', 'in_progress', 'finished', 'corrected'])->default('pending');
+            $table->enum('status', ['generating', 'pending', 'in_progress', 'finished', 'corrected', 'error'])->default('pending');
             $table->decimal('score', 5, 2)->nullable(); // Nota final
             $table->json('scores_by_subject')->nullable(); // {matemática: X, português: Y}
             $table->json('analysis_by_theme')->nullable(); // Análise detalhada
