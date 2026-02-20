@@ -1,0 +1,127 @@
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Jobs\CorrectSimulationJobTest::it_corrects_simulation_and_updates_stats(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Jobs\GenerateStudyPlanJobTest::it_calls_generator_and_logs_success(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Jobs\GenerateStudyPlanJobTest::it_handles_failures_gracefully(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\Study\StudyPlanGeneratorTest::it_denies_generation_if_prerequisites_not_met(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\Study\StudyPlanGeneratorTest::it_allows_generation_for_qualified_user_without_plan(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\Study\StudyPlanGeneratorTest::it_denies_generation_if_recent_plan_exists(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\Study\StudyPlanGeneratorTest::it_creates_placeholder_plan(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\Study\StudyStatsServiceTest::it_normalizes_subject_names_correctly(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\Study\StudyStatsServiceTest::it_resolves_subject_meta_data(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\Services\Study\StudyStatsServiceTest::it_defaults_meta_for_unknown_subjects(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\PostRegistrationFlowTest::registration_with_paid_plan_redirects_to_checkout_welcome(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\PostRegistrationFlowTest::registration_with_free_plan_redirects_to_dashboard(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\PostRegistrationFlowTest::registration_without_plan_redirects_to_dashboard(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\PostRegistrationFlowTest::accessing_checkout_welcome_without_plan_in_session_redirects_to_dashboard(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\PostRegistrationFlowTest::skip_clears_session_and_redirects_to_dashboard(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\StudyPlanRefactorTest::it_can_generate_dashboard_data(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\StudyPlanRefactorTest::it_delegates_creation_to_generator(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\StudyPlanRefactorTest::stats_service_calculates_accuracy_correctly(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   FAIL  Tests\Feature\EssayRechargeTest
+  ✓ recharge b… 0.67s  
+  ✓ basic plan… 0.03s  
+  ⨯ checkout p… 7.74s  
+  ✓ successful… 0.04s  
+  ───────────────────  
+   FAILED  Tests\Fe…   
+  Expected response status code [200] but received 500.
+Failed asserting that 500 is identical to 200.
+
+The following exception occurred during the last request:
+
+TypeError: Cannot assign null to property App\Services\AsaasService::$apiKey of type string in C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\app\Services\AsaasService.php:21
+Stack trace:
+#0 [internal function]: App\Services\AsaasService->__construct()
+#1 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Container\Container.php(1004): ReflectionClass->newInstanceArgs()
+#2 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Container\Container.php(832): Illuminate\Container\Container->build()
+#3 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Foundation\Application.php(1078): Illuminate\Container\Container->resolve()
+#4 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Container\Container.php(763): Illuminate\Foundation\Application->resolve()
+#5 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Foundation\Application.php(1058): Illuminate\Container\Container->make()
+#6 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Container\Container.php(1133): Illuminate\Foundation\Application->make()
+#7 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Container\Container.php(1043): Illuminate\Container\Container->resolveClass()
+#8 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Container\Container.php(994): Illuminate\Container\Container->resolveDependencies()
+#9 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Container\Container.php(832): Illuminate\Container\Container->build()
+#10 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Foundation\Application.php(1078): Illuminate\Container\Container->resolve()
+#11 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Container\Container.php(763): Illuminate\Foundation\Application->resolve()
+#12 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Foundation\Application.php(1058): Illuminate\Container\Container->make()
+#13 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Routing\Route.php(285): Illuminate\Foundation\Application->make()
+#14 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Routing\Route.php(1125): Illuminate\Routing\Route->getController()
+#15 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Routing\Route.php(1054): Illuminate\Routing\Route->controllerMiddleware()
+#16 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Routing\Router.php(820): Illuminate\Routing\Route->gatherMiddleware()
+#17 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Routing\Router.php(802): Illuminate\Routing\Router->gatherRouteMiddleware()
+#18 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Routing\Router.php(786): Illuminate\Routing\Router->runRouteWithinStack()
+#19 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Routing\Router.php(750): Illuminate\Routing\Router->runRoute()
+#20 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Routing\Router.php(739): Illuminate\Routing\Router->dispatchToRoute()
+#21 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Foundation\Http\Kernel.php(201): Illuminate\Routing\Router->dispatch()
+#22 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(170): Illuminate\Foundation\Http\Kernel->{closure:Illuminate\Foundation\Http\Kernel::dispatchToRouter():198}()
+#23 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\TransformsRequest.php(21): Illuminate\Pipeline\Pipeline->{closure:Illuminate\Pipeline\Pipeline::prepareDestination():168}()
+#24 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull.php(31): Illuminate\Foundation\Http\Middleware\TransformsRequest->handle()
+#25 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(209): Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull->handle()
+#26 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\TransformsRequest.php(21): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():184}:185}()
+#27 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\TrimStrings.php(51): Illuminate\Foundation\Http\Middleware\TransformsRequest->handle()
+#28 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(209): Illuminate\Foundation\Http\Middleware\TrimStrings->handle()
+#29 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Http\Middleware\ValidatePostSize.php(27): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():184}:185}()
+#30 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(209): Illuminate\Http\Middleware\ValidatePostSize->handle()
+#31 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance.php(110): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():184}:185}()
+#32 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(209): Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance->handle()
+#33 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Http\Middleware\HandleCors.php(49): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():184}:185}()
+#34 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(209): Illuminate\Http\Middleware\HandleCors->handle()
+#35 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Http\Middleware\TrustProxies.php(58): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():184}:185}()
+#36 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(209): Illuminate\Http\Middleware\TrustProxies->handle()
+#37 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\InvokeDeferredCallbacks.php(22): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():184}:185}()
+#38 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(209): Illuminate\Foundation\Http\Middleware\InvokeDeferredCallbacks->handle()
+#39 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(127): Illuminate\Pipeline\Pipeline->{closure:{closure:Illuminate\Pipeline\Pipeline::carry():184}:185}()
+#40 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Foundation\Http\Kernel.php(176): Illuminate\Pipeline\Pipeline->then()
+#41 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Foundation\Http\Kernel.php(145): Illuminate\Foundation\Http\Kernel->sendRequestThroughRouter()
+#42 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Foundation\Testing\Concerns\MakesHttpRequests.php(607): Illuminate\Foundation\Http\Kernel->handle()
+#43 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\laravel\framework\src\Illuminate\Foundation\Testing\Concerns\MakesHttpRequests.php(368): Illuminate\Foundation\Testing\TestCase->call()
+#44 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\tests\Feature\EssayRechargeTest.php(82): Illuminate\Foundation\Testing\TestCase->get()
+#45 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\phpunit\phpunit\src\Framework\TestCase.php(1667): Tests\Feature\EssayRechargeTest->test_checkout_page_loads_correctly()
+#46 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\phpunit\phpunit\src\Framework\TestCase.php(519): PHPUnit\Framework\TestCase->runTest()
+#47 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\phpunit\phpunit\src\Framework\TestRunner\TestRunner.php(87): PHPUnit\Framework\TestCase->runBare()
+#48 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\phpunit\phpunit\src\Framework\TestCase.php(365): PHPUnit\Framework\TestRunner->run()
+#49 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\phpunit\phpunit\src\Framework\TestSuite.php(369): PHPUnit\Framework\TestCase->run()
+#50 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\phpunit\phpunit\src\Framework\TestSuite.php(369): PHPUnit\Framework\TestSuite->run()
+#51 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\phpunit\phpunit\src\Framework\TestSuite.php(369): PHPUnit\Framework\TestSuite->run()
+#52 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\phpunit\phpunit\src\TextUI\TestRunner.php(64): PHPUnit\Framework\TestSuite->run()
+#53 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\phpunit\phpunit\src\TextUI\Application.php(211): PHPUnit\TextUI\TestRunner->run()
+#54 C:\Users\anton\OneDrive\Área de Trabalho\AprovaAI\vendor\phpunit\phpunit\phpunit(104): PHPUnit\TextUI\Application->run()
+#55 {main}
+
+----------------------------------------------------------------------------------
+
+Cannot assign null to property App\Services\AsaasService::$apiKey of type string
+
+  at tests\Feature\EssayRechargeTest.php:83
+     79▕         $plan = Plan::factory()->create(['name' => 'Plus']);
+     80▕         $user = User::factory()->create(['plan_id' => $plan->id]);
+     81▕ 
+     82▕         $response = $this->actingAs($user)->get(route('recharge'));
+  ➜  83▕         $response->assertStatus(200);
+     84▕         $response->assertSee('Confirmar Recarga');
+     85▕         $response->assertSee('R$ 20,00');
+     86▕     }
+     87▕
+
+
+  Tests:    1 failed, 3 passed (14 assertions)
+  Duration: 8.71s
+

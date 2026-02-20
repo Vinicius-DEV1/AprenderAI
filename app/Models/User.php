@@ -31,7 +31,70 @@ class User extends Authenticatable
         'is_banned',
         'ai_questions_count',
         'last_reset_at',
+        'essay_credits',
     ];
+
+    // ... (unchanged code) ...
+
+    public function canCreateEssay(): bool
+    {
+        if (!$this->plan) {
+            return false;
+        }
+
+        // Unlimited check
+        if ($this->plan->isUnlimited('essays')) {
+            return true;
+        }
+
+        // Free plan (0 limits) but might have bought credits? 
+        // Logic says "Plano Básico" (2 limits) and "Plus" (15 limits).
+        // If plan limit is 0, usually they can't create. 
+        // But if they have credits, they should be able to.
+        // However, the effective limit is plan_limit + essay_credits.
+
+        $effectiveLimit = $this->plan->essays_limit + $this->essay_credits;
+
+        if ($effectiveLimit === 0) {
+            return false;
+        }
+
+        // Strict Count: essays where submitted_at is in current month/year
+        $usage = $this->essays()
+            ->whereNotNull('submitted_at')
+            ->whereYear('submitted_at', now()->year)
+            ->whereMonth('submitted_at', now()->month)
+            ->count();
+
+        return $usage < $effectiveLimit;
+    }
+
+    public function hasEssayAccess(): bool
+    {
+        // If they have credits, they effectively have access even if plan is 0?
+        // But the requirement says "Limit base" (Plus/Basic).
+        // Let's stick to plan checks for general access, but credits extend the numerical limit.
+        return $this->plan && ($this->plan->essays_limit !== 0 || $this->essay_credits > 0);
+    }
+
+    public function monthlyEssayLimit(): int
+    {
+        return $this->plan ? ($this->plan->essays_limit + $this->essay_credits) : 0;
+    }
+
+    // ... (unchanged code) ...
+
+    protected function resetUsageIfNeeded(): void
+    {
+        if (!$this->usage_reset_at || $this->usage_reset_at->isPast()) {
+            $this->update([
+                'simulations_used_this_month' => 0,
+                'essays_used_this_month' => 0,
+                'essay_credits' => 0, // Reset credits on cycle turn
+                'usage_reset_at' => now()->addMonth(),
+            ]);
+        }
+    }
 
     /**
      * The attributes that should be hidden for serialization.
@@ -136,42 +199,6 @@ class User extends Authenticatable
         return $this->simulations_used_this_month < $this->plan->simulations_limit;
     }
 
-    public function canCreateEssay(): bool
-    {
-        if (!$this->plan) {
-            return false;
-        }
-
-        // Free plan: 0 essays
-        if ($this->plan->essays_limit === 0) {
-            return false;
-        }
-
-        // Unlimited check
-        if ($this->plan->isUnlimited('essays')) {
-            return true;
-        }
-
-        // Strict Count: essays where submitted_at is in current month/year
-        $usage = $this->essays()
-            ->whereNotNull('submitted_at')
-            ->whereYear('submitted_at', now()->year)
-            ->whereMonth('submitted_at', now()->month)
-            ->count();
-
-        return $usage < $this->plan->essays_limit;
-    }
-
-    public function hasEssayAccess(): bool
-    {
-        return $this->plan && $this->plan->essays_limit !== 0;
-    }
-
-    public function monthlyEssayLimit(): int
-    {
-        return $this->plan ? $this->plan->essays_limit : 0;
-    }
-
     public function monthlyEssayUsed(): int
     {
         return $this->essays()
@@ -193,17 +220,6 @@ class User extends Authenticatable
         // No-op for new logic, or keep updating for legacy stats
         $this->resetUsageIfNeeded();
         $this->increment('essays_used_this_month');
-    }
-
-    protected function resetUsageIfNeeded(): void
-    {
-        if (!$this->usage_reset_at || $this->usage_reset_at->isPast()) {
-            $this->update([
-                'simulations_used_this_month' => 0,
-                'essays_used_this_month' => 0,
-                'usage_reset_at' => now()->addMonth(),
-            ]);
-        }
     }
 
     public function hasAiQuota(): bool

@@ -21,8 +21,8 @@ class AsaasService
         $this->apiKey = Configuration::get('asaas_api_key');
         // Define a URL base dependendo do modo Sandbox ou Produção
         $isSandbox = Configuration::get('asaas_sandbox', false);
-        $this->baseUrl = $isSandbox 
-            ? 'https://sandbox.asaas.com/api/v3' 
+        $this->baseUrl = $isSandbox
+            ? 'https://sandbox.asaas.com/api/v3'
             : 'https://www.asaas.com/api/v3';
     }
 
@@ -41,7 +41,7 @@ class AsaasService
                 'email' => $user->email,
                 'limit' => 1
             ]);
-            
+
         if ($response->successful()) {
             $data = $response->json();
             if (!empty($data['data'])) {
@@ -88,7 +88,7 @@ class AsaasService
             'nextDueDate' => now()->format('Y-m-d'), // Cobrança imediata
             'cycle' => $plan->interval === 'yearly' ? 'YEARLY' : 'MONTHLY',
             'description' => "Assinatura Plano {$plan->name}",
-            'externalReference' => $plan->id, 
+            'externalReference' => $plan->id,
         ];
 
         // Aplica cupom de desconto se houver
@@ -130,7 +130,61 @@ class AsaasService
 
         return $response->json();
     }
-    
+
+    /**
+     * Cria uma cobrança avulsa (não recorrente) no Asaas.
+     * Utilizado para recargas de redações.
+     *
+     * @param User $user Usuário pagante
+     * @param float $value Valor da cobrança
+     * @param string $description Descrição da cobrança
+     * @param string $paymentMethod 'credit_card' ou 'pix'
+     * @param array $cardData Dados do cartão (obrigatório se credit_card)
+     * @return array Dados do pagamento criado
+     * @throws \Exception Se houver erro no processamento
+     */
+    public function createOneTimePayment(User $user, float $value, string $description, string $paymentMethod, array $cardData = []): array
+    {
+        $customerId = $this->getOrCreateCustomer($user);
+
+        $data = [
+            'customer' => $customerId,
+            'billingType' => $paymentMethod === 'credit_card' ? 'CREDIT_CARD' : 'PIX',
+            'value' => $value,
+            'dueDate' => now()->format('Y-m-d'),
+            'description' => $description,
+        ];
+
+        if ($paymentMethod === 'credit_card') {
+            $data['creditCard'] = [
+                'holderName' => $cardData['holder_name'],
+                'number' => $cardData['number'],
+                'expiryMonth' => $cardData['expiry_month'],
+                'expiryYear' => $cardData['expiry_year'],
+                'ccv' => $cardData['ccv'],
+            ];
+            $data['creditCardHolderInfo'] = [
+                'name' => $user->name,
+                'email' => $user->email,
+                'cpfCnpj' => $cardData['cpf'],
+                'postalCode' => '00000000',
+                'addressNumber' => '0',
+                'phone' => '0000000000',
+            ];
+        }
+
+        $response = Http::withHeader('access_token', $this->apiKey)
+            ->post("{$this->baseUrl}/payments", $data);
+
+        if ($response->failed()) {
+            Log::error('Erro ao criar pagamento avulso Asaas', ['response' => $response->body()]);
+            $errorMsg = $response->json()['errors'][0]['description'] ?? 'Erro no processamento do pagamento.';
+            throw new \Exception($errorMsg);
+        }
+
+        return $response->json();
+    }
+
     /**
      * Busca a primeira cobrança pendente de uma assinatura.
      * Útil para obter o ID do pagamento gerado e consequentemente o Pix.

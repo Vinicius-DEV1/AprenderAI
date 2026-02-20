@@ -55,6 +55,9 @@ Route::middleware(['auth'])->group(function () {
         }
     );
 
+    // Recarga de Redações (definido antes do grupo essays para evitar conflito com /{essay})
+    Route::match(['get', 'post'], '/essays/recharge', [\App\Http\Controllers\EssayRechargeController::class, 'store'])->name('recharge');
+
     // Redações
     Route::prefix('essays')->name('essays.')->group(
         function () {
@@ -70,15 +73,18 @@ Route::middleware(['auth'])->group(function () {
 
             // Deprecated/Legacy (keep if needed or remove? Plan implies replacing logic but keeping names if referenced. 
             // User asked for specific routes. I will keep existing generate-topic redirected or just use new ones.)
-            // Route::post('/{essay}/topic', [EssayController::class, 'generateTopic'])->name('generate-topic'); 
+            // Route::post('/{essay}/topic', [EssayController::class, 'generateTopic'])->name('generate-topic');
     
             Route::get('/{essay}/write', [EssayController::class, 'write'])->name('write');
 
             Route::post('/{essay}/submit', [EssayController::class, 'submit'])->name('submit');
             Route::post('/{essay}/retry-evaluation', [EssayController::class, 'retryEvaluation'])->name('retry-evaluation');
+
             Route::get('/{essay}', [EssayController::class, 'show'])->name('show');
         }
     );
+
+
 
     // Plano de Estudos
     Route::prefix('study-plan')->name('study-plan.')->group(
