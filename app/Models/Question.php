@@ -25,10 +25,13 @@ class Question extends Model
         'role',
         'external_id',
         'difficulty_reasoning',
+        'alternatives',
+        'correct_answer',
     ];
 
     protected $casts = [
         'format' => 'string',
+        'alternatives' => 'array',
     ];
 
     public function alternatives()
@@ -83,16 +86,18 @@ class Question extends Model
     public function scopeIncomplete($query)
     {
         return $query->where(function ($q) {
-            $q->where(function ($sub) {
+            $q->where(
+                function ($sub) {
                     $sub->whereNull('difficulty_reasoning')
                         ->orWhereRaw("TRIM(difficulty_reasoning) = ''");
                 }
-                )->orWhere(function ($sub) {
-                    $sub->whereNull('explanation')
-                        ->orWhereRaw("TRIM(explanation) = ''");
-                }
+            )->orWhere(
+                    function ($sub) {
+                        $sub->whereNull('explanation')
+                            ->orWhereRaw("TRIM(explanation) = ''");
+                    }
                 );
-            });
+        });
     }
 
     /**
