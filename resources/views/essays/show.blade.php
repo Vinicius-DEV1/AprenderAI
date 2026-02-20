@@ -18,6 +18,15 @@
                 {{ $statusMessage }}
             </div>
 
+            @if($essay->simulation_id)
+                <div class="mb-4 text-center">
+                    <a href="{{ route('simulations.show', $essay->simulation_id) }}"
+                        class="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800">
+                        &larr; Voltar para a prova
+                    </a>
+                </div>
+            @endif
+
             @if($essay->status === 'error')
                 <div class="mb-6 flex justify-center">
                     <form action="{{ route('essays.retry-evaluation', $essay) }}" method="POST">

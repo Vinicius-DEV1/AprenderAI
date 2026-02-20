@@ -28,17 +28,17 @@
         }
 
         /*
-        |------------------------------------------------------------------
-        | Dark Mode — Paleta "Deep Blue"
-        |------------------------------------------------------------------
-        |
-        | Sobrescreve as variáveis de cor quando a classe .dark está na <html>.
-        | Usa tons de azul profundo (slate-950, slate-900) para fundos e
-        | tons claros (slate-200, slate-400) para texto e muteds.
-        |
-        | Os gradientes de background (wrap::before, wrap::after) também
-        | são ajustados para manter a profundidade visual sem claridade.
-        */
+                |------------------------------------------------------------------
+                | Dark Mode — Paleta "Deep Blue"
+                |------------------------------------------------------------------
+                |
+                | Sobrescreve as variáveis de cor quando a classe .dark está na <html>.
+                | Usa tons de azul profundo (slate-950, slate-900) para fundos e
+                | tons claros (slate-200, slate-400) para texto e muteds.
+                |
+                | Os gradientes de background (wrap::before, wrap::after) também
+                | são ajustados para manter a profundidade visual sem claridade.
+                */
         :root.dark {
             --text: #e2e8f0;
             --muted: #94a3b8;
@@ -585,11 +585,11 @@
                             <div class="info">
                                 <h4>{{ ucfirst($simulation->type) }} - {{ $simulation->configuration['questions'] ?? 'N/A' }}
                                     questões</h4>
-                                <p>{{ $simulation->created_at->format('d/m/Y H:i') }}</p>
+                                <p>{{ $simulation->formatted_date }}</p>
                             </div>
 
                             @if(in_array($simulation->status, ['finished', 'corrected']))
-                                <div class="score">{{ number_format((float) $simulation->score, 1) }}%</div>
+                                <div class="score">{{ number_format((float) $simulation->calculated_score, 1) }}%</div>
                             @else
                                 <span class="pending">Pendente</span>
                             @endif
@@ -610,18 +610,28 @@
 
     <script>
         // ===== Data =====
-        const recent = @json(
-            $recentSimulations->map(fn($s) => [
-                'label' => $s->created_at->format('d/m'),
-                'score' => is_numeric($s->score) ? (float) $s->score : null,
-            ])->values()
-        );
+        // Recent Simulations (Progresso)
+        const recent = @json($recentSimulations);
 
-        const labels = recent.map(x => x.label);
-        const lineData = recent.map(x => (x.score === null ? null : Number(x.score)));
+        // Reverse array for chronological order in chart (oldest to newest)
+        const reversedRecent = [...recent].reverse();
 
-        const math = Number(@json((float) $stats->average_math_score));
-        const pt = Number(@json((float) $stats->average_portuguese_score));
+        const labels = reversedRecent.map(x => x.formatted_date);
+        const lineData = reversedRecent.map(x => Number(x.calculated_score));
+
+        // Subject Performance (Desempenho)
+        const subjectPerf = @json($subjectPerformance);
+
+        const subjectLabels = subjectPerf.map(x => x.name);
+        // Ensure values are numbers
+        const subjectData = subjectPerf.map(x => Number(x.percentage));
+
+        // Colors generator for subjects
+        const backgroundColors = [
+            '#2563eb', '#7c3aed', '#db2777', '#ea580c', '#16a34a', '#0891b2', '#4f46e5'
+        ];
+
+        const subjectColors = subjectLabels.map((_, i) => backgroundColors[i % backgroundColors.length]);
 
         const commonFont = {
             family: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial',
@@ -640,98 +650,117 @@
             if (existing) existing.destroy();
         };
 
-        // ===== Line chart =====
-        if (document.getElementById('progressChart') && labels.length > 0) {
+        // ===== Line chart (Progresso) =====
+        if (document.getElementById('progressChart')) {
             safeDestroy('progressChart');
-            new Chart(document.getElementById('progressChart'), {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [{
-                        data: lineData,
-                        borderColor: '#2563eb',
-                        backgroundColor: 'rgba(37,99,235,.14)',
-                        fill: true,
-                        tension: 0.35,
-                        pointRadius: 3,
-                        pointHoverRadius: 5,
-                        borderWidth: 3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: 'rgba(15,23,42,.92)',
-                            titleColor: '#fff',
-                            bodyColor: '#e5e7eb',
-                            padding: 10,
-                            displayColors: false,
-                            callbacks: {
-                                label: (ctx) => `Score: ${Number(ctx.raw).toFixed(1)}%`
+
+            if (labels.length > 0) {
+                new Chart(document.getElementById('progressChart'), {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            data: lineData,
+                            borderColor: '#2563eb',
+                            backgroundColor: 'rgba(37,99,235,.14)',
+                            fill: true,
+                            tension: 0.35,
+                            pointRadius: 3,
+                            pointHoverRadius: 5,
+                            borderWidth: 3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(15,23,42,.92)',
+                                titleColor: '#fff',
+                                bodyColor: '#e5e7eb',
+                                padding: 10,
+                                displayColors: false,
+                                callbacks: {
+                                    label: (ctx) => `Acertos: ${Number(ctx.raw).toFixed(1)}%`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: gridColor },
+                                ticks: { color: tickColor, font: commonFont }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                suggestedMax: 100,
+                                grid: { color: gridColor },
+                                ticks: { color: tickColor, font: commonFont, callback: v => v + '%' }
                             }
                         }
-                    },
-                    scales: {
-                        x: {
-                            grid: { color: gridColor },
-                            ticks: { color: tickColor, font: commonFont }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            suggestedMax: 100,
-                            grid: { color: gridColor },
-                            ticks: { color: tickColor, font: commonFont, callback: v => v + '%' }
-                        }
                     }
-                }
-            });
+                });
+            } else {
+                // Fallback text if no data
+                const ctx = document.getElementById('progressChart').getContext('2d');
+                ctx.font = "14px Inter";
+                ctx.fillStyle = isDark ? "#94a3b8" : "#64748b";
+                ctx.textAlign = "center";
+                ctx.fillText("Ainda não há dados suficientes.", ctx.canvas.width / 2, ctx.canvas.height / 2);
+            }
         }
 
-        // ===== Doughnut chart =====
+        // ===== Doughnut chart (Desempenho) =====
         if (document.getElementById('subjectChart')) {
             safeDestroy('subjectChart');
-            new Chart(document.getElementById('subjectChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Matemática', 'Português'],
-                    datasets: [{
-                        data: [isFinite(math) ? math : 0, isFinite(pt) ? pt : 0],
-                        backgroundColor: ['#2563eb', '#7c3aed'],
-                        borderWidth: 0,
-                        hoverOffset: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '72%',
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                color: legendColor,
-                                font: commonFont,
-                                boxWidth: 10,
-                                boxHeight: 10
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(15,23,42,.92)',
-                            titleColor: '#fff',
-                            bodyColor: '#e5e7eb',
-                            padding: 10,
-                            callbacks: {
-                                label: (ctx) => `${ctx.label}: ${Number(ctx.raw).toFixed(1)}%`
+
+            if (subjectLabels.length > 0) {
+                new Chart(document.getElementById('subjectChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: subjectLabels,
+                        datasets: [{
+                            data: subjectData,
+                            backgroundColor: subjectColors,
+                            borderWidth: 0,
+                            hoverOffset: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '72%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: legendColor,
+                                    font: commonFont,
+                                    boxWidth: 10,
+                                    boxHeight: 10
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(15,23,42,.92)',
+                                titleColor: '#fff',
+                                bodyColor: '#e5e7eb',
+                                padding: 10,
+                                callbacks: {
+                                    label: (ctx) => `${ctx.label}: ${Number(ctx.raw).toFixed(1)}%`
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
+            } else {
+                // Fallback text
+                const ctx = document.getElementById('subjectChart').getContext('2d');
+                ctx.font = "14px Inter";
+                ctx.fillStyle = isDark ? "#94a3b8" : "#64748b";
+                ctx.textAlign = "center";
+                ctx.fillText("Sem dados de matérias.", ctx.canvas.width / 2, ctx.canvas.height / 2);
+            }
         }
-
 
     </script>
 @endsection

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Essay;
+use App\Models\Simulation;
 use App\Services\AIService;
 use App\Services\PlanService;
 use Illuminate\Http\Request;
@@ -217,6 +218,55 @@ class EssayController extends Controller
         \App\Jobs\EvaluateEssayJob::dispatch($essay);
 
         return back()->with('success', 'Correção enviada novamente.');
+    }
+
+    public function storeForSimulation(Request $request, Simulation $simulation)
+    {
+        // Authorization: user must own the simulation
+        $this->authorize('view', $simulation);
+
+        $user = $request->user();
+
+        // Guard: only paid plans can use essay in simulation
+        if (!$user->hasEssayAccess()) {
+            abort(403, 'Recurso disponível apenas para os planos Básico e Plus.');
+        }
+
+        // If an essay already linked to this simulation exists, redirect to the right step
+        $existing = Essay::where('simulation_id', $simulation->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($existing) {
+            if (is_null($existing->topic_description) || trim($existing->topic_description) === '') {
+                return redirect()->route('essays.topic', $existing);
+            }
+            if (is_null($existing->submitted_at)) {
+                return redirect()->route('essays.write', $existing);
+            }
+            return redirect()->route('essays.show', $existing);
+        }
+
+        // Check monthly essay limit
+        if (!$user->canCreateEssay()) {
+            return redirect()->route('simulations.show', $simulation)
+                ->with('error', 'Limite mensal de redações atingido. Faça upgrade para continuar.');
+        }
+
+        // Create new essay linked to this simulation
+        $essay = Essay::create([
+            'user_id' => $user->id,
+            'simulation_id' => $simulation->id,
+            'type' => $simulation->type === 'enem' ? 'enem' : 'concurso',
+            'time_limit' => 60,
+            'title' => 'Gerando tema...',
+            'content' => '',
+            'status' => 'in_progress',
+            'topic_regen_count' => 0,
+            'started_at' => now(),
+        ]);
+
+        return redirect()->route('essays.topic', $essay);
     }
 }
 

@@ -319,7 +319,8 @@
 
                     <button @click="toggleChat()"
                         class="text-xs text-indigo-600 font-medium hover:text-indigo-800 flex items-center gap-1.5 transition-colors">
-                        <span x-text="showChat ? 'Ocultar Chat' : '💬 Tirar Dúvida com Xavier'">💬 Tirar Dúvida com Xavier</span>
+                        <span x-text="showChat ? 'Ocultar Chat' : '💬 Tirar Dúvida com Xavier'">💬 Tirar Dúvida com
+                            Xavier</span>
                     </button>
 
                     <div x-show="showChat" x-transition.opacity.duration.300ms x-cloak
@@ -411,6 +412,11 @@
         <a href="{{ route('dashboard') }}" class="btn-back">Voltar ao Dashboard</a>
         <a href="{{ route('simulations.create') }}" class="btn-back" style="background: #10b981; margin-left: 12px;">Nova
             Prova</a>
+        @if(($simulation->configuration['include_essay'] ?? false) && auth()->user()->hasEssayAccess() && isset($linkedEssay) && $linkedEssay)
+            <a href="{{ route('essays.show', $linkedEssay) }}" class="btn-back" style="background: #7c3aed; margin-left: 12px;">
+                📝 Redação e nota
+            </a>
+        @endif
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
