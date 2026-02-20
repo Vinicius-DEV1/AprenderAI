@@ -77,8 +77,17 @@
                                         <x-input-label for="alt_{{ $letter }}" value="Alternativa {{ $letter }}" />
                                         <div class="flex items-center gap-2">
                                             <input type="radio" name="correct_answer" value="{{ $letter }}" {{ old('correct_answer', $question->correct_answer ?? '') == $letter ? 'checked' : '' }} class="text-indigo-600 focus:ring-indigo-500">
+                                            @php
+                                                // alternatives() retorna Eloquent Collection; busca pelo label (A/B/C/D/E)
+                                                $altContent = old(
+                                                    'alternatives.' . $letter,
+                                                    isset($question)
+                                                        ? ($question->alternatives->firstWhere('label', $letter)?->content ?? '')
+                                                        : ''
+                                                );
+                                            @endphp
                                             <input type="text" id="alt_{{ $letter }}" name="alternatives[{{ $letter }}]" 
-                                                   value="{{ old('alternatives.'.$letter, $question->alternatives[$letter] ?? '') }}" 
+                                                   value="{{ $altContent }}" 
                                                    class="block w-full border-gray-300 rounded-md shadow-sm" required>
                                         </div>
                                     </div>
