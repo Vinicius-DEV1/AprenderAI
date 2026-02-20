@@ -9,6 +9,7 @@ services:
     working_dir: /var/www
     volumes:
       - .:/var/www
+    env_file: .env
     networks:
       - production-network
 
@@ -39,7 +40,6 @@ services:
       - production-db-data:/var/lib/mysql
     networks:
       - production-network
-    # DB is NOT exposed to the public internet
 
 networks:
   production-network:
