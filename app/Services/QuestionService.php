@@ -56,6 +56,10 @@ class QuestionService
     public function search(Request $request, ?int $userId = null): LengthAwarePaginator
     {
         $query = Question::with('subjects')
+            // ── Filtro de Publicação (Módulo de Importação) ──
+            // Exclui questões importadas que ainda estão pendentes de revisão (review_status = 'pending').
+            // Questões manuais (sem review_status) são SEMPRE visíveis — backward compatible.
+            ->published()
 
             // ── Busca por palavra-chave no enunciado ──
             // Usa LIKE para encontrar trechos no texto da questão.
@@ -200,17 +204,14 @@ class QuestionService
         // Verifica se a resposta está correta comparando com o gabarito
         $isCorrect = $question->isCorrect($selectedAnswer);
 
-        // Grava ou atualiza a resposta do aluno
-        // updateOrCreate: se já existe registro para [user_id + question_id],
-        // atualiza; caso contrário, cria um novo.
-        UserQuestionAnswer::updateOrCreate(
-        ['user_id' => $userId, 'question_id' => $question->id],
-        [
+        // Grava cada tentativa como um novo registro (histórico completo)
+        UserQuestionAnswer::create([
+            'user_id' => $userId,
+            'question_id' => $question->id,
             'selected_answer' => strtoupper($selectedAnswer),
             'is_correct' => $isCorrect,
             'answered_at' => now(),
-        ]
-        );
+        ]);
 
         // Retorna os dados para exibição de feedback na interface
         return [
