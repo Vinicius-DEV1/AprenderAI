@@ -6,43 +6,28 @@ use App\Models\ApiKey;
 use App\Models\Question;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Services\AI\ResponseSanitizer;
+use App\Services\AI\AITelemetryService;
 
 /**
  * AIService - Core service for AI interaction and management.
- * 
- * IMPORTANT: This file MUST be saved in UTF-8 WITHOUT BOM to prevent
- * "Namespace declaration statement has to be the very first statement" errors in PHP.
  */
 class AIService
 {
     protected $providers = ['openai', 'gemini', 'grok'];
-    protected $costCalculator;
     protected $promptService;
+    protected $responseSanitizer;
+    protected $telemetryService;
 
-    public function __construct(CostCalculatorService $costCalculator, PromptService $promptService)
+    public function __construct(
+        PromptService $promptService,
+        ResponseSanitizer $responseSanitizer,
+        AITelemetryService $telemetryService
+        )
     {
-        $this->costCalculator = $costCalculator;
         $this->promptService = $promptService;
-    }
-
-    /**
-     * Logs internal API health checks and provider status to the 'ApiLog' table.
-     * This feeds the "Logs de Eventos da API" section in the Admin Dashboard.
-     */
-    protected function log(string $provider, string $type, string $message, ?int $statusCode = null, ?array $payload = null, ?int $apiKeyId = null): void
-    {
-        try {
-            \App\Models\ApiLog::create([
-                'api_key_id' => $apiKeyId ?? \App\Models\ApiKey::getActiveKeyForProvider($provider)?->id,
-                'provider' => $provider,
-                'type' => $type,
-                'status_code' => $statusCode,
-                'message' => $message,
-                'payload' => $payload
-            ]);
-        } catch (\Exception $e) {
-            Log::error("Failed to write ApiLog: " . $e->getMessage());
-        }
+        $this->responseSanitizer = $responseSanitizer;
+        $this->telemetryService = $telemetryService;
     }
 
     /**
@@ -162,7 +147,7 @@ class AIService
             };
 
             $executionTime = microtime(true) - $startTime;
-            $this->logAiRequest($apiKey, $prompt, $result, $executionTime, $userId);
+            $this->telemetryService->logRequest($apiKey, $prompt, $result, $executionTime, $userId);
 
             return $result;
         } catch (\Exception $e) {
@@ -182,17 +167,16 @@ class AIService
             }
 
             // Persistence for Admin Dashboard (ApiLog)
-            $this->log($provider, 'error', $errorMessage, $statusCode, ['error_detail' => $e->getMessage()], $apiKey->id);
+            $this->telemetryService->log($provider, 'error', $errorMessage, $statusCode, ['error_detail' => $e->getMessage()], $apiKey->id);
 
             // Conditional logging for AI Request Log (Transaction log)
             if ($statusCode !== 429) {
-                $this->logAiRequest($apiKey, $prompt, ['content' => ['error' => $e->getMessage()], 'usage' => []], $executionTime, $userId);
+                $this->telemetryService->logRequest($apiKey, $prompt, ['content' => ['error' => $e->getMessage()], 'usage' => []], $executionTime, $userId);
             }
 
             throw $e;
         }
     }
-
     /**
      * Makes a request to OpenAI API.
      */
@@ -220,7 +204,7 @@ class AIService
         $usage = $data['usage'] ?? [];
         $content = $data['choices'][0]['message']['content'] ?? '';
 
-        $json = $this->sanitizeAIResponse($content);
+        $json = $this->responseSanitizer->sanitize($content);
         if (empty($json)) {
             $json = ['text' => $content];
         }
@@ -241,7 +225,7 @@ class AIService
     protected function callGemini(ApiKey $apiKey, string $prompt): array
     {
         $model = $apiKey->preferred_model;
-        $imageUrls = $this->extractImages($prompt);
+        $imageUrls = $this->responseSanitizer->extractImages($prompt);
         $parts = [['text' => $prompt]];
 
         foreach ($imageUrls as $url) {
@@ -298,7 +282,7 @@ class AIService
 
         $data = $response->json();
         $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
-        $json = $this->sanitizeAIResponse($text);
+        $json = $this->responseSanitizer->sanitize($text);
 
         if (empty($json)) {
             $json = ['text' => $text];
@@ -334,7 +318,6 @@ class AIService
             'data' => json_encode($questionsAndAnswers)
         ]);
     }
-
     public function generateEssayTopic(string $type): array
     {
         if (!$this->hasActiveKey()) {
@@ -469,7 +452,6 @@ class AIService
             'subject' => $subject
         ]);
     }
-
     /**
      * Interaction chat focusing on a specific exam question (Simulations context).
      */
@@ -575,101 +557,6 @@ class AIService
             if (isset($apiKey)) {
                 $apiKey->incrementUsage();
             }
-        }
-    }
-
-    /**
-     * Sanitizes AI response by stripping markdown and extracting valid JSON.
-     */
-    protected function sanitizeAIResponse(?string $text): array
-    {
-        if (!$text) return [];
-
-        $decoded = json_decode($text, true);
-        if (json_last_error() === JSON_ERROR_NONE) {
-            return $decoded;
-        }
-
-        $p1 = strpos($text, '{');
-        $p2 = strpos($text, '[');
-        $start = -1;
-
-        if ($p1 !== false && $p2 !== false) {
-            $start = min($p1, $p2);
-        } elseif ($p1 !== false) {
-            $start = $p1;
-        } elseif ($p2 !== false) {
-            $start = $p2;
-        }
-
-        $p3 = strrpos($text, '}');
-        $p4 = strrpos($text, ']');
-        $end = -1;
-
-        if ($p3 !== false && $p4 !== false) {
-            $end = max($p3, $p4);
-        } elseif ($p3 !== false) {
-            $end = $p3;
-        } elseif ($p4 !== false) {
-            $end = $p4;
-        }
-
-        if ($start !== -1 && $end !== -1 && $end > $start) {
-            $cleanText = substr($text, $start, $end - $start + 1);
-            $decoded = json_decode($cleanText, true);
-
-            if (json_last_error() === JSON_ERROR_NONE) {
-                return $decoded;
-            }
-        }
-
-        $cleanText = preg_replace('/^```[a-z]*\s*|\s*```$/i', '', trim($text));
-        $decoded = json_decode($cleanText, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            Log::error("AI JSON Parse Error: " . json_last_error_msg(), [
-                'raw_snippet' => substr($text, 0, 500)
-            ]);
-            return [];
-        }
-
-        return $decoded ?: [];
-    }
-
-    protected function extractImages(string $text): array
-    {
-        preg_match_all('/\!\[.*?\]\((.*?)\)/', $text, $matches);
-        return array_unique($matches[1] ?? []);
-    }
-
-    /**
-     * Persists AI transaction logs for SRE monitoring and cost management.
-     */
-    protected function logAiRequest(ApiKey $apiKey, string $prompt, array $result, float $executionTime, ?int $userId = null): void
-    {
-        try {
-            $inputTokens = $result['usage']['input_tokens'] ?? 0;
-            $outputTokens = $result['usage']['output_tokens'] ?? 0;
-            $model = $apiKey->preferred_model ?? 'padrão';
-
-            $estimatedCost = $this->costCalculator->calculateCost($model, $inputTokens, $outputTokens);
-
-            \App\Models\AiRequestLog::create([
-                'user_id' => $userId ?? (\Illuminate\Support\Facades\Auth::check() ? \Illuminate\Support\Facades\Auth::id() : null),
-                'api_key_id' => $apiKey->id,
-                'api_key_name' => $apiKey->provider . ' (' . $model . ')',
-                'provider' => $apiKey->provider,
-                'model' => $model,
-                'prompt_text' => substr($prompt, 0, 10000),
-                'response_text' => is_array($result['content']) ? json_encode($result['content']) : (string) $result['content'],
-                'tokens_used_input' => $inputTokens,
-                'tokens_used_output' => $outputTokens,
-                'tokens_used_total' => $inputTokens + $outputTokens,
-                'execution_time' => round($executionTime, 3),
-                'estimated_cost' => $estimatedCost,
-            ]);
-        } catch (\Exception $e) {
-            Log::error("Failed to log AI Request: " . $e->getMessage());
         }
     }
 
