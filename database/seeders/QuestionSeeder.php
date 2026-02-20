@@ -13,6 +13,10 @@ class QuestionSeeder extends Seeder
 
     public function run(): void
     {
+        if (!class_exists('Faker\Factory')) {
+            return;
+        }
+
         $this->faker = Faker::create('pt_BR');
 
         // Clean previous generated questions
