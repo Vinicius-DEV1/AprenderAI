@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\StudyPlan;
-use App\Services\StudyPlanService;
+use App\Services\Study\StudyPlanGenerator;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -16,18 +16,12 @@ class GenerateStudyPlanJob implements ShouldQueue
 
     protected $studyPlanId;
 
-    /**
-     * Create a new job instance.
-     */
     public function __construct(int $studyPlanId)
     {
         $this->studyPlanId = $studyPlanId;
     }
 
-    /**
-     * Execute the job.
-     */
-    public function handle(StudyPlanService $service): void
+    public function handle(StudyPlanGenerator $generator): void
     {
         $plan = StudyPlan::find($this->studyPlanId);
 
@@ -39,17 +33,16 @@ class GenerateStudyPlanJob implements ShouldQueue
         try {
             $plan->update([
                 'started_at' => now(),
-                // Status remains processing or we can exist explicit 'generating'
             ]);
 
-            $service->generateContent($plan);
+            $generator->generateContent($plan);
 
         } catch (\Throwable $e) {
             Log::error("Failed to generate study plan {$this->studyPlanId}: " . $e->getMessage());
 
             $plan->update([
                 'status' => 'failed',
-                'error_message' => 'Erro interno ao gerar plano. Tente novamente.', // User friendly message
+                'error_message' => 'Erro interno ao gerar plano. Tente novamente.',
                 'finished_at' => now(),
             ]);
         }

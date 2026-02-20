@@ -3,18 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Models\StudyPlan;
-use App\Services\StudyPlanService;
+use App\Services\Study\StudyDashboardService;
+use App\Services\Study\StudyPlanGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 
 class StudyPlanController extends Controller
 {
-    protected $studyPlanService;
+    protected $dashboardService;
+    protected $generator;
 
-    public function __construct(StudyPlanService $studyPlanService)
-    {
-        $this->studyPlanService = $studyPlanService;
+    public function __construct(
+        StudyDashboardService $dashboardService,
+        StudyPlanGenerator $generator
+    ) {
+        $this->dashboardService = $dashboardService;
+        $this->generator = $generator;
     }
 
     public function index()
@@ -38,7 +43,7 @@ class StudyPlanController extends Controller
         }
 
         // 4. Build all dashboard data via service
-        $data = $this->studyPlanService->buildDashboardData($user, $plan);
+        $data = $this->dashboardService->buildDashboardData($user, $plan);
 
         return view('study_plans.dashboard', $data);
     }
@@ -56,7 +61,7 @@ class StudyPlanController extends Controller
 
         try {
             // 1. Create Placeholder
-            $plan = $this->studyPlanService->createPlaceholder($user, $validated);
+            $plan = $this->generator->createPlaceholder($user, $validated);
 
             // 2. Dispatch Job
             \App\Jobs\GenerateStudyPlanJob::dispatch($plan->id);
@@ -114,7 +119,7 @@ class StudyPlanController extends Controller
         $user = Auth::user();
 
         // Enforce 14-day rule
-        if (!$this->studyPlanService->canUpdate($user)) {
+        if (!$this->generator->canUpdate($user)) {
             $plan = $user->studyPlans()->latest()->first();
             $nextDate = $plan?->next_update_at?->format('d/m/Y') ?? 'em breve';
             $message = "Seu plano só pode ser atualizado em {$nextDate}. O cronograma semanal permanece protegido até essa data.";
@@ -126,7 +131,7 @@ class StudyPlanController extends Controller
         }
 
         try {
-            $this->studyPlanService->update($user);
+            $this->generator->update($user);
 
             // Bust dashboard cache after update
             Cache::forget("study_plan_dashboard_{$user->id}");

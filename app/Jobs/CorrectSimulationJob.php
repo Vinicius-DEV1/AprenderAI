@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Simulation;
 use App\Models\Correction;
 use App\Services\AIService;
+use App\Services\Study\StudyStatsService; // NEW IMPORT
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -33,10 +34,8 @@ class CorrectSimulationJob implements ShouldQueue
         Log::info("Iniciando correção da simulação #{$this->simulation->id} - Total de questões: {$totalQuestions}");
 
         // 1. Preparar Todas as Questões
-        $questionsToProcess = $this->simulation->answers;
-
-        $formattedQuestions = $questionsToProcess->map(function ($answer) {
-            return [
+        $questionsToProcess = $this->simulation->answers->map(function ($answer) {
+             return [
             'question_id' => $answer->question_id,
             'statement' => $answer->question->statement,
             'alternatives' => $answer->question->alternatives,
@@ -68,7 +67,7 @@ class CorrectSimulationJob implements ShouldQueue
         );
 
         // 3. Correção via AI com Batching
-        $batches = array_chunk($formattedQuestions, 5);
+        $batches = array_chunk($questionsToProcess, 5); // Use questionsToProcess directly
         $mergedExplanations = [];
         $totalInput = 0;
         $totalOutput = 0;
@@ -171,10 +170,10 @@ class CorrectSimulationJob implements ShouldQueue
 
         Log::info("Correção #{$this->simulation->id} finalizada com sucesso. Total Tokens: " . ($totalInput + $totalOutput));
 
-        // 5. Atualizar Estatísticas do Usuário para o Plano de Estudos (From Remote)
+        // 5. Atualizar Estatísticas do Usuário para o Plano de Estudos (REFACTORED)
         try {
-            $studyPlanService = app(\App\Services\StudyPlanService::class);
-            $studyPlanService->updateUserStats($user, $this->simulation);
+            $statsService = app(StudyStatsService::class);
+            $statsService->updateUserStats($user, $this->simulation);
             Log::info("Estatísticas do usuário {$user->id} atualizadas com sucesso.");
         }
         catch (\Exception $e) {
