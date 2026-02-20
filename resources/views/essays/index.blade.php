@@ -7,10 +7,10 @@
 | Dark mode: bg-white → dark:bg-slate-900, text-gray → dark:text-slate-,
 | divide-gray → dark:divide-slate-700, bg-gray-50 → dark:bg-slate-800
 --}}
-{{-- 
-    VIEW: Essays Index
-    DARK MODE: Cobertura total via dark: variants (Tailwind v4).
-    As cores foram migradas de bg-white para dark:bg-slate-900 para consistência com o tema Deep Blue.
+{{--
+VIEW: Essays Index
+DARK MODE: Cobertura total via dark: variants (Tailwind v4).
+As cores foram migradas de bg-white para dark:bg-slate-900 para consistência com o tema Deep Blue.
 --}}
 <x-app-layout>
     <x-slot name="header">
@@ -23,7 +23,8 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
             {{-- Limit Card --}}
-            <div class="mb-6 bg-white dark:bg-slate-900 overflow-hidden shadow-sm dark:shadow-none dark:border dark:border-slate-700 sm:rounded-lg">
+            <div
+                class="mb-6 bg-white dark:bg-slate-900 overflow-hidden shadow-sm dark:shadow-none dark:border dark:border-slate-700 sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-slate-200 flex justify-between items-center">
                     <div>
                         <h3 class="text-lg font-medium">Limite Mensal</h3>
@@ -38,22 +39,39 @@
                             Nova Redação
                         </a>
                     @else
-                        <button disabled
-                            class="opacity-50 cursor-not-allowed inline-flex items-center px-4 py-2 bg-gray-400 dark:bg-slate-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest">
-                            Limite Atingido / Plano Gratuito
-                        </button>
+                        @php
+                            $userPlan = Auth::user()->plan;
+                            $planName = $userPlan ? $userPlan->name : '';
+                            $isPlus = stripos($planName, 'Plus') !== false;
+                            $isBasic = stripos($planName, 'Básico') !== false || stripos($planName, 'Basico') !== false;
+                        @endphp
+
+                        @if($isPlus || $isBasic)
+                            <a href="{{ route('recharge') }}"
+                                class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-500 active:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 transition ease-in-out duration-150 mr-2">
+                                Recarregar (+{{ $isPlus ? 15 : 2 }}) - R$ {{ $isPlus ? '20,00' : '5,00' }}
+                            </a>
+                        @else
+                            <button disabled
+                                class="opacity-50 cursor-not-allowed inline-flex items-center px-4 py-2 bg-gray-400 dark:bg-slate-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest">
+                                Limite Atingido
+                            </button>
+                        @endif
                     @endif
                 </div>
                 @if(!$canCreate && $limit === 0)
                     <div class="px-6 pb-6">
-                        <p class="text-red-500 dark:text-red-400 text-sm">Faça upgrade para o plano Basic ou Plus para enviar redações!</p>
-                        <a href="{{ route('plans.index') }}" class="text-blue-500 dark:text-blue-400 hover:underline text-sm">Ver Planos</a>
+                        <p class="text-red-500 dark:text-red-400 text-sm">Faça upgrade para o plano Basic ou Plus para
+                            enviar redações!</p>
+                        <a href="{{ route('plans.index') }}"
+                            class="text-blue-500 dark:text-blue-400 hover:underline text-sm">Ver Planos</a>
                     </div>
                 @endif
             </div>
 
             {{-- List --}}
-            <div class="bg-white dark:bg-slate-900 overflow-hidden shadow-sm dark:shadow-none dark:border dark:border-slate-700 sm:rounded-lg">
+            <div
+                class="bg-white dark:bg-slate-900 overflow-hidden shadow-sm dark:shadow-none dark:border dark:border-slate-700 sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-slate-200">
                     @if($essays->isEmpty())
                         <div class="text-center py-10">
@@ -64,17 +82,23 @@
                             <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
                                 <thead class="bg-gray-50 dark:bg-slate-800">
                                     <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                                        <th
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                                             Data</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                                        <th
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                                             Tema</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                                        <th
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                                             Tipo</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                                        <th
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                                             Status</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                                        <th
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                                             Nota</th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                                        <th
+                                            class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                                             Ações</th>
                                     </tr>
                                 </thead>
@@ -115,7 +139,8 @@
                                                     {{ $statusLabel[$essay->status] ?? ucfirst($essay->status) }}
                                                 </span>
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-200 font-bold">
+                                            <td
+                                                class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-200 font-bold">
                                                 {{ $essay->score ?? '-' }}
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
