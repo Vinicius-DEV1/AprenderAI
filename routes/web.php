@@ -172,6 +172,43 @@ Route::middleware(['auth'])->group(function () {
             Route::post('questions/{question}/complete', [\App\Http\Controllers\Admin\QuestionController::class, 'completeQuestion'])->name('questions.complete');
             Route::post('questions/batch-complete', [\App\Http\Controllers\Admin\QuestionController::class, 'batchCompleteQuestions'])->name('questions.batch-complete');
 
+            // ----------------------------------------------------------------
+            // Módulo de Importação de Questões (scraper.py → .zip → produção)
+            // ----------------------------------------------------------------
+            Route::prefix('import')->name('import.')->group(function () {
+                // Tela principal de upload + histórico de lotes
+                Route::get('/', [\App\Http\Controllers\Admin\QuestionImportController::class, 'index'])
+                    ->name('index');
+
+                // Processa o .zip enviado (upload + extração + importação)
+                Route::post('/', [\App\Http\Controllers\Admin\QuestionImportController::class, 'store'])
+                    ->name('store');
+
+                // Painel de revisão: lista questões pendentes + histórico de aprovações
+                Route::get('/review', [\App\Http\Controllers\Admin\QuestionImportController::class, 'reviewIndex'])
+                    ->name('review.index');
+
+                // Inspeção visual individual + editor de crop (Cropper.js)
+                Route::get('/review/{question}', [\App\Http\Controllers\Admin\QuestionImportController::class, 'reviewShow'])
+                    ->name('review.show');
+
+                // Salva um recorte de imagem como alternativa (coordenadas do Cropper.js → GD → storage)
+                Route::post('/review/{question}/crop', [\App\Http\Controllers\Admin\QuestionImportController::class, 'crop'])
+                    ->name('review.crop');
+
+                // Remove a imagem principal de uma questão
+                Route::delete('/review/{question}/image', [\App\Http\Controllers\Admin\QuestionImportController::class, 'deleteImage'])
+                    ->name('review.delete-image');
+
+                // Aprova a questão (pending → approved, registra no log de auditoria)
+                Route::post('/review/{question}/approve', [\App\Http\Controllers\Admin\QuestionImportController::class, 'approve'])
+                    ->name('review.approve');
+
+                // Reverte a questão para revisão (approved → pending)
+                Route::post('/review/{question}/revert', [\App\Http\Controllers\Admin\QuestionImportController::class, 'revert'])
+                    ->name('review.revert');
+            });
+
             // Chat Logs
             Route::get('/chat-logs/{id}', [\App\Http\Controllers\Admin\ChatLogController::class, 'show'])->name('chat-logs.show');
 
