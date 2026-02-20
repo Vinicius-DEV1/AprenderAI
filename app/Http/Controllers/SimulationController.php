@@ -83,7 +83,7 @@ class SimulationController extends Controller
         catch (\Exception $e) {
             return back()
                 ->withInput()
-                ->withErrors(['error' => 'Erro ao iniciar simulado: ' . $e->getMessage()]);
+                ->with('error', 'Erro ao iniciar simulado: ' . $e->getMessage());
         }
     }
 
@@ -91,7 +91,7 @@ class SimulationController extends Controller
     {
         $this->authorize('view', $simulation);
 
-        $simulation->load(['answers.question']);
+        $simulation->load(['answers.question.subjects']);
 
         if ($simulation->isFinished()) {
             return redirect()->route('simulations.result', $simulation);
@@ -108,29 +108,32 @@ class SimulationController extends Controller
         $simulation->refresh();
         $simulation->load('correction');
 
-        // \Illuminate\Support\Facades\Log::info("Polling Simulation {$simulation->id}: Checking status.");
+        $answersCount = $simulation->answers()->count();
+        $simStatus = $simulation->status;
 
-        if (!$simulation->correction) {
-            return response()->json(['status' => 'pending']);
-        }
-
-        // Prepare explanations per question
+        // Default values
+        $status = 'pending';
         $explanations = [];
-        $answers = $simulation->answers;
 
-        foreach ($answers as $answer) {
-            $explanation = $simulation->correction->getExplanationForQuestion($answer->question_id);
-            if ($explanation) {
-                $explanations[$answer->question_id] = $explanation;
+        if ($simulation->correction) {
+            // Determine status based on corrected_at
+            $status = $simulation->correction->corrected_at ? 'completed' : 'pending';
+
+            // Prepare explanations per question
+            $answers = $simulation->answers;
+            foreach ($answers as $answer) {
+                // If correction exists, try to get explanation
+                $explanation = $simulation->correction->getExplanationForQuestion($answer->question_id);
+                if ($explanation) {
+                    $explanations[$answer->question_id] = $explanation;
+                }
             }
         }
 
-        // Determine status based on corrected_at or presence of explanations
-        $status = $simulation->correction->corrected_at ? 'completed' : 'pending';
-
         return response()->json([
-            'status' => $status,
-            'simulation_status' => $simulation->status, // NEW: For generation polling
+            'status' => $status, // Correction status
+            'simulation_status' => $simStatus, // Simulation Lifecycle Status
+            'answers_count' => $answersCount,
             'data' => $explanations
         ]);
     }
@@ -191,7 +194,7 @@ class SimulationController extends Controller
     {
         $this->authorize('view', $simulation);
 
-        $simulation->load(['answers.question', 'user.plan', 'correction']);
+        $simulation->load(['answers.question.subjects', 'user.plan', 'correction']);
 
         $totalQuestions = $simulation->answers()->count();
         $correctAnswers = $simulation->answers()->where('is_correct', true)->count();

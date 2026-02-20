@@ -8,6 +8,7 @@ class StoreSimulationRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        // dd('Auth Request');
         return true;
     }
 
