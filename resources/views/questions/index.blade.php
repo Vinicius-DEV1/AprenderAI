@@ -100,6 +100,8 @@
     .qb-action-btn:hover { background: #f1f5f9; transform: translateY(-1px); }
     .qb-action-btn.primary { background: #6366f1; color: white; border-color: #6366f1; }
     .qb-action-btn.primary:hover { background: #4f46e5; }
+    .qb-action-btn.retry { color: #6366f1; border-color: #c7d2fe; background: #f5f3ff; }
+    .qb-action-btn.retry:hover { background: #eef2ff; border-color: #a5b4fc; }
     .qb-action-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
     .qb-feedback { margin-top: 14px; padding: 14px; border-radius: 10px; animation: fadeSlideIn 0.3s ease; }
     .qb-feedback.correct { background: #f0fdf4; border: 1px solid #bbf7d0; }
@@ -130,11 +132,16 @@
     :root.dark .qb-statement { color: #e2e8f0; border-bottom-color: rgba(255,255,255,0.08); }
     :root.dark .qb-alt { border-color: rgba(255,255,255,0.08); }
     :root.dark .qb-alt:hover { border-color: #6366f1; background: rgba(99,102,241,0.1); }
+    :root.dark .qb-alt.selected { border-color: #6366f1; background: rgba(99,102,241,0.15); }
+    :root.dark .qb-alt.correct-reveal { border-color: #10b981; background: rgba(16, 185, 129, 0.15); }
+    :root.dark .qb-alt.incorrect-reveal { border-color: #ef4444; background: rgba(239, 68, 68, 0.15); }
     :root.dark .qb-alt-text { color: #cbd5e1; }
     :root.dark .qb-alt-letter { background: #334155; color: #94a3b8; }
     :root.dark .qb-explanation { background: #0f172a; border-color: rgba(255,255,255,0.08); }
     :root.dark .qb-explanation-text { color: #94a3b8; }
     :root.dark .qb-action-btn { background: #334155; border-color: rgba(255,255,255,0.08); color: #cbd5e1; }
+    :root.dark .qb-action-btn.retry { background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.3); color: #818cf8; }
+    :root.dark .qb-action-btn.retry:hover { background: rgba(99, 102, 241, 0.2); border-color: rgba(99, 102, 241, 0.4); }
     :root.dark .qb-slideover { background: #1e293b; }
     :root.dark .qb-overview-card { background: #0f172a; border-color: rgba(255,255,255,0.08); }
     :root.dark .qb-overview-card .lbl { color: #94a3b8; }
@@ -146,6 +153,10 @@
     :root.dark .qb-difficulty-box { background: rgba(254,243,199,0.08); border-color: rgba(253,230,138,0.2); }
     :root.dark .qb-difficulty-box h5 { color: #fcd34d; }
     :root.dark .qb-difficulty-box p { color: #fde68a; }
+    :root.dark .qb-feedback.correct { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); }
+    :root.dark .qb-feedback.incorrect { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); }
+    :root.dark .qb-feedback.correct .qb-feedback-title { color: #34d399; }
+    :root.dark .qb-feedback.incorrect .qb-feedback-title { color: #f87171; }
     [x-cloak] { display: none !important; }
 </style>
 
@@ -318,24 +329,24 @@
                 };
             @endphp
             @if($dc)<span class="qb-badge {{ $dc['class'] }}">{{ $dc['label'] }}</span>@endif
-            <template x-if="alreadyAnswered">
-                <span class="qb-badge" :class="wasCorrect ? 'qb-badge-correct' : 'qb-badge-incorrect'" x-text="wasCorrect ? '✓ Acertou' : '✗ Errou'"></span>
+            <template x-if="alreadyAnswered && !answered">
+                <span class="qb-badge" :class="wasCorrect ? 'qb-badge-correct' : 'qb-badge-incorrect'" x-text="wasCorrect ? '✓ Já Resolvida' : '✗ Já Resolvida'"></span>
             </template>
         </div>
 
         <div class="qb-statement">{!! nl2br(e($question->statement)) !!}</div>
 
-        @foreach($question->alternatives as $letter => $text)
+        @foreach($question->alternatives->sortBy('label') as $alt)
             <div class="qb-alt"
                  :class="{
-                    'selected': selectedAnswer === '{{ $letter }}' && !answered,
-                    'correct-reveal': answered && '{{ $letter }}' === correctAnswer,
-                    'incorrect-reveal': answered && selectedAnswer === '{{ $letter }}' && '{{ $letter }}' !== correctAnswer,
+                    'selected': selectedAnswer === '{{ $alt->label }}' && !answered,
+                    'correct-reveal': answered && '{{ $alt->label }}' === correctAnswer,
+                    'incorrect-reveal': answered && selectedAnswer === '{{ $alt->label }}' && '{{ $alt->label }}' !== correctAnswer,
                     'disabled': answered
                  }"
-                 @click="!answered ? selectAnswer('{{ $letter }}') : null">
-                <div class="qb-alt-letter">{{ $letter }}</div>
-                <div class="qb-alt-text">{{ $text }}</div>
+                 @click="!answered ? selectAnswer('{{ $alt->label }}') : null">
+                <div class="qb-alt-letter">{{ $alt->label }}</div>
+                <div class="qb-alt-text">{{ $alt->content }}</div>
             </div>
         @endforeach
 
@@ -348,6 +359,9 @@
                 <span x-text="showChat ? '▲ Ocultar Chat' : '💬 Tirar Dúvida'"></span>
             </button>
             <button class="qb-action-btn" x-show="answered" @click="toggleHistory()">📜 Meu Histórico</button>
+            <button class="qb-action-btn retry" x-show="answered" @click="resetCard()">
+                <span>🔄 Tentar Novamente</span>
+            </button>
         </div>
 
         <template x-if="answered">
@@ -478,7 +492,7 @@ function filterPanel(currentFilters) {
 
 function questionCard(questionId, alreadyAnswered, wasCorrect) {
     return {
-        questionId, alreadyAnswered, wasCorrect, selectedAnswer: null, answered: alreadyAnswered, isCorrect: wasCorrect,
+        questionId, alreadyAnswered, wasCorrect, selectedAnswer: null, answered: false, isCorrect: null,
         correctAnswer: null, explanation: null, difficultyReasoning: null, submitting: false,
         showChat: false, chatMessages: [], chatInput: '', chatTyping: false, chatLoaded: false,
         showHistory: false, historyData: [], historyLoading: false, historyLoaded: false,
@@ -493,6 +507,16 @@ function questionCard(questionId, alreadyAnswered, wasCorrect) {
                 this.explanation = data.explanation || ''; this.difficultyReasoning = data.difficulty_reasoning || '';
                 this.alreadyAnswered = true; this.wasCorrect = data.correct;
             } catch (e) { alert('Erro ao enviar resposta.'); } finally { this.submitting = false; }
+        },
+        resetCard() {
+            this.answered = false;
+            this.selectedAnswer = null;
+            this.isCorrect = null;
+            this.correctAnswer = null;
+            this.explanation = null;
+            this.difficultyReasoning = null;
+            this.showChat = false;
+            this.showHistory = false;
         },
         renderMd(text) { if (!text) return ''; try { return marked.parse(text); } catch (e) { return text; } },
         async toggleChat() { 
