@@ -26,7 +26,8 @@ class CorrectSimulationJob implements ShouldQueue
 
     public function handle(AIService $aiService): void
     {
-        $this->simulation->load(['answers.question', 'user.plan']);
+        // Eager load alternatives para evitar N+1 no loop de questões abaixo
+        $this->simulation->load(['answers.question.alternatives', 'user.plan']);
         $user = $this->simulation->user;
         $plan = $user->plan ? $user->plan->slug : 'free';
 
@@ -35,14 +36,19 @@ class CorrectSimulationJob implements ShouldQueue
 
         // 1. Preparar Todas as Questões
         $questionsToProcess = $this->simulation->answers->map(function ($answer) {
-             return [
-            'question_id' => $answer->question_id,
-            'statement' => $answer->question->statement,
-            'alternatives' => $answer->question->alternatives,
-            'user_answer' => $answer->user_answer,
-            'correct_answer' => $answer->question->correct_answer,
-            'origin' => $answer->question->origin,
-            'source' => $answer->question->source,
+            $question = $answer->question;
+            return [
+                'question_id'   => $answer->question_id,
+                'statement'     => $question->statement,
+                // alternativesAsMap(): ['A'=>'texto', 'B'=>'texto'...]
+                // Substituições da Collection Eloquent crua — formato correto para o prompt da IA
+                'alternatives'  => $question->alternativesAsMap(),
+                'user_answer'   => $answer->user_answer,
+                // correct_answer: resolvido pelo accessor virtual em Question.php
+                // que lê is_correct=true na tabela question_alternatives
+                'correct_answer' => $question->correct_answer,
+                'origin'        => $question->origin,
+                'source'        => $question->source,
             ];
         })->toArray();
 
