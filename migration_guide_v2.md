@@ -1,42 +1,29 @@
-# 🤖 Deploy Automatizado: Sail ➔ Produção
+# 🏁 Guia de Migração para Produção (V2 - Recomendado)
 
-Agora o processo está muito mais simples. Ao subir os containers, o sistema faz tudo sozinho.
+Este guia documenta a nova estrutura **Nginx + PHP-FPM (8.4.16)**, configurada para ser 100% automatizada e resiliente.
+
+### 🏗️ O que foi configurado:
+1.  **Imagens Otimizadas**: PHP 8.4.16 com as extensões necessárias (GD, Zip, Mysql, etc).
+2.  **Asset Build**: O Docker agora processa o `npm install` e `npm run build` durante a criação da imagem.
+3.  **Entrypoint Inteligente**: Ao subir, o container ajusta permissões, roda migrações e alimenta o banco (`db:seed`) automaticamente.
+4.  **Resiliência**: 
+    - A página inicial possui travas para não dar erro 500 se o banco estiver vazio.
+    - O `QuestionSeeder` ignora dependências de desenvolvimento (Faker) se elas não estiverem presentes.
 
 ---
 
-## 📂 1. Arquivos Necessários na Raiz
-Certifique-se de que estes 4 arquivos estão na pasta do projeto na VPS:
-1. `Dockerfile.prod`
-2. `docker-entrypoint.sh`
-3. `nginx.conf`
-4. `docker-compose.prod.yml`
+### 🔥 Comandos para a VPS
 
----
-
-## 🚀 2. Comandos de Deploy (O Único Passo)
-
-Na VPS, após clonar o projeto e configurar o seu `.env`, basta rodar:
-
+Para atualizar seu ambiente agora:
 ```bash
-docker-compose -f docker-compose.prod.yml up -d --build
+cd /var/www/laravel
+sudo git pull
+sudo docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
-### O que acontece automaticamente agora:
-1. **Build da Imagem**: O Docker instala o PHP 8.4.16, Node.js, roda `npm install` e `npm run build` (gerando os assets do Vite).
-2. **Ao Subir o Container (Entrypoint)**:
-   - Ajusta as permissões de `storage` e `cache`.
-   - Roda `php artisan migrate --force`.
-   - Roda `php artisan optimize`.
-   - Inicia o PHP-FPM.
+### 🛠️ Solução de Problemas
+- **Banco de Dados Limpo**: Se você quiser resetar e testar tudo do zero, rode `sudo docker-compose -f docker-compose.prod.yml down -v` antes do `up`.
+- **Logs de Automação**: Acompanhe o que o Laravel está fazendo ao subir com `sudo docker-compose -f docker-compose.prod.yml logs -f app`.
 
 ---
-
-## 🔒 3. Dicas de Manutenção
-Se você fizer alterações no código e quiser atualizar na VPS:
-```bash
-git pull
-docker-compose -f docker-compose.prod.yml up -d --build
-```
-
-> [!TIP]
-> O Nginx já está configurado para servir os arquivos estáticos gerados pelo Vite na pasta `public/build`.
+**Status**: Pronto para Produção 🚀

@@ -259,9 +259,9 @@
         $basicAnual = $plans->where('slug', 'basic-annual')->first();
         $plusAnual = $plans->where('slug', 'plus-annual')->first();
 
-        // Calcular economia anual (valor cheio - valor com desconto)
-        $basicSaving = ($basicPlan->price * 12) - $basicAnual->price; // 300 - 240 = 60
-        $plusSaving = ($plusPlan->price * 12) - $plusAnual->price;     // 600 - 480 = 120
+        // Calcular economia anual de forma segura para evitar erro 500
+        $basicSaving = ($basicPlan && $basicAnual) ? ($basicPlan->price * 12) - $basicAnual->price : 0;
+        $plusSaving = ($plusPlan && $plusAnual) ? ($plusPlan->price * 12) - $plusAnual->price : 0;
     @endphp
     
     <section class="py-20 bg-white" id="plans" x-data="{ 
