@@ -608,24 +608,20 @@
                     </div>
                     
                     <ul class="alternatives">
-                        @php
-                            $alternatives = is_array($answer->question->alternatives) 
-                                ? $answer->question->alternatives 
-                                : json_decode($answer->question->alternatives, true);
-                        @endphp
-                        
-                        @foreach($alternatives as $letter => $text)
+                        {{-- alternatives() agora retorna uma Collection de QuestionAlternative --}}
+                        {{-- Cada $alt tem: label (A/B/C...), content (texto), is_correct (bool) --}}
+                        @foreach($answer->question->alternatives->sortBy('label') as $alt)
                             <li class="alternative">
                                 <input 
                                     type="radio" 
                                     name="question_{{ $answer->question->id }}" 
-                                    id="q{{ $answer->question->id }}_{{ $letter }}"
-                                    value="{{$letter}}"
-                                    {{ $answer->user_answer === $letter ? 'checked' : '' }}
-                                    onchange="saveAnswer({{ $answer->question->id }}, '{{ $letter }}', {{ $index }})">
-                                <label for="q{{ $answer->question->id }}_{{ $letter }}">
-                                    <span class="alternative-letter">{{ $letter }})</span>
-                                    <span>{{ $text }}</span>
+                                    id="q{{ $answer->question->id }}_{{ $alt->label }}"
+                                    value="{{ $alt->label }}"
+                                    {{ $answer->user_answer === $alt->label ? 'checked' : '' }}
+                                    onchange="saveAnswer({{ $answer->question->id }}, '{{ $alt->label }}', {{ $index }})">
+                                <label for="q{{ $answer->question->id }}_{{ $alt->label }}">
+                                    <span class="alternative-letter">{{ $alt->label }})</span>
+                                    <span>{{ $alt->content }}</span>
                                 </label>
                             </li>
                         @endforeach
