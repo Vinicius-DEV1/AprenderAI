@@ -13,6 +13,9 @@ if [ -f .env ]; then
     echo "Rodando migrações..."
     php artisan migrate --force
     
+    echo "Alimentando banco de dados (Seeds)..."
+    php artisan db:seed --force
+    
     echo "Otimizando aplicação..."
     php artisan optimize
 fi
