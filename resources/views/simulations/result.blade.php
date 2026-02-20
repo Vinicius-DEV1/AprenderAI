@@ -180,6 +180,29 @@
             border-color: #e2e8f0;
             color: #1e293b;
         }
+
+        /* ── Dark Mode ── */
+        :root.dark body { background: #0f172a; color: #e2e8f0; }
+        :root.dark .stat-box { background: #1e293b; color: #f1f5f9; box-shadow: none; border: 1px solid rgba(255,255,255,0.08); }
+        :root.dark .stat-box h3 { color: #94a3b8; }
+        :root.dark .answers-section { background: #1e293b; color: #f1f5f9; box-shadow: none; border: 1px solid rgba(255,255,255,0.08); }
+        :root.dark .answers-section h2 { color: #f1f5f9; }
+        :root.dark .answer-item { border-color: rgba(255,255,255,0.08); }
+        :root.dark .answer-item.correct { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); }
+        :root.dark .answer-item.incorrect { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); }
+        :root.dark .question-num { color: #cbd5e1; }
+        :root.dark .question-statement { color: #e2e8f0; border-bottom-color: rgba(255,255,255,0.08); }
+        :root.dark .explanation { background: #0f172a; border-color: rgba(255,255,255,0.08); }
+        :root.dark .explanation-text { color: #94a3b8; }
+        :root.dark .chat-container { background: #0f172a; border-color: rgba(255,255,255,0.08); }
+        :root.dark .chat-input { background: #1e293b; border-color: rgba(255,255,255,0.1); color: #e2e8f0; }
+        :root.dark .bg-gray-50 { background-color: #0f172a !important; border-color: rgba(255,255,255,0.08) !important; }
+        :root.dark .bg-blue-50 { background-color: rgba(37, 99, 235, 0.15) !important; border-color: rgba(37, 99, 235, 0.3) !important; }
+        :root.dark .text-gray-800 { color: #cbd5e1 !important; }
+        :root.dark .text-gray-900 { color: #f1f5f9 !important; }
+        :root.dark .border-gray-100 { border-color: rgba(255,255,255,0.08) !important; }
+        :root.dark .border-gray-200 { border-color: rgba(255,255,255,0.1) !important; }
+        :root.dark .border-blue-200 { border-color: rgba(37, 99, 235, 0.3) !important; }
     </style>
 
     <div class="result-header">
@@ -274,15 +297,15 @@
 
                 <!-- Question Alternatives -->
                 <div class="space-y-2 mb-4">
-                    @foreach($answer->question->alternatives as $letter => $text)
+                    @foreach($answer->question->alternatives->sortBy('label') as $alt)
                         <div
-                            class="flex items-start gap-2 p-2 rounded-lg border {{ $answer->user_answer === $letter ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-100 alternative-box' }} {{ $answer->question->correct_answer === $letter ? 'ring-2 ring-green-500 ring-offset-1' : '' }}">
+                            class="flex items-start gap-2 p-2 rounded-lg border {{ $answer->user_answer === $alt->label ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-100 alternative-box' }} {{ $alt->is_correct ? 'ring-2 ring-green-500 ring-offset-1' : '' }}">
                             <span
-                                class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold {{ $answer->user_answer === $letter ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-slate-200' }}">
-                                {{ $letter }}
+                                class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold {{ $answer->user_answer === $alt->label ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-slate-200' }}">
+                                {{ $alt->label }}
                             </span>
-                            <span class="text-sm text-gray-800 alternative-text leading-snug">{{ $text }}</span>
-                            @if($answer->question->correct_answer === $letter)
+                            <span class="text-sm text-gray-800 alternative-text leading-snug">{{ $alt->content }}</span>
+                            @if($alt->is_correct)
                                 <svg class="w-4 h-4 text-green-600 ml-auto flex-shrink-0" fill="none" viewBox="0 0 24 24"
                                     stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
