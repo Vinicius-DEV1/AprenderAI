@@ -578,6 +578,18 @@
             <button type="button" class="btn btn-danger" style="width: 100%; margin-top: 20px;" onclick="finishSimulation()">
                 Finalizar Prova
             </button>
+            @php
+                $includeEssay = $simulation->configuration['include_essay'] ?? false;
+                $canUseEssay  = auth()->user()->hasEssayAccess();
+            @endphp
+            @if($includeEssay && $canUseEssay)
+                <form method="POST" action="{{ route('simulations.essay.store', $simulation) }}" style="margin-top: 10px;">
+                    @csrf
+                    <button type="submit" class="btn btn-primary" style="width: 100%; background: #7c3aed;">
+                        ✏️ Ir para Redação
+                    </button>
+                </form>
+            @endif
         </aside>
         
         <!-- Question Area -->
