@@ -147,7 +147,9 @@ class AIBatchService
                     ['slug' => \Illuminate\Support\Str::slug($data['subject']), 'type' => $question->type ?? 'enem']
                 );
                 $question->subjects()->sync([$subjectModel->id]);
-                
+                // AVISO CRÍTICO DE ARQUITETURA: 
+                // NUNCA passe 'subject_id' na criação do Topic.
+                // Subjects e Topics são entidades independentes vinculadas via Pivô (N:N).
                 if (!empty($data['topic'])) {
                     $topicModel = \App\Models\Topic::firstOrCreate(
                         ['name' => trim($data['topic'])],

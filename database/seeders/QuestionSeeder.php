@@ -27,7 +27,9 @@ class QuestionSeeder extends Seeder
             ['slug' => Str::slug('MATEMÁTICA'), 'type' => 'geral']
         );
 
-        // Garante a existência dos Assuntos nas respectivas matérias
+        // Garante a existência dos Assuntos (Topics)
+        // AVISO CRÍTICO: NUNCA passe 'subject_id' na criação do Topic abaixo.
+        // O relacionamento é N:N, mantido 100% pelas tabelas pivô na etapa final do Seeder.
         $portTopic = Topic::firstOrCreate(
             ['name' => trim(strtoupper('INTERPRETAÇÃO DE TEXTOS'))],
             ['slug' => Str::slug('INTERPRETAÇÃO DE TEXTOS')]

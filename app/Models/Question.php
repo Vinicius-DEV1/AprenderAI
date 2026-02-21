@@ -21,6 +21,7 @@ class Question extends Model
         'organization',
         'institution',
         'role',
+        'theme',
         'external_id',
         'review_status',
         'image_path',
