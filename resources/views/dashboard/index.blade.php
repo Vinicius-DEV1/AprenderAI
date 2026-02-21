@@ -555,7 +555,7 @@
 
         <div class="card">
             <div class="card-head">
-                <h3>Seu Plano <span class="badge">{{ $user->plan->name }}</span></h3>
+                <h3>Seu Plano <span class="badge">{{ $user->plan->name ?? 'Grátis' }}</span></h3>
             </div>
 
             <p style="margin:0; font-size:13px; font-weight:500; color:var(--muted); line-height:1.55;">

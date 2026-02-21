@@ -10,8 +10,17 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Crypt;
 use Laravel\Socialite\Facades\Socialite;
 
+use App\Services\PlanService;
+
 class GoogleAuthController extends Controller
 {
+    protected $planService;
+
+    public function __construct(PlanService $planService)
+    {
+        $this->planService = $planService;
+    }
+
     private function configureGoogle()
     {
         $clientId = Configuration::get('google_client_id');
@@ -84,6 +93,25 @@ class GoogleAuthController extends Controller
                 'password' => bcrypt(str()->random(16)), // Random password
                 'email_verified_at' => now(),
             ]);
+
+            // Assign free plan by default
+            try {
+                $freePlan = $this->planService->getFreePlan();
+                $this->planService->assignPlanToUser($user, $freePlan);
+            } catch (\Exception $e) {
+                // Log or handle if free plan is missing, but don't block login
+                logger()->error('Failed to assign free plan to new Google user: ' . $e->getMessage());
+            }
+        }
+
+        // 4. Ensure user has a plan (defensive fix for accounts created without one)
+        if (!$user->plan_id) {
+            try {
+                $freePlan = $this->planService->getFreePlan();
+                $this->planService->assignPlanToUser($user, $freePlan);
+            } catch (\Exception $e) {
+                logger()->error('Failed to assign free plan to user on login: ' . $e->getMessage());
+            }
         }
 
         // Log in the user
