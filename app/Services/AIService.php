@@ -599,6 +599,40 @@ class AIService
         return ['data' => $result['content']];
     }
 
+    public function interpretSearchPrompt(string $userPrompt, array $filterOptions): ?array
+    {
+        if (!$this->hasActiveKey()) {
+            return null;
+        }
+
+        $provider = $this->getFirstAvailableProvider();
+        if (!$provider) {
+            return null;
+        }
+
+        $apiKey = ApiKey::getActiveKeyForProvider($provider);
+
+        try {
+            $aiName = \App\Models\Setting::where('key', 'ai_name')->value('value') ?? 'Xavier';
+            $prompt = $this->promptService->get('ai_search_interpreter', [
+                'user_prompt' => $userPrompt,
+                'filter_options' => json_encode($filterOptions)
+            ], "Você é o {$aiName}, um assistente de estudos inteligente e proativo. Transforme a busca: '{user_prompt}' em um JSON de filtros.
+NUNCA use jargão técnico (subjects, topics, etc). Seja empático.
+Opções disponíveis: {filter_options}.
+Se a busca for muito específica, use 'suggestions' (array de objetos com 'label' e 'filters') para sugerir caminhos alternativos.
+Retorne apenas JSON: { \"type\": \"...\", \"subject\": \"...\", \"topic\": \"...\", \"difficulty\": \"...\", \"year\": ..., \"keyword\": \"...\", \"suggestion_tip\": \"...\", \"suggestions\": [] }");
+
+            $result = $this->callAI($provider, $apiKey, $prompt);
+            $apiKey->incrementUsage();
+
+            return $result['content'];
+        } catch (\Exception $e) {
+            Log::error('AI Search Interpretation failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
     protected function validateOpenAIKey(string $key): array
     {
         try {

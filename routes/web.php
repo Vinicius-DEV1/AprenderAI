@@ -46,6 +46,8 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('questions')->name('questions.')->group(
         function () {
             Route::get('/', [\App\Http\Controllers\QuestionBankController::class, 'index'])->name('index');
+            Route::get('/topics', [\App\Http\Controllers\QuestionBankController::class, 'topics'])->name('topics');
+            Route::post('/ai-search', [\App\Http\Controllers\AiSearchController::class, 'search'])->name('ai-search');
             Route::post('/{question}/answer', [\App\Http\Controllers\QuestionBankController::class, 'answer'])->name('answer');
             Route::get('/stats', [\App\Http\Controllers\QuestionBankController::class, 'stats'])->name('stats');
             // Histórico individual de respostas (AJAX)

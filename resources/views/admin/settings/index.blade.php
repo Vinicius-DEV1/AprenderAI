@@ -30,6 +30,20 @@
                         </p>
                     </div>
 
+                    <div>
+                        <label for="ai_name" class="block text-sm font-semibold text-gray-700 mb-2">Nome do Assistente (IA)</label>
+                        <input type="text" name="ai_name" id="ai_name" 
+                               value="{{ old('ai_name', $settings['ai_name'] ?? 'Xavier') }}"
+                               class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                               placeholder="Ex: Xavier">
+                        @error('ai_name')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                        <p class="mt-2 text-xs text-gray-500 italic">
+                            O nome que o assistente inteligente usará para se identificar no chat e nas sugestões.
+                        </p>
+                    </div>
+
                     <div class="pt-4 border-t border-gray-100 flex justify-end">
                         <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-all shadow-md hover:shadow-lg active:transform active:scale-95">
                             Salvar Alterações
