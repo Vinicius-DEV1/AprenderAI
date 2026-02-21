@@ -112,6 +112,7 @@ class AIService
      */
     protected function callAI(string $provider, ApiKey $apiKey, string $prompt, ?int $userId = null): array
     {
+        $provider = $apiKey->effective_provider;
         Log::info("DEBUG: Using API Key ID: {$apiKey->id} for provider: {$provider}");
         $startTime = microtime(true);
 
@@ -577,6 +578,31 @@ class AIService
         if (str_contains($model, 'gpt')) return 'openai';
         if (str_contains($model, 'gemini')) return 'gemini';
         return null;
+    }
+
+    public function generateStudyPlan(array $stats, array $input): ?array
+    {
+        if (!$this->hasActiveKey(ApiKey::CAPABILITY_STUDY_PLANS)) {
+            return null;
+        }
+
+        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_STUDY_PLANS);
+        $provider = $apiKey->effective_provider;
+
+        try {
+            $prompt = $this->promptService->get('study_plan_generator', [
+                'stats' => json_encode($stats),
+                'input' => json_encode($input)
+            ]);
+
+            $result = $this->callAI($provider, $apiKey, $prompt);
+            $apiKey->incrementUsage();
+
+            return $result['content'];
+        } catch (\Exception $e) {
+            Log::error('AI Study Plan Generation failed: ' . $e->getMessage());
+            return null;
+        }
     }
 
     public function interpretSearchPrompt(string $userPrompt, array $filterOptions): ?array
