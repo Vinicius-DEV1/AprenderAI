@@ -56,12 +56,23 @@ class AIBatchTriageController extends Controller
 
         // 2. Create batch ID and initial progress record
         $batchId = Str::uuid()->toString();
+        
+        // Persistência no Banco de Dados
+        \App\Models\AiProcessingBatch::create([
+            'batch_id' => $batchId,
+            'model' => $validated['model'] ?? 'default',
+            'type' => $validated['type'],
+            'total_count' => $total,
+            'status' => 'processing',
+        ]);
+
         Cache::put("batch_progress_{$batchId}", [
             'total' => $total,
             'processed' => 0,
             'errors' => 0,
             'status' => 'processing',
-            'message' => "Iniciando processamento de {$total} questões..."
+            'message' => "Iniciando processamento de {$total} questões...",
+            'last_error' => null
         ], now()->addHours(2));
 
         // 3. Chunk and Dispatch Jobs
@@ -100,10 +111,23 @@ class AIBatchTriageController extends Controller
                 $data = Cache::get($key);
 
                 if (!$data) {
-                    echo "data: " . json_encode(['status' => 'not_found', 'message' => 'Lote não encontrado ou expirado no cache.']) . "\n\n";
-                    ob_flush();
-                    flush();
-                    break;
+                    // Tenta recuperar do Banco de Dados se o Cache expirou
+                    $dbBatch = \App\Models\AiProcessingBatch::where('batch_id', $batchId)->first();
+                    if ($dbBatch) {
+                        $data = [
+                            'total' => $dbBatch->total_count,
+                            'processed' => $dbBatch->processed_count,
+                            'errors' => $dbBatch->error_count,
+                            'status' => $dbBatch->status,
+                            'last_error' => !empty($dbBatch->errors_log) ? end($dbBatch->errors_log)['error'] : null,
+                            'errors_log' => $dbBatch->errors_log ?? []
+                        ];
+                    } else {
+                        echo "data: " . json_encode(['status' => 'not_found', 'message' => 'Lote não encontrado.']) . "\n\n";
+                        ob_flush();
+                        flush();
+                        break;
+                    }
                 }
 
                 // Send keep-alive comment every 5 iterations if no data change (optional but helps some proxies)
@@ -123,5 +147,14 @@ class AIBatchTriageController extends Controller
             'Connection' => 'keep-alive',
             'X-Accel-Buffering' => 'no', // For Nginx
         ]);
+    }
+
+    /**
+     * View history of batches.
+     */
+    public function history()
+    {
+        $batches = \App\Models\AiProcessingBatch::orderBy('created_at', 'desc')->paginate(20);
+        return view('admin.questions.history', compact('batches'));
     }
 }
