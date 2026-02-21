@@ -48,7 +48,7 @@ class AIBatchTriageJob implements ShouldQueue
 
             $result = $batchService->processBatch($questions, $this->type, $this->model);
 
-            $this->updateProgress($result['applied'], count($result['errors']));
+            $this->updateProgress($result['applied'], count($result['errors']), null, $result['errors'] ?? []);
 
             Log::info("[AIBATCH] Batch job finished", [
                 'batch_id' => $this->batchId,
@@ -66,7 +66,7 @@ class AIBatchTriageJob implements ShouldQueue
         }
     }
 
-    protected function updateProgress(int $applied, int $errors, ?string $errorMessage = null): void
+    protected function updateProgress(int $applied, int $errors, ?string $errorMessage = null, array $detailedErrors = []): void
     {
         $key = "batch_progress_{$this->batchId}";
         $lock = Cache::lock($key . "_lock", 10);
@@ -74,28 +74,64 @@ class AIBatchTriageJob implements ShouldQueue
         try {
             $lock->block(5); // Wait up to 5s for lock
 
+            // 1. Atualiza o Cache (para o SSE em tempo real ser rápido)
             $data = Cache::get($key, [
                 'total' => 0,
                 'processed' => 0,
                 'errors' => 0,
                 'status' => 'processing',
-                'last_error' => null
+                'last_error' => null,
+                'errors_log' => []
             ]);
 
             $data['processed'] += $applied;
             $data['errors'] += $errors;
             
-            if ($errorMessage) {
-                $data['last_error'] = $errorMessage;
-                $data['status'] = 'failed'; // Mark as failed if an exception occurred
+            if (!empty($detailedErrors) || $errorMessage) {
+                if ($errorMessage) {
+                    $entry = ['time' => now()->toDateTimeString(), 'error' => $errorMessage, 'type' => 'fatal'];
+                    $data['last_error'] = $errorMessage;
+                    $data['status'] = 'failed';
+                    $data['errors_log'][] = $entry;
+                }
+                foreach ($detailedErrors as $detail) {
+                    $data['errors_log'][] = ['time' => now()->toDateTimeString(), 'error' => $detail, 'type' => 'partial'];
+                }
             }
-
-            // Mark as completed if all questions in the batch were processed (and not already failed)
             if ($data['status'] !== 'failed' && ($data['processed'] + $data['errors'] >= $data['total'])) {
                 $data['status'] = 'completed';
             }
 
             Cache::put($key, $data, now()->addHours(2));
+
+            // 2. Atualiza o Banco de Dados (Persistência para o Histórico)
+            $dbBatch = \App\Models\AiProcessingBatch::where('batch_id', $this->batchId)->first();
+            if ($dbBatch) {
+                $dbBatch->processed_count += $applied;
+                $dbBatch->error_count += $errors;
+                $dbBatch->status = $data['status'];
+                
+                if (!empty($detailedErrors) || $errorMessage) {
+                    $existingLogs = $dbBatch->errors_log ?? [];
+                    if ($errorMessage) {
+                        $existingLogs[] = [
+                            'time' => now()->toDateTimeString(),
+                            'error' => $errorMessage,
+                            'type' => 'fatal'
+                        ];
+                    }
+                    foreach ($detailedErrors as $detail) {
+                        $existingLogs[] = [
+                            'time' => now()->toDateTimeString(),
+                            'error' => $detail,
+                            'type' => 'partial'
+                        ];
+                    }
+                    $dbBatch->errors_log = $existingLogs;
+                }
+                
+                $dbBatch->save();
+            }
 
         } catch (\Exception $e) {
             Log::error("[AIBATCH] Failed to update progress: " . $e->getMessage());

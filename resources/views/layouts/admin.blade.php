@@ -73,6 +73,14 @@
                             Banco de Questões
                         </a>
 
+                        <a href="{{ route('admin.triagem.historico') }}"
+                            class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all {{ request()->routeIs('admin.triagem.historico') ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100' }}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Histórico de Triagem
+                        </a>
+
                         {{-- Link para o Módulo de Importação de Questões --}}
                         <a href="{{ route('admin.import.index') }}"
                             class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all {{ request()->routeIs('admin.import.*') ? 'bg-yellow-50 text-yellow-700' : 'text-gray-600 hover:bg-gray-100' }}">

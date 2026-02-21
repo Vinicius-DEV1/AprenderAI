@@ -651,7 +651,14 @@
                                         <div :style="'width: ' + progress + '%'" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-500 transition-all duration-500"></div>
                                     </div>
                                     <div class="flex justify-between items-center">
-                                        <p class="text-xs text-gray-500" x-text="'Sucessos: ' + processed + ' | Erros: ' + errors"></p>
+                                        <div class="flex items-center gap-2">
+                                            <p class="text-xs text-gray-500" x-text="'Sucessos: ' + processed"></p>
+                                            <button type="button" 
+                                                class="text-xs font-bold transition-colors"
+                                                :class="errors > 0 ? 'text-red-500 hover:text-red-700 underline' : 'text-gray-400 cursor-default'"
+                                                @click="errors > 0 ? $dispatch('show-batch-errors', { errors: errorsLog }) : null"
+                                                x-text="'Erros: ' + errors"></button>
+                                        </div>
                                         <template x-if="lastError">
                                             <p class="text-[10px] text-red-500 font-bold truncate max-w-[200px]" :title="lastError" x-text="'Erro: ' + lastError"></p>
                                         </template>
@@ -664,24 +671,62 @@
 
                 {{-- Modal Footer --}}
                 <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
+                    {{-- Botão Iniciar --}}
                     <button x-show="!isProcessing" @click="startBatch()" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
                         Iniciar Processamento
                     </button>
                     
-                    {{-- Botão Concluído (Normal) --}}
-                    <button x-show="isProcessing && progress >= 100" @click="isOpen = false; window.location.reload();" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                    {{-- Botão Rodar em Segundo Plano --}}
+                    <button x-show="isProcessing && progress < 100 && status !== 'failed'" @click="minify()" type="button" class="w-full inline-flex justify-center rounded-md border border-indigo-200 shadow-sm px-4 py-2 bg-indigo-50 text-base font-medium text-indigo-700 hover:bg-indigo-100 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                        Rodar em Segundo Plano
+                    </button>
+
+                    {{-- Botão Concluído --}}
+                    <button x-show="isProcessing && progress >= 100" @click="isOpen = false; removePersistence(); window.location.reload();" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
                         Concluído
                     </button>
 
-                    {{-- Botão Fechar em caso de Erro Crítico ou conexão perdida --}}
-                    <button x-show="isProcessing && (retryCount >= 5 || status === 'failed')" @click="isOpen = false; window.location.reload();" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
-                        Fechar e Recarregar
-                    </button>
+                    {{-- Botões de Erro / Conexão Perdida --}}
+                    <div x-show="isProcessing && (retryCount >= 5 || status === 'failed')" class="flex gap-2 w-full sm:w-auto">
+                        <button @click="connectSSE()" type="button" class="flex-1 inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-yellow-500 text-base font-medium text-white hover:bg-yellow-600 focus:outline-none sm:w-auto sm:text-sm">
+                            Tentar Reconectar
+                        </button>
+                        <a href="{{ route('admin.triagem.historico') }}" class="flex-1 inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:w-auto sm:text-sm text-center">
+                            Ir para Histórico
+                        </a>
+                    </div>
 
                     <button x-show="!isProcessing" @click="isOpen = false" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
                         Cancelar
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Floating Progress Bar (Background Mode) --}}
+    <div x-data="floatingBatchMonitor" 
+         x-show="show" 
+         @batch-update.window="update($event.detail)"
+         class="fixed bottom-4 right-4 z-50 animate-bounce-subtle" 
+         style="display: none;">
+        <div class="bg-white border-2 border-indigo-500 rounded-xl shadow-2xl p-4 w-72">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-bold text-indigo-700 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
+                    Triagem na Fila...
+                </span>
+                <span class="text-xs font-bold text-indigo-600" x-text="progress + '%'"></span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
+                <div class="bg-indigo-600 h-2 rounded-full transition-all duration-500" :style="'width: ' + progress + '%'"></div>
+            </div>
+            <div class="flex justify-between">
+                <p class="text-[10px] text-gray-500" x-text="processed + ' processados'"></p>
+                <button @click="maximize()" class="text-[10px] font-bold text-indigo-600 hover:underline">Abrir Detalhes</button>
+            </div>
+        </div>
+    </div>
             </div>
         </div>
     </div>
@@ -710,8 +755,49 @@
                 statusMessage: 'Iniciando...',
                 status: 'processing',
                 lastError: null,
+                errorsLog: [],
                 eventSource: null,
                 retryCount: 0,
+
+                init() {
+                    // Recupera persistência do localStorage se houver um lote rodando
+                    const saved = localStorage.getItem('active_batch_triage');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        // Se o lote salvo ainda for o mesmo que estamos monitorando ou se viemos do histórico
+                        if (data.status === 'processing') {
+                            this.batchId = data.batchId;
+                            this.isProcessing = true;
+                            this.connectSSE();
+                        }
+                    }
+
+                    // Listener para abrir monitor de um lote específico (vindo do histórico)
+                    window.addEventListener('open-batch-monitor', (e) => {
+                        this.isOpen = true;
+                        this.batchId = e.detail.batchId;
+                        this.isProcessing = true;
+                        this.connectSSE();
+                    });
+                },
+
+                // Salva estado para persistência cross-page
+                savePersistence() {
+                    localStorage.setItem('active_batch_triage', JSON.stringify({
+                        batchId: this.batchId,
+                        isProcessing: this.isProcessing,
+                        status: this.status
+                    }));
+                },
+
+                removePersistence() {
+                    localStorage.removeItem('active_batch_triage');
+                },
+
+                minify() {
+                    this.isOpen = false;
+                    this.savePersistence();
+                },
 
                 openModal() {
                     this.isOpen = true;
@@ -793,23 +879,37 @@
                             this.total = data.total;
                             this.status = data.status;
                             this.lastError = data.last_error || null;
+                            this.errorsLog = data.errors_log || []; // Caso o backend envie a lista
                             
                             const completedCount = this.processed + this.errors;
                             // Cálculo de porcentagem seguro
                             this.progress = Math.min(100, Math.round((completedCount / this.total) * 100));
 
+                            // Dispara evento para o floating monitor
+                            window.dispatchEvent(new CustomEvent('batch-update', { 
+                                detail: { 
+                                    progress: this.progress, 
+                                    processed: completedCount, 
+                                    status: this.status,
+                                    batchId: this.batchId
+                                } 
+                            }));
+
                             if (this.status === 'completed') {
                                 this.statusMessage = 'Processamento finalizado com sucesso!';
                                 this.progress = 100;
                                 this.eventSource.close();
+                                this.savePersistence();
                                 if (typeof showToast !== 'undefined') {
                                     showToast('⚡ Lote processado 100%!', 'success');
                                 }
                             } else if (this.status === 'failed') {
                                 this.statusMessage = 'ERRO: ' + (this.lastError || 'Falha no processamento.');
                                 this.eventSource.close();
+                                this.savePersistence();
                             } else {
                                 this.statusMessage = `Processando chunk atual (${completedCount}/${this.total})...`;
+                                this.savePersistence();
                             }
                         } catch (e) {
                             console.error('Erro ao processar mensagem SSE:', e);
@@ -828,6 +928,37 @@
                             this.statusMessage = 'Conexão perdida. Verifique se o processamento continuou no histórico.';
                         }
                     };
+                }
+            }));
+
+            // Floating Bar Controller
+            Alpine.data('floatingBatchMonitor', () => ({
+                show: false,
+                progress: 0,
+                processed: 0,
+                status: '',
+
+                init() {
+                    const saved = localStorage.getItem('active_batch_triage');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        if (data.status === 'processing') {
+                            this.show = true;
+                        }
+                    }
+                },
+
+                update(detail) {
+                    this.progress = detail.progress;
+                    this.processed = detail.processed;
+                    this.status = detail.status;
+                    this.show = this.status === 'processing' && !Alpine.find('batchProcessor').isOpen;
+                },
+
+                maximize() {
+                    window.dispatchEvent(new CustomEvent('open-batch-monitor', { 
+                        detail: { batchId: localStorage.getItem('active_batch_triage') ? JSON.parse(localStorage.getItem('active_batch_triage')).batchId : null } 
+                    }));
                 }
             }));
         });

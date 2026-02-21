@@ -187,7 +187,9 @@ Route::middleware(['auth'])->group(function () {
             Route::prefix('questions-batch')->name('questions.batch.')->group(function () {
                 Route::post('/start', [\App\Http\Controllers\Admin\AIBatchTriageController::class, 'start'])->name('start');
                 Route::get('/progress/{batch_id}', [\App\Http\Controllers\Admin\AIBatchTriageController::class, 'progress'])->name('progress');
+                Route::get('/history', [\App\Http\Controllers\Admin\AIBatchTriageController::class, 'history'])->name('history');
             });
+            Route::get('/admin/triagem/historico', [\App\Http\Controllers\Admin\AIBatchTriageController::class, 'history'])->name('admin.triagem.historico');
 
             // ----------------------------------------------------------------
             // Módulo de Importação de Questões (scraper.py → .zip → produção)
