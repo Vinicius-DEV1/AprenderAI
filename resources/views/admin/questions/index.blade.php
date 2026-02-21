@@ -61,7 +61,7 @@
 
             {{-- AI TRIAGE CARD --}}
             @if($pendingCount > 0)
-            <div class="bg-gradient-to-r from-purple-50 to-pink-50 border-l-4 border-purple-500 rounded-lg shadow-md p-6 mb-6">
+            <div x-data="{}" class="bg-gradient-to-r from-purple-50 to-pink-50 border-l-4 border-purple-500 rounded-lg shadow-md p-6 mb-6">
                 {{-- Header with count and sub-counters --}}
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
                     <div class="flex items-center gap-3 flex-wrap">
