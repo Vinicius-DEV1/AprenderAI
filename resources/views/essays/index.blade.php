@@ -42,18 +42,21 @@ As cores foram migradas de bg-white para dark:bg-slate-900 para consistência co
                         @php
                             $userPlan = Auth::user()->plan;
                             $planName = $userPlan ? $userPlan->name : '';
-                            $isPlus = stripos($planName, 'Plus') !== false;
-                            $isBasic = stripos($planName, 'Básico') !== false || stripos($planName, 'Basico') !== false;
+                            $isPlus   = stripos($planName, 'Plus') !== false;
+                            $isBasic  = stripos($planName, 'Básico') !== false || stripos($planName, 'Basico') !== false;
                         @endphp
 
                         @if($isPlus || $isBasic)
+                            {{-- Paid plans can recharge essay credits instead of upgrading --}}
                             <a href="{{ route('recharge') }}"
                                 class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-500 active:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 transition ease-in-out duration-150 mr-2">
                                 Recarregar (+{{ $isPlus ? 15 : 2 }}) - R$ {{ $isPlus ? '20,00' : '5,00' }}
                             </a>
                         @else
-                            <button disabled
-                                class="opacity-50 cursor-not-allowed inline-flex items-center px-4 py-2 bg-gray-400 dark:bg-slate-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest">
+                            {{-- Free plan: trigger the quota limit modal --}}
+                            <button type="button"
+                                    onclick="window.dispatchEvent(new CustomEvent('open-modal', { detail: 'quota-limit-modal' }))"
+                                    class="inline-flex items-center px-4 py-2 bg-gray-400 dark:bg-slate-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest transition ease-in-out duration-150">
                                 Limite Atingido
                             </button>
                         @endif
@@ -162,4 +165,16 @@ As cores foram migradas de bg-white para dark:bg-slate-900 para consistência co
             </div>
         </div>
     </div>
+
+    {{--
+    | Quota Limit Modal — Redações
+    | Triggered by: window.dispatchEvent(new CustomEvent('open-modal', { detail: 'quota-limit-modal' }))
+    --}}
+    <x-quota-limit-modal
+        resource="Redações"
+        :used="$used"
+        :limit="$limit"
+        upgradeRoute="plans.index"
+    />
+
 </x-app-layout>

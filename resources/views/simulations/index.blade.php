@@ -174,9 +174,42 @@
         }
     </style>
 
+    {{-- ============================================================ --}}
+    {{-- QUOTA STATUS BAR                                             --}}
+    {{-- Mirrors the same structure from essays/index.blade.php       --}}
+    {{-- ============================================================ --}}
     <div class="simulations-header">
         <h1 style="font-size: 28px; font-weight: 700;">Minhas Provas</h1>
-        <a href="{{ route('simulations.create') }}" class="btn-new">+ Nova Prova</a>
+
+        {{-- The button either starts a new simulation or triggers the limit modal --}}
+        @if($canCreate)
+            <a href="{{ route('simulations.create') }}" class="btn-new">+ Nova Prova</a>
+        @else
+            <button type="button"
+                    onclick="window.dispatchEvent(new CustomEvent('open-modal', { detail: 'quota-limit-modal' }))"
+                    class="btn-new" style="background: #64748b; cursor: not-allowed;">
+                Limite Atingido
+            </button>
+        @endif
+    </div>
+
+    {{-- Usage summary card --}}
+    <div style="background: white; border-radius: 12px; padding: 16px 24px; margin-bottom: 16px;
+                box-shadow: 0 1px 3px rgba(0,0,0,.1); display: flex; align-items: center;
+                justify-content: space-between;">
+        <div>
+            <p style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 4px;">Uso Mensal de Provas</p>
+            <p style="font-size: 13px; color: #64748b;">
+                Você criou <strong>{{ $used }}</strong> de
+                <strong>{{ $limit === 0 ? 'ilimitadas' : $limit }}</strong> provas disponíveis neste ciclo.
+            </p>
+        </div>
+        @unless($canCreate)
+            <a href="{{ route('plans.index') }}"
+               style="font-size: 13px; color: #2563eb; font-weight: 600; text-decoration: none;">
+               Ver Planos &rarr;
+            </a>
+        @endunless
     </div>
 
     <div class="simulations-list">
@@ -232,7 +265,15 @@
                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <p>Você ainda não criou nenhuma prova.</p>
-                <a href="{{ route('simulations.create') }}" class="btn-new" style="margin-top: 16px;">Criar Primeira Prova</a>
+                @if($canCreate)
+                    <a href="{{ route('simulations.create') }}" class="btn-new" style="margin-top: 16px;">Criar Primeira Prova</a>
+                @else
+                    <button type="button"
+                            onclick="window.dispatchEvent(new CustomEvent('open-modal', { detail: 'quota-limit-modal' }))"
+                            class="btn-new" style="margin-top: 16px; background: #64748b; cursor: not-allowed;">
+                        Ver Planos
+                    </button>
+                @endif
             </div>
         @endforelse
 
@@ -242,4 +283,16 @@
             </div>
         @endif
     </div>
+
+    {{--
+    | Quota Limit Modal
+    | Triggered by any button dispatching: 'open-modal' event with detail 'quota-limit-modal'.
+    --}}
+    <x-quota-limit-modal
+        resource="Simulados"
+        :used="$used"
+        :limit="$limit"
+        upgradeRoute="plans.index"
+    />
+
 @endsection
