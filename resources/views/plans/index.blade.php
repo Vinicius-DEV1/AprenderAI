@@ -40,8 +40,8 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 @foreach($plans as $plan)
                     <div
-                        class="bg-white dark:bg-slate-900 rounded-lg shadow-lg dark:shadow-none dark:border dark:border-slate-700 overflow-hidden flex flex-col {{ $userPlan->id === $plan->id ? 'border-2 border-blue-500 ring-2 ring-blue-200 dark:ring-blue-900' : '' }}">
-                        @if($userPlan->id === $plan->id)
+                        class="bg-white dark:bg-slate-900 rounded-lg shadow-lg dark:shadow-none dark:border dark:border-slate-700 overflow-hidden flex flex-col {{ ($userPlan && $userPlan->id === $plan->id) ? 'border-2 border-blue-500 ring-2 ring-blue-200 dark:ring-blue-900' : '' }}">
+                        @if($userPlan && $userPlan->id === $plan->id)
                             <div class="bg-blue-500 text-white text-xs font-bold uppercase py-1 text-center">
                                 Seu Plano Atual
                             </div>
@@ -97,7 +97,7 @@
                         </div>
 
                         <div class="p-8 bg-gray-50 dark:bg-slate-800 border-t border-gray-100 dark:border-slate-700">
-                            @if($userPlan->id === $plan->id)
+                            @if($userPlan && $userPlan->id === $plan->id)
                                 <button disabled
                                     class="w-full block text-center bg-gray-300 dark:bg-slate-600 text-gray-600 dark:text-slate-400 font-bold py-3 px-4 rounded cursor-not-allowed">
                                     Plano Atual
