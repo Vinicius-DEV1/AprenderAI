@@ -2,31 +2,29 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\AIService;
+use App\Models\AiSearchRequest;
+use App\Jobs\InterpretSearchPromptJob;
 use App\Services\QuestionService;
 use Illuminate\Http\Request;
 
 class AiSearchController extends Controller
 {
-    protected AIService $aiService;
     protected QuestionService $questionService;
 
-    public function __construct(AIService $aiService, QuestionService $questionService)
+    public function __construct(QuestionService $questionService)
     {
-        $this->aiService = $aiService;
         $this->questionService = $questionService;
     }
 
     /**
      * Endpoint para processar busca natural via IA.
-     * Retorna os filtros sugeridos para serem aplicados no frontend.
+     * Inicia o job assíncrono e retorna o ID da requisição.
      */
     public function search(Request $request)
     {
         $user = $request->user();
 
-        // 1. Verificação de Plano (Básico e Plus apenas)
-        // Bloqueia 'Gratuito' (Free)
+        // 1. Verificação de Plano
         if (!$user->plan || $user->plan->name === 'Gratuito') {
             return response()->json([
                 'status' => 'error',
@@ -35,31 +33,68 @@ class AiSearchController extends Controller
             ], 403);
         }
 
+        // 2. Verificação de Cota
+        if (!$user->hasAiQuota()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Você atingiu o limite de uso de IA do seu plano.',
+                'code' => 'quota_exceeded'
+            ], 403);
+        }
+
         $request->validate([
             'prompt' => 'required|string|min:3|max:200'
         ]);
 
-        // 2. Obter opções de filtro válidas para orientar a IA
-        $filterOptions = $this->questionService->getFilterOptions();
+        // 3. Criar registro de busca
+        $searchRequest = AiSearchRequest::create([
+            'user_id' => $user->id,
+            'prompt' => $request->prompt,
+            'status' => 'pending'
+        ]);
 
-        // 3. Interpretar via IA (Xavier)
-        $filters = $this->aiService->interpretSearchPrompt($request->prompt, $filterOptions);
-
-        if (!$filters) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Não conseguimos interpretar sua busca agora. Tente novamente com palavras mais simples.'
-            ], 500);
-        }
+        // 4. Disparar Job
+        InterpretSearchPromptJob::dispatch($searchRequest);
 
         // Incrementa uso de IA do usuário
         $user->incrementAiUsage();
 
         return response()->json([
-            'status' => 'success',
-            'filters' => $filters,
-            'suggestion_tip' => $filters['suggestion_tip'] ?? null,
-            'suggestions' => $filters['suggestions'] ?? []
+            'status' => 'queued',
+            'request_id' => $searchRequest->id
+        ]);
+    }
+
+    /**
+     * Endpoint de polling para verificar o status da interpretação.
+     */
+    public function status(AiSearchRequest $searchRequest)
+    {
+        // Garante que o usuário só acessa suas próprias requisições
+        if ($searchRequest->user_id !== auth()->id()) {
+            return response()->json(['status' => 'error', 'message' => 'Não autorizado'], 403);
+        }
+
+        $friendlyError = null;
+        if ($searchRequest->status === 'failed') {
+            $error = $searchRequest->error;
+            $friendlyError = 'Xavier encontrou um problema ao processar sua busca.';
+
+            if (str_contains($error, '429') || str_contains($error, 'Quota')) {
+                $friendlyError = 'O Xavier está um pouco sobrecarregado agora. Por favor, tente novamente em alguns instantes.';
+            } elseif (str_contains($error, '401') || str_contains($error, '403') || str_contains($error, 'Key')) {
+                $friendlyError = 'O Xavier está em manutenção técnica. Voltaremos logo!';
+            } elseif (str_contains($error, 'timeout') || str_contains($error, 'slow')) {
+                $friendlyError = 'A conexão com o Xavier falhou devido à lentidão. Tente uma busca mais simples.';
+            }
+        }
+
+        return response()->json([
+            'status' => $searchRequest->status,
+            'filters' => $searchRequest->filters,
+            'error' => $friendlyError,
+            'suggestion_tip' => $searchRequest->filters['suggestion_tip'] ?? null,
+            'suggestions' => $searchRequest->filters['suggestions'] ?? []
         ]);
     }
 }
