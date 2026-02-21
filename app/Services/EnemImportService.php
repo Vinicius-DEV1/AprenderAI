@@ -25,8 +25,14 @@ class EnemImportService
         $discipline = strtolower($apiQuestion['discipline']);
         $index = $apiQuestion['index'];
 
-        // 1. Gerar external_id garantido e único
-        $externalId = "enem_{$year}_{$discipline}_{$index}";
+        // 1. Gerar external_id em conformidade com o formato MD5
+        $organization = 'ENEM';
+        $institution = 'MEC'; // Implicit for ENEM
+        $role = 'Estudante'; // Implicit for ENEM
+        
+        // Context contains the statement
+        $uniqueString = $organization . '|' . $year . '|' . $institution . '|' . $role . '|' . trim($apiQuestion['context']);
+        $externalId = md5($uniqueString);
 
         // 2. Verificar se já existe
         if (\App\Models\Question::where('external_id', $externalId)->exists()) {
@@ -50,15 +56,21 @@ class EnemImportService
                 'external_id' => $externalId,
                 'type' => 'enem',
                 'format' => 'multiple_choice',
-                'difficulty' => 'medium', // Default, já que a API não fornece
+                'difficulty' => 'medium', // Default, será substituído via AI Triage se aplicável
                 'year' => $year,
                 'statement' => $statement,
-                'source' => 'manual', // or api
-                'theme' => $theme,
-                'review_status' => 'approved', // Direto da API
-                'origin' => 'ENEM Dev API',
+                'source' => 'api',
+                // IMPORTANTE: A coluna 'theme' foi preservada para uso futuro, pois contém o Eixo Temático essencial retornado pela API ENEM Dev.
+                // Ela não é mais usada para filtros de triagem/busca, mas sim como meta-dado orgânico.
+                'theme' => $theme, 
+                'organization' => $organization,
+                'institution' => $institution,
+                'role' => $role,
+                'review_status' => 'pending', // A API não traz Matéria/Assunto padronizados. Direcionando p/ AI Triage.
             ]);
 
+            // Lógica N:N (Pivot): Associando as disciplinas através do relacionamento subjects()
+            // Isso substitui as antigas colunas 'subject_id' diretas para permitir múltiplas matérias.
             if ($subjectId) {
                 $question->subjects()->attach($subjectId);
             }

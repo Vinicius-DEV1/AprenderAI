@@ -66,13 +66,17 @@ class StudyStatsService
     {
         foreach ($simulation->answers as $answer) {
             $question = $answer->question;
-            if (!$question || !$question->topic)
-                continue;
+            // Lógica N:N (Pivot): A estrutura relacional de Subjects e Topics requer extrair o primeiro elemento 
+            // através dos relacionamentos. A extração visa manter compatibilidade com o sistema de estatísticas
+            // baseadas em string, sem a necessidade de reescrever inteiramente a engine métrica, 
+            // e cai para o fallback 'Geral' caso as queries N:N retornem nulo.
+            $subjectName = $question->subjects->first()?->name ?? 'Geral';
+            $topicName = $question->topics->first()?->name ?? 'Geral';
 
             $stat = UserTopicStat::firstOrNew([
                 'user_id' => $user->id,
-                'subject' => $question->subject,
-                'topic' => $question->topic,
+                'subject' => $subjectName,
+                'topic' => $topicName,
             ]);
 
             $stat->attempts++;
