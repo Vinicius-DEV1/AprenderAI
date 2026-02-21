@@ -107,7 +107,10 @@ class AdminController extends Controller
             ->where('created_at', '>=', now()->subHours(6))
             ->exists();
 
-        return view('admin.api-keys', compact('keys', 'logs', 'aiLogs', 'aiRanking', 'hasRecentErrors'));
+        // NEW: Pull capabilities dictionary for UI Rendering
+        $availableCapabilities = ApiKey::getAvailableCapabilities();
+
+        return view('admin.api-keys', compact('keys', 'logs', 'aiLogs', 'aiRanking', 'hasRecentErrors', 'availableCapabilities'));
     }
 
     public function storeApiKey(Request $request)
@@ -116,7 +119,28 @@ class AdminController extends Controller
             'provider' => 'required|in:openai,gemini,grok',
             'key' => 'required|string',
             'preferred_model' => 'nullable|string',
+            'capabilities' => 'nullable|array',
+            'capabilities.*' => 'string'
         ]);
+
+        $requestedCapabilities = $request->capabilities ?? [ApiKey::CAPABILITY_GENERAL];
+
+        // 🚨 REQUISITO: Chave Única por Capacidade
+        $activeKeys = ApiKey::where('is_active', true)->get();
+        $conflicts = [];
+        foreach ($requestedCapabilities as $cap) {
+            foreach ($activeKeys as $ak) {
+                if (is_array($ak->capabilities) && in_array($cap, $ak->capabilities)) {
+                    $conflicts[] = ApiKey::getAvailableCapabilities()[$cap] ?? $cap;
+                    break;
+                }
+            }
+        }
+
+        if (!empty($conflicts)) {
+            $conflictLabels = implode(', ', array_unique($conflicts));
+            return back()->with('error', "Conflito de Roteamento: As capacidades [{$conflictLabels}] já estão ativas em outra chave. Desative-as na chave atual antes de registrar uma nova.");
+        }
 
         // Se for a primeira chave deste provider, torna-a primária
         $isPrimary = !ApiKey::where('provider', $request->provider)->where('is_primary', true)->exists();
@@ -125,6 +149,7 @@ class AdminController extends Controller
             'provider' => $request->provider,
             'key' => $request->key, // Setter encrypts automatically
             'preferred_model' => $request->preferred_model,
+            'capabilities' => $requestedCapabilities,
             'is_valid' => true, // Assumimos válido se o user salvou após teste (ou podemos forçar teste)
             'is_active' => true,
             'is_primary' => $isPrimary,
@@ -136,6 +161,29 @@ class AdminController extends Controller
 
     public function toggleApiKey(ApiKey $apiKey)
     {
+        // Se estiver ativando a chave, validar conflitos
+        if (!$apiKey->is_active) {
+            $myCapabilities = $apiKey->capabilities ?? [];
+            if (!empty($myCapabilities)) {
+                $activeKeys = ApiKey::where('is_active', true)->where('id', '!=', $apiKey->id)->get();
+                $conflicts = [];
+                
+                foreach ($myCapabilities as $cap) {
+                    foreach ($activeKeys as $ak) {
+                        if (is_array($ak->capabilities) && in_array($cap, $ak->capabilities)) {
+                            $conflicts[] = ApiKey::getAvailableCapabilities()[$cap] ?? $cap;
+                            break;
+                        }
+                    }
+                }
+
+                if (!empty($conflicts)) {
+                    $conflictLabels = implode(', ', array_unique($conflicts));
+                    return back()->with('error', "Não é possível ativar esta chave. As capacidades [{$conflictLabels}] já estão sendo providas por outra API Ativa. Desative a concorrente primeiro.");
+                }
+            }
+        }
+
         $apiKey->update(['is_active' => !$apiKey->is_active]);
         return back()->with('success', 'Status da chave atualizado!');
     }

@@ -58,6 +58,36 @@
                     <p class="text-xs text-indigo-600 mt-1">✓ Chave validada com sucesso. Selecione o modelo para uso.</p>
                 </div>
 
+                <!-- Capabilities Selection -->
+                <div class="mt-4 bg-gray-50 border border-gray-200 rounded-md p-4">
+                    <x-input-label value="Capacidades desta Chave (Roteamento Inteligente)" class="mb-2" />
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        @php
+                            $tooltips = [
+                                'questions' => 'Utilizada para a criação de novas questões via IA e correção/ajuste de enunciados/alternativas.',
+                                'essays' => 'Responsável pelo motor de correção de redações, analisando critérios e fornecendo feedback.',
+                                'triage' => 'Classifica automaticamente (scraping) a Disciplina, Assunto, Dificuldade e segurança do conteúdo.',
+                                'search' => 'Alimenta o agente de busca (Xavier), tirando dúvidas e pesquisando conteúdo em linguagem natural.',
+                                'general' => 'Chave reserva para funções administrativas ou fallback caso não haja chave específica definida.'
+                            ];
+                        @endphp
+                        @foreach($availableCapabilities as $code => $label)
+                            <label class="flex items-start bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:border-indigo-100 transition-colors">
+                                <div class="flex items-center h-5 mt-0.5">
+                                    <input type="checkbox" name="capabilities[]" value="{{ $code }}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" {{ $code === 'general' ? 'checked' : '' }}>
+                                </div>
+                                <div class="ml-3 flex flex-col">
+                                    <span class="text-sm font-bold text-gray-700 flex items-center gap-1">
+                                        {{ $label }}
+                                        <span title="{{ $tooltips[$code] ?? '' }}" class="cursor-help text-xs text-gray-400 bg-gray-100 hover:bg-gray-200 rounded-full w-4 h-4 flex items-center justify-center" aria-label="Ajuda">?</span>
+                                    </span>
+                                    <span class="text-xs text-gray-500 mt-1 leading-snug">{{ $tooltips[$code] ?? '' }}</span>
+                                </div>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+
                 <div id="feedback-area" class="hidden p-4 rounded-md text-sm"></div>
 
                 <div class="flex justify-end">
@@ -90,9 +120,16 @@
                                             <td class="px-6 py-4">
                                                 <div class="flex flex-col">
                                                     <span class="font-bold capitalize text-gray-900 text-base">{{ $key->provider }}</span>
-                                                    <span class="text-xs font-mono bg-indigo-50 text-indigo-700 px-1 rounded inline-block w-fit">
+                                                    <span class="text-xs font-mono bg-indigo-50 text-indigo-700 px-1 rounded inline-block w-fit mt-1">
                                                         {{ $key->preferred_model ?? 'Padrão' }}
                                                     </span>
+                                                    <div class="mt-2 flex flex-wrap gap-1">
+                                                        @foreach((array)$key->capabilities as $cap)
+                                                            <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200" title="{{ $availableCapabilities[$cap] ?? $cap }}">
+                                                                {{ $cap }}
+                                                            </span>
+                                                        @endforeach
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td class="px-6 py-4">
