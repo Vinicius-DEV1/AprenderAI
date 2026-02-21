@@ -568,6 +568,8 @@
                  x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
                  x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                  class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full z-10">
+                
+                {{-- Modal Body --}}
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div class="sm:flex sm:items-start">
                         <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 sm:mx-0 sm:h-10 sm:w-10">
@@ -579,6 +581,8 @@
                             <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
                                 Processamento em Lote Inteligente
                             </h3>
+
+                            {{-- Form: Only visible when NOT processing --}}
                             <div class="mt-4 space-y-4" x-show="!isProcessing">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Quantidade de Questões (Pendentes: {{ $pendingCount }})</label>
@@ -613,10 +617,9 @@
                                         @endforelse
                                     </select>
                                 </div>
-                            </div>
 
                                 {{-- MECANISMO DE ENVIO: Informações para o Admin --}}
-                                <div class="p-3 bg-blue-50 rounded-lg border border-blue-100 mb-2">
+                                <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
                                     <div class="flex gap-2">
                                         <svg class="w-4 h-4 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                         <div class="text-xs text-blue-800 leading-tight">
@@ -629,7 +632,10 @@
                                         </div>
                                     </div>
                                 </div>
+                            </div>
 
+                            {{-- Progress Section: Only visible when processing --}}
+                            <div class="mt-4" x-show="isProcessing">
                                 <div class="relative pt-1">
                                     <div class="flex mb-2 items-center justify-between">
                                         <div>
@@ -650,6 +656,8 @@
                         </div>
                     </div>
                 </div>
+
+                {{-- Modal Footer --}}
                 <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
                     <button x-show="!isProcessing" @click="startBatch()" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
                         Iniciar Processamento
