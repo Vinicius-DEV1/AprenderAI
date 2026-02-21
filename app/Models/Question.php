@@ -25,15 +25,12 @@ class Question extends Model
         'institution',
         'role',
         'external_id',
-        'alternatives',
-        'correct_answer',
         'review_status',
         'image_path',
     ];
 
     protected $casts = [
         'format' => 'string',
-        'alternatives' => 'array',
     ];
 
     public function alternatives()
@@ -53,10 +50,14 @@ class Question extends Model
      */
     public function getCorrectAnswerAttribute(): ?string
     {
-        // Tenta usar a coleção já carregada (evita N+1)
+        // Usa getRelation() para acessar diretamente a coleção já carregada,
+        // evitando conflito com coluna de mesmo nome na tabela.
         if ($this->relationLoaded('alternatives')) {
-            $correct = $this->alternatives->firstWhere('is_correct', true);
-            return $correct?->label;
+            $collection = $this->getRelation('alternatives');
+            if ($collection !== null) {
+                $correct = $collection->firstWhere('is_correct', true);
+                return $correct?->label;
+            }
         }
         // Fallback: faz uma query pontual se a relação não estiver em memória
         return $this->alternatives()->where('is_correct', true)->value('label');
