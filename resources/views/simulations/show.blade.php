@@ -621,7 +621,14 @@
                                     onchange="saveAnswer({{ $answer->question->id }}, '{{ $alt->label }}', {{ $index }})">
                                 <label for="q{{ $answer->question->id }}_{{ $alt->label }}">
                                     <span class="alternative-letter">{{ $alt->label }})</span>
-                                    <span>{{ $alt->content }}</span>
+                                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                                        @if($alt->content)
+                                            <span>{{ $alt->content }}</span>
+                                        @endif
+                                        @if($alt->image_path)
+                                            <img src="{{ Storage::url($alt->image_path) }}" alt="Alternativa {{ $alt->label }}" style="max-width: 100%; height: auto; border-radius: 4px; object-fit: contain;">
+                                        @endif
+                                    </div>
                                 </label>
                             </li>
                         @endforeach

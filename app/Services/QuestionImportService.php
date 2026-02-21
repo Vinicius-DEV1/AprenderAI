@@ -205,20 +205,40 @@ class QuestionImportService
 
         foreach ($questions as $qData) {
             DB::transaction(function () use ($qData, $imageMap, $import, $uploader, &$stats) {
-                // Criação da questão base
-                $question = Question::create([
-                    'institution'    => $qData['orgao'] ?? null,
-                    'organization'   => $qData['banca'] ?? null,
-                    'role'           => $qData['cargo'] ?? null,
-                    'year'           => $qData['ano'] ?? null,
-                    'statement'      => $qData['enunciado'] ?? '',
-                    'difficulty'     => 'medium',
-                    'review_status'  => 'pending',
-                    'image_path'     => $imageMap[$qData['image_path']] ?? null,
-                ]);
+                // Gera uma chave única robusta baseada no conteúdo da questão
+                $uniqueString = trim($qData['banca'] ?? '') . '|' . 
+                                trim($qData['ano'] ?? '') . '|' . 
+                                trim($qData['orgao'] ?? '') . '|' . 
+                                trim($qData['cargo'] ?? '') . '|' . 
+                                trim($qData['enunciado'] ?? '');
+                
+                $externalId = md5($uniqueString);
 
-                // Registro de auditoria vinculando item ao lote
-                QuestionImportItem::create([
+                // Criação ou Atualização da questão base (Upsert)
+                $question = Question::updateOrCreate(
+                    ['external_id' => $externalId],
+                    [
+                        'institution'    => $qData['orgao'] ?? null,
+                        'organization'   => $qData['banca'] ?? null,
+                        'role'           => $qData['cargo'] ?? null,
+                        'year'           => $qData['ano'] ?? null,
+                        'statement'      => $qData['enunciado'] ?? '',
+                        'difficulty'     => 'medium',
+                        // Somente sobrescreve o review_status se for uma nova inserção ou se ainda estiver pending
+                        // Para não voltar uma questão 'approved' para 'pending' acidentalmente.
+                    ]
+                );
+
+                // Se a questão acabou de ser criada, defina o status inicial e a imagem
+                if ($question->wasRecentlyCreated) {
+                    $question->update([
+                        'review_status' => 'pending',
+                        'image_path'    => $imageMap[$qData['image_path']] ?? null,
+                    ]);
+                }
+
+                // Registro de auditoria vinculando item ao lote (evita duplicar o vínculo no lote)
+                QuestionImportItem::firstOrCreate([
                     'import_id'   => $import->id,
                     'question_id' => $question->id,
                 ]);
@@ -226,10 +246,13 @@ class QuestionImportService
                 // Processamento de matérias (Many-to-Many)
                 if (!empty($qData['materia'])) {
                     $subjectNames = array_map('trim', explode(',', $qData['materia']));
+                    $subjectIds = [];
                     foreach ($subjectNames as $name) {
                         $subject = Subject::firstOrCreate(['name' => $name, 'slug' => Str::slug($name)]);
-                        $question->subjects()->attach($subject->id);
+                        $subjectIds[] = $subject->id;
                     }
+                    // Usa syncWithoutDetaching para não remover matérias adicionadas manualmente depois
+                    $question->subjects()->syncWithoutDetaching($subjectIds);
                 }
 
                 // Processamento de alternativas (JSON -> Tabela Relacional)
@@ -237,12 +260,16 @@ class QuestionImportService
                     $alternativas = json_decode($qData['alternativas'], true);
                     if (is_array($alternativas)) {
                         foreach ($alternativas as $label => $content) {
-                            QuestionAlternative::create([
-                                'question_id' => $question->id,
-                                'label'       => strtoupper($label),
-                                'content'     => $content,
-                                'is_correct'  => (strtoupper($label) === strtoupper($qData['gabarito'] ?? '')),
-                            ]);
+                            QuestionAlternative::updateOrCreate(
+                                [
+                                    'question_id' => $question->id,
+                                    'label'       => strtoupper($label),
+                                ],
+                                [
+                                    'content'     => $content,
+                                    'is_correct'  => (strtoupper($label) === strtoupper($qData['gabarito'] ?? '')),
+                                ]
+                            );
                         }
                     }
                 }
