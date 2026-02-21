@@ -346,7 +346,14 @@
                  }"
                  @click="!answered ? selectAnswer('{{ $alt->label }}') : null">
                 <div class="qb-alt-letter">{{ $alt->label }}</div>
-                <div class="qb-alt-text">{{ $alt->content }}</div>
+                <div style="display: flex; flex-direction: column; gap: 8px; flex-grow: 1; overflow: hidden;">
+                    @if($alt->content)
+                        <div class="qb-alt-text" style="word-break: break-word;">{{ $alt->content }}</div>
+                    @endif
+                    @if($alt->image_path)
+                        <img src="{{ Storage::url($alt->image_path) }}" alt="Alternativa {{ $alt->label }}" style="max-width: 100%; height: auto; border-radius: 4px; object-fit: contain;">
+                    @endif
+                </div>
             </div>
         @endforeach
 

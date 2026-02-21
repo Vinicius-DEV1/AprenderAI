@@ -8,6 +8,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * QuestionController
+ * 
+ * Controlador central para gerenciamento do banco de questões no Painel Administrativo.
+ * Lida com a triagem de questões incompletas (IA), edição manual e comandos de processamento em lote.
+ */
 class QuestionController extends Controller
 {
     public function index(Request $request)
@@ -112,7 +118,8 @@ class QuestionController extends Controller
 
     public function create()
     {
-        return view('admin.questions.form');
+        $subjects = \App\Models\Subject::orderBy('name')->get();
+        return view('admin.questions.form', compact('subjects'));
     }
 
     public function store(Request $request)
@@ -165,7 +172,9 @@ class QuestionController extends Controller
 
     public function edit(Question $question)
     {
-        return view('admin.questions.form', compact('question'));
+        $question->load('alternatives', 'subjects');
+        $subjects = \App\Models\Subject::orderBy('name')->get();
+        return view('admin.questions.form', compact('question', 'subjects'));
     }
 
     public function update(Request $request, Question $question)
@@ -197,14 +206,18 @@ class QuestionController extends Controller
 
         $question->update($validated);
 
-        // Substitui todas as alternativas: apaga as antigas e recria
-        $question->alternatives()->delete();
+        // Atualiza as alternativas existentes ou cria novas sem excluir os metadados antigos (ex: image_path)
         foreach ($alternativas as $label => $content) {
-            $question->alternatives()->create([
-                'label'      => strtoupper($label),
-                'content'    => $content,
-                'is_correct' => (strtoupper($label) === strtoupper($correctAnswer)),
-            ]);
+            \App\Models\QuestionAlternative::updateOrCreate(
+                [
+                    'question_id' => $question->id,
+                    'label'       => strtoupper($label),
+                ],
+                [
+                    'content'     => $content ?? '',
+                    'is_correct'  => (strtoupper($label) === strtoupper($correctAnswer)),
+                ]
+            );
         }
 
         // Atualiza a disciplina via pivot

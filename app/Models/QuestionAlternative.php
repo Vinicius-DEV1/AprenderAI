@@ -13,6 +13,7 @@ class QuestionAlternative extends Model
         'question_id',
         'label',
         'content',
+        'image_path',
         'is_correct',
     ];
 

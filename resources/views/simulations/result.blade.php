@@ -304,7 +304,14 @@
                                 class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold {{ $answer->user_answer === $alt->label ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-slate-200' }}">
                                 {{ $alt->label }}
                             </span>
-                            <span class="text-sm text-gray-800 alternative-text leading-snug">{{ $alt->content }}</span>
+                            <div class="flex flex-col gap-2 flex-grow overflow-hidden">
+                                @if($alt->content)
+                                    <span class="text-sm text-gray-800 alternative-text leading-snug break-words">{{ $alt->content }}</span>
+                                @endif
+                                @if($alt->image_path)
+                                    <img src="{{ Storage::url($alt->image_path) }}" alt="Alternativa {{ $alt->label }}" class="max-w-full h-auto rounded object-contain">
+                                @endif
+                            </div>
                             @if($alt->is_correct)
                                 <svg class="w-4 h-4 text-green-600 ml-auto flex-shrink-0" fill="none" viewBox="0 0 24 24"
                                     stroke="currentColor">

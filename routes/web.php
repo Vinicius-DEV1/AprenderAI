@@ -210,6 +210,14 @@ Route::middleware(['auth'])->group(function () {
                     ->name('review.revert');
             });
 
+            // ----------------------------------------------------------------
+            // Módulo de Importação da API ENEM Dev
+            // ----------------------------------------------------------------
+            Route::prefix('enem-import')->name('enem-import.')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Admin\EnemImportController::class, 'index'])->name('index');
+                Route::post('/', [\App\Http\Controllers\Admin\EnemImportController::class, 'store'])->name('store');
+            });
+
             // Chat Logs
             Route::get('/chat-logs/{id}', [\App\Http\Controllers\Admin\ChatLogController::class, 'show'])->name('chat-logs.show');
 
