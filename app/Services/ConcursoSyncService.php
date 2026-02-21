@@ -73,6 +73,10 @@ class ConcursoSyncService
                         // Se for "Várias" ou texto não-numérico, mantém null
                     }
 
+                    // A API não fornece link direto — gera busca Google como fallback útil
+                    $linkBusca = 'https://www.google.com/search?q='
+                        . rawurlencode($orgao . ' concurso público ' . strtoupper($uf));
+
                     Concurso::updateOrCreate(
                         [
                             'uf' => strtoupper($uf),
@@ -83,7 +87,7 @@ class ConcursoSyncService
                             'situacao' => $situacao,
                             'vagas' => $vagas,
                             'salario_maximo' => null,
-                            'link_oficial' => $item['link_oficial'] ?? ($item['Link'] ?? null),
+                            'link_oficial' => $item['link_oficial'] ?? ($item['Link'] ?? $item['link'] ?? $item['url'] ?? $linkBusca),
                             'fonte' => 'concursos-api.deno.dev',
                             'inscricoes_inicio' => null,
                             'inscricoes_fim' => null,
