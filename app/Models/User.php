@@ -32,6 +32,7 @@ class User extends Authenticatable
         'ai_questions_count',
         'last_reset_at',
         'essay_credits',
+        'max_ai_questions_override',
     ];
 
     // ... (unchanged code) ...
@@ -222,15 +223,18 @@ class User extends Authenticatable
         $this->increment('essays_used_this_month');
     }
 
+    public function aiQuotaLimit(): int
+    {
+        return $this->max_ai_questions_override ?? $this->plan->max_ai_questions ?? 0;
+    }
+
     public function hasAiQuota(): bool
     {
         if (!$this->plan) {
             return false;
         }
-        // If plan has no limit defined (null) or 0 (maybe unexpected?), assume limit.
-        // But migration default is 10.
-        // Let's assume -1 or huge number for unlimited if needed, but for now strict comparison.
-        return $this->ai_questions_count < $this->plan->max_ai_questions;
+        
+        return $this->ai_questions_count < $this->aiQuotaLimit();
     }
 
     public function incrementAiUsage(): void
