@@ -12,15 +12,12 @@ class Question extends Model
     protected $fillable = [
         'type',
         'format',
-        'theme',
         'difficulty',
         'difficulty_reasoning',
         'year',
         'statement',
         'explanation',
         'source',
-        'topic',
-        'origin',
         'organization',
         'institution',
         'role',
@@ -113,14 +110,27 @@ class Question extends Model
     }
 
     /**
-     * Get the subjects associated with the question.
+     * Lógica N:N (Pivot): Get the subjects associated with the question.
      * This defines the Many-to-Many relationship using the 'question_subject' pivot table.
+     * Isso substitui a antiga coluna textual 'subject', permitindo questões multidisciplinares.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
      */
     public function subjects()
     {
         return $this->belongsToMany(Subject::class);
+    }
+
+    /**
+     * Lógica N:N (Pivot): Get the topics associated with the question.
+     * This defines the Many-to-Many relationship using the 'question_topic' pivot table.
+     * Substitui a coluna textual legacy 'topic', externalizando metadados.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function topics()
+    {
+        return $this->belongsToMany(Topic::class, 'question_topic');
     }
 
     /**
@@ -220,5 +230,44 @@ class Question extends Model
 
         // 3. Converter quebras de linha (\n) em tags HTML <br>
         return nl2br($html);
+    }
+
+    /**
+     * Scope: filtra pelo tipo da questão (enem ou concurso)
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param string|null $type
+     */
+    public function scopeFilterByType($query, ?string $type)
+    {
+        return $query->when($type, fn($q) => $q->where('type', $type));
+    }
+
+    /**
+     * Scope: filtra por matéria (nome)
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param string|null $subjectName
+     */
+    public function scopeFilterBySubject($query, ?string $subjectName)
+    {
+        return $query->when($subjectName, fn($q) => 
+            $q->whereHas('subjects', fn($s) => $s->where('subjects.name', $subjectName))
+        );
+    }
+
+    /**
+     * Scope: filtra por assunto/tópico (100% baseado na relação de pivô)
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param mixed $topicId
+     */
+    public function scopeFilterByTopic($query, $topicId)
+    {
+        return $query->when($topicId, function($q) use ($topicId) {
+            $q->whereHas('topics', function($subQ) use ($topicId) {
+                $subQ->where('topics.id', $topicId);
+            });
+        });
     }
 }
