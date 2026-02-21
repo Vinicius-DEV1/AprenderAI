@@ -17,13 +17,27 @@ class QuestionFactory extends Factory
             'theme' => $this->faker->word,
             'year' => 2023,
             'statement' => $this->faker->paragraph,
-            'alternatives' => ['A' => 'Opção A', 'B' => 'Opção B', 'C' => 'Opção C', 'D' => 'Opção D', 'E' => 'Opção E'],
-            'correct_answer' => 'A',
             'explanation' => $this->faker->sentence,
             'source' => 'ai_generated',
             'difficulty' => 'medium',
             'difficulty_reasoning' => $this->faker->sentence,
+            'external_id' => $this->faker->uuid, // Required by DB constraint
         ];
+    }
+
+    public function configure()
+    {
+        return $this->afterCreating(function (Question $question) {
+            // Create default alternatives for every factory question
+            $options = ['A' => 'Opção A', 'B' => 'Opção B', 'C' => 'Opção C', 'D' => 'Opção D', 'E' => 'Opção E'];
+            foreach ($options as $label => $content) {
+                $question->alternatives()->create([
+                    'label'      => $label,
+                    'content'    => $content,
+                    'is_correct' => $label === 'A', // Default is A
+                ]);
+            }
+        });
     }
 
     /**
