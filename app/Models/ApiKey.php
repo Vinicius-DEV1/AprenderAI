@@ -14,9 +14,11 @@ class ApiKey extends Model
     public const CAPABILITY_ESSAYS = 'essays';
     public const CAPABILITY_TRIAGE = 'triage';
     public const CAPABILITY_SEARCH = 'search';
+    public const CAPABILITY_STUDY_PLANS = 'study_plans';
     public const CAPABILITY_GENERAL = 'general';
 
     protected $fillable = [
+        'vault_id',
         'provider',
         'key',
         'is_active',
@@ -43,8 +45,28 @@ class ApiKey extends Model
             self::CAPABILITY_ESSAYS => 'Avaliação de Redações',
             self::CAPABILITY_TRIAGE => 'Triagem e Moderação',
             self::CAPABILITY_SEARCH => 'Busca Inteligente (Xavier)',
+            self::CAPABILITY_STUDY_PLANS => 'Geração de Plano de Estudos',
             self::CAPABILITY_GENERAL => 'Uso Geral / Fallback',
         ];
+    }
+
+    public function vault()
+    {
+        return $this->belongsTo(ApiKeyVault::class, 'vault_id');
+    }
+
+    // Dynamic attributes fallback to vault if present
+    public function getDecryptedKeyAttribute()
+    {
+        if ($this->vault_id) {
+            return $this->vault->decrypted_key;
+        }
+        return Crypt::decryptString($this->attributes['key']);
+    }
+
+    public function getEffectiveProviderAttribute()
+    {
+        return $this->vault_id ? $this->vault->provider : $this->provider;
     }
 
     protected $hidden = [
@@ -54,11 +76,6 @@ class ApiKey extends Model
     public function setKeyAttribute($value)
     {
         $this->attributes['key'] = Crypt::encryptString($value);
-    }
-
-    public function getDecryptedKeyAttribute()
-    {
-        return Crypt::decryptString($this->attributes['key']);
     }
 
     public function incrementUsage(): void
