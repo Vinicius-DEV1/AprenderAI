@@ -5,80 +5,151 @@ namespace App\Services;
 use App\Models\Plan;
 use App\Models\User;
 
+/**
+ * PlanService — Centralized Plan & Quota Logic
+ *
+ * This service orchestrates limit checks as structured responses for controllers.
+ * It delegates the actual math to the User model (which holds the override-aware
+ * quota methods), keeping this service as a thin orchestration layer.
+ *
+ * DESIGN PRINCIPLE:
+ *  - User model owns "can I?", "what's my limit?", "how much did I use?"
+ *  - PlanService owns "give me a structured check result for the controller"
+ *  - Controllers own "how do I respond to the HTTP request?"
+ */
 class PlanService
 {
+    // =========================================================================
+    // PLAN ASSIGNMENT
+    // =========================================================================
+
+    /**
+     * Assign a plan to a user, resetting monthly usage counters accordingly.
+     * Called on subscription creation or upgrade.
+     */
     public function assignPlanToUser(User $user, Plan $plan): void
     {
         $user->update([
-            'plan_id' => $plan->id,
-            'plan_started_at' => now(),
-            'plan_expires_at' => now()->addMonth(),
+            'plan_id'                    => $plan->id,
+            'plan_started_at'            => now(),
+            'plan_expires_at'            => now()->addMonth(),
+            // Reset counters on plan assignment; new cycle begins now
             'simulations_used_this_month' => 0,
-            'essays_used_this_month' => 0,
-            'usage_reset_at' => now()->addMonth(),
+            'essays_used_this_month'      => 0,
+            'usage_reset_at'              => now()->addMonth(),
         ]);
     }
 
+    // =========================================================================
+    // SIMULATION LIMIT CHECK
+    // =========================================================================
+
+    /**
+     * Check whether a user can create a new simulation.
+     *
+     * Returns a structured array so controllers can act on it without
+     * re-implementing the logic. The `remaining` key is included only
+     * when `can_create` is true (for display in the UI).
+     *
+     * @return array{can_create: bool, message?: string, remaining?: int|string, limit?: int, used?: int}
+     */
     public function checkSimulationLimit(User $user): array
     {
-        $user->load('plan');
+        $user->loadMissing('plan');
 
         if (!$user->plan) {
             return [
                 'can_create' => false,
-                'message' => 'Você precisa de um plano ativo para criar simulados.'
+                'message'    => 'Você precisa de um plano ativo para criar simulados.',
             ];
         }
+
+        $limit = $user->simulationQuotaLimit();
+        $used  = $user->monthlySimulationUsed();
 
         if (!$user->canCreateSimulation()) {
-            $limit = $user->plan->simulations_limit;
+            $planName = $user->plan->name;
+
             return [
                 'can_create' => false,
-                'message' => "Você atingiu o limite de $limit simulados no plano {$user->plan->name}. Faça upgrade para continuar!"
+                'limit'      => $limit,
+                'used'       => $used,
+                'message'    => $limit === 0
+                    ? "Simulados não estão disponíveis no plano {$planName}. Faça upgrade!"
+                    : "Você atingiu o limite de {$limit} simulados no plano {$planName}. Faça upgrade para continuar!",
             ];
         }
 
+        // Determine "remaining" display value
+        $remaining = ($limit === 0)
+            ? 'ilimitado'
+            : ($limit - $used);
+
         return [
             'can_create' => true,
-            'remaining' => $user->plan->isUnlimited('simulations')
-                ? 'ilimitado'
-                : ($user->plan->simulations_limit - $user->simulations_used_this_month)
+            'limit'      => $limit,
+            'used'       => $used,
+            'remaining'  => $remaining,
         ];
     }
 
+    // =========================================================================
+    // ESSAY LIMIT CHECK
+    // =========================================================================
+
+    /**
+     * Check whether a user can create (and submit) a new essay.
+     *
+     * Same structured response pattern as checkSimulationLimit.
+     *
+     * @return array{can_create: bool, message?: string, remaining?: int|string, limit?: int, used?: int}
+     */
     public function checkEssayLimit(User $user): array
     {
-        $user->load('plan');
+        $user->loadMissing('plan');
 
         if (!$user->plan) {
             return [
                 'can_create' => false,
-                'message' => 'Você precisa de um plano ativo para enviar redações.'
+                'message'    => 'Você precisa de um plano ativo para enviar redações.',
             ];
         }
 
+        $limit = $user->essayQuotaLimit();
+        $used  = $user->monthlyEssayUsed();
+
         if (!$user->canCreateEssay()) {
-            $limit = $user->plan->essays_limit;
-            if ($limit === 0) {
-                return [
-                    'can_create' => false,
-                    'message' => "Redações não estão disponíveis no plano {$user->plan->name}. Faça upgrade!"
-                ];
-            }
+            $planName = $user->plan->name;
+
             return [
                 'can_create' => false,
-                'message' => "Você atingiu o limite de $limit redações no plano {$user->plan->name}. Faça upgrade!"
+                'limit'      => $limit,
+                'used'       => $used,
+                'message'    => $limit === 0
+                    ? "Redações não estão disponíveis no plano {$planName}. Faça upgrade!"
+                    : "Você atingiu o limite de {$limit} redações no plano {$planName}. Faça upgrade para continuar!",
             ];
         }
+
+        $remaining = ($limit === 0)
+            ? 'ilimitado'
+            : ($limit - $used);
 
         return [
             'can_create' => true,
-            'remaining' => $user->plan->isUnlimited('essays')
-                ? 'ilimitado'
-                : ($user->plan->essays_limit - $user->essays_used_this_month)
+            'limit'      => $limit,
+            'used'       => $used,
+            'remaining'  => $remaining,
         ];
     }
 
+    // =========================================================================
+    // HELPERS
+    // =========================================================================
+
+    /**
+     * Retrieve the free plan model (used for post-cancellation demotion).
+     */
     public function getFreePlan(): Plan
     {
         return Plan::where('slug', 'free')->firstOrFail();
