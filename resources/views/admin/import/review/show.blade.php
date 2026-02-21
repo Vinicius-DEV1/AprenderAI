@@ -81,7 +81,8 @@
                     {{-- Card do Enunciado --}}
                     <div class="bg-white rounded-lg shadow-sm p-5">
                         <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Enunciado</h3>
-                        <div class="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">{{ $question->statement }}</div>
+                        {{-- Renderização segura do enunciado com suporte a Markdown de imagens --}}
+                        <div class="text-gray-800 text-sm leading-relaxed">{!! $question->statement_html !!}</div>
                         
                         {{-- Preview da imagem recortada do enunciado (se houver) --}}
                         @if($question->image_path)
