@@ -35,7 +35,11 @@ class InterpretSearchPromptJob implements ShouldQueue
             $filterOptions = $questionService->getFilterOptions();
             $filters = $aiService->interpretSearchPrompt($this->searchRequest->prompt, $filterOptions);
 
-            if ($filters) {
+            // Validação mínima para evitar que o Job seja marcado como completed 
+            // sem filtros reais (ex: quando a IA retorna um JSON vazio ou inesperado)
+            $hasRealFilters = !empty($filters['subject']) || !empty($filters['topic']) || !empty($filters['keyword']) || !empty($filters['type']);
+
+            if ($filters && $hasRealFilters) {
                 $this->searchRequest->update([
                     'filters' => $filters,
                     'status' => 'completed',
@@ -43,7 +47,7 @@ class InterpretSearchPromptJob implements ShouldQueue
             } else {
                 $this->searchRequest->update([
                     'status' => 'failed',
-                    'error' => 'Não conseguimos interpretar sua busca.',
+                    'error' => 'Eu tentei cruzar todos os dados, mas acabei me perdendo entre tantos enunciados. Que tal tentarmos uma nova rota de busca?',
                 ]);
             }
         } catch (\Exception $e) {
