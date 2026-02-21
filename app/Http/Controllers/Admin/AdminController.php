@@ -82,7 +82,8 @@ class AdminController extends Controller
 
     public function apiKeys()
     {
-        $keys = ApiKey::orderBy('provider')->get();
+        $vaultKeys = \App\Models\ApiKeyVault::orderBy('nickname')->get();
+        $routingKeys = ApiKey::with('vault')->orderBy('provider')->get();
 
         // SRE: Fetch last 20 health check logs
         $logs = \App\Models\ApiLog::with('apiKey')->latest()->take(20)->get();
@@ -110,19 +111,43 @@ class AdminController extends Controller
         // NEW: Pull capabilities dictionary for UI Rendering
         $availableCapabilities = ApiKey::getAvailableCapabilities();
 
-        return view('admin.api-keys', compact('keys', 'logs', 'aiLogs', 'aiRanking', 'hasRecentErrors', 'availableCapabilities'));
+        return view('admin.api-keys', compact('vaultKeys', 'routingKeys', 'logs', 'aiLogs', 'aiRanking', 'hasRecentErrors', 'availableCapabilities'));
+    }
+
+    public function storeVaultKey(Request $request)
+    {
+        $request->validate([
+            'nickname' => 'required|string|unique:api_key_vaults,nickname',
+            'provider' => 'required|in:openai,gemini,grok',
+            'key' => 'required|string',
+        ]);
+
+        \App\Models\ApiKeyVault::create($request->only(['nickname', 'provider', 'key']) + ['is_valid' => true]);
+
+        return back()->with('success', 'Chave adicionada ao Cofre com sucesso!');
+    }
+
+    public function discoverModels(Request $request)
+    {
+        $request->validate(['vault_id' => 'required|exists:api_key_vaults,id']);
+        
+        $vault = \App\Models\ApiKeyVault::findOrFail($request->vault_id);
+        $aiService = app(\App\Services\AIService::class);
+        $result = $aiService->validateKey($vault->provider, $vault->decrypted_key);
+
+        return response()->json($result);
     }
 
     public function storeApiKey(Request $request)
     {
         $request->validate([
-            'provider' => 'required|in:openai,gemini,grok',
-            'key' => 'required|string',
-            'preferred_model' => 'nullable|string',
+            'vault_id' => 'required|exists:api_key_vaults,id',
+            'preferred_model' => 'required|string',
             'capabilities' => 'nullable|array',
             'capabilities.*' => 'string'
         ]);
 
+        $vault = \App\Models\ApiKeyVault::findOrFail($request->vault_id);
         $requestedCapabilities = $request->capabilities ?? [ApiKey::CAPABILITY_GENERAL];
 
         // 🚨 REQUISITO: Chave Única por Capacidade
@@ -143,20 +168,20 @@ class AdminController extends Controller
         }
 
         // Se for a primeira chave deste provider, torna-a primária
-        $isPrimary = !ApiKey::where('provider', $request->provider)->where('is_primary', true)->exists();
+        $isPrimary = !ApiKey::where('provider', $vault->provider)->where('is_primary', true)->exists();
 
         ApiKey::create([
-            'provider' => $request->provider,
-            'key' => $request->key, // Setter encrypts automatically
+            'vault_id' => $vault->id,
+            'provider' => $vault->provider, // Cache provider locally
             'preferred_model' => $request->preferred_model,
             'capabilities' => $requestedCapabilities,
-            'is_valid' => true, // Assumimos válido se o user salvou após teste (ou podemos forçar teste)
+            'is_valid' => true,
             'is_active' => true,
             'is_primary' => $isPrimary,
-            'status' => 'online', // Fix: Garantir que a chave nasça online para ser pega pelo AIService
+            'status' => 'online',
         ]);
 
-        return back()->with('success', 'Chave adicionada com sucesso!');
+        return back()->with('success', 'Roteamento configurado com sucesso!');
     }
 
     public function toggleApiKey(ApiKey $apiKey)
@@ -229,14 +254,14 @@ class AdminController extends Controller
         $aiService = app(\App\Services\AIService::class);
 
         try {
-            $result = $aiService->validateKey($apiKey->provider, $apiKey->decrypted_key);
+            $result = $aiService->validateKey($apiKey->effective_provider, $apiKey->decrypted_key);
 
             if ($result['is_valid']) {
                 $apiKey->update([
                     'status' => 'online',
                     'last_health_check_at' => now(),
                 ]);
-                return back()->with('success', "Provedor {$apiKey->provider} validado com sucesso! (Online)");
+                return back()->with('success', "Roteamento em {$apiKey->effective_provider} validado com sucesso! (Online)");
             }
             else {
                 $status = str_contains($result['error'] ?? '', '429') ? 'quota_exceeded' : 'offline';
@@ -244,7 +269,7 @@ class AdminController extends Controller
                     'status' => $status,
                     'last_health_check_at' => now(),
                 ]);
-                return back()->with('error', "Provedor {$apiKey->provider} falhou: " . ($result['error'] ?? 'Erro desconhecido'));
+                return back()->with('error', "Roteamento em {$apiKey->effective_provider} falhou: " . ($result['error'] ?? 'Erro desconhecido'));
             }
         }
         catch (\Exception $e) {
