@@ -1,5 +1,5 @@
 @forelse($questions as $question)
-    <div class="qb-card" x-data="questionCard({{ $question->id }}, {{ json_encode(isset($answeredMap[$question->id])) }}, {{ json_encode($answeredMap[$question->id] ?? null) }})">
+    <div class="qb-card" x-data="questionCard({{ $question->id }}, {{ json_encode(isset($answeredMap[$question->id])) }}, {{ json_encode($answeredMap[$question->id] ?? null) }}, '{{ $question->subjects->first()->name ?? 'Geral' }}')">
         <div class="qb-card-meta">
             <span class="qb-card-id">#{{ $question->external_id ?? $question->id }}</span>
             @if($question->source === 'ai_generated')
