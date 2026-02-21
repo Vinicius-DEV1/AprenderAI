@@ -4,7 +4,9 @@ namespace Database\Seeders;
 
 use App\Models\Question;
 use App\Models\Subject;
+use App\Models\Topic;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 use Faker\Factory as Faker;
 
 class QuestionSeeder extends Seeder
@@ -45,20 +47,46 @@ class QuestionSeeder extends Seeder
         $templates = $this->getPortugueseTemplates();
 
         foreach ($templates as $i => $tpl) {
+            $year = $this->faker->numberBetween(2024, 2026);
+            $organization = 'Exame Nacional do Ensino Médio';
+            $institution = 'MEC';
+            $role = 'Estudante';
+            $statement = $tpl['statement'];
+
+            $uniqueString = $organization . '|' . $year . '|' . $institution . '|' . $role . '|' . trim($statement);
+            $externalId = md5($uniqueString);
+
             $question = Question::create([
                 'type' => 'enem',
-                'theme' => $tpl['theme'],
                 'difficulty' => $tpl['difficulty'] ?? 'medium',
-                'year' => $this->faker->numberBetween(2024, 2026),
-                'statement' => $tpl['statement'],
-                'alternatives' => $tpl['alternatives'],
-                'correct_answer' => $tpl['correct_answer'],
+                'year' => $year,
+                'statement' => $statement,
                 'explanation' => $tpl['explanation'],
                 'difficulty_reasoning' => $tpl['difficulty_reasoning'] ?? 'Esta questão avalia competências básicas de interpretação.',
                 'source' => 'ai_generated',
+                'external_id' => $externalId,
+                'organization' => $organization,
+                'institution' => $institution,
+                'role' => $role,
             ]);
 
-            $question->subjects()->attach($subject->id);
+            $topic = Topic::firstOrCreate(
+                ['name' => $tpl['theme']],
+                ['slug' => Str::slug($tpl['theme'])]
+            );
+
+            $question->subjects()->sync([$subject->id]);
+            $question->topics()->sync([$topic->id]);
+
+            $alts = [];
+            foreach ($tpl['alternatives'] as $label => $content) {
+                $alts[] = [
+                    'label' => $label,
+                    'content' => $content,
+                    'is_correct' => ($label === $tpl['correct_answer']),
+                ];
+            }
+            $question->alternatives()->createMany($alts);
         }
     }
 
@@ -67,20 +95,46 @@ class QuestionSeeder extends Seeder
         $templates = $this->getMathTemplates();
 
         foreach ($templates as $i => $tpl) {
+            $year = $this->faker->numberBetween(2024, 2026);
+            $organization = 'Exame Nacional do Ensino Médio';
+            $institution = 'MEC';
+            $role = 'Estudante';
+            $statement = $tpl['statement'];
+
+            $uniqueString = $organization . '|' . $year . '|' . $institution . '|' . $role . '|' . trim($statement);
+            $externalId = md5($uniqueString);
+
             $question = Question::create([
                 'type' => 'enem',
-                'theme' => $tpl['theme'],
                 'difficulty' => $tpl['difficulty'] ?? 'medium',
-                'year' => $this->faker->numberBetween(2024, 2026),
-                'statement' => $tpl['statement'],
-                'alternatives' => $tpl['alternatives'],
-                'correct_answer' => $tpl['correct_answer'],
+                'year' => $year,
+                'statement' => $statement,
                 'explanation' => $tpl['explanation'],
                 'difficulty_reasoning' => $tpl['difficulty_reasoning'] ?? 'Esta questão exige raciocínio lógico e aplicação de fórmulas.',
                 'source' => 'ai_generated',
+                'external_id' => $externalId,
+                'organization' => $organization,
+                'institution' => $institution,
+                'role' => $role,
             ]);
 
-            $question->subjects()->attach($subject->id);
+            $topic = Topic::firstOrCreate(
+                ['name' => $tpl['theme']],
+                ['slug' => Str::slug($tpl['theme'])]
+            );
+
+            $question->subjects()->sync([$subject->id]);
+            $question->topics()->sync([$topic->id]);
+
+            $alts = [];
+            foreach ($tpl['alternatives'] as $label => $content) {
+                $alts[] = [
+                    'label' => $label,
+                    'content' => $content,
+                    'is_correct' => ($label === $tpl['correct_answer']),
+                ];
+            }
+            $question->alternatives()->createMany($alts);
         }
     }
 
