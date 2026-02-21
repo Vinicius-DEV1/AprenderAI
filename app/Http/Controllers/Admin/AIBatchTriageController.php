@@ -88,15 +88,25 @@ class AIBatchTriageController extends Controller
     {
         return response()->stream(function () use ($batchId) {
             $key = "batch_progress_{$batchId}";
+            $startTime = time();
+            $maxDuration = 60 * 5; // 5 minutes max per SSE connection to avoid ghost processes
             
             while (true) {
-                $data = Cache::get($key);
-
-                if (!$data) {
-                    echo "data: " . json_encode(['status' => 'not_found']) . "\n\n";
+                // Safety: check if connection is still active and duration is within limits
+                if (connection_aborted() || (time() - $startTime) > $maxDuration) {
                     break;
                 }
 
+                $data = Cache::get($key);
+
+                if (!$data) {
+                    echo "data: " . json_encode(['status' => 'not_found', 'message' => 'Lote não encontrado ou expirado no cache.']) . "\n\n";
+                    ob_flush();
+                    flush();
+                    break;
+                }
+
+                // Send keep-alive comment every 5 iterations if no data change (optional but helps some proxies)
                 echo "data: " . json_encode($data) . "\n\n";
                 ob_flush();
                 flush();
@@ -105,11 +115,12 @@ class AIBatchTriageController extends Controller
                     break;
                 }
 
-                sleep(1);
+                sleep(2); // Increased sleep a bit to reduce CPU/Cache pressure
             }
         }, 200, [
             'Content-Type' => 'text/event-stream',
             'Cache-Control' => 'no-cache',
+            'Connection' => 'keep-alive',
             'X-Accel-Buffering' => 'no', // For Nginx
         ]);
     }

@@ -62,11 +62,11 @@ class AIBatchTriageJob implements ShouldQueue
                 'error' => $e->getMessage()
             ]);
             
-            $this->updateProgress(0, count($this->questionIds));
+            $this->updateProgress(0, count($this->questionIds), $e->getMessage());
         }
     }
 
-    protected function updateProgress(int $applied, int $errors): void
+    protected function updateProgress(int $applied, int $errors, ?string $errorMessage = null): void
     {
         $key = "batch_progress_{$this->batchId}";
         $lock = Cache::lock($key . "_lock", 10);
@@ -78,14 +78,20 @@ class AIBatchTriageJob implements ShouldQueue
                 'total' => 0,
                 'processed' => 0,
                 'errors' => 0,
-                'status' => 'processing'
+                'status' => 'processing',
+                'last_error' => null
             ]);
 
             $data['processed'] += $applied;
             $data['errors'] += $errors;
+            
+            if ($errorMessage) {
+                $data['last_error'] = $errorMessage;
+                $data['status'] = 'failed'; // Mark as failed if an exception occurred
+            }
 
-            // Mark as completed if all questions in the batch were processed
-            if ($data['processed'] + $data['errors'] >= $data['total']) {
+            // Mark as completed if all questions in the batch were processed (and not already failed)
+            if ($data['status'] !== 'failed' && ($data['processed'] + $data['errors'] >= $data['total'])) {
                 $data['status'] = 'completed';
             }
 
