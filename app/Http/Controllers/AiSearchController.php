@@ -78,14 +78,14 @@ class AiSearchController extends Controller
         $friendlyError = null;
         if ($searchRequest->status === 'failed') {
             $error = $searchRequest->error;
-            $friendlyError = 'Xavier encontrou um problema ao processar sua busca.';
+            $friendlyError = 'Eu me perdi entre tantos enunciados enquanto tentava cruzar seus dados.';
 
             if (str_contains($error, '429') || str_contains($error, 'Quota')) {
-                $friendlyError = 'O Xavier está um pouco sobrecarregado agora. Por favor, tente novamente em alguns instantes.';
+                $friendlyError = 'Estou recebendo muitas requisições agora. Poderia aguardar um instante na minha mesa de espera para eu processar sua busca?';
             } elseif (str_contains($error, '401') || str_contains($error, '403') || str_contains($error, 'Key')) {
-                $friendlyError = 'O Xavier está em manutenção técnica. Voltaremos logo!';
+                $friendlyError = 'Minha mesa de análise está passando por uma manutenção rápida. Voltarei com os resultados em breve!';
             } elseif (str_contains($error, 'timeout') || str_contains($error, 'slow')) {
-                $friendlyError = 'A conexão com o Xavier falhou devido à lentidão. Tente uma busca mais simples.';
+                $friendlyError = 'A busca na imensidão de dados demorou mais que o esperado. Vamos tentar uma rota mais específica?';
             }
         }
 

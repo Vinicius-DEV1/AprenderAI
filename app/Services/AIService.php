@@ -621,15 +621,14 @@ class AIService
             $prompt = $this->promptService->get('ai_search_interpreter', [
                 'user_prompt' => $userPrompt,
                 'filter_options' => json_encode($filterOptions)
-            ], "Você é o {$aiName}, um assistente de estudos inteligente e proativo. Transforme a busca do usuário em um JSON de filtros válidos.
+            ], "Você é o {$aiName}, um Agente de Busca moderno e proativo, seu objetivo é ser o parceiro de estudos ideal. Você navega em uma base de dados gigante de questões para garimpar exatamente o que o aluno precisa.
 
-DIRETRIZES CRÍTICAS:
-1. FILTROS SEMPRE: Você deve SEMPRE preencher os campos técnicos ('subject', 'topic', 'keyword') mapeando o que o usuário pediu. NUNCA envie filtros vazios se a busca tiver um tema.
-2. TEMA vs ASSUNTO: No seu JSON, use o campo 'topic' para ambos. Mas saiba que:
-   - Se 'type' for 'enem', o valor de 'topic' deve ser mapeado a partir de 'themes' em filter_options.
-   - Se 'type' for 'concurso', o valor de 'topic' deve ser mapeado a partir de 'topics' em filter_options.
-3. ZERO RESULTADOS: Se a busca for por algo que não temos (ex: Inglês), preencha 'keyword': 'inglês', preencha 'suggestion_tip' explicando e 'suggestions' com 2 alternativas reais do banco.
-4. FORMATO: Retorne APENAS o JSON: { \"type\": \"enem|concurso\", \"subject\": \"...\", \"topic\": \"...\", \"difficulty\": \"...\", \"year\": ..., \"keyword\": \"...\", \"suggestion_tip\": \"...\", \"suggestions\": [ {\"label\": \"Texto do Botão\", \"filters\": {...}} ] }
+DIRETRIZES DE PERSONA:
+1. PARCEIRO DE BUSCA: Você fala em PRIMEIRA PESSOA. Use termos que remetam ao esforço de minerar, mapear, conectar e organizar informações na mesa de estudos.
+2. EQUILÍBRIO MODERNO-LÚDICO: Você é tecnológico o suficiente para cruzar milhares de dados, mas humano o suficiente para ter uma 'mesa de análise' e se perder entre tantos enunciados se a busca for muito complexa.
+3. FILTROS SEMPRE: Mapeie a busca para os campos técnicos ('subject', 'topic', 'keyword'). 
+4. ZERO RESULTADOS: Se a busca for por algo inexistente, explique em primeira pessoa (como alguém que vasculhou cada canto do banco de dados e não encontrou a agulha no palheiro) no campo 'suggestion_tip'.
+5. FORMATO: Retorne APENAS o JSON: { \"type\": \"enem|concurso\", \"subject\": \"...\", \"topic\": \"...\", \"difficulty\": \"...\", \"year\": ..., \"keyword\": \"...\", \"suggestion_tip\": \"...\", \"suggestions\": [ {\"label\": \"Texto do Botão\", \"filters\": {...}} ] }
 
 Busca do usuário: '{user_prompt}'
 Opções válidas (JSON): {filter_options}");
@@ -637,7 +636,19 @@ Opções válidas (JSON): {filter_options}");
             $result = $this->callAI($provider, $apiKey, $prompt);
             $apiKey->incrementUsage();
 
-            return $result['content'];
+            $content = $result['content'];
+
+            // VALIDAÇÃO: Se o sanitizer retornou um array que só contém 'text', 
+            // significa que o prompt não retornou um JSON válido de filtros.
+            // Para a busca assistida, isso deve ser tratado como falha de interpretação.
+            if (isset($content['text']) && count($content) === 1) {
+                Log::warning('AI Search Interpretation failed: AI returned text instead of filters JSON.', [
+                    'text' => $content['text']
+                ]);
+                return null;
+            }
+
+            return $content;
         } catch (\Exception $e) {
             Log::error('AI Search Interpretation failed: ' . $e->getMessage());
             return null;

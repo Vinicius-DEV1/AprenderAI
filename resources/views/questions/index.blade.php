@@ -245,7 +245,7 @@
 
 <div class="xavier-header-badge">
     <span class="pulse-dot"></span>
-    <strong>{{ $aiName }}</strong> — faças buscas inteligentes com {{ $aiName }} em nossa base de {{ $overview['total'] }} questões.
+    <strong>{{ $aiName }}</strong> — seu Agente de Busca pronto para garimpar o melhor conteúdo para você.
 </div>
 <div class="qb-ai-wrapper" x-data="aiSearch()" x-init="initTypewriter()">
     {{-- Balão de Fala do Xavier --}}
@@ -255,12 +255,12 @@
                 <span style="font-size: 20px; color: white;">🤖</span>
             </div>
             <div class="txt">
-                <strong x-text="message ? '{{ $aiName }} diz:' : 'Dica do {{ $aiName }}:'"></strong><br>
+                <strong x-text="message ? '{{ $aiName }}:' : 'Dica do {{ $aiName }}:'"></strong><br>
                 <div x-html="message || suggestion"></div>
                 <div class="xavier-btns-row" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
                     <template x-if="loading">
                         <div class="bg-gray-100 dark:bg-slate-700 rounded-lg px-3 py-2 text-xs text-gray-500 flex items-center gap-2 border border-gray-200">
-                            <span class="font-medium">{{ $aiName }} digitando</span>
+                            <span class="font-medium">Eu estou cruzando os dados...</span>
                             <span class="flex gap-1">
                                 <span class="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style="animation-delay: 0s;"></span>
                                 <span class="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style="animation-delay: 0.2s;"></span>
@@ -322,8 +322,8 @@
         
         @if(auth()->user()->plan && auth()->user()->plan->name !== 'Gratuito')
             <button @click="submitSearch()" class="qb-ai-button" :disabled="loading || !prompt.trim()">
-                <span x-show="!loading">🚀 Buscar com {{ $aiName }}</span>
-                <span x-show="loading" class="animate-pulse" x-text="statusText">🪄 Processando...</span>
+                <span x-show="!loading">🚀 Consultar Agente {{ $aiName }}</span>
+                <span x-show="loading" class="animate-pulse" x-text="statusText">🪄 Mapeando informações...</span>
             </button>
         @else
             <button @click="window.location.href='{{ route('plans.index') }}'" class="qb-ai-locked">
@@ -456,7 +456,7 @@
     <div x-show="globalLoading" x-transition.opacity 
          style="position: absolute; inset: 0; background: rgba(255,255,255,0.7); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-        <div style="font-weight: 700; color: #4338ca; font-size: 14px;" x-text="statusText">Xavier está pensando...</div>
+        <div style="font-weight: 700; color: #4338ca; font-size: 14px;" x-text="statusText">Minerando na base de dados...</div>
     </div>
 
     <div id="questions-content">
@@ -518,7 +518,7 @@ function filterPanel(currentFilters) {
         topics: [],
         loadingTopics: false,
         moreFilters: !!(currentFilters.year || currentFilters.difficulty || currentFilters.status || currentFilters.organization || currentFilters.institution || currentFilters.role),
-        statusText: '🪄 Processando...',
+        statusText: '🪄 Refinando a busca...',
         globalLoading: false,
         isApplyingAiFilters: false,
         
@@ -654,7 +654,7 @@ function aiSearch() {
         prompt: '',
         loading: false,
         placeholderText: 'Comece agora busque: ex: ',
-        statusText: '🪄 {{ $aiName }} está processando...',
+        statusText: '🪄 Conectando os temas...',
         globalLoading: false,
         suggestion: '',
         suggestions: [],
@@ -667,12 +667,12 @@ function aiSearch() {
         showToast: false,
         lastSearchHadResults: true,
         failureMessages: [
-            'O Xavier tropeçou na pilha de livros e se perdeu.',
-            'O assistente foi tomar um café para pensar melhor na sua busca.',
-            'O Xavier se distraiu assistindo uma aula de história.',
-            'Derrubamos um pote de café nos servidores do Xavier.',
-            'O Xavier está tentando resolver uma questão de física quântica e travou.',
-            'O assistente se perdeu no labirinto da biblioteca.'
+            'Eu tentei cruzar todos os dados, mas acabei me perdendo entre tantos enunciados. Que tal tentarmos uma nova rota de busca?',
+            'As informações se misturaram na minha mesa de análise. Deixe-me organizar tudo e tentamos de novo?',
+            'Garimpar essa questão específica foi mais difícil do que eu esperava. Minhas conexões falharam, vamos repetir?',
+            'Houve um desencontro no mapeamento dos filtros. Posso tentar reorganizar minha mesa de estudos e começar de novo?',
+            'Eu vasculhei cada canto do banco de dados, de 2009 até hoje, mas essa resposta escapou por pouco. Vamos ajustar os termos?',
+            'O mapa da minha busca ficou um pouco confuso agora. Deixe-me recalibrar minha rota entre as questões.'
         ],
         staticPrefix: 'Comece agora busque: ex: ',
         placeholders: [
@@ -704,18 +704,18 @@ function aiSearch() {
             "Questões de Ecologia: Cadeia alimentar e ciclos... 🌱"
         ],
         funMessages: [
-            "{{ $aiName }} está mergulhando nos editais mais recentes... 🌊",
-            "Organizando as matérias por ordem de importância para você... 📚",
-            "{{ $aiName }} está polindo os enunciados para você... ✨",
-            "Transformando sua busca em conhecimento... 💡",
-            "{{ $aiName }} está ativando o modo de super-busca... 🚀",
-            "Preparando o café e buscando as questões mais quentes... ☕",
-            "{{ $aiName }} está vasculhando décadas de avaliações... 🕰️",
-            "Separando o joio do trigo no banco de questões... 🌾",
-            "{{ $aiName }} está removendo as distrações para você focar... 🧘",
-            "Quase lá! Sinto cheiro de aprovação no ar... ✨",
-            "{{ $aiName }} está quase lá! Segure firme... ⏳",
-            "{{ $aiName }} está sorrindo porque encontrou algo bom... 😊"
+            "Garimpando informações importantes nos editais... 🌊",
+            "Mapeando conexões entre os temas mais cobrados para você... 📚",
+            "Filtrando os melhores enunciados para sua jornada de estudos... ✨",
+            "Conectando os pontos entre sua busca e nossa base de dados... 💡",
+            "Navegando por um mar de questões para encontrar a ideal... 🚀",
+            "Organizando minha mesa de análise para te entregar o melhor resultado... ☕",
+            "Eu estou vasculhando cada canto do banco de dados, de 2009 até hoje... 🕰️",
+            "Distilando o conhecimento acumulado para sua tela... 🌾",
+            "Focando totalmente em mapear sua agulha no palheiro... 🧘",
+            "Quase lá! Encontrei caminhos sólidos para sua aprovação... ✨",
+            "Finalizando a nossa rota de busca. Só mais um instante... ⏳",
+            "Eu encontrei conexões de resultados que você vai adorar explorar... 😊"
         ],
         placeholderIndex: 0,
         
