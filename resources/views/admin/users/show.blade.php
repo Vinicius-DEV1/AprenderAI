@@ -70,15 +70,23 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
-                            <span>Consumo de IA (Reset Manual)</span>
-                            <span class="text-xs text-gray-500">Max: {{ $user->plan->max_ai_questions ?? 'N/A' }}</span>
+                            <span>Consumo de IA (O que já usou)</span>
+                            <span class="text-xs text-gray-500">Limite Atual: {{ $user->max_ai_questions_override ?? $user->plan->max_ai_questions ?? 'N/A' }}</span>
                         </label>
                         <div class="flex items-center gap-2">
                             <input type="number" name="ai_questions_count" value="{{ old('ai_questions_count', $user->ai_questions_count) }}" class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500" min="0">
                             <button type="button" onclick="document.querySelector('input[name=ai_questions_count]').value = 0" class="text-xs text-blue-600 hover:underline">Zerar</button>
                         </div>
                         @error('ai_questions_count') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
-                        <p class="text-xs text-gray-400 mt-1">Altere este valor para desbloquear ou bloquear o usuário antes do reset automático.</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
+                            <span>Limite Individual de IA (Override)</span>
+                            <span class="text-xs text-gray-500">Plano: {{ $user->plan->max_ai_questions ?? 'N/A' }}</span>
+                        </label>
+                        <input type="number" name="max_ai_questions_override" value="{{ old('max_ai_questions_override', $user->max_ai_questions_override) }}" class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500" min="0" placeholder="Deixe vazio para usar o do plano">
+                        @error('max_ai_questions_override') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+                        <p class="text-xs text-gray-400 mt-1">Este valor ignora o limite do plano para este usuário específico.</p>
                     </div>
                     <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-medium transition-colors">
                         Salvar Alterações
