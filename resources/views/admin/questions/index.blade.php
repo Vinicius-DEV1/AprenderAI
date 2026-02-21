@@ -650,7 +650,12 @@
                                     <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-indigo-200">
                                         <div :style="'width: ' + progress + '%'" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-500 transition-all duration-500"></div>
                                     </div>
-                                    <p class="text-xs text-gray-500" x-text="'Sucessos: ' + processed + ' | Erros: ' + errors"></p>
+                                    <div class="flex justify-between items-center">
+                                        <p class="text-xs text-gray-500" x-text="'Sucessos: ' + processed + ' | Erros: ' + errors"></p>
+                                        <template x-if="lastError">
+                                            <p class="text-[10px] text-red-500 font-bold truncate max-w-[200px]" :title="lastError" x-text="'Erro: ' + lastError"></p>
+                                        </template>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -662,9 +667,17 @@
                     <button x-show="!isProcessing" @click="startBatch()" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
                         Iniciar Processamento
                     </button>
+                    
+                    {{-- Botão Concluído (Normal) --}}
                     <button x-show="isProcessing && progress >= 100" @click="isOpen = false; window.location.reload();" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
                         Concluído
                     </button>
+
+                    {{-- Botão Fechar em caso de Erro Crítico ou conexão perdida --}}
+                    <button x-show="isProcessing && (retryCount >= 5 || status === 'failed')" @click="isOpen = false; window.location.reload();" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                        Fechar e Recarregar
+                    </button>
+
                     <button x-show="!isProcessing" @click="isOpen = false" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
                         Cancelar
                     </button>
@@ -695,6 +708,8 @@
                 errors: 0,
                 progress: 0,
                 statusMessage: 'Iniciando...',
+                status: 'processing',
+                lastError: null,
                 eventSource: null,
                 retryCount: 0,
 
@@ -776,18 +791,23 @@
                             this.processed = data.processed;
                             this.errors = data.errors;
                             this.total = data.total;
+                            this.status = data.status;
+                            this.lastError = data.last_error || null;
                             
                             const completedCount = this.processed + this.errors;
                             // Cálculo de porcentagem seguro
                             this.progress = Math.min(100, Math.round((completedCount / this.total) * 100));
 
-                            if (data.status === 'completed') {
+                            if (this.status === 'completed') {
                                 this.statusMessage = 'Processamento finalizado com sucesso!';
                                 this.progress = 100;
                                 this.eventSource.close();
                                 if (typeof showToast !== 'undefined') {
                                     showToast('⚡ Lote processado 100%!', 'success');
                                 }
+                            } else if (this.status === 'failed') {
+                                this.statusMessage = 'ERRO: ' + (this.lastError || 'Falha no processamento.');
+                                this.eventSource.close();
                             } else {
                                 this.statusMessage = `Processando chunk atual (${completedCount}/${this.total})...`;
                             }
