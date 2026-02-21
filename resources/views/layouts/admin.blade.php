@@ -86,6 +86,14 @@
                             @endif
                         </a>
 
+                        <a href="{{ route('admin.enem-import.index') }}"
+                            class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all {{ request()->routeIs('admin.enem-import.*') ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100' }}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                            </svg>
+                            API ENEM Dev
+                        </a>
+
                         <a href="{{ route('admin.api-keys') }}"
                             class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all {{ request()->routeIs('admin.api-keys') ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-100' }}">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

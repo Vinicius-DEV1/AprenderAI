@@ -20,8 +20,16 @@
                             <div>
                                 <x-input-label for="subject" value="Matéria" />
                                 <select id="subject" name="subject" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                                    <option value="matemática" {{ old('subject', $question->subject ?? '') == 'matemática' ? 'selected' : '' }}>Matemática</option>
-                                    <option value="português" {{ old('subject', $question->subject ?? '') == 'português' ? 'selected' : '' }}>Português</option>
+                                    @php
+                                        $currentSubjectName = isset($question) && $question->subjects->isNotEmpty() 
+                                                                ? strtolower($question->subjects->first()->name) 
+                                                                : '';
+                                    @endphp
+                                    @foreach($subjects as $subj)
+                                        <option value="{{ strtolower($subj->name) }}" {{ old('subject', $currentSubjectName) == strtolower($subj->name) ? 'selected' : '' }}>
+                                            {{ $subj->name }}
+                                        </option>
+                                    @endforeach
                                 </select>
                             </div>
 
@@ -78,17 +86,23 @@
                                         <div class="flex items-center gap-2">
                                             <input type="radio" name="correct_answer" value="{{ $letter }}" {{ old('correct_answer', $question->correct_answer ?? '') == $letter ? 'checked' : '' }} class="text-indigo-600 focus:ring-indigo-500">
                                             @php
-                                                // alternatives() retorna Eloquent Collection; busca pelo label (A/B/C/D/E)
-                                                $altContent = old(
-                                                    'alternatives.' . $letter,
-                                                    isset($question)
-                                                        ? ($question->alternatives->firstWhere('label', $letter)?->content ?? '')
-                                                        : ''
-                                                );
+                                                $alternative = (isset($question) && $question->alternatives)
+                                                    ? $question->alternatives->firstWhere('label', $letter)
+                                                    : null;
+                                                $altContent = old('alternatives.' . $letter, $alternative->content ?? '');
                                             @endphp
-                                            <input type="text" id="alt_{{ $letter }}" name="alternatives[{{ $letter }}]" 
-                                                   value="{{ $altContent }}" 
-                                                   class="block w-full border-gray-300 rounded-md shadow-sm" required>
+                                            <div class="flex-1">
+                                                <input type="text" id="alt_{{ $letter }}" name="alternatives[{{ $letter }}]" 
+                                                       value="{{ $altContent }}" 
+                                                       class="block w-full border-gray-300 rounded-md shadow-sm" {{ empty($altContent) && ($alternative && $alternative->image_path) ? '' : 'required' }}>
+                                                
+                                                @if($alternative && $alternative->image_path)
+                                                    <div class="mt-2">
+                                                        <img src="{{ \Illuminate\Support\Facades\Storage::url($alternative->image_path) }}" class="max-h-32 rounded border shadow-sm">
+                                                        <span class="text-xs text-gray-500">Imagem da Alternativa</span>
+                                                    </div>
+                                                @endif
+                                            </div>
                                         </div>
                                     </div>
                                 @endforeach
