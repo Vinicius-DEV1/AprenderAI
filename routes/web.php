@@ -143,6 +143,8 @@ Route::middleware(['auth'])->group(function () {
         function () {
             Route::get('/', [\App\Http\Controllers\Admin\AdminController::class, 'dashboard'])->name('dashboard');
             Route::get('/api-keys', [\App\Http\Controllers\Admin\AdminController::class, 'apiKeys'])->name('api-keys');
+            Route::post('/api-keys/vault', [\App\Http\Controllers\Admin\AdminController::class, 'storeVaultKey'])->name('api-keys.vault.store');
+            Route::post('/api-keys/discover', [\App\Http\Controllers\Admin\AdminController::class, 'discoverModels'])->name('api-keys.discover');
             Route::post('/api-keys', [\App\Http\Controllers\Admin\AdminController::class, 'storeApiKey'])->name('api-keys.store');
             Route::patch('/api-keys/{apiKey}/toggle', [\App\Http\Controllers\Admin\AdminController::class, 'toggleApiKey'])->name('api-keys.toggle');
             Route::post('/api-keys/test-connection', [\App\Http\Controllers\Admin\AdminController::class, 'testConnection'])->name('api-keys.test');
