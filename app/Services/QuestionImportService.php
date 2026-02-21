@@ -243,13 +243,18 @@ class QuestionImportService
                     'question_id' => $question->id,
                 ]);
 
-                // Processamento de matérias (Many-to-Many)
+                // Processamento de matérias (Many-to-Many) e Tópicos (Coluna simples)
                 if (!empty($qData['materia'])) {
                     $subjectNames = array_map('trim', explode(',', $qData['materia']));
                     $subjectIds = [];
-                    foreach ($subjectNames as $name) {
+                    foreach ($subjectNames as $index => $name) {
                         $subject = Subject::firstOrCreate(['name' => $name, 'slug' => Str::slug($name)]);
                         $subjectIds[] = $subject->id;
+
+                        // O primeiro item é a Matéria, o segundo em diante é o Assunto (Tópico)
+                        if ($index === 1) {
+                            $question->update(['topic' => $name]);
+                        }
                     }
                     // Usa syncWithoutDetaching para não remover matérias adicionadas manualmente depois
                     $question->subjects()->syncWithoutDetaching($subjectIds);

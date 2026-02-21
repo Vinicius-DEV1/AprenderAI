@@ -19,14 +19,14 @@ class SettingController extends Controller
     {
         $request->validate([
             'site_name' => 'required|string|max:255',
+            'ai_name' => 'required|string|max:255',
         ]);
 
-        Setting::updateOrCreate(
-        ['key' => 'site_name'],
-        ['value' => $request->site_name]
-        );
+        Setting::updateOrCreate(['key' => 'site_name'], ['value' => $request->site_name]);
+        Setting::updateOrCreate(['key' => 'ai_name'], ['value' => $request->ai_name]);
 
-        Cache::forget('site_name');
+        Cache::forget('site_settings');
+        Cache::forget('site_name'); // Backward compatibility if used elsewhere
         \Illuminate\Support\Facades\Artisan::call('config:clear');
         \Illuminate\Support\Facades\Artisan::call('view:clear');
 

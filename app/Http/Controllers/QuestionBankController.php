@@ -53,20 +53,22 @@ class QuestionBankController extends Controller
     {
         $user = $request->user();
 
-        // Busca questões com filtros dinâmicos (paginação de 15 por página)
+        // Busca questões com filtros dinâmicos
         $questions = $this->questionService->search($request, $user->id);
 
-        // Opções de filtro para os dropdowns (matérias, tópicos, anos, etc.)
-        $filterOptions = $this->questionService->getFilterOptions();
-
-        // Resumo de desempenho do aluno (total, acertos, erros, taxa)
-        $overview = $this->statsService->getOverview($user->id);
-
-        // Mapa [question_id => is_correct] das questões já respondidas.
-        // Usado para exibir badges "✓ Acertou" / "✗ Errou" nos cards.
+        // Mapa [question_id => is_correct] das questões já respondidas
         $answeredMap = UserQuestionAnswer::forUser($user->id)
             ->pluck('is_correct', 'question_id')
             ->toArray();
+
+        // Se for uma requisição AJAX, retorna apenas o partial da lista
+        if ($request->ajax()) {
+            return view('questions._list', compact('questions', 'answeredMap'));
+        }
+
+        // Opções de filtro iniciais
+        $filterOptions = $this->questionService->getFilterOptions();
+        $overview = $this->statsService->getOverview($user->id);
 
         return view('questions.index', compact(
             'questions',
@@ -74,6 +76,39 @@ class QuestionBankController extends Controller
             'overview',
             'answeredMap'
         ));
+    }
+
+    /**
+     * Retorna os tópicos ou temas filtrados por matéria (AJAX).
+     * 
+     * LÓGICA DE NEGÓCIO:
+     * No AprovadoAI, separamos o conceito de "assunto" por tipo de prova:
+     * - ENEM: Usa a coluna 'theme' (Eixos Temáticos).
+     * - Concurso: Usa a coluna 'topic' (Assuntos/Tópicos).
+     * 
+     * Este endpoint detecta o 'type' no request para saber qual coluna consultar,
+     * garantindo que a UI mostre as opções corretas para o aluno.
+     */
+    public function topics(Request $request)
+    {
+        $subjectName = $request->get('subject');
+        $type = $request->get('type');
+        
+        // Determina a coluna alvo baseada no tipo de questão selecionada
+        $column = ($type === 'enem') ? 'theme' : 'topic';
+
+        $topics = \App\Models\Question::query()
+            ->when($subjectName, function($q) use ($subjectName) {
+                // Filtra questões que pertencem à matéria selecionada (NxN)
+                $q->whereHas('subjects', fn($s) => $s->where('name', $subjectName));
+            })
+            ->whereNotNull($column)
+            ->where($column, '!=', '')
+            ->distinct()
+            ->orderBy($column)
+            ->pluck($column);
+
+        return response()->json($topics);
     }
 
     /**

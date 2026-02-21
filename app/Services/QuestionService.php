@@ -83,12 +83,14 @@ class QuestionService
         )
         )
 
-            // ── Filtro de Assunto/Tópico ──
-            // Coluna string simples na tabela questions.
-            // Ex: "Trigonometria", "Funções de 1º Grau"
-            ->when($request->filled('topic'), fn($q) =>
-        $q->where('topic', $request->topic)
-        )
+            // ── Filtro de Assunto/Tópico (Dinâmico) ──
+            // LÓGICA: ENEM usa a coluna 'theme' (Eixos Temáticos), 
+            // enquanto Concursos usam a coluna 'topic' (Assunto/Tópico).
+            // O código detecta o tipo da busca para filtrar na coluna correta.
+            ->when($request->filled('topic'), function($q) use ($request) {
+                $column = ($request->type === 'enem') ? 'theme' : 'topic';
+                $q->where($column, $request->topic);
+            })
 
             // ── Filtro de Ano ──
             ->when($request->filled('year'), fn($q) =>
@@ -157,11 +159,17 @@ class QuestionService
             // Lista de matérias — busca na tabela subjects (após merge, sem duplicatas)
             'subjects' => \App\Models\Subject::orderBy('name')->pluck('name'),
 
-            // Lista de assuntos/tópicos — distinct da coluna `topic` da tabela questions
-            // Ex: "Trigonometria", "Interpretação de Texto", "Funções"
+            // Lista de temas (ENEM) - Carregados da coluna 'theme'
+            'themes' => Question::select('theme')
+                ->where('type', 'enem')
+                ->whereNotNull('theme')->where('theme', '!=', '')
+                ->distinct()->orderBy('theme')->pluck('theme'),
+
+            // Lista de assuntos (Concurso) - Carregados da coluna 'topic'
             'topics' => Question::select('topic')
-            ->whereNotNull('topic')->where('topic', '!=', '')
-            ->distinct()->orderBy('topic')->pluck('topic'),
+                ->where('type', 'concurso')
+                ->whereNotNull('topic')->where('topic', '!=', '')
+                ->distinct()->orderBy('topic')->pluck('topic'),
 
             // Lista de anos disponíveis (ordem decrescente: mais recente primeiro)
             'years' => Question::select('year')
