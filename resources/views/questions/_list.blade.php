@@ -22,7 +22,8 @@
             </template>
         </div>
 
-        <div class="qb-statement">{!! nl2br(e($question->statement)) !!}</div>
+        {{-- Renderiza o enunciado processando Markdown de imagens e quebras de linha de forma segura --}}
+        <div class="qb-statement">{!! $question->statement_html !!}</div>
 
         <div class="qb-alternatives-list">
             @foreach($question->alternatives->sortBy('label') as $alt)

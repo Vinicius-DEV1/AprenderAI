@@ -190,19 +190,35 @@ class Question extends Model
         });
     }
 
+    /**
+     * Retorna o enunciado processado para exibição em HTML.
+     * 
+     * Este accessor resolve dois problemas:
+     * 1. Renderização de Imagens: Converte a sintaxe Markdown ![]() em tags <img> reais.
+     * 2. Segurança: Escapa o conteúdo original com e() antes de processar as tags seguras.
+     * 3. Formatação: Converte quebras de linha em <br> para preservar a estrutura do texto.
+     * 
+     * @return string
+     */
     public function getStatementHtmlAttribute(): string
     {
         if (empty($this->statement)) {
             return '';
         }
 
-        // 1. Converter Imagens Markdown: ![](URL) -> <img ...>
+        // 1. Escapar HTML para segurança contra XSS (mesmo comportamento do {{ }} no Blade)
+        $html = e($this->statement);
+
+        // 2. Processar Imagens Markdown: ![](URL) -> <img ...>
+        // O regex busca a sintaxe Markdown de imagem e converte para uma tag <img>
+        // com classes CSS pré-definidas para garantir boa exibição e centralização.
         $html = preg_replace(
             '/!\[(.*?)\]\((.*?)\)/',
             '<img src="$2" alt="$1" class="max-w-full h-auto rounded-lg my-4 mx-auto block shadow-sm" loading="lazy">',
-            $this->statement
+            $html
         );
 
-        return $html;
+        // 3. Converter quebras de linha (\n) em tags HTML <br>
+        return nl2br($html);
     }
 }
