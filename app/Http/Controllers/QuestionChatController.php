@@ -41,7 +41,7 @@ class QuestionChatController extends Controller
             return response()->json([
                 'status' => 'quota_exceeded',
                 'message' => 'Você atingiu o limite de dúvidas do seu plano.',
-                'quota_max' => $user->plan->max_ai_questions,
+                'quota_max' => $user->aiQuotaLimit(),
                 'quota_used' => $user->ai_questions_count,
                 'reset_date' => $resetDate,
                 'upgrade_url' => route('dashboard') // Change to plans/upgrade route when available
