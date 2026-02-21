@@ -79,21 +79,34 @@ class QuestionBankController extends Controller
     }
 
     /**
-     * Retorna os tópicos filtrados por matéria (AJAX).
+     * Retorna os tópicos ou temas filtrados por matéria (AJAX).
+     * 
+     * LÓGICA DE NEGÓCIO:
+     * No AprovadoAI, separamos o conceito de "assunto" por tipo de prova:
+     * - ENEM: Usa a coluna 'theme' (Eixos Temáticos).
+     * - Concurso: Usa a coluna 'topic' (Assuntos/Tópicos).
+     * 
+     * Este endpoint detecta o 'type' no request para saber qual coluna consultar,
+     * garantindo que a UI mostre as opções corretas para o aluno.
      */
     public function topics(Request $request)
     {
         $subjectName = $request->get('subject');
+        $type = $request->get('type');
         
+        // Determina a coluna alvo baseada no tipo de questão selecionada
+        $column = ($type === 'enem') ? 'theme' : 'topic';
+
         $topics = \App\Models\Question::query()
             ->when($subjectName, function($q) use ($subjectName) {
+                // Filtra questões que pertencem à matéria selecionada (NxN)
                 $q->whereHas('subjects', fn($s) => $s->where('name', $subjectName));
             })
-            ->whereNotNull('topic')
-            ->where('topic', '!=', '')
+            ->whereNotNull($column)
+            ->where($column, '!=', '')
             ->distinct()
-            ->orderBy('topic')
-            ->pluck('topic');
+            ->orderBy($column)
+            ->pluck($column);
 
         return response()->json($topics);
     }
