@@ -618,7 +618,7 @@
                                     id="q{{ $answer->question->id }}_{{ $alt->label }}"
                                     value="{{ $alt->label }}"
                                     {{ $answer->user_answer === $alt->label ? 'checked' : '' }}
-                                    onchange="saveAnswer({{ $answer->question->id }}, '{{ $alt->label }}', {{ $index }})">
+                                    onchange="saveAnswer({{ $answer->question->id }}, '{{ $alt->label }}', {{ $index }}, '{{ $answer->question->subjects->first()->name ?? 'Geral' }}')">
                                 <label for="q{{ $answer->question->id }}_{{ $alt->label }}">
                                     <span class="alternative-letter">{{ $alt->label }})</span>
                                     <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -689,6 +689,15 @@ function updateTimer() {
 setInterval(updateTimer, 1000);
 updateTimer();
 
+// GA4: Monitorar início do simulado
+if (typeof gtag === 'function') {
+    gtag('event', 'timer_started', {
+        'simulation_id': simulationId,
+        'simulation_title': '{{ $simulation->title }}',
+        'type': '{{ $simulation->configuration["type"] ?? "simulado" }}'
+    });
+}
+
 function goToQuestion(index) {
     document.querySelectorAll('.question-content').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
@@ -713,7 +722,7 @@ function previousQuestion() {
     }
 }
 
-async function saveAnswer(questionId, answer, index) {
+async function saveAnswer(questionId, answer, index, subject = 'n/a') {
     try {
         await fetch(`/simulations/${simulationId}/answer`, {
             method: 'POST',
@@ -728,6 +737,16 @@ async function saveAnswer(questionId, answer, index) {
             })
         });
         document.querySelectorAll('.nav-btn')[index].classList.add('answered');
+
+        // GA4: Monitorar submissão de resposta no simulado
+        if (typeof gtag === 'function') {
+            gtag('event', 'answer_submitted', {
+                'question_id': questionId,
+                'simulation_id': simulationId,
+                'subject': subject,
+                'origin': 'simulation'
+            });
+        }
     } catch (error) {
         console.error('Erro ao salvar resposta:', error);
     }
@@ -769,6 +788,15 @@ function finishSimulation() {
         csrfInput.value = csrfToken;
         form.appendChild(csrfInput);
         document.body.appendChild(form);
+        
+        // GA4: Monitorar finalização do simulado
+        if (typeof gtag === 'function') {
+            gtag('event', 'simulation_finished', {
+                'simulation_id': simulationId,
+                'simulation_title': '{{ $simulation->title }}'
+            });
+        }
+
         form.submit();
     }
 }
