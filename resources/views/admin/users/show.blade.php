@@ -84,9 +84,53 @@
                             <span>Limite Individual de IA (Override)</span>
                             <span class="text-xs text-gray-500">Plano: {{ $user->plan->max_ai_questions ?? 'N/A' }}</span>
                         </label>
-                        <input type="number" name="max_ai_questions_override" value="{{ old('max_ai_questions_override', $user->max_ai_questions_override) }}" class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500" min="0" placeholder="Deixe vazio para usar o do plano">
+                        <input type="number" name="max_ai_questions_override"
+                               value="{{ old('max_ai_questions_override', $user->max_ai_questions_override) }}"
+                               class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                               min="0" placeholder="Vazio = usar limite do plano">
                         @error('max_ai_questions_override') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
-                        <p class="text-xs text-gray-400 mt-1">Este valor ignora o limite do plano para este usuário específico.</p>
+                        <p class="text-xs text-gray-400 mt-1">0 = ilimitado. Vazio = usar padrão do plano.</p>
+                    </div>
+
+                    {{-- ============================================== --}}
+                    {{-- SIMULATION QUOTA OVERRIDE                     --}}
+                    {{-- Same pattern as AI questions override above.  --}}
+                    {{-- ============================================== --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
+                            <span>Limite Individual de Simulados (Override)</span>
+                            <span class="text-xs text-gray-500">
+                                Plano: {{ $user->plan->simulations_limit ?? 'N/A' }}
+                                &bull;
+                                Usado este mês: {{ $user->monthlySimulationUsed() }}
+                            </span>
+                        </label>
+                        <input type="number" name="max_simulations_override"
+                               value="{{ old('max_simulations_override', $user->max_simulations_override) }}"
+                               class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                               min="0" placeholder="Vazio = usar limite do plano">
+                        @error('max_simulations_override') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+                        <p class="text-xs text-gray-400 mt-1">0 = ilimitado. Vazio = usar padrão do plano.</p>
+                    </div>
+
+                    {{-- ============================================== --}}
+                    {{-- ESSAY QUOTA OVERRIDE                          --}}
+                    {{-- ============================================== --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
+                            <span>Limite Individual de Redações (Override)</span>
+                            <span class="text-xs text-gray-500">
+                                Plano: {{ $user->plan->essays_limit ?? 'N/A' }}
+                                &bull;
+                                Usado este mês: {{ $user->monthlyEssayUsed() }}
+                            </span>
+                        </label>
+                        <input type="number" name="max_essays_override"
+                               value="{{ old('max_essays_override', $user->max_essays_override) }}"
+                               class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                               min="0" placeholder="Vazio = usar limite do plano">
+                        @error('max_essays_override') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+                        <p class="text-xs text-gray-400 mt-1">0 = ilimitado. Vazio = usar padrão do plano.</p>
                     </div>
                     <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-medium transition-colors">
                         Salvar Alterações
