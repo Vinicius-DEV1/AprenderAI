@@ -268,7 +268,7 @@
                             </span>
                         </div>
                     </template>
-                    <template x-if="!loading && !isError && !isQuotaExceeded && !lastSearchHadResults">
+                    <template x-if="!loading && !isError && !isQuotaExceeded && suggestions.length > 0">
                         <div class="flex flex-wrap gap-2">
                             <template x-for="sug in suggestions" :key="sug.label">
                                 <button class="xavier-sug-btn" @click="applyXavierSuggestion(sug.filters)">
@@ -334,9 +334,7 @@
 
     {{-- Toast de Sucesso --}}
     <template x-if="showToast">
-        <div class="qb-toast">
-            ✅ Busca realizada com sucesso! {{ $aiName }} encontrou o que você precisava.
-        </div>
+        <div class="qb-toast" x-text="toastMessage"></div>
     </template>
 </div>
 
@@ -554,9 +552,9 @@ function filterPanel(currentFilters) {
 
             // Listener para filtros aplicados via IA
             window.addEventListener('ai-filters-applied', (e) => {
-                const { filters, shouldScroll, statusText } = e.detail;
+                const { filters, shouldScroll, statusText, hardReset } = e.detail;
                 if (statusText) this.statusText = statusText;
-                this.applyAiFilters(filters, shouldScroll !== false);
+                this.applyAiFilters(filters, shouldScroll !== false, !!hardReset);
             });
         },
 
@@ -595,14 +593,21 @@ function filterPanel(currentFilters) {
             this.loadTopics();
         },
         
-        applyAiFilters(newFilters, shouldScroll = true) {
+        applyAiFilters(newFilters, shouldScroll = true, hardReset = false) {
             this.isApplyingAiFilters = true;
+
+            if (hardReset) {
+                // Hard Reset: limpa tudo antes de aplicar os novos
+                Object.keys(this.filters).forEach(key => this.filters[key] = '');
+                this.moreFilters = false;
+            }
+
             Object.keys(newFilters).forEach(key => {
                 if (this.filters.hasOwnProperty(key)) {
                     this.filters[key] = newFilters[key];
                 }
             });
-            if (newFilters.year || newFilters.difficulty || newFilters.organization || newFilters.institution || newFilters.role) {
+            if (this.filters.year || this.filters.difficulty || this.filters.organization || this.filters.institution || this.filters.role) {
                 this.moreFilters = true;
             }
             
@@ -665,6 +670,7 @@ function aiSearch() {
         isError: false,
         isQuotaExceeded: false,
         showToast: false,
+        toastMessage: '',
         lastSearchHadResults: true,
         failureMessages: [
             'Eu tentei cruzar todos os dados, mas acabei me perdendo entre tantos enunciados. Que tal tentarmos uma nova rota de busca?',
@@ -763,11 +769,25 @@ function aiSearch() {
         },
 
         async applyXavierSuggestion(filters) {
-            this.suggestions = [];
-            this.message = '';
             this.isError = false;
             this.isQuotaExceeded = false;
-            window.dispatchEvent(new CustomEvent('ai-filters-applied', { detail: filters }));
+            
+            // UX: Fecha o balão e limpa o prompt para indicar nova busca
+            this.closeBubble();
+            this.prompt = '';
+
+            // Feedback Visual de Sucesso (Toast)
+            this.toastMessage = '✅ Busca atualizada conforme sugestão.';
+            this.showToast = true;
+            setTimeout(() => this.showToast = false, 4000);
+
+            window.dispatchEvent(new CustomEvent('ai-filters-applied', { 
+                detail: { 
+                    filters: filters,
+                    hardReset: true, // Garante limpeza total
+                    statusText: '🪄 Aplicando sugestão do Xavier...' 
+                } 
+            }));
         },
 
         async submitSearch() {
@@ -834,6 +854,7 @@ function aiSearch() {
                         if (data.suggestion_tip) this.pendingSuggestion = data.suggestion_tip;
                         if (data.suggestions) this.pendingSuggestions = data.suggestions;
                         
+                        this.toastMessage = '✅ Busca realizada com sucesso! {{ $aiName }} encontrou o que você precisava.';
                         this.showToast = true;
                         setTimeout(() => this.showToast = false, 4000);
 
