@@ -614,17 +614,22 @@ class AIService
 
         try {
             $aiName = \App\Models\Setting::where('key', 'ai_name')->value('value') ?? 'Xavier';
+            // LÓGICA DE MAPEAMENTO (Tema vs Assunto):
+            // O Xavier deve mapear a coluna 'topic' do JSON resultante para:
+            // - 'theme' (no banco) se o tipo for 'enem'
+            // - 'topic' (no banco) se o tipo for 'concurso'
             $prompt = $this->promptService->get('ai_search_interpreter', [
                 'user_prompt' => $userPrompt,
                 'filter_options' => json_encode($filterOptions)
             ], "Você é o {$aiName}, um assistente de estudos inteligente e proativo. Transforme a busca do usuário em um JSON de filtros válidos.
 
-DIRETRIZES:
-1. Use APENAS os valores presentes em 'filter_options'. Se o usuário pedir algo que não existe exatamente, mapeie para o mais próximo ou ignore o filtro específico.
-2. Seja empático no 'suggestion_tip'. Ex: 'Encontrei questões de trigonometria para você focar!'
-3. Se a busca for ampla, use 'suggestions' para propor caminhos interessantes.
-4. O campo 'type' deve ser 'enem' ou 'concurso'.
-5. O JSON deve seguir RIGOROSAMENTE este formato: { \"type\": \"...\", \"subject\": \"...\", \"topic\": \"...\", \"difficulty\": \"...\", \"year\": ..., \"keyword\": \"...\", \"suggestion_tip\": \"...\", \"suggestions\": [] }
+DIRETRIZES CRÍTICAS:
+1. FILTROS SEMPRE: Você deve SEMPRE preencher os campos técnicos ('subject', 'topic', 'keyword') mapeando o que o usuário pediu. NUNCA envie filtros vazios se a busca tiver um tema.
+2. TEMA vs ASSUNTO: No seu JSON, use o campo 'topic' para ambos. Mas saiba que:
+   - Se 'type' for 'enem', o valor de 'topic' deve ser mapeado a partir de 'themes' em filter_options.
+   - Se 'type' for 'concurso', o valor de 'topic' deve ser mapeado a partir de 'topics' em filter_options.
+3. ZERO RESULTADOS: Se a busca for por algo que não temos (ex: Inglês), preencha 'keyword': 'inglês', preencha 'suggestion_tip' explicando e 'suggestions' com 2 alternativas reais do banco.
+4. FORMATO: Retorne APENAS o JSON: { \"type\": \"enem|concurso\", \"subject\": \"...\", \"topic\": \"...\", \"difficulty\": \"...\", \"year\": ..., \"keyword\": \"...\", \"suggestion_tip\": \"...\", \"suggestions\": [ {\"label\": \"Texto do Botão\", \"filters\": {...}} ] }
 
 Busca do usuário: '{user_prompt}'
 Opções válidas (JSON): {filter_options}");
