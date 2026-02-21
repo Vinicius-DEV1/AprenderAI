@@ -69,6 +69,9 @@
     .xavier-action-btn { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); white-space: nowrap; }
     .xavier-action-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(99, 102, 241, 0.4); }
     
+    .xavier-sug-btn { background: rgba(99, 102, 241, 0.05); color: #4f46e5; border: 1.5px solid rgba(99, 102, 241, 0.2); padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .xavier-sug-btn:hover { background: rgba(99, 102, 241, 0.1); border-color: #6366f1; transform: translateY(-1px); }
+    
     .qb-toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 24px; border-radius: 50px; font-weight: 600; font-size: 14px; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3); z-index: 1000; animation: toast-in 0.4s ease-out forwards; }
     
     @keyframes xavier-pop { from { opacity: 0; transform: translateY(10px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -246,15 +249,15 @@
 </div>
 <div class="qb-ai-wrapper" x-data="aiSearch()" x-init="initTypewriter()">
     {{-- Balão de Fala do Xavier --}}
-    <template x-if="suggestion || message">
-        <div class="xavier-bubble" @click.away="closeBubble()">
+    <template x-if="suggestion || message || suggestions.length > 0">
+        <div class="xavier-bubble" @click.away="closeBubble()" x-show="suggestion || message || suggestions.length > 0" x-transition:enter="xavier-pop 0.3s ease-out">
             <div style="background: #6366f1; border-radius: 12px; padding: 8px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);">
                 <span style="font-size: 20px; color: white;">🤖</span>
             </div>
             <div class="txt">
                 <strong x-text="message ? '{{ $aiName }} diz:' : 'Dica do {{ $aiName }}:'"></strong><br>
                 <div x-html="message || suggestion"></div>
-                <div class="xavier-btns-row">
+                <div class="xavier-btns-row" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
                     <template x-if="loading">
                         <div class="bg-gray-100 dark:bg-slate-700 rounded-lg px-3 py-2 text-xs text-gray-500 flex items-center gap-2 border border-gray-200">
                             <span class="font-medium">{{ $aiName }} digitando</span>
@@ -265,10 +268,11 @@
                             </span>
                         </div>
                     </template>
-                    <template x-if="!loading && !isError && !isQuotaExceeded">
+                    <template x-if="!loading && !isError && !isQuotaExceeded && !lastSearchHadResults">
                         <div class="flex flex-wrap gap-2">
                             <template x-for="sug in suggestions" :key="sug.label">
-                                <button class="xavier-action-btn" @click="applyXavierSuggestion(sug.filters)">
+                                <button class="xavier-sug-btn" @click="applyXavierSuggestion(sug.filters)">
+                                    <span style="font-size: 14px;">🔍</span>
                                     <span x-text="sug.label"></span>
                                 </button>
                             </template>
@@ -359,9 +363,10 @@
                 </select>
             </div>
             <div class="qb-filter-item">
-                <label>Assunto</label>
+                <!-- O Label muda dinamicamente: "Eixo Temático" para ENEM, "Assunto" para Concurso -->
+                <label x-text="filters.type === 'enem' ? 'Eixo Temático' : 'Assunto'"></label>
                 <select name="topic" x-model="filters.topic" :disabled="loadingTopics">
-                    <option value="" x-text="loadingTopics ? 'Carregando...' : 'Ex: Trigonometria, Funções...'"></option>
+                    <option value="" x-text="loadingTopics ? 'Carregando...' : (!filters.subject ? 'Ex: Trigonometria, Funções...' : (topics.length === 0 ? 'Sem assuntos disponíveis' : 'Selecione um assunto...'))"></option>
                     <template x-for="t in topics" :key="t">
                         <option :value="t" x-text="t" :selected="filters.topic == t"></option>
                     </template>
@@ -531,6 +536,13 @@ function filterPanel(currentFilters) {
                 this.loadTopics();
             });
 
+            this.$watch('filters.type', () => {
+                if (!this.isApplyingAiFilters) {
+                    this.filters.topic = '';
+                }
+                this.loadTopics();
+            });
+
             // Interceptar cliques em links de paginação para usar AJAX
             document.addEventListener('click', (e) => {
                 const link = e.target.closest('.qb-pagination a, .pagination a');
@@ -552,6 +564,11 @@ function filterPanel(currentFilters) {
             // Se não houver resultados secundários ou algo assim, podemos disparar eventos aqui também
         },
 
+        /**
+         * Carrega os Assuntos (Concurso) ou Eixos Temáticos (ENEM) via AJAX.
+         * O backend detecta se deve retornar valores da coluna 'topic' ou 'theme'
+         * com base no parâmetro 'type' enviado.
+         */
         async loadTopics() {
             if (!this.filters.subject) {
                 this.topics = [];
@@ -559,13 +576,24 @@ function filterPanel(currentFilters) {
             }
             this.loadingTopics = true;
             try {
-                const res = await fetch(`{{ route('questions.topics') }}?subject=${encodeURIComponent(this.filters.subject)}`);
+                const params = new URLSearchParams({
+                    subject: this.filters.subject,
+                    type: this.filters.type // Envia o tipo para buscar na coluna correta (tema ou tópico)
+                });
+                const res = await fetch(`{{ route('questions.topics') }}?${params.toString()}`);
                 this.topics = await res.json();
             } catch (e) { console.error('Tópicos erro', e); }
             finally { this.loadingTopics = false; }
         },
 
-        onTypeChange() { if (this.filters.type === 'enem') { this.filters.organization = ''; this.filters.institution = ''; this.filters.role = ''; } },
+        onTypeChange() { 
+            if (this.filters.type === 'enem') { 
+                this.filters.organization = ''; 
+                this.filters.institution = ''; 
+                this.filters.role = ''; 
+            }
+            this.loadTopics();
+        },
         
         applyAiFilters(newFilters, shouldScroll = true) {
             this.isApplyingAiFilters = true;
@@ -637,6 +665,7 @@ function aiSearch() {
         isError: false,
         isQuotaExceeded: false,
         showToast: false,
+        lastSearchHadResults: true,
         failureMessages: [
             'O Xavier tropeçou na pilha de livros e se perdeu.',
             'O assistente foi tomar um café para pensar melhor na sua busca.',
@@ -696,15 +725,22 @@ function aiSearch() {
             window.addEventListener('ai-loading-stop', () => { this.globalLoading = false; });
             
             window.addEventListener('ai-search-finished', (e) => {
-                if (!e.detail.hasResults) {
+                this.lastSearchHadResults = e.detail.hasResults;
+
+                // Sempre aplica pendências se existirem
+                if (this.pendingSuggestion || this.pendingSuggestions.length > 0 || this.pendingMessage) {
                     this.suggestion = this.pendingSuggestion;
                     this.suggestions = this.pendingSuggestions;
                     this.message = this.pendingMessage;
+                } else if (!this.lastSearchHadResults) {
+                    // Fallback se não deram nada mas não houve resultados
+                    this.message = 'Não encontrei questões para essa busca.';
                 } else {
                     this.suggestion = '';
                     this.suggestions = [];
                     this.message = '';
                 }
+                
                 this.pendingSuggestion = '';
                 this.pendingSuggestions = [];
                 this.pendingMessage = '';
