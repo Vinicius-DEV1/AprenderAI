@@ -87,6 +87,12 @@
                 border-color: #d2e3fc;
                 box-shadow: 0 1px 3px rgba(0,0,0,0.08);
             }
+
+            .btn-google svg {
+                width: 20px;
+                height: 20px;
+                margin-right: 12px;
+            }
         </style>
     @endif
 
