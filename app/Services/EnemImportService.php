@@ -69,7 +69,7 @@ class EnemImportService
                 $imagePath = null;
                 // Baixar imagem da alternativa, se houver
                 if (!empty($altData['file'])) {
-                    $imagePath = $this->downloadImage($altData['file'], "enem/{$year}/alternatives");
+                    $imagePath = $this->downloadImage($altData['file'], $year);
                 }
 
                 \App\Models\QuestionAlternative::create([
@@ -99,9 +99,8 @@ class EnemImportService
             $alt = $matches[1];
             $url = $matches[2];
             
-            $localPath = $this->downloadImage($url, "enem/{$year}/context");
-            if ($localPath) {
-                $localUrl = \Illuminate\Support\Facades\Storage::url($localPath);
+            $localUrl = $this->downloadImage($url, $year);
+            if ($localUrl) {
                 return "![{$alt}]({$localUrl})";
             }
             
@@ -116,24 +115,42 @@ class EnemImportService
     }
 
     /**
-     * Download da imagem para o disco local (public storage).
+     * Faz o download de uma imagem externa e a salva no storage local seguindo o padrão unificado.
+     * 
+     * O padrão de armazenamento é: /storage/questions/images/{year}/enem_{year}_{md5(url)}.{ext}
+     * Isso garante que a mesma imagem (pela URL original) tenha sempre o mesmo caminho local,
+     * evitando duplicatas e garantindo consistência com outros importadores (ex: Command).
+     * 
+     * @param string $url URL original da imagem na API.
+     * @param int $year Ano da prova (usado na organização das pastas).
+     * @return string|null Retorna a URL pública local (/storage/...) ou null em caso de falha.
      */
-    protected function downloadImage(string $url, string $pathPrefix): ?string
+    protected function downloadImage(string $url, int $year): ?string
     {
         try {
+            // 1. Definir extensão (fallback para jpg se não detectada)
+            $extension = pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION);
+            if (empty($extension)) $extension = 'jpg';
+            
+            // 2. Gerar nome de arquivo determinístico baseado no MD5 da URL original.
+            // Isso permite que o sistema saiba se já baixou essa imagem anteriormente.
+            $filename = 'enem_' . $year . '_' . md5($url) . '.' . $extension;
+            $path = "questions/images/{$year}/{$filename}";
+
+            // 3. Verificar existência prévia para economizar banda e tempo de processamento.
+            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+                return \Illuminate\Support\Facades\Storage::url($path);
+            }
+
+            // 4. Realizar o download da imagem via HTTP
             $response = \Illuminate\Support\Facades\Http::timeout(15)->get($url);
             
             if ($response->successful()) {
-                // Obter extensão
-                $extension = pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION);
-                if (empty($extension)) $extension = 'jpg';
-                
-                $filename = \Illuminate\Support\Str::uuid() . '.' . $extension;
-                $path = "{$pathPrefix}/{$filename}";
-                
+                // 5. Salvar o binário no disco 'public' (storage/app/public)
                 \Illuminate\Support\Facades\Storage::disk('public')->put($path, $response->body());
                 
-                return $path;
+                // Retornar a URL final pronta para uso no Markdown/Banco
+                return \Illuminate\Support\Facades\Storage::url($path);
             }
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::warning("Falha ao baixar imagem ENEM Dev: {$url} - " . $e->getMessage());

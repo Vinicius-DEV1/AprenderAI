@@ -229,46 +229,47 @@ class ImportEnemCommand extends Command
         $stats['by_subject'][$targetSubject]++;
     }
 
+    /**
+     * Parseia o enunciado em busca de URLs de imagens para download local.
+     */
     private function processImages($text, $files, $year)
     {
-        // Regex para encontrar links de imagens markdown ou html
-        // Markdown: ![alt](url)
-        // HTML: <img src="url">
-        // Simplificação: A API retorna urls absolutas. Vamos procurar por http(s)://...jpg/png/jpeg etc
-
-        // Se a API fornecer arrays de 'files', podemos usar isso.
-        // Se não, parsear o texto.
-        // A API Dev ENEM costuma mandar URLs no markdown.
-
+        // 1. Procurar por links de imagens (Markdown ou URL direta terminada em imagem)
+        // O regex captura URLs que terminam com extensões de imagem comuns.
         return preg_replace_callback('/(https?:\/\/[^\s"\')]+?\.(?:png|jpg|jpeg|gif|webp))/i', function ($matches) use ($year) {
             $url = $matches[1];
             return $this->downloadImage($url, $year);
         }, $text);
     }
 
+    /**
+     * Realiza o download e retorna a URL pública local.
+     * Segue o padrão unificado: questions/images/{year}/enem_{year}_{md5}.ext
+     */
     private function downloadImage($url, $year)
     {
         try {
-            // Gerar nome único
+            // 1. Gerar nome determinístico baseado no MD5 da URL original.
+            // Isso permite a deduplicação automática no storage.
             $extension = pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION) ?? 'jpg';
             $filename = 'enem_' . $year . '_' . md5($url) . '.' . $extension;
             $path = "questions/images/{$year}/{$filename}";
 
-            // Verificar se já existe
+            // 2. Verificar se já existe para evitar re-download
             if (Storage::disk('public')->exists($path)) {
                 return Storage::url($path);
             }
 
-            // Baixar
-            $contents = file_get_contents($url); // Simples. Se falhar, retorna URL original?
+            // 3. Efetuar o download do conteúdo
+            $contents = @file_get_contents($url); 
             if ($contents) {
+                // 4. Salvar no diretório público
                 Storage::disk('public')->put($path, $contents);
                 return Storage::url($path);
             }
         }
         catch (\Exception $e) {
-        // Log erro silencioso e retorna URL original
-        // $this->warn("Falha ao baixar imagem {$url}: " . $e->getMessage());
+            // Em caso de falha, retorna a URL original como fallback
         }
 
         return $url;
