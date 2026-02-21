@@ -160,4 +160,28 @@ class ConcursoSyncServiceTest extends TestCase
         // "1.500" → vagas deve ser 1500
         $this->assertDatabaseHas('concursos', ['orgao' => 'PM BA', 'vagas' => 1500]);
     }
+
+    public function test_sync_populates_link_oficial_with_search_url_when_api_has_no_link(): void
+    {
+        Http::fake([
+            'concursos-api.deno.dev/sp' => Http::response(
+                $this->fakePayload(
+                    abertos: [
+                        ['Órgão' => 'Prefeitura de São Paulo', 'Vagas' => '200'],
+                    ]
+                ),
+                200
+            ),
+        ]);
+
+        $service = app(ConcursoSyncService::class);
+        $service->syncByUf('SP');
+
+        $concurso = Concurso::where('orgao', 'Prefeitura de São Paulo')->first();
+
+        $this->assertNotNull($concurso->link_oficial, 'link_oficial deve ser preenchido mesmo sem link na API');
+        $this->assertStringContainsString('google.com/search', $concurso->link_oficial);
+        $this->assertStringContainsString('concurso', $concurso->link_oficial);
+        $this->assertStringContainsString('S%C3%A3o%20Paulo', $concurso->link_oficial);
+    }
 }
