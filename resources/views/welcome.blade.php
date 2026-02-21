@@ -33,6 +33,18 @@
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials.analytics')
+
+    <script>
+        function trackCTA(location, plan) {
+            if (typeof gtag === 'function') {
+                gtag('event', 'cta_click', {
+                    'button_location': location,
+                    'plan_name': plan || 'n/a'
+                });
+            }
+        }
+    </script>
 
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
@@ -1255,7 +1267,7 @@
                 <li><a href="#depoimentos">Depoimentos</a></li>
                 <li><a href="{{ route('fair-use') }}">Política de Uso</a></li>
                 <li><a href="{{ route('privacy') }}">Política de Privacidade</a></li>
-                <li><a href="#plans" class="lp-btn-cta">Assine Agora</a></li>
+                <li><a href="#plans" class="lp-btn-cta" onclick="trackCTA('navbar', 'plans')">Assine Agora</a></li>
             </ul>
         </div>
     </nav>
@@ -1273,7 +1285,7 @@
                     Comece hoje e conquiste a sua aprovação.
                 </p>
                 <div class="lp-hero-btns">
-                    <a href="{{ route('register', ['plan' => 'free']) }}" class="lp-btn-primary">
+                    <a href="{{ route('register', ['plan' => 'free']) }}" class="lp-btn-primary" onclick="trackCTA('hero', 'free')">
                         Comece Gratuitamente
                     </a>
                     <a href="{{ route('login') }}" class="lp-btn-outline">
@@ -1453,7 +1465,7 @@
                         <li><span class="lp-check-free">✓</span> Correção básica</li>
                         <li><span class="lp-check-free">✓</span> Estatísticas simples</li>
                     </ul>
-                    <a href="{{ route('register', ['plan' => 'free']) }}" class="lp-plan-btn-free">
+                    <a href="{{ route('register', ['plan' => 'free']) }}" class="lp-plan-btn-free" onclick="trackCTA('pricing_free', 'free')">
                         Começar Agora
                     </a>
                 </div>
@@ -1485,10 +1497,10 @@
                         <li><span class="lp-check-paid">✓</span> Radar de concursos</li>
                     </ul>
                     <a :href="'{{ route('register') }}?plan=' + (periodo === 'anual' ? 'basic-annual' : 'basic')"
-                        class="lp-plan-btn-basic">
+                        class="lp-plan-btn-basic" onclick="trackCTA('pricing_basic', periodo === 'anual' ? 'basic-annual' : 'basic')">
                         Assinar Agora
                     </a>
-                    <a :href="'{{ route('register') }}?plan=basic-annual'" class="lp-plan-btn-annual">
+                    <a :href="'{{ route('register') }}?plan=basic-annual'" class="lp-plan-btn-annual" onclick="trackCTA('pricing_basic_annual', 'basic-annual')">
                         Assinar Plano Anual (20% OFF)
                     </a>
                 </div>
@@ -1522,10 +1534,10 @@
                         <li><span class="lp-check-paid">✓</span> Radar de concursos</li>
                     </ul>
                     <a :href="'{{ route('register') }}?plan=' + (periodo === 'anual' ? 'plus-annual' : 'plus')"
-                        class="lp-plan-btn-plus">
+                        class="lp-plan-btn-plus" onclick="trackCTA('pricing_plus', periodo === 'anual' ? 'plus-annual' : 'plus')">
                         Assinar Agora
                     </a>
-                    <a :href="'{{ route('register') }}?plan=plus-annual'" class="lp-plan-btn-annual">
+                    <a :href="'{{ route('register') }}?plan=plus-annual'" class="lp-plan-btn-annual" onclick="trackCTA('pricing_plus_annual', 'plus-annual')">
                         Assinar Plano Anual (20% OFF)
                     </a>
                 </div>
