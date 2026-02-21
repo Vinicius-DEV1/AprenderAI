@@ -7,234 +7,133 @@ use App\Models\Subject;
 use App\Models\Topic;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
-use Faker\Factory as Faker;
 
 class QuestionSeeder extends Seeder
 {
-    private $faker;
-
     public function run(): void
     {
-        if (!class_exists('Faker\Factory')) {
-            return;
-        }
+        // Documentação Viva: Seed enxuto para fins de testes rápidos e exemplos de estrutura relacional N:N.
+        // Carrega as questões muito mais rápido (não gera centenas pseudo-aleatórias)
+        
+        // Garante a existência das Matérias padronizadas (Upper Case + slug)
+        // Isso evita "Matemática" vs "MATEMÁTICA", unificando entidades.
+        $portSubject = Subject::firstOrCreate(
+            ['name' => trim(strtoupper('PORTUGUÊS'))],
+            ['slug' => Str::slug('PORTUGUÊS'), 'type' => 'geral']
+        );
+        
+        $mathSubject = Subject::firstOrCreate(
+            ['name' => trim(strtoupper('MATEMÁTICA'))],
+            ['slug' => Str::slug('MATEMÁTICA'), 'type' => 'geral']
+        );
 
-        $this->faker = Faker::create('pt_BR');
+        // Garante a existência dos Assuntos nas respectivas matérias
+        $portTopic = Topic::firstOrCreate(
+            ['name' => trim(strtoupper('INTERPRETAÇÃO DE TEXTOS')), 'subject_id' => $portSubject->id],
+            ['slug' => Str::slug('INTERPRETAÇÃO DE TEXTOS')]
+        );
 
-        // Clean previous generated questions
-        Question::where('source', 'ai_generated')->delete();
+        $mathTopic = Topic::firstOrCreate(
+            ['name' => trim(strtoupper('GEOMETRIA PLANA')), 'subject_id' => $mathSubject->id],
+            ['slug' => Str::slug('GEOMETRIA PLANA')]
+        );
 
-        // Ensure subjects exist
-        $portSubject = Subject::where('name', 'Português')->first();
-        $mathSubject = Subject::where('name', 'Matemática')->first();
+        // --- QUESTÃO 1: ENEM ---
+        $this->createQuestion(
+            type: 'enem',
+            organization: 'ENEM',
+            year: 2023,
+            institution: 'MEC',
+            role: 'Estudante',
+            statement: "Texto I: O hábito da leitura na era digital...\n\nQual o objetivo central do texto ao mencionar as redes sociais?",
+            subjects: [$portSubject->id],
+            topics: [$portTopic->id],
+            alternatives: [
+                'A' => 'Incentivar o uso exclusivo do papel impresso.',
+                'B' => 'Destacar como a leitura migrou das páginas físicas para os feeds virtuais.',
+                'C' => 'Criticar a ortografia usada pelos adolescentes.',
+                'D' => 'Desencorajar o estudo pelo meio literário.',
+                'E' => 'Ignorar a velocidade de propagação de notícias.'
+            ],
+            correctLetter: 'B',
+            explanation: 'A alternativa B resume corretamente o escopo de adaptação digital citado na questão.',
+            theme: 'Linguagens, Códigos e suas Tecnologias' // Mantido exclusivamente para Eixo Temático ENEM
+        );
 
-        if (!$portSubject || !$mathSubject) {
-            $this->command->error('Subjects "Português" or "Matemática" not found. Run SubjectSeeder first.');
-            return;
-        }
-
-        // Generate Português
-        $this->generatePortuguese($portSubject);
-
-        // Generate Matemática
-        $this->generateMath($mathSubject);
-
-        $this->command->info('Questões geradas com sucesso!');
+        // --- QUESTÃO 2: CONCURSO ---
+        $this->createQuestion(
+            type: 'concurso',
+            organization: 'CEBRASPE',
+            year: 2024,
+            institution: 'Polícia Federal',
+            role: 'Agente Administrativo',
+            statement: "Calcule a área de um paralelogramo cuja base mede 10cm e altura corresponde a metade da base.",
+            subjects: [$mathSubject->id],
+            topics: [$mathTopic->id],
+            alternatives: [
+                'A' => '25 cm²',
+                'B' => '50 cm²',
+                'C' => '75 cm²',
+                'D' => '100 cm²',
+                'E' => '150 cm²'
+            ],
+            correctLetter: 'B',
+            explanation: 'Sendo h = 10/2 = 5cm. A área é b(base) * h(altura) = 10 * 5 = 50 cm².',
+            theme: null // Concursos usam banco de topics/subjects robusto e não herdam "Eixos Temáticos"
+        );
+        
+        $this->command->info('QuestionSeeder: Documentação Viva gerada com sucesso (Velocidade otimizada: 2 questões com N:N).');
     }
 
-    private function generatePortuguese($subject)
+    /**
+     * Auxiliar de inserção para documentar as etapas de popular a estrutura relacional.
+     */
+    private function createQuestion($type, $organization, $year, $institution, $role, $statement, $subjects, $topics, $alternatives, $correctLetter, $explanation, $theme)
     {
-        $templates = $this->getPortugueseTemplates();
+        // 1. Geração de Identificador Idempotente (Evita Duplicadas)
+        // A external_id é uma hash MD5 de atributos chave que compõem a identidade única macro da questão.
+        $uniqueString = $organization . '|' . $year . '|' . $institution . '|' . $role . '|' . trim($statement);
+        $externalId = md5($uniqueString);
 
-        foreach ($templates as $i => $tpl) {
-            $year = $this->faker->numberBetween(2024, 2026);
-            $organization = 'Exame Nacional do Ensino Médio';
-            $institution = 'MEC';
-            $role = 'Estudante';
-            $statement = $tpl['statement'];
-
-            $uniqueString = $organization . '|' . $year . '|' . $institution . '|' . $role . '|' . trim($statement);
-            $externalId = md5($uniqueString);
-
-            $question = Question::create([
-                'type' => 'enem',
-                'difficulty' => $tpl['difficulty'] ?? 'medium',
+        // 2. Inserção na Tabela Base (questions)
+        // As colunas legadas (origin, topic original string, alternativas em JSON bruto) NÃO DEVEM mais ser imputadas.
+        $question = clone Question::updateOrCreate(
+            ['external_id' => $externalId],
+            [
+                'type' => $type,
+                'difficulty' => 'medium',
+                'difficulty_reasoning' => 'Dificuldade avaliada pelo sistema central ou IA.',
                 'year' => $year,
                 'statement' => $statement,
-                'explanation' => $tpl['explanation'],
-                'difficulty_reasoning' => $tpl['difficulty_reasoning'] ?? 'Esta questão avalia competências básicas de interpretação.',
-                'source' => 'ai_generated',
-                'external_id' => $externalId,
+                'explanation' => $explanation,
+                'source' => 'manual', // Manual no sentido de seed/painel, e não crawler web
+                'theme' => $theme,    // IMPORTANTE: Preservado unicamente como repositório de metadado orgânico de Eixo ENEM.
                 'organization' => $organization,
                 'institution' => $institution,
                 'role' => $role,
-            ]);
+                'review_status' => 'approved',
+            ]
+        );
 
-            $topic = Topic::firstOrCreate(
-                ['name' => $tpl['theme']],
-                ['slug' => Str::slug($tpl['theme'])]
-            );
+        // 3. Relacionamentos N:N (Pivot Tables)
+        // O método sync() atrela os IDs à tabela pivô e desataca o restante, mantendo referencial imaculado aos Subjects.
+        $question->subjects()->sync($subjects);
+        $question->topics()->sync($topics);
 
-            $question->subjects()->sync([$subject->id]);
-            $question->topics()->sync([$topic->id]);
-
-            $alts = [];
-            foreach ($tpl['alternatives'] as $label => $content) {
-                $alts[] = [
-                    'label' => $label,
-                    'content' => $content,
-                    'is_correct' => ($label === $tpl['correct_answer']),
-                ];
-            }
-            $question->alternatives()->createMany($alts);
-        }
-    }
-
-    private function generateMath($subject)
-    {
-        $templates = $this->getMathTemplates();
-
-        foreach ($templates as $i => $tpl) {
-            $year = $this->faker->numberBetween(2024, 2026);
-            $organization = 'Exame Nacional do Ensino Médio';
-            $institution = 'MEC';
-            $role = 'Estudante';
-            $statement = $tpl['statement'];
-
-            $uniqueString = $organization . '|' . $year . '|' . $institution . '|' . $role . '|' . trim($statement);
-            $externalId = md5($uniqueString);
-
-            $question = Question::create([
-                'type' => 'enem',
-                'difficulty' => $tpl['difficulty'] ?? 'medium',
-                'year' => $year,
-                'statement' => $statement,
-                'explanation' => $tpl['explanation'],
-                'difficulty_reasoning' => $tpl['difficulty_reasoning'] ?? 'Esta questão exige raciocínio lógico e aplicação de fórmulas.',
-                'source' => 'ai_generated',
-                'external_id' => $externalId,
-                'organization' => $organization,
-                'institution' => $institution,
-                'role' => $role,
-            ]);
-
-            $topic = Topic::firstOrCreate(
-                ['name' => $tpl['theme']],
-                ['slug' => Str::slug($tpl['theme'])]
-            );
-
-            $question->subjects()->sync([$subject->id]);
-            $question->topics()->sync([$topic->id]);
-
-            $alts = [];
-            foreach ($tpl['alternatives'] as $label => $content) {
-                $alts[] = [
-                    'label' => $label,
-                    'content' => $content,
-                    'is_correct' => ($label === $tpl['correct_answer']),
-                ];
-            }
-            $question->alternatives()->createMany($alts);
-        }
-    }
-
-    private function getPortugueseTemplates()
-    {
-        $data = [];
-
-        // TEMPLATE 1: Poesia e Interpretação
-        $data[] = [
-            'theme' => 'Interpretação de Texto',
-            'statement' => "TEXTO I\n\nNo meio do caminho tinha uma pedra\ntinha uma pedra no meio do caminho\ntinha uma pedra\nno meio do caminho tinha uma pedra.\n\n(Carlos Drummond de Andrade)\n\nTEXTO II\n\nA repetição vocabular presente no poema de Drummond não é sinal de pobreza lexical, mas um recurso estilístico que:",
-            'alternatives' => [
-                'A' => 'Reforça a monotonia da caminhada e a onipresença do obstáculo.',
-                'B' => 'Demonstra a falta de criatividade do eu-lírico diante dos problemas.',
-                'C' => 'Sugere que a pedra é um objeto irrelevante na vida do poeta.',
-                'D' => 'Critica a estrutura das estradas brasileiras na década de 30.',
-                'E' => 'Ignora as regras gramaticais de coesão e coerência.',
-            ],
-            'correct_answer' => 'A',
-            'explanation' => 'A repetição enfatiza a obsessão e a dificuldade de superar o obstáculo (a pedra).',
-        ];
-
-        // TEMPLATE 2: Variação Linguística
-        $data[] = [
-            'theme' => 'Variação Linguística',
-            'statement' => "TEXTO I\n\n- E aí, mano? Tamo junto na fita?\n- Demorou, truta! É nóis que voa.\n\nO diálogo acima, típico de determinados grupos sociais urbanos, exemplifica o uso de uma variedade linguística que:",
-            'alternatives' => [
-                'A' => 'Deve ser banida da escrita por ser incorreta gramaticalmente.',
-                'B' => 'Demonstra pobreza de vocabulário dos falantes.',
-                'C' => 'Atua como marcador de identidade e coesão grupal.',
-                'D' => 'Impede a comunicação clara entre os interlocutores.',
-                'E' => 'Revela incapacidade de usar a norma culta em qualquer contexto.',
-            ],
-            'correct_answer' => 'C',
-            'explanation' => 'As gírias funcionam como identidade de grupo.',
-        ];
-
-        $themes = ['Interpretação', 'Gêneros Textuais', 'Literatura', 'Gramática Aplicada', 'Artes'];
-
-        for ($i = 0; $i < 20; $i++) {
-            $topic = $this->faker->randomElement($themes);
-            $author = $this->faker->name;
-            $data[] = [
-                'theme' => $topic,
-                'statement' => "TEXTO I\n\nA cultura digital transformou o modo como lemos e escrevemos. Segundo {$author}, \"a hipertextualidade permite uma leitura não linear, exigindo do leitor maior autonomia\". Diante desse cenário, a plataforma aprenderAI oferece recursos que auxiliam a escola no desafio de:",
-                'alternatives' => [
-                    'A' => 'Proibir o uso de tecnologias para focar na leitura tradicional.',
-                    'B' => 'Integrar o letramento digital às práticas pedagógicas convencionais.',
-                    'C' => 'Substituir livros físicos exclusivamente por tablets.',
-                    'D' => 'Ignorar a cultura digital, pois ela é passageira.',
-                    'E' => 'Limitar o acesso à informação para evitar dispersão.',
-                ],
-                'correct_answer' => 'B',
-                'explanation' => 'A integração é a resposta pedagógica adequada à cultura digital.',
+        // 4. Inserção de Alternativas (HasMany)
+        // Remove as anteriores em caso de update do Seeder, e re-popula as opções.
+        $question->alternatives()->delete();
+        
+        $altsToInsert = [];
+        foreach ($alternatives as $label => $content) {
+            $altsToInsert[] = [
+                'label' => $label,
+                'content' => $content,
+                'is_correct' => ($label === $correctLetter),
             ];
         }
-
-        return $data;
-    }
-
-    private function getMathTemplates()
-    {
-        $data = [];
-
-        // TEMPLATE 1: Porcentagem
-        $val = $this->faker->numberBetween(100, 500);
-        $data[] = [
-            'theme' => 'Porcentagem',
-            'statement' => "Um produto custava R$ {$val},00 e teve um aumento de 20%. Em seguida, devido à baixa, teve um desconto de 20% sobre o novo valor. O preço final é:",
-            'alternatives' => [
-                'A' => "Igual a R$ {$val},00",
-                'B' => "Menor que R$ {$val},00",
-                'C' => "Maior que R$ {$val},00",
-                'D' => "R$ " . ($val * 1.1),
-                'E' => "R$ " . ($val * 0.9),
-            ],
-            'correct_answer' => 'B',
-            'explanation' => 'Aumento de 20% = 1.2x. Desconto de 20% = 0.8x. Final = 1.2 * 0.8 = 0.96x (96% do original), logo menor.',
-        ];
-
-        for ($i = 0; $i < 20; $i++) {
-            $a = $this->faker->numberBetween(2, 10);
-            $b = $this->faker->numberBetween(10, 50);
-            $ans = $a * $b;
-
-            $data[] = [
-                'theme' => 'Aritmética',
-                'statement' => "Em um estoque de materiais do aprenderAI, há {$a} caixas, e cada caixa contém {$b} unidades de um fanzine educacional. Se forem vendidas 10% das unidades totais, quantas restarão?",
-                'alternatives' => [
-                    'A' => ($ans * 0.9),
-                    'B' => ($ans * 0.1),
-                    'C' => ($ans - 10),
-                    'D' => ($ans / 2),
-                    'E' => ($ans),
-                ],
-                'correct_answer' => 'A',
-                'explanation' => "Total = {$a} * {$b} = {$ans}. Restam 90%, ou seja, {$ans} * 0.9.",
-            ];
-        }
-
-        return $data;
+        
+        // Injeção de registros 1:N no modelo relacional question_alternatives
+        $question->alternatives()->createMany($altsToInsert);
     }
 }
