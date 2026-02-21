@@ -288,7 +288,7 @@
 
                     <template x-if="isQuotaExceeded">
                         <div class="flex items-center gap-2">
-                            <a href="{{ route('checkout.index') }}" class="xavier-action-btn" style="background: #fbbf24; color: #78350f; border: none; font-weight: bold; text-decoration: none;">
+                            <a href="{{ route('plans.index') }}" class="xavier-action-btn" style="background: #fbbf24; color: #78350f; border: none; font-weight: bold; text-decoration: none;">
                                 ⭐ Fazer Upgrade
                             </a>
                             <button @click="closeBubble()" class="xavier-action-btn" style="background: #e2e8f0; color: #475569; border: none;">
