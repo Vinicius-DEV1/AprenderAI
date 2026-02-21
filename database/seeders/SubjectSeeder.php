@@ -24,10 +24,12 @@ class SubjectSeeder extends Seeder
         ];
 
         foreach ($subjects as $subject) {
+            $normalizedName = trim(strtoupper($subject['name']));
+
             Subject::updateOrCreate(
-            ['name' => $subject['name']],
+            ['name' => $normalizedName],
             [
-                'slug' => Str::slug($subject['name']),
+                'slug' => Str::slug($normalizedName),
                 'type' => $subject['type']
             ]
             );
