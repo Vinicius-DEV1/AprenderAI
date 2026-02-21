@@ -87,27 +87,54 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'phone' => 'nullable|string|max:20',
-            'ai_questions_count' => 'nullable|integer|min:0',
-            'max_ai_questions_override' => 'nullable|integer|min:0',
+            'name'                       => 'required|string|max:255',
+            'email'                      => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'phone'                      => 'nullable|string|max:20',
+            // AI Prompt quota fields
+            'ai_questions_count'         => 'nullable|integer|min:0',
+            'max_ai_questions_override'  => 'nullable|integer|min:0',
+            // Simulation quota override (null = use plan default, 0 = unlimited)
+            'max_simulations_override'   => 'nullable|integer|min:0',
+            // Essay quota override (null = use plan default, 0 = unlimited)
+            'max_essays_override'        => 'nullable|integer|min:0',
         ]);
 
+        // Snapshot before update for audit log
         $original = $user->getOriginal();
 
+        // Build update payload with only fields that were submitted
         $data = $request->only('name', 'email', 'phone');
+
+        // AI quota fields
         if ($request->has('ai_questions_count')) {
             $data['ai_questions_count'] = $request->ai_questions_count;
         }
         if ($request->has('max_ai_questions_override')) {
-            $data['max_ai_questions_override'] = $request->max_ai_questions_override;
+            // Cast empty string to null so the database stores NULL (= "use plan default")
+            $data['max_ai_questions_override'] = $request->filled('max_ai_questions_override')
+                ? (int) $request->max_ai_questions_override
+                : null;
+        }
+
+        // Simulation quota override
+        if ($request->has('max_simulations_override')) {
+            $data['max_simulations_override'] = $request->filled('max_simulations_override')
+                ? (int) $request->max_simulations_override
+                : null;
+        }
+
+        // Essay quota override
+        if ($request->has('max_essays_override')) {
+            $data['max_essays_override'] = $request->filled('max_essays_override')
+                ? (int) $request->max_essays_override
+                : null;
         }
 
         $user->update($data);
 
-        // Description of changes
+        // Build audit log description from changed fields
         $changes = [];
+
         if ($original['name'] !== $user->name)
             $changes[] = "Nome: {$original['name']} -> {$user->name}";
         if ($original['email'] !== $user->email)
@@ -117,14 +144,18 @@ class UserController extends Controller
         if ($original['ai_questions_count'] != $user->ai_questions_count)
             $changes[] = "Consumo IA: {$original['ai_questions_count']} -> {$user->ai_questions_count}";
         if ($original['max_ai_questions_override'] != $user->max_ai_questions_override)
-            $changes[] = "Limite IA Custom: " . ($original['max_ai_questions_override'] ?? 'N/A') . " -> " . ($user->max_ai_questions_override ?? 'N/A');
+            $changes[] = "Limite IA Custom: " . ($original['max_ai_questions_override'] ?? 'padrão do plano') . " -> " . ($user->max_ai_questions_override ?? 'padrão do plano');
+        if ($original['max_simulations_override'] != $user->max_simulations_override)
+            $changes[] = "Limite Simulados Custom: " . ($original['max_simulations_override'] ?? 'padrão do plano') . " -> " . ($user->max_simulations_override ?? 'padrão do plano');
+        if ($original['max_essays_override'] != $user->max_essays_override)
+            $changes[] = "Limite Redações Custom: " . ($original['max_essays_override'] ?? 'padrão do plano') . " -> " . ($user->max_essays_override ?? 'padrão do plano');
 
         if (!empty($changes)) {
             UserLog::create([
-                'user_id' => $user->id,
-                'action' => 'admin_update',
+                'user_id'     => $user->id,
+                'action'      => 'admin_update',
                 'description' => 'Perfil atualizado por Admin. ' . implode(', ', $changes),
-                'ip_address' => $request->ip(),
+                'ip_address'  => $request->ip(),
             ]);
         }
 

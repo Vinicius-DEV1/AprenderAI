@@ -22,11 +22,23 @@ class SimulationController extends Controller
 
     public function index(Request $request)
     {
-        $simulations = Simulation::where('user_id', $request->user()->id)
+        $user = $request->user();
+        $user->loadMissing('plan');
+
+        // Pass quota data to the view so it can render the usage bar
+        // and conditionally show/disable the "Nova Prova" button.
+        $check = $this->planService->checkSimulationLimit($user);
+
+        $simulations = Simulation::where('user_id', $user->id)
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        return view('simulations.index', compact('simulations'));
+        return view('simulations.index', [
+            'simulations' => $simulations,
+            'limit'       => $check['limit'] ?? 0,
+            'used'        => $check['used'] ?? 0,
+            'canCreate'   => $check['can_create'],
+        ]);
     }
 
     public function create(Request $request)
@@ -68,24 +80,43 @@ class SimulationController extends Controller
 
     public function store(StoreSimulationRequest $request)
     {
+        // BACKEND SECURITY GUARD: Quota is always verified server-side.
+        // This prevents users from bypassing the front-end modal or button disable
+        // by making a direct HTTP request to this endpoint.
+        $user  = $request->user();
+        $check = $this->planService->checkSimulationLimit($user);
+
+        if (!$check['can_create']) {
+            // Return JSON for AJAX requests; redirect for plain form submissions
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'error'    => $check['message'],
+                    'quota'    => [
+                        'limit' => $check['limit'] ?? 0,
+                        'used'  => $check['used'] ?? 0,
+                    ],
+                ], 403);
+            }
+
+            return redirect()->route('simulations.index')
+                ->with('error', $check['message']);
+        }
+
         try {
             $validated = $request->validated();
 
             // Backend guard: free plan users cannot include essay even if they bypass front-end
-            if (!$request->user()->hasEssayAccess()) {
+            if (!$user->hasEssayAccess()) {
                 $validated['include_essay'] = false;
             }
 
-            // 1. Create Simulation (Sync - Status: generating)
-            $simulation = $this->simulationService->createPendingSimulation(
-                $request->user(),
-                $validated
-            );
+            // 1. Create Simulation (Sync — Status: generating)
+            $simulation = $this->simulationService->createPendingSimulation($user, $validated);
 
-            // 2. Dispatch Job (Async)
+            // 2. Dispatch background job (Async question selection/generation)
             \App\Jobs\GenerateSimulationQuestions::dispatch($simulation, $validated);
 
-            // 3. Redirect to Show (Loading Screen)
+            // 3. Redirect to loading screen
             return redirect()->route('simulations.show', $simulation);
 
         } catch (\Exception $e) {
