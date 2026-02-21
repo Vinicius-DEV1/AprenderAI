@@ -68,29 +68,13 @@ class QuestionService
         )
 
             // ── Filtro de Tipo (enem | concurso) ──
-            // Este é o "filtro mestre" — determina quais campos fazem
-            // sentido na UI (ex: Banca só aparece se tipo=concurso).
-            ->when($request->filled('type'), fn($q) =>
-        $q->where('type', $request->type)
-        )
+            ->filterByType($request->type)
 
             // ── Filtro de Matéria (Subject) ──
-            // Usa whereHas para buscar na relação Many-to-Many via pivot.
-            // Busca pelo nome exato da matéria na tabela subjects.
-            ->when($request->filled('subject'), fn($q) =>
-        $q->whereHas('subjects', fn($s) =>
-        $s->where('subjects.name', $request->subject)
-        )
-        )
+            ->filterBySubject($request->subject)
 
-            // ── Filtro de Assunto/Tópico (Dinâmico) ──
-            // LÓGICA: ENEM usa a coluna 'theme' (Eixos Temáticos), 
-            // enquanto Concursos usam a coluna 'topic' (Assunto/Tópico).
-            // O código detecta o tipo da busca para filtrar na coluna correta.
-            ->when($request->filled('topic'), function($q) use ($request) {
-                $column = ($request->type === 'enem') ? 'theme' : 'topic';
-                $q->where($column, $request->topic);
-            })
+            // ── Filtro de Assunto/Tópico (Dinâmico e via nova relação de pivô) ──
+            ->filterByTopic($request->topic)
 
             // ── Filtro de Ano ──
             ->when($request->filled('year'), fn($q) =>

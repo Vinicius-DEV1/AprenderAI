@@ -42,9 +42,18 @@ class QuestionGeneratorService
                 // Ensure correct structure and values
                 $qData['type'] = 'concurso';
                 $qData['source'] = 'ai_generated';
-                $qData['origin'] = 'IA';
-                // theme includes banca
-                $qData['theme'] = 'banca:' . $banca;
+                
+                // Extrai as alternativas que vieram do array para tratar no relacionamento
+                $altsData = $qData['alternatives'] ?? [];
+                unset($qData['alternatives']);
+                
+                // Extrai o subject
+                $subjectName = reset($qData['subject']) ?: ($qData['subject'] ?? 'Geral');
+                unset($qData['subject']);
+                
+                // Extrai gabarito
+                $correctAnswer = $qData['correct_answer'] ?? 'A';
+                unset($qData['correct_answer']);
 
                 // Duplication check
                 $exists = Question::where('type', 'concurso')
@@ -53,7 +62,24 @@ class QuestionGeneratorService
                     ->exists();
 
                 if (!$exists) {
-                    Question::create($qData);
+                    $createdQ = Question::create($qData);
+                    
+                    if (!empty($altsData) && is_array($altsData)) {
+                        foreach ($altsData as $label => $content) {
+                            $createdQ->alternatives()->create([
+                                'label' => strtoupper($label),
+                                'content' => $content,
+                                'is_correct' => strtoupper($label) === strtoupper($correctAnswer),
+                            ]);
+                        }
+                    }
+                    
+                    $subjectModel = \App\Models\Subject::firstOrCreate(
+                        ['name' => $subjectName],
+                        ['slug' => \Illuminate\Support\Str::slug($subjectName), 'type' => 'concurso']
+                    );
+                    $createdQ->subjects()->attach($subjectModel->id);
+                    
                     $savedCount++;
                 }
             }

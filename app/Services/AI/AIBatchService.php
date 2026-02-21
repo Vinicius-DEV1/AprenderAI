@@ -66,9 +66,9 @@ class AIBatchService
 
         // Define a instrução específica baseada na escolha do usuário no modal
         $instruction = match ($type) {
-            'difficulty' => "Avalie APENAS a dificuldade (easy, medium, hard) e forneça um raciocínio curto.",
-            'explanation' => "Gere APENAS uma explicação pedagógica clara para a alternativa correta.",
-            'both' => "Avalie a dificuldade (easy, medium, hard) com raciocínio E gere uma explicação pedagógica.",
+            'difficulty' => "Avalie a dificuldade (easy, medium, hard), forneça um raciocínio curto, e classifique a Disciplina (Subject, ex: Matemática) e o Assunto (Topic, ex: Geometria).",
+            'explanation' => "Gere uma explicação pedagógica clara, e classifique a Disciplina (Subject, ex: Matemática) e o Assunto (Topic, ex: Geometria).",
+            'both' => "Avalie a dificuldade com raciocínio, gere uma explicação pedagógica, e classifique a Disciplina (Subject, ex: Matemática) e o Assunto (Topic, ex: Geometria).",
         };
 
         return "Atue como um Especialista em Educação e IA. 
@@ -86,7 +86,9 @@ class AIBatchService
                \"id\": ID_DA_QUESTAO,
                \"difficulty\": \"easy|medium|hard\",
                \"difficulty_reasoning\": \"Sua justificativa curta...\",
-               \"explanation\": \"Sua explicação pedagógica...\"
+               \"explanation\": \"Sua explicação pedagógica...\",
+               \"subject\": \"Nome da Matéria (ex: História)\",
+               \"topic\": \"Nome do Assunto (ex: Segunda Guerra)\"
              }
            ]
         2. Se um campo não foi solicitado (ex: explicação quando o tipo é 'difficulty'), retorne-o como null.
@@ -134,8 +136,30 @@ class AIBatchService
             // Persiste apenas se houver mudanças válidas
             if (!empty($update)) {
                 $question->update($update);
-                $applied++;
             }
+            
+            // Lógica N:N (Pivot): A IA extrai as entidades Subject/Topic brutas (strings).
+            // O código as converte ou vincula em SubjectModels re-aproveitáveis salvos na tabela, conectando
+            // as pontes (FirstOrCreate + Sync) para garantir relacionamentos N:N imaculados e evitar strings raw redundantes.
+            if (!empty($data['subject'])) {
+                $subjectModel = \App\Models\Subject::firstOrCreate(
+                    ['name' => $data['subject']],
+                    ['slug' => \Illuminate\Support\Str::slug($data['subject']), 'type' => $question->type ?? 'enem']
+                );
+                $question->subjects()->sync([$subjectModel->id]);
+                
+                if (!empty($data['topic'])) {
+                    $topicModel = \App\Models\Topic::firstOrCreate(
+                        ['name' => $data['topic'], 'subject_id' => $subjectModel->id],
+                        ['slug' => \Illuminate\Support\Str::slug($data['topic'])]
+                    );
+                    $question->topics()->sync([$topicModel->id]);
+                }
+            }
+            
+            // Marca status principal como analisado/aprovado
+            $question->update(['review_status' => 'approved']);
+            $applied++;
         }
 
         return [

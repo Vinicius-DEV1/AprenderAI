@@ -198,7 +198,24 @@ class QuestionImportService
         $sqlite = new \PDO("sqlite:{$dbPath}");
         $sqlite->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
-        $stmt = $sqlite->query("SELECT * FROM questoes");
+        $stmt = $sqlite->query("
+            SELECT 
+                q.*,
+                e.organization,
+                e.year,
+                e.institution,
+                e.role,
+                (SELECT GROUP_CONCAT(s.name) 
+                 FROM question_subject qs 
+                 JOIN subjects s ON s.id = qs.subject_id 
+                 WHERE qs.question_id = q.id) AS materias,
+                (SELECT GROUP_CONCAT(t.name) 
+                 FROM question_topic qt 
+                 JOIN topics t ON t.id = qt.topic_id 
+                 WHERE qt.question_id = q.id) AS assuntos
+            FROM questions q
+            LEFT JOIN exams e ON q.exam_id = e.id
+        ");
         $questions = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         $stats = ['total' => 0, 'pending' => 0, 'approved' => 0];
@@ -206,11 +223,11 @@ class QuestionImportService
         foreach ($questions as $qData) {
             DB::transaction(function () use ($qData, $imageMap, $import, $uploader, &$stats) {
                 // Gera uma chave única robusta baseada no conteúdo da questão
-                $uniqueString = trim($qData['banca'] ?? '') . '|' . 
-                                trim($qData['ano'] ?? '') . '|' . 
-                                trim($qData['orgao'] ?? '') . '|' . 
-                                trim($qData['cargo'] ?? '') . '|' . 
-                                trim($qData['enunciado'] ?? '');
+                $uniqueString = trim($qData['organization'] ?? '') . '|' . 
+                                trim($qData['year'] ?? '') . '|' . 
+                                trim($qData['institution'] ?? '') . '|' . 
+                                trim($qData['role'] ?? '') . '|' . 
+                                trim($qData['statement'] ?? '');
                 
                 $externalId = md5($uniqueString);
 
@@ -218,53 +235,63 @@ class QuestionImportService
                 $question = Question::updateOrCreate(
                     ['external_id' => $externalId],
                     [
-                        'institution'    => $qData['orgao'] ?? null,
-                        'organization'   => $qData['banca'] ?? null,
-                        'role'           => $qData['cargo'] ?? null,
-                        'year'           => $qData['ano'] ?? null,
-                        'statement'      => $qData['enunciado'] ?? '',
+                        'type'           => 'concurso',
+                        'institution'    => $qData['institution'] ?? null,
+                        'organization'   => $qData['organization'] ?? null,
+                        'role'           => $qData['role'] ?? null,
+                        'year'           => $qData['year'] ?? null,
+                        'statement'      => $qData['statement'] ?? '',
                         'difficulty'     => 'medium',
-                        // Somente sobrescreve o review_status se for uma nova inserção ou se ainda estiver pending
-                        // Para não voltar uma questão 'approved' para 'pending' acidentalmente.
                     ]
                 );
 
                 // Se a questão acabou de ser criada, defina o status inicial e a imagem
                 if ($question->wasRecentlyCreated) {
                     $question->update([
-                        'review_status' => 'pending',
+                        'review_status' => $qData['review_status'] ?? 'pending',
                         'image_path'    => $imageMap[$qData['image_path']] ?? null,
                     ]);
                 }
 
-                // Registro de auditoria vinculando item ao lote (evita duplicar o vínculo no lote)
+                // Registro de auditoria vinculando item ao lote
                 QuestionImportItem::firstOrCreate([
                     'import_id'   => $import->id,
                     'question_id' => $question->id,
                 ]);
 
-                // Processamento de matérias (Many-to-Many) e Tópicos (Coluna simples)
-                if (!empty($qData['materia'])) {
-                    $subjectNames = array_map('trim', explode(',', $qData['materia']));
+                // Processamento de Matérias (Subjects M:N)
+                if (!empty($qData['materias'])) {
+                    $subjectNames = array_map('trim', explode(',', $qData['materias']));
                     $subjectIds = [];
-                    foreach ($subjectNames as $index => $name) {
-                        $subject = Subject::firstOrCreate(['name' => $name, 'slug' => Str::slug($name)]);
+                    foreach ($subjectNames as $name) {
+                        $subject = Subject::firstOrCreate(
+                            ['slug' => Str::slug($name)],
+                            ['name' => $name]
+                        );
                         $subjectIds[] = $subject->id;
-
-                        // O primeiro item é a Matéria, o segundo em diante é o Assunto (Tópico)
-                        if ($index === 1) {
-                            $question->update(['topic' => $name]);
-                        }
                     }
-                    // Usa syncWithoutDetaching para não remover matérias adicionadas manualmente depois
                     $question->subjects()->syncWithoutDetaching($subjectIds);
                 }
 
+                // Processamento de Assuntos (Topics M:N)
+                if (!empty($qData['assuntos'])) {
+                    $topicNames = array_map('trim', explode(',', $qData['assuntos']));
+                    $topicIds = [];
+                    foreach ($topicNames as $name) {
+                        $topic = \App\Models\Topic::firstOrCreate(
+                            ['slug' => Str::slug($name)],
+                            ['name' => $name]
+                        );
+                        $topicIds[] = $topic->id;
+                    }
+                    $question->topics()->syncWithoutDetaching($topicIds);
+                }
+
                 // Processamento de alternativas (JSON -> Tabela Relacional)
-                if (!empty($qData['alternativas'])) {
-                    $alternativas = json_decode($qData['alternativas'], true);
-                    if (is_array($alternativas)) {
-                        foreach ($alternativas as $label => $content) {
+                if (!empty($qData['alternatives'])) {
+                    $alternatives = json_decode($qData['alternatives'], true);
+                    if (is_array($alternatives)) {
+                        foreach ($alternatives as $label => $content) {
                             QuestionAlternative::updateOrCreate(
                                 [
                                     'question_id' => $question->id,
@@ -272,7 +299,7 @@ class QuestionImportService
                                 ],
                                 [
                                     'content'     => $content,
-                                    'is_correct'  => (strtoupper($label) === strtoupper($qData['gabarito'] ?? '')),
+                                    'is_correct'  => (strtoupper($label) === strtoupper($qData['correct_answer'] ?? '')),
                                 ]
                             );
                         }
@@ -280,7 +307,11 @@ class QuestionImportService
                 }
 
                 $stats['total']++;
-                $stats['pending']++;
+                if (($qData['review_status'] ?? 'pending') === 'pending') {
+                    $stats['pending']++;
+                } else {
+                    $stats['approved']++;
+                }
             });
         }
 

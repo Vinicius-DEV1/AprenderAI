@@ -47,7 +47,7 @@ class CorrectSimulationJob implements ShouldQueue
                 // correct_answer: resolvido pelo accessor virtual em Question.php
                 // que lê is_correct=true na tabela question_alternatives
                 'correct_answer' => $question->correct_answer,
-                'origin'        => $question->origin,
+                'organization'  => $question->organization,
                 'source'        => $question->source,
             ];
         })->toArray();

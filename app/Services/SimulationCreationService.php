@@ -191,15 +191,24 @@ class SimulationCreationService
                                     'difficulty' => $nq['difficulty'] ?? 'medium',
                                     'year' => date('Y'),
                                     'statement' => $nq['statement'],
-                                    'alternatives' => $nq['alternatives'],
-                                    'correct_answer' => $nq['correct_answer'] ?? 'A',
                                     'explanation' => $nq['explanation'] ?? null,
                                     'source' => 'ai_generated',
-                                    'origin' => 'IA Personalizada',
                                     'organization' => $context['organization'][0] ?? null,
                                     'institution' => $context['institution'][0] ?? null,
                                     'role' => $context['role'][0] ?? null,
                                 ]);
+
+                                // Create Alternatives via relation
+                                if (!empty($nq['alternatives']) && is_array($nq['alternatives'])) {
+                                    $correct = strtoupper($nq['correct_answer'] ?? 'A');
+                                    foreach ($nq['alternatives'] as $label => $content) {
+                                        $createdQ->alternatives()->create([
+                                            'label' => strtoupper($label),
+                                            'content' => $content,
+                                            'is_correct' => strtoupper($label) === $correct,
+                                        ]);
+                                    }
+                                }
 
                                 $subjectModel = \App\Models\Subject::firstOrCreate(
                                 ['name' => $subject],
@@ -275,16 +284,24 @@ class SimulationCreationService
                                     $createdQ = Question::create([
                                         'type' => $type,
                                         // 'subject' removed
-                                        'theme' => null,
                                         'difficulty' => $nq['difficulty'] ?? 'medium',
                                         'year' => $nq['year'] ?? rand(2015, 2025),
                                         'statement' => $nq['statement'],
-                                        'alternatives' => $nq['alternatives'],
-                                        'correct_answer' => $nq['correct_answer'] ?? 'A',
                                         'explanation' => $nq['explanation'] ?? null,
                                         'source' => 'ai_generated',
-                                        'origin' => 'IA'
                                     ]);
+
+                                    // Create Alternatives via relation
+                                    if (!empty($nq['alternatives']) && is_array($nq['alternatives'])) {
+                                        $correct = strtoupper($nq['correct_answer'] ?? 'A');
+                                        foreach ($nq['alternatives'] as $label => $content) {
+                                            $createdQ->alternatives()->create([
+                                                'label' => strtoupper($label),
+                                                'content' => $content,
+                                                'is_correct' => strtoupper($label) === $correct,
+                                            ]);
+                                        }
+                                    }
 
                                     $subjectModel = \App\Models\Subject::firstOrCreate(
                                     ['name' => $subject],
