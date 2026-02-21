@@ -101,6 +101,13 @@ class QuestionController extends Controller
             ->orderByDesc('total')
             ->get();
 
+        // Active AI Models (unique by preferred_model)
+        $aiModels = \App\Models\ApiKey::where('is_active', true)
+            ->where('status', 'online')
+            ->orderBy('is_primary', 'desc')
+            ->get(['provider', 'preferred_model'])
+            ->unique('preferred_model');
+
         return view('admin.questions.index', compact(
             'questions',
             'pendingQuestions',
@@ -112,7 +119,8 @@ class QuestionController extends Controller
             'aiQuestions',
             'questionsByOrigin',
             'availableSubjects',
-            'availableOrigins'
+            'availableOrigins',
+            'aiModels'
         ));
     }
 

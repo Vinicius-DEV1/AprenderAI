@@ -545,13 +545,29 @@
          class="fixed inset-0 z-50 overflow-y-auto" 
          style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div x-show="isOpen" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="fixed inset-0 transition-opacity" aria-hidden="true">
-                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+            {{-- Background backdrop --}}
+            <div x-show="isOpen" 
+                 x-transition:enter="ease-out duration-300" 
+                 x-transition:enter-start="opacity-0" 
+                 x-transition:enter-end="opacity-100" 
+                 x-transition:leave="ease-in duration-200" 
+                 x-transition:leave-start="opacity-100" 
+                 x-transition:leave-end="opacity-0" 
+                 class="absolute inset-0 transition-opacity" 
+                 aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-600 opacity-75"></div>
             </div>
 
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-            <div x-show="isOpen" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div x-show="isOpen" 
+                 x-transition:enter="ease-out duration-300" 
+                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+                 x-transition:leave="ease-in duration-200" 
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full z-10">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div class="sm:flex sm:items-start">
                         <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 sm:mx-0 sm:h-10 sm:w-10">
@@ -590,8 +606,11 @@
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Modelo de IA</label>
                                     <select x-model="model" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (Recomendado)</option>
-                                        <option value="gpt-4o-mini">GPT-4o Mini (Rápido)</option>
+                                        @forelse($aiModels as $ai)
+                                            <option value="{{ $ai->preferred_model }}">{{ ucfirst($ai->provider) }} - {{ $ai->preferred_model }}</option>
+                                        @empty
+                                            <option value="">Nenhum modelo disponível</option>
+                                        @endforelse
                                     </select>
                                 </div>
                             </div>
@@ -639,7 +658,7 @@
                 isProcessing: false,
                 quantity: 10,
                 type: 'both',
-                model: 'gemini-1.5-flash',
+                model: '{{ $aiModels->first()?->preferred_model ?? "" }}',
                 batchId: null,
                 total: 0,
                 processed: 0,
