@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ConcursoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SimulationController;
 use App\Http\Controllers\EssayController;
@@ -231,6 +232,9 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('settings.update');
         }
     );
+
+    // Concursos
+    Route::get('/concursos', [ConcursoController::class, 'index'])->name('concursos.index');
 });
 
 // Google Auth
