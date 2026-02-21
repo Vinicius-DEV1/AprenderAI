@@ -108,7 +108,7 @@
 
 {{-- Modal de Erros (Simples para reaproveitamento) --}}
 <div x-data="{ isOpen: false, errors: [] }" 
-     @show-batch-errors.window="isOpen = true; errors = $event.detail.errors"
+     x-on:show-batch-errors.window="isOpen = true; errors = $event.detail.errors"
      x-show="isOpen" 
      class="fixed inset-0 z-50 overflow-y-auto" 
      style="display: none;">
