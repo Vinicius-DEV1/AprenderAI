@@ -338,7 +338,6 @@
 
 {{-- ===== FILTROS ADAPTATIVOS ===== --}}
 <div class="qb-filters" x-data="filterPanel({{ json_encode(request()->all()) }})" 
-     @ai-filters-applied.window="applyAiFilters($event.detail)"
      @ai-no-results.window="handleNoResults($event.detail)">
     <form method="GET" action="{{ route('questions.index') }}" @submit.prevent="submitForm($el)">
         <div class="qb-filter-row">
@@ -516,6 +515,7 @@ function filterPanel(currentFilters) {
         moreFilters: !!(currentFilters.year || currentFilters.difficulty || currentFilters.status || currentFilters.organization || currentFilters.institution || currentFilters.role),
         statusText: '🪄 Processando...',
         globalLoading: false,
+        isApplyingAiFilters: false,
         
         init() {
             window.addEventListener('ai-loading-start', () => { this.globalLoading = true; });
@@ -525,7 +525,9 @@ function filterPanel(currentFilters) {
             
             // Watch para trocar os tópicos quando a matéria mudar
             this.$watch('filters.subject', () => {
-                this.filters.topic = '';
+                if (!this.isApplyingAiFilters) {
+                    this.filters.topic = '';
+                }
                 this.loadTopics();
             });
 
@@ -566,6 +568,7 @@ function filterPanel(currentFilters) {
         onTypeChange() { if (this.filters.type === 'enem') { this.filters.organization = ''; this.filters.institution = ''; this.filters.role = ''; } },
         
         applyAiFilters(newFilters, shouldScroll = true) {
+            this.isApplyingAiFilters = true;
             Object.keys(newFilters).forEach(key => {
                 if (this.filters.hasOwnProperty(key)) {
                     this.filters[key] = newFilters[key];
@@ -574,7 +577,13 @@ function filterPanel(currentFilters) {
             if (newFilters.year || newFilters.difficulty || newFilters.organization || newFilters.institution || newFilters.role) {
                 this.moreFilters = true;
             }
-            this.submitForm(shouldScroll);
+            
+            // Usamos nextTick para garantir que as reatividades (como o watch de subject) 
+            // ocorram enquanto isApplyingAiFilters ainda é true
+            this.$nextTick(() => {
+                this.submitForm(shouldScroll);
+                this.isApplyingAiFilters = false;
+            });
         },
 
         async submitForm(shouldScroll = true) {
@@ -627,6 +636,7 @@ function aiSearch() {
         pendingMessage: '',
         isError: false,
         isQuotaExceeded: false,
+        showToast: false,
         failureMessages: [
             'O Xavier tropeçou na pilha de livros e se perdeu.',
             'O assistente foi tomar um café para pensar melhor na sua busca.',

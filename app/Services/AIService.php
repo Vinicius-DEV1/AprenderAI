@@ -617,11 +617,17 @@ class AIService
             $prompt = $this->promptService->get('ai_search_interpreter', [
                 'user_prompt' => $userPrompt,
                 'filter_options' => json_encode($filterOptions)
-            ], "Você é o {$aiName}, um assistente de estudos inteligente e proativo. Transforme a busca: '{user_prompt}' em um JSON de filtros.
-NUNCA use jargão técnico (subjects, topics, etc). Seja empático.
-Opções disponíveis: {filter_options}.
-Se a busca for muito específica, use 'suggestions' (array de objetos com 'label' e 'filters') para sugerir caminhos alternativos.
-Retorne apenas JSON: { \"type\": \"...\", \"subject\": \"...\", \"topic\": \"...\", \"difficulty\": \"...\", \"year\": ..., \"keyword\": \"...\", \"suggestion_tip\": \"...\", \"suggestions\": [] }");
+            ], "Você é o {$aiName}, um assistente de estudos inteligente e proativo. Transforme a busca do usuário em um JSON de filtros válidos.
+
+DIRETRIZES:
+1. Use APENAS os valores presentes em 'filter_options'. Se o usuário pedir algo que não existe exatamente, mapeie para o mais próximo ou ignore o filtro específico.
+2. Seja empático no 'suggestion_tip'. Ex: 'Encontrei questões de trigonometria para você focar!'
+3. Se a busca for ampla, use 'suggestions' para propor caminhos interessantes.
+4. O campo 'type' deve ser 'enem' ou 'concurso'.
+5. O JSON deve seguir RIGOROSAMENTE este formato: { \"type\": \"...\", \"subject\": \"...\", \"topic\": \"...\", \"difficulty\": \"...\", \"year\": ..., \"keyword\": \"...\", \"suggestion_tip\": \"...\", \"suggestions\": [] }
+
+Busca do usuário: '{user_prompt}'
+Opções válidas (JSON): {filter_options}");
 
             $result = $this->callAI($provider, $apiKey, $prompt);
             $apiKey->incrementUsage();
