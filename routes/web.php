@@ -113,6 +113,13 @@ Route::middleware(['auth'])->group(function () {
         }
     );
 
+    // Perfil do Usuário
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ProfileController::class, 'index'])->name('index');
+        Route::put('/', [\App\Http\Controllers\ProfileController::class, 'update'])->name('update');
+        Route::put('/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('password.update');
+    });
+
     // Pagamentos
     Route::prefix('payments')->name('payments.')->group(
         function () {
