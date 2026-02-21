@@ -622,6 +622,17 @@ function filterPanel(currentFilters) {
         async submitForm(shouldScroll = true) {
             const url = new URL('{{ route("questions.index") }}');
             Object.entries(this.filters).forEach(([k, v]) => { if (v) url.searchParams.set(k, v); });
+            
+            // GA4: Monitorar uso de filtros
+            if (typeof gtag === 'function') {
+                gtag('event', 'filter_used', {
+                    'type': this.filters.type || 'all',
+                    'subject': this.filters.subject || 'all',
+                    'difficulty': this.filters.difficulty || 'all',
+                    'has_keyword': !!this.filters.keyword
+                });
+            }
+
             await this.fetchQuestions(url.toString(), shouldScroll);
         },
 
@@ -633,6 +644,14 @@ function filterPanel(currentFilters) {
                 const container = document.getElementById('questions-content');
                 container.innerHTML = html;
                 
+                // GA4: Virtual Pageview para navegação AJAX
+                if (typeof gtag === 'function') {
+                    gtag('event', 'page_view', {
+                        'page_title': document.title,
+                        'page_location': url
+                    });
+                }
+
                 // Detection: Se houver a classe qb-no-results, não rola
                 const hasResults = !container.querySelector('.qb-no-results');
                 
@@ -823,8 +842,13 @@ function aiSearch() {
                     this.loading = false;
                     this.statusText = '🪄 Processando...';
                     this.message = data.message || 'O {{ $aiName }} não conseguiu interpretar essa busca.';
+                    
                     if (data.code === 'quota_exceeded' || data.code === 'plan_restricted') {
                         this.isQuotaExceeded = true;
+                        // GA4: Monitorar quota excedida
+                        if (typeof gtag === 'function') {
+                            gtag('event', 'ai_quota_exceeded', { 'ai_name': '{{ $aiName }}' });
+                        }
                     }
                 }
             } catch (e) { 
@@ -832,6 +856,10 @@ function aiSearch() {
                 this.loading = false;
                 this.statusText = '🪄 Processando...';
                 this.message = 'Erro na conexão com o {{ $aiName }}.'; 
+                // GA4: Erro técnico na busca
+                if (typeof gtag === 'function') {
+                    gtag('event', 'ai_search_error', { 'error_type': 'connection_failure' });
+                }
             }
         },
 
@@ -872,6 +900,11 @@ function aiSearch() {
                         this.isError = true;
                         this.statusText = '🪄 Processando...';
                         
+                        // GA4: Falha na interpretação da busca
+                        if (typeof gtag === 'function') {
+                            gtag('event', 'ai_search_error', { 'error_type': 'interpretation_failure', 'error_msg': data.error });
+                        }
+
                         const funny = this.getRandomFailure();
                         this.message = `${funny}<br><br><small style="opacity: 0.8">${data.error || 'Não conseguimos processar sua busca agora.'}</small>`;
                     }
@@ -918,9 +951,9 @@ function aiSearch() {
     };
 }
 
-function questionCard(questionId, alreadyAnswered, wasCorrect) {
+function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a') {
     return {
-        questionId, alreadyAnswered, wasCorrect, selectedAnswer: null, answered: false, isCorrect: null,
+        questionId, alreadyAnswered, wasCorrect, subject, selectedAnswer: null, answered: false, isCorrect: null,
         correctAnswer: null, explanation: null, difficultyReasoning: null, submitting: false,
         showChat: false, chatMessages: [], chatInput: '', chatTyping: false, chatLoaded: false,
         showHistory: false, historyData: [], historyLoading: false, historyLoaded: false,
@@ -934,6 +967,16 @@ function questionCard(questionId, alreadyAnswered, wasCorrect) {
                 this.answered = true; this.isCorrect = data.correct; this.correctAnswer = data.correct_answer;
                 this.explanation = data.explanation || ''; this.difficultyReasoning = data.difficulty_reasoning || '';
                 this.alreadyAnswered = true; this.wasCorrect = data.correct;
+
+                // GA4: Monitorar submissão de resposta
+                if (typeof gtag === 'function') {
+                    gtag('event', 'answer_submitted', {
+                        'question_id': this.questionId,
+                        'is_correct': data.correct,
+                        'subject': this.subject,
+                        'origin': 'question_bank'
+                    });
+                }
             } catch (e) { alert('Erro ao enviar resposta.'); } finally { this.submitting = false; }
         },
         resetCard() {
