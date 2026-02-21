@@ -586,17 +586,30 @@ class AIService
         }
     }
 
-    public function generateJson(string $prompt): array
+    public function generateJson(string $prompt, ?string $model = null): array
     {
-        $provider = $this->getFirstAvailableProvider();
+        $provider = $model ? $this->getProviderForModel($model) : $this->getFirstAvailableProvider();
+        
         if (!$provider) {
             throw new \Exception('Nenhum provedor de IA disponível para geração de JSON.');
         }
 
         $apiKey = ApiKey::getActiveKeyForProvider($provider);
+        
+        if ($model) {
+            $apiKey->preferred_model = $model;
+        }
+
         $result = $this->callAI($provider, $apiKey, $prompt);
 
         return ['data' => $result['content']];
+    }
+
+    protected function getProviderForModel(string $model): ?string
+    {
+        if (str_contains($model, 'gpt')) return 'openai';
+        if (str_contains($model, 'gemini')) return 'gemini';
+        return $this->getFirstAvailableProvider();
     }
 
     public function interpretSearchPrompt(string $userPrompt, array $filterOptions): ?array

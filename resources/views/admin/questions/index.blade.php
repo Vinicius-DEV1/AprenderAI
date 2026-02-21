@@ -74,8 +74,8 @@
                         </span>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="runBatchComplete()" class="px-3 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700 flex items-center gap-1">
-                            🚀 Completar Lote (10)
+                        <button @click="$dispatch('open-batch-modal')" class="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 flex items-center gap-1">
+                            ✨ Processamento em Lote
                         </button>
                     </div>
                 </div>
@@ -537,4 +537,203 @@
         }
     </script>
     @endpush
+
+    {{-- BATCH PROCESSING MODAL --}}
+    <div x-data="batchProcessor" 
+         @open-batch-modal.window="openModal()" 
+         x-show="isOpen" 
+         class="fixed inset-0 z-50 overflow-y-auto" 
+         style="display: none;">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="isOpen" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div x-show="isOpen" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                                Processamento em Lote Inteligente
+                            </h3>
+                            <div class="mt-4 space-y-4" x-show="!isProcessing">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Quantidade de Questões (Pendentes: {{ $pendingCount }})</label>
+                                    <input type="number" x-model="quantity" max="{{ $pendingCount }}" min="1" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Tipo de Processamento</label>
+                                    <div class="mt-2 space-y-2">
+                                        <div class="flex items-center">
+                                            <input type="radio" x-model="type" value="difficulty" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
+                                            <label class="ml-3 block text-sm text-gray-700">Apenas Dificuldade</label>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <input type="radio" x-model="type" value="explanation" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
+                                            <label class="ml-3 block text-sm text-gray-700">Apenas Explicação</label>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <input type="radio" x-model="type" value="both" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
+                                            <label class="ml-3 block text-sm text-gray-700">Ambos (Dificuldade + Explicação)</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Modelo de IA</label>
+                                    <select x-model="model" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (Recomendado)</option>
+                                        <option value="gpt-4o-mini">GPT-4o Mini (Rápido)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mt-4" x-show="isProcessing">
+                                <div class="relative pt-1">
+                                    <div class="flex mb-2 items-center justify-between">
+                                        <div>
+                                            <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-indigo-600 bg-indigo-200" x-text="statusMessage">
+                                                Processando...
+                                            </span>
+                                        </div>
+                                        <div class="text-right">
+                                            <span class="text-xs font-semibold inline-block text-indigo-600" x-text="progress + '%'"></span>
+                                        </div>
+                                    </div>
+                                    <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-indigo-200">
+                                        <div :style="'width: ' + progress + '%'" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-500 transition-all duration-500"></div>
+                                    </div>
+                                    <p class="text-xs text-gray-500" x-text="'Sucessos: ' + processed + ' | Erros: ' + errors"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
+                    <button x-show="!isProcessing" @click="startBatch()" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                        Iniciar Processamento
+                    </button>
+                    <button x-show="isProcessing && progress >= 100" @click="isOpen = false; window.location.reload();" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                        Concluído
+                    </button>
+                    <button x-show="!isProcessing" @click="isOpen = false" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('batchProcessor', () => ({
+                isOpen: false,
+                isProcessing: false,
+                quantity: 10,
+                type: 'both',
+                model: 'gemini-1.5-flash',
+                batchId: null,
+                total: 0,
+                processed: 0,
+                errors: 0,
+                progress: 0,
+                statusMessage: 'Iniciando...',
+                eventSource: null,
+
+                openModal() {
+                    this.isOpen = true;
+                    this.isProcessing = false;
+                    this.progress = 0;
+                    this.processed = 0;
+                    this.errors = 0;
+                },
+
+                async startBatch() {
+                    this.isProcessing = true;
+                    this.statusMessage = 'Preparando lote...';
+
+                    // Use current URL triage filters
+                    const urlParams = new URLSearchParams(window.location.search);
+                    
+                    try {
+                        const response = await fetch('{{ route('admin.questions.batch.start') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                quantity: this.quantity,
+                                type: this.type,
+                                model: this.model,
+                                triage_status: urlParams.get('triage_status'),
+                                triage_subject: urlParams.get('triage_subject'),
+                                triage_origin: urlParams.get('triage_origin')
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.batchId = data.batch_id;
+                            this.total = data.total;
+                            this.statusMessage = 'Fila Iniciada...';
+                            this.connectSSE();
+                        } else {
+                            alert(data.message || 'Erro ao iniciar lote.');
+                            this.isProcessing = false;
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        alert('Erro na requisição.');
+                        this.isProcessing = false;
+                    }
+                },
+
+                connectSSE() {
+                    this.eventSource = new EventSource(`/admin/questions-batch/progress/${this.batchId}`);
+
+                    this.eventSource.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        
+                        if (data.status === 'not_found') {
+                            this.eventSource.close();
+                            return;
+                        }
+
+                        this.processed = data.processed;
+                        this.errors = data.errors;
+                        this.total = data.total;
+                        
+                        const completedCount = this.processed + this.errors;
+                        this.progress = Math.min(100, Math.round((completedCount / this.total) * 100));
+
+                        if (data.status === 'completed') {
+                            this.statusMessage = 'Finalizado!';
+                            this.progress = 100;
+                            this.eventSource.close();
+                            showToast('Processamento em lote concluído!', 'success');
+                        } else {
+                            this.statusMessage = `Processando ${completedCount} de ${this.total}...`;
+                        }
+                    };
+
+                    this.eventSource.onerror = () => {
+                        console.error('SSE Error');
+                        // Optional: Retry logic or close
+                        this.eventSource.close();
+                        setTimeout(() => this.connectSSE(), 5000); // Retry after 5s if still processing
+                    };
+                }
+            }));
+        });
+    </script>
 </x-layouts.admin>
