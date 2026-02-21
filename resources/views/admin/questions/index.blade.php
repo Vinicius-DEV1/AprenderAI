@@ -963,4 +963,47 @@
             }));
         });
     </script>
+    <style>
+        @keyframes bounce-subtle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        .animate-bounce-subtle {
+            animation: bounce-subtle 2s ease-in-out infinite;
+        }
+    </style>
+
+    {{-- Modal de Erros (Compartilhado) --}}
+    <div x-data="{ isOpen: false, errors: [] }" 
+         x-on:show-batch-errors.window="isOpen = true; errors = $event.detail.errors"
+         x-show="isOpen" 
+         class="fixed inset-0 z-[60] overflow-y-auto" 
+         style="display: none;">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="fixed inset-0 bg-black/50 transition-opacity" @click="isOpen = false"></div>
+            
+            <div class="relative bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 text-left">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Log de Erros do Lote</h3>
+                
+                <div class="max-h-96 overflow-y-auto space-y-2">
+                    <template x-for="(error, index) in errors" :key="index">
+                        <div class="p-3 rounded-lg border" :class="error.type === 'fatal' ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'">
+                            <div class="flex justify-between items-start mb-1">
+                                <span class="text-[10px] font-bold uppercase" :class="error.type === 'fatal' ? 'text-red-700' : 'text-orange-700'" x-text="error.type"></span>
+                                <span class="text-[10px] text-gray-500" x-text="error.time"></span>
+                            </div>
+                            <p class="text-xs text-gray-800 break-words" x-text="error.error"></p>
+                        </div>
+                    </template>
+                    <template x-if="errors.length === 0">
+                        <p class="text-center text-gray-500 py-4">Nenhum detalhe de erro disponível.</p>
+                    </template>
+                </div>
+                
+                <div class="mt-6 flex justify-end">
+                    <button @click="isOpen = false" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </x-layouts.admin>
