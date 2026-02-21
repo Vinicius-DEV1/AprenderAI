@@ -41,7 +41,38 @@ services:
     networks:
       - production-network
 
+  # PHP Worker
+  worker:
+    image: aprovado-ai-app
+    restart: always
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+    env_file: .env
+    command: php artisan queue:work
+    depends_on:
+      - app
+      - db
+    networks:
+      - production-network
+
+  # PHP Scheduler
+  scheduler:
+    image: aprovado-ai-app
+    restart: always
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+    env_file: .env
+    command: php artisan schedule:work
+    depends_on:
+      - app
+      - db
+    networks:
+      - production-network
+
   # Database (Internal Only)
+
   db:
     image: mysql:8.0
     restart: always
