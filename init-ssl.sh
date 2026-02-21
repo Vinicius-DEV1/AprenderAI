@@ -14,6 +14,15 @@ if [ -d "$data_path" ]; then
   fi
 fi
 
+# Determine docker-compose command
+if docker compose version >/dev/null 2>&1; then
+  docker_cmd="docker compose"
+else
+  docker_cmd="docker-compose"
+fi
+
+echo "### Using command: $docker_cmd"
+
 if [ ! -e "$data_path/conf/options-ssl-nginx.conf" ] || [ ! -e "$data_path/conf/ssl-dhparams.pem" ]; then
   echo "### Downloading recommended TLS parameters ..."
   mkdir -p "$data_path/conf"
@@ -25,7 +34,7 @@ fi
 echo "### Creating dummy certificate for $domains ..."
 path="/etc/letsencrypt/live/$domains"
 mkdir -p "$data_path/conf/live/$domains"
-docker-compose -f docker-compose.prod.yml run --rm --entrypoint "\
+$docker_cmd -f docker-compose.prod.yml run --rm --entrypoint "\
   openssl req -x509 -nodes -newkey rsa:1024 -days 1\
     -keyout '$path/privkey.pem' \
     -out '$path/fullchain.pem' \
@@ -33,11 +42,11 @@ docker-compose -f docker-compose.prod.yml run --rm --entrypoint "\
 echo
 
 echo "### Starting nginx ..."
-docker-compose -f docker-compose.prod.yml up --force-recreate -d webserver
+$docker_cmd -f docker-compose.prod.yml up --force-recreate -d webserver
 echo
 
 echo "### Deleting dummy certificate for $domains ..."
-docker-compose -f docker-compose.prod.yml run --rm --entrypoint "\
+$docker_cmd -f docker-compose.prod.yml run --rm --entrypoint "\
   rm -rf /etc/letsencrypt/live/$domains && \
   rm -rf /etc/letsencrypt/archive/$domains && \
   rm -rf /etc/letsencrypt/renewal/$domains.conf" certbot
@@ -59,15 +68,18 @@ esac
 # Enable staging mode if needed
 if [ $staging != "0" ]; then staging_arg="--staging"; fi
 
-docker-compose -f docker-compose.prod.yml run --rm --entrypoint "\
+$docker_cmd -f docker-compose.prod.yml run --rm --entrypoint "\
   certbot certonly --webroot -w /var/www/certbot \
     $staging_arg \
     $email_arg \
     $domain_args \
     --rsa-key-size $rsa_key_size \
     --agree-tos \
+    --no-eff-email \
+    --non-interactive \
     --force-renewal" certbot
 echo
 
 echo "### Reloading nginx ..."
-docker-compose -f docker-compose.prod.yml exec webserver nginx -s reload
+$docker_cmd -f docker-compose.prod.yml exec webserver nginx -s reload
+

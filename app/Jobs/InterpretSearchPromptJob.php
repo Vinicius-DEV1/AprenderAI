@@ -35,11 +35,11 @@ class InterpretSearchPromptJob implements ShouldQueue
             $filterOptions = $questionService->getFilterOptions();
             $filters = $aiService->interpretSearchPrompt($this->searchRequest->prompt, $filterOptions);
 
-            // Validação mínima para evitar que o Job seja marcado como completed 
-            // sem filtros reais (ex: quando a IA retorna um JSON vazio ou inesperado)
+            // Validação mínima: Consideramos sucesso se houver filtros reais OU sugestões de caminhos alternativos
             $hasRealFilters = !empty($filters['subject']) || !empty($filters['topic']) || !empty($filters['keyword']) || !empty($filters['type']);
+            $hasSuggestions = !empty($filters['suggestions']);
 
-            if ($filters && $hasRealFilters) {
+            if ($filters && ($hasRealFilters || $hasSuggestions)) {
                 $this->searchRequest->update([
                     'filters' => $filters,
                     'status' => 'completed',
