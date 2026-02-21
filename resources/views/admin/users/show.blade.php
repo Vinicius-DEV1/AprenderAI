@@ -268,12 +268,67 @@
                                         R$ {{ number_format($log->estimated_cost, 4, ',', '.') }}
                                     </td>
                                     <td class="py-3 text-center">
-                                        @if($log->question_id || in_array($log->type, ['chat', 'question_generation']))
-                                            <a href="{{ route('admin.chat-logs.show', $log->id) }}" class="text-blue-600 hover:text-blue-800" title="Ver Detalhes">
-                                                <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                            </a>
+                                        @if(!empty($log->prompt_text) || !empty($log->response_text))
+                                            <button onclick="document.getElementById('dialog-transcript-{{ $log->id }}').showModal()" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-full text-xs font-semibold transition-colors" title="Ver Transcrição do Chat">
+                                                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                                                Ver Chat
+                                            </button>
+
+                                            <!-- HTML5 Dialog Modal for Transcript -->
+                                            <dialog id="dialog-transcript-{{ $log->id }}" class="p-0 rounded-2xl shadow-2xl backdrop:bg-slate-900/50 backdrop:backdrop-blur-sm w-full max-w-4xl mx-auto top-10 bottom-10 open:animate-fade-in relative">
+                                                <div class="flex flex-col h-[80vh] bg-gray-50">
+                                                    <!-- Header -->
+                                                    <div class="px-6 py-4 border-b bg-white flex justify-between items-center sticky top-0 z-10 shadow-sm">
+                                                        <div>
+                                                            <h3 class="text-lg font-bold text-gray-800">Cópia do Chat (Transcript) <span class="text-xs ml-2 text-gray-400 font-mono">ID: {{ $log->id }}</span></h3>
+                                                            <p class="text-sm text-gray-500">{{ $log->provider }} - {{ $log->model }} | {{ $log->created_at->format('d/m/Y H:i:s') }}</p>
+                                                        </div>
+                                                        <button onclick="document.getElementById('dialog-transcript-{{ $log->id }}').close()" class="text-gray-400 hover:bg-gray-100 hover:text-gray-800 rounded-full p-2 transition-colors">
+                                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                        </button>
+                                                    </div>
+
+                                                    <!-- Body (Chat Flow) -->
+                                                    <div class="p-6 overflow-y-auto flex-1 space-y-6">
+                                                        <!-- User Prompt -->
+                                                        @if(!empty($log->prompt_text))
+                                                        <div class="flex justify-end">
+                                                            <div class="bg-blue-600 text-white rounded-2xl rounded-tr-none p-4 max-w-3xl shadow-sm whitespace-pre-wrap font-sans text-sm">
+                                                                <div class="text-[10px] text-blue-200 uppercase font-bold mb-2 flex items-center justify-end">
+                                                                    Prompt de Comando <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                                                </div>
+                                                                {{ $log->prompt_text }}
+                                                            </div>
+                                                        </div>
+                                                        @endif
+
+                                                        <!-- AI Response -->
+                                                        @if(!empty($log->response_text))
+                                                        <div class="flex justify-start">
+                                                            <div class="bg-white border border-gray-200 text-gray-800 rounded-2xl rounded-tl-none p-5 max-w-3xl shadow-sm font-sans text-sm overflow-x-auto">
+                                                                <div class="text-[10px] text-indigo-500 uppercase font-bold mb-2 flex items-center">
+                                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                                                    Resposta da IA (Payload ou Completion)
+                                                                </div>
+                                                                <pre class="whitespace-pre-wrap font-mono text-xs text-gray-700 bg-gray-50 p-4 rounded border border-gray-100">{{ is_string($log->response_text) ? $log->response_text : json_encode(json_decode($log->response_text), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                                            </div>
+                                                        </div>
+                                                        @endif
+                                                    </div>
+
+                                                    <!-- Footer Stats -->
+                                                    <div class="px-6 py-3 bg-white border-t flex justify-between items-center text-xs text-gray-500 shrink-0">
+                                                        <div class="flex gap-4">
+                                                            <span>Tokens Entrada: <strong class="text-gray-800">{{ $log->tokens_used_input }}</strong></span>
+                                                            <span>Tokens Saída: <strong class="text-gray-800">{{ $log->tokens_used_output }}</strong></span>
+                                                            <span>Custo Estimado: <strong class="text-red-600">US$ {{ number_format($log->estimated_cost, 5, ',', '.') }}</strong></span>
+                                                        </div>
+                                                        <span>Latência: <strong>{{ number_format($log->execution_time ?? 0, 1) }}s</strong></span>
+                                                    </div>
+                                                </div>
+                                            </dialog>
                                         @else
-                                            <span class="text-gray-300" title="Sem detalhes visuais">-</span>
+                                            <span class="text-gray-300" title="Corpo Vazio">-</span>
                                         @endif
                                     </td>
                                 </tr>

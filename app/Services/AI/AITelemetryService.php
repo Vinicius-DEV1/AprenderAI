@@ -9,21 +9,32 @@ use Illuminate\Support\Facades\Log;
 
 class AITelemetryService
 {
-    public function logRequest(ApiKey $apiKey, string $prompt, array $result, float $executionTime, ?int $userId = null)
+    public function logRequest(ApiKey $apiKey, string $prompt, array $result, float $executionTime, ?int $userId = null, ?int $questionId = null)
     {
         try {
+            $inputTokens = $result['usage']['input_tokens'] ?? 0;
+            $outputTokens = $result['usage']['output_tokens'] ?? 0;
+            $totalTokens = $result['usage']['total_tokens'] ?? 0;
+            $modelName = $apiKey->preferred_model ?? 'unknown';
+
+            // Inteligência Financeira: Calcula Custo da Transação
+            $calculator = app(PriceCalculatorService::class);
+            $cost = $calculator->calculateCost($modelName, $inputTokens, $outputTokens);
+
             AiRequestLog::create([
                 'user_id' => $userId,
+                'question_id' => $questionId,
                 'api_key_id' => $apiKey->id,
+                'api_key_name' => substr($apiKey->key, -4), // Optional hint
                 'provider' => $apiKey->provider,
-                'model' => $apiKey->preferred_model ?? 'unknown',
-                'prompt_preview' => substr($prompt, 0, 255),
-                'input_tokens' => $result['usage']['input_tokens'] ?? 0,
-                'output_tokens' => $result['usage']['output_tokens'] ?? 0,
-                'total_tokens' => $result['usage']['total_tokens'] ?? 0,
-                'execution_time_ms' => round($executionTime * 1000, 2),
-                'status' => isset($result['content']['error']) ? 'failed' : 'success',
-                'response_preview' => substr(json_encode($result['content']), 0, 255),
+                'model' => $modelName,
+                'prompt_text' => $prompt,
+                'response_text' => is_string($result['content']) ? $result['content'] : json_encode($result['content']),
+                'tokens_used_input' => $inputTokens,
+                'tokens_used_output' => $outputTokens,
+                'tokens_used_total' => $totalTokens,
+                'execution_time' => $executionTime,
+                'estimated_cost' => $cost,
             ]);
         } catch (\Exception $e) {
             Log::warning("Telemetry Error: " . $e->getMessage());

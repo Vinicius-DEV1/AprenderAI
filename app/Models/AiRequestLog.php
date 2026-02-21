@@ -16,15 +16,11 @@ class AiRequestLog extends Model
         'model',
         'prompt_text',
         'response_text',
-        'prompt_preview',
-        'response_preview',
         'tokens_used_input',
         'tokens_used_output',
         'tokens_used_total',
         'execution_time',
-        'execution_time_ms',
         'estimated_cost',
-        'status',
     ];
 
     public function user(): BelongsTo
