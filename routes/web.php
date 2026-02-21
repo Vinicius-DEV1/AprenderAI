@@ -183,6 +183,12 @@ Route::middleware(['auth'])->group(function () {
             Route::post('questions/{question}/complete', [\App\Http\Controllers\Admin\QuestionController::class, 'completeQuestion'])->name('questions.complete');
             Route::post('questions/batch-complete', [\App\Http\Controllers\Admin\QuestionController::class, 'batchCompleteQuestions'])->name('questions.batch-complete');
 
+            // Novo Batch Triage (Asíncrono)
+            Route::prefix('questions-batch')->name('questions.batch.')->group(function () {
+                Route::post('/start', [\App\Http\Controllers\Admin\AIBatchTriageController::class, 'start'])->name('start');
+                Route::get('/progress/{batch_id}', [\App\Http\Controllers\Admin\AIBatchTriageController::class, 'progress'])->name('progress');
+            });
+
             // ----------------------------------------------------------------
             // Módulo de Importação de Questões (scraper.py → .zip → produção)
             // ----------------------------------------------------------------
