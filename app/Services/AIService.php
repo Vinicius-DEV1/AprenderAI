@@ -31,16 +31,11 @@ class AIService
     }
 
     /**
-     * Checks if at least one provider has an active key.
+     * Checks if at least one provider has an active key for a given capability.
      */
-    public function hasActiveKey(): bool
+    public function hasActiveKey(string $capability = ApiKey::CAPABILITY_GENERAL): bool
     {
-        foreach ($this->providers as $provider) {
-            if (ApiKey::getActiveKeyForProvider($provider)) {
-                return true;
-            }
-        }
-        return false;
+        return ApiKey::getKeyForCapability($capability) !== null;
     }
 
     /**
@@ -48,18 +43,13 @@ class AIService
      */
     public function evaluateQuestionDifficulty(\App\Models\Question $question): ?array
     {
-        if (!$this->hasActiveKey()) {
-            Log::warning('AI Difficulty Evaluation failed: No active API key.');
+        if (!$this->hasActiveKey(ApiKey::CAPABILITY_TRIAGE)) {
+            Log::warning('AI Difficulty Evaluation failed: No active API key for Triage.');
             return null;
         }
 
-        $provider = $this->getFirstAvailableProvider();
-        if (!$provider) {
-            Log::warning('AI Difficulty Evaluation failed: No available provider.');
-            return null;
-        }
-
-        $apiKey = ApiKey::getActiveKeyForProvider($provider);
+        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_TRIAGE);
+        $provider = $apiKey->provider;
 
         try {
             $prompt = $this->promptService->get('question_difficulty_evaluator', [
@@ -114,23 +104,7 @@ class AIService
         }
     }
 
-    /**
-     * Returns the first available AI provider starting with Gemini.
-     */
-    protected function getFirstAvailableProvider(): ?string
-    {
-        if (ApiKey::getActiveKeyForProvider('gemini')) {
-            return 'gemini';
-        }
-
-        foreach ($this->providers as $provider) {
-            if ($provider !== 'gemini' && ApiKey::getActiveKeyForProvider($provider)) {
-                return $provider;
-            }
-        }
-
-        return null;
-    }
+    // getFirstAvailableProvider was completely replaced by ApiKey::getKeyForCapability router.
 
     /**
      * Orchestrates AI calls and logs execution details.
@@ -167,6 +141,13 @@ class AIService
             } elseif (str_contains($errorMessage, '401') || str_contains($errorMessage, '403')) {
                 $statusCode = 403;
                 $errorMessage = " Erro de Autenticação/Permissão (Invalid Key)";
+            }
+
+            // SRE: Update ApiKey status to trigger auto-healing router
+            if ($statusCode === 429) {
+                $apiKey->update(['status' => 'quota_exceeded']);
+            } elseif (in_array($statusCode, [401, 403])) {
+                $apiKey->update(['status' => 'offline']);
             }
 
             // Persistence for Admin Dashboard (ApiLog)
@@ -323,15 +304,12 @@ class AIService
     }
     public function generateEssayTopic(string $type): array
     {
-        if (!$this->hasActiveKey()) {
+        if (!$this->hasActiveKey(ApiKey::CAPABILITY_ESSAYS)) {
             throw new \Exception('Avaliador Xavier indisponível no momento (Key)');
         }
 
-        $provider = $this->getFirstAvailableProvider();
-        if (!$provider)
-            throw new \Exception('Avaliador Xavier indisponível no momento (Provider)');
-
-        $apiKey = ApiKey::getActiveKeyForProvider($provider);
+        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_ESSAYS);
+        $provider = $apiKey->provider;
 
         $rules = "";
         if ($type === 'enem') {
@@ -370,13 +348,11 @@ class AIService
 
     public function evaluateEssay(string $title, string $content, string $type): ?array
     {
-        if (!$this->hasActiveKey())
-            return null;
-        $provider = $this->getFirstAvailableProvider();
-        if (!$provider)
+        if (!$this->hasActiveKey(ApiKey::CAPABILITY_ESSAYS))
             return null;
 
-        $apiKey = ApiKey::getActiveKeyForProvider($provider);
+        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_ESSAYS);
+        $provider = $apiKey->provider;
 
         $prompt = $this->buildXavierEvaluationPrompt($title, $content, $type);
 
@@ -416,17 +392,14 @@ class AIService
 
     public function generateQuestions(string $subject, int $quantity = 1): array
     {
-        if (!$this->hasActiveKey()) {
+        if (!$this->hasActiveKey(ApiKey::CAPABILITY_QUESTIONS)) {
             return [];
         }
 
-        $provider = $this->getFirstAvailableProvider();
-        if (!$provider) {
-            return [];
-        }
+        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_QUESTIONS);
+        $provider = $apiKey->provider;
 
         try {
-            $apiKey = ApiKey::getActiveKeyForProvider($provider);
             $prompt = $this->buildQuestionGenerationPrompt($subject, $quantity);
             $result = $this->callAI($provider, $apiKey, $prompt);
             $apiKey->incrementUsage();
@@ -460,16 +433,12 @@ class AIService
      */
     public function chatAboutQuestion(mixed $question, mixed $simulation, string $userMessage, array $history): ?string
     {
-        if (!$this->hasActiveKey()) {
+        if (!$this->hasActiveKey(ApiKey::CAPABILITY_QUESTIONS)) {
             return "Desculpe, o sistema de IA está offline no momento.";
         }
 
-        $provider = $this->getFirstAvailableProvider();
-        if (!$provider) {
-            return "Nenhum provedor de IA disponível.";
-        }
-
-        $apiKey = ApiKey::getActiveKeyForProvider($provider);
+        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_QUESTIONS);
+        $provider = $apiKey->provider;
 
         try {
             $questionText = $question->statement;
@@ -520,16 +489,12 @@ class AIService
      */
     public function chatAboutStandaloneQuestion(Question $question, string $userAnswer, string $userMessage, array $history): ?string
     {
-        if (!$this->hasActiveKey()) {
+        if (!$this->hasActiveKey(ApiKey::CAPABILITY_QUESTIONS)) {
             return "Desculpe, o sistema de IA está offline no momento.";
         }
 
-        $provider = $this->getFirstAvailableProvider();
-        if (!$provider) {
-            return "Nenhum provedor de IA disponível.";
-        }
-
-        $apiKey = ApiKey::getActiveKeyForProvider($provider);
+        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_QUESTIONS);
+        $provider = $apiKey->provider;
 
         try {
             $questionText = $question->statement;
@@ -588,13 +553,15 @@ class AIService
 
     public function generateJson(string $prompt, ?string $model = null): array
     {
-        $provider = $model ? $this->getProviderForModel($model) : $this->getFirstAvailableProvider();
+        $provider = $model ? $this->getProviderForModel($model) : null;
         
-        if (!$provider) {
+        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_GENERAL, $provider);
+
+        if (!$apiKey) {
             throw new \Exception('Nenhum provedor de IA disponível para geração de JSON.');
         }
 
-        $apiKey = ApiKey::getActiveKeyForProvider($provider);
+        $provider = $apiKey->provider;
         
         if ($model) {
             $apiKey->preferred_model = $model;
@@ -609,21 +576,17 @@ class AIService
     {
         if (str_contains($model, 'gpt')) return 'openai';
         if (str_contains($model, 'gemini')) return 'gemini';
-        return $this->getFirstAvailableProvider();
+        return null;
     }
 
     public function interpretSearchPrompt(string $userPrompt, array $filterOptions): ?array
     {
-        if (!$this->hasActiveKey()) {
+        if (!$this->hasActiveKey(ApiKey::CAPABILITY_SEARCH)) {
             return null;
         }
 
-        $provider = $this->getFirstAvailableProvider();
-        if (!$provider) {
-            return null;
-        }
-
-        $apiKey = ApiKey::getActiveKeyForProvider($provider);
+        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_SEARCH);
+        $provider = $apiKey->provider;
 
         try {
             $aiName = \App\Models\Setting::where('key', 'ai_name')->value('value') ?? 'Xavier';

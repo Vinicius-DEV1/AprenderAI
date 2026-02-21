@@ -19,7 +19,7 @@ class QuestionGeneratorService
 
     public function isAiReady(): bool
     {
-        return $this->aiService->hasActiveKey();
+        return $this->aiService->hasActiveKey(\App\Models\ApiKey::CAPABILITY_QUESTIONS);
     }
 
     public function generate(string $banca, bool $includeEssay): array
