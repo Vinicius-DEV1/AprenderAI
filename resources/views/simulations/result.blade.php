@@ -255,9 +255,9 @@
 
                     @if($answer->question->source === 'ai_generated')
                         <span class="badge" style="background: #E9D5FF; color: #6B21A8; margin-left: 8px;">✨ INÉDITA</span>
-                    @elseif(!empty($answer->question->origin))
+                    @elseif(!empty($answer->question->organization))
                         <span class="badge"
-                            style="background: #E2E8F0; color: #475569; margin-left: 8px;">{{ $answer->question->origin }}</span>
+                            style="background: #E2E8F0; color: #475569; margin-left: 8px;">{{ $answer->question->organization }}</span>
                     @endif
 
                     @php

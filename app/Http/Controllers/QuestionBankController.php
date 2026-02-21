@@ -79,34 +79,45 @@ class QuestionBankController extends Controller
     }
 
     /**
+     * Retorna as matérias filtradas pelo tipo (AJAX).
+     *
+     * LÓGICA DE NEGÓCIO:
+     * Isolamento de Domínio. Só retorna matérias que tenham questões
+     * do tipo selecionado.
+     */
+    public function subjects(Request $request)
+    {
+        $type = $request->get('type');
+
+        $subjects = \App\Models\Subject::query()
+            ->when($type, function($q) use ($type) {
+                $q->whereHas('questions', fn($q2) => $q2->filterByType($type));
+            })
+            ->orderBy('name')
+            ->pluck('name');
+
+        return response()->json($subjects);
+    }
+
+    /**
      * Retorna os tópicos ou temas filtrados por matéria (AJAX).
      * 
      * LÓGICA DE NEGÓCIO:
-     * No AprovadoAI, separamos o conceito de "assunto" por tipo de prova:
-     * - ENEM: Usa a coluna 'theme' (Eixos Temáticos).
-     * - Concurso: Usa a coluna 'topic' (Assuntos/Tópicos).
-     * 
-     * Este endpoint detecta o 'type' no request para saber qual coluna consultar,
-     * garantindo que a UI mostre as opções corretas para o aluno.
+     * Busca Topics que possuem questões do Type e Subject especificados.
+     * Retorna o ID e Nome para preencher o select corretamente e bater no scope.
      */
     public function topics(Request $request)
     {
         $subjectName = $request->get('subject');
         $type = $request->get('type');
         
-        // Determina a coluna alvo baseada no tipo de questão selecionada
-        $column = ($type === 'enem') ? 'theme' : 'topic';
-
-        $topics = \App\Models\Question::query()
-            ->when($subjectName, function($q) use ($subjectName) {
-                // Filtra questões que pertencem à matéria selecionada (NxN)
-                $q->whereHas('subjects', fn($s) => $s->where('name', $subjectName));
+        $topics = \App\Models\Topic::query()
+            ->whereHas('questions', function($q) use ($type, $subjectName) {
+                $q->filterByType($type)->filterBySubject($subjectName);
             })
-            ->whereNotNull($column)
-            ->where($column, '!=', '')
-            ->distinct()
-            ->orderBy($column)
-            ->pluck($column);
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
 
         return response()->json($topics);
     }

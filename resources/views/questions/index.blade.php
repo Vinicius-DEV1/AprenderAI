@@ -353,20 +353,20 @@
             </div>
             <div class="qb-filter-item" style="max-width:200px">
                 <label>Matéria</label>
-                <select name="subject" x-model="filters.subject">
-                    <option value="">Todas</option>
-                    @foreach($filterOptions['subjects'] as $s)
-                        <option value="{{ $s }}" {{ request('subject') == $s ? 'selected' : '' }}>{{ $s }}</option>
-                    @endforeach
+                <select name="subject" x-model="filters.subject" :disabled="loadingSubjects">
+                    <option value="" x-text="loadingSubjects ? 'Carregando...' : 'Todas'"></option>
+                    <template x-for="s in subjects" :key="s">
+                        <option :value="s" x-text="s" :selected="filters.subject == s"></option>
+                    </template>
                 </select>
             </div>
             <div class="qb-filter-item">
                 <!-- O Label muda dinamicamente: "Eixo Temático" para ENEM, "Assunto" para Concurso -->
                 <label x-text="filters.type === 'enem' ? 'Eixo Temático' : 'Assunto'"></label>
-                <select name="topic" x-model="filters.topic" :disabled="loadingTopics">
-                    <option value="" x-text="loadingTopics ? 'Carregando...' : (!filters.subject ? 'Ex: Trigonometria, Funções...' : (topics.length === 0 ? 'Sem assuntos disponíveis' : 'Selecione um assunto...'))"></option>
-                    <template x-for="t in topics" :key="t">
-                        <option :value="t" x-text="t" :selected="filters.topic == t"></option>
+                <select name="topic" x-model="filters.topic" :disabled="!filters.subject || loadingTopics">
+                    <option value="" x-text="loadingTopics ? 'Carregando...' : (!filters.subject ? 'Selecione uma matéria primeiro...' : (topics.length === 0 ? 'Sem assuntos disponíveis' : 'Selecione um assunto...'))"></option>
+                    <template x-for="t in topics" :key="t.id">
+                        <option :value="t.id" x-text="t.name" :selected="filters.topic == t.id"></option>
                     </template>
                 </select>
             </div>
@@ -514,7 +514,9 @@ function filterPanel(currentFilters) {
             role: currentFilters.role || ''
         },
         topics: [],
+        subjects: {!! json_encode($filterOptions['subjects']) !!},
         loadingTopics: false,
+        loadingSubjects: false,
         moreFilters: !!(currentFilters.year || currentFilters.difficulty || currentFilters.status || currentFilters.organization || currentFilters.institution || currentFilters.role),
         statusText: '🪄 Refinando a busca...',
         globalLoading: false,
@@ -523,7 +525,9 @@ function filterPanel(currentFilters) {
         init() {
             window.addEventListener('ai-loading-start', () => { this.globalLoading = true; });
             window.addEventListener('ai-loading-stop', () => { this.globalLoading = false; });
-            // Se já vier com matéria no request, carrega os tópicos
+            
+            // Garantir as matérias dependendo do Type, e Tópicos dependendo da matéria
+            if (this.filters.type) this.loadSubjects();
             if (this.filters.subject) this.loadTopics();
             
             // Watch para trocar os tópicos quando a matéria mudar
@@ -562,11 +566,23 @@ function filterPanel(currentFilters) {
             // Se não houver resultados secundários ou algo assim, podemos disparar eventos aqui também
         },
 
-        /**
-         * Carrega os Assuntos (Concurso) ou Eixos Temáticos (ENEM) via AJAX.
-         * O backend detecta se deve retornar valores da coluna 'topic' ou 'theme'
-         * com base no parâmetro 'type' enviado.
-         */
+        async loadSubjects() {
+            this.loadingSubjects = true;
+            try {
+                const params = new URLSearchParams();
+                if (this.filters.type) params.set('type', this.filters.type);
+                
+                const res = await fetch(`{{ route('questions.subjects') }}?${params.toString()}`);
+                this.subjects = await res.json();
+                
+                // Se a matéria atual (via IA ou manual) não fizer parte desta filtragem, reseta a escolha
+                if (this.filters.subject && !this.subjects.includes(this.filters.subject)) {
+                    this.filters.subject = '';
+                }
+            } catch (e) { console.error('Subjects err', e); }
+            finally { this.loadingSubjects = false; }
+        },
+
         async loadTopics() {
             if (!this.filters.subject) {
                 this.topics = [];
@@ -590,7 +606,10 @@ function filterPanel(currentFilters) {
                 this.filters.institution = ''; 
                 this.filters.role = ''; 
             }
-            this.loadTopics();
+            // Sequenciar o recarregamento dos dropdowns isolados
+            this.loadSubjects().then(() => {
+                this.loadTopics();
+            });
         },
         
         applyAiFilters(newFilters, shouldScroll = true, hardReset = false) {

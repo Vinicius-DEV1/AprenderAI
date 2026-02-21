@@ -43,15 +43,15 @@
                     </div>
                 </a>
 
-                <!-- Origins Dinâmicos -->
-                @foreach($questionsByOrigin as $stat)
-                     <a href="{{ route('admin.questions.index', ['origin' => $stat->origin]) }}" class="block p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border-l-4 border-blue-400">
+                <!-- Organizations Dinâmicos -->
+                @foreach($questionsByOrganization as $stat)
+                     <a href="{{ route('admin.questions.index', ['organization' => $stat->organization]) }}" class="block p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border-l-4 border-blue-400">
                         <div class="flex items-center">
                             <div class="p-3 rounded-full bg-blue-50 text-blue-500 mr-4">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                             </div>
                             <div>
-                                <p class="text-sm text-gray-500 font-medium truncate" title="{{ $stat->origin }}">{{ str($stat->origin)->limit(15) }}</p>
+                                <p class="text-sm text-gray-500 font-medium truncate" title="{{ $stat->organization }}">{{ str($stat->organization)->limit(15) }}</p>
                                 <p class="text-2xl font-bold text-gray-800">{{ number_format($stat->total) }}</p>
                             </div>
                         </div>
@@ -116,10 +116,10 @@
                         </select>
                     </div>
                     <div>
-                        <select name="triage_origin" class="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-purple-500 focus:ring-purple-500">
-                            <option value="">Todas origens</option>
-                            @foreach($availableOrigins as $o)
-                                <option value="{{ $o }}" {{ request('triage_origin') == $o ? 'selected' : '' }}>{{ $o }}</option>
+                        <select name="triage_organization" class="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                            <option value="">Todas as Bankas/Organizações</option>
+                            @foreach($availableOrganizations as $o)
+                                <option value="{{ $o }}" {{ request('triage_organization') == $o ? 'selected' : '' }}>{{ $o }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -135,7 +135,7 @@
                     @if(request('search'))<input type="hidden" name="search" value="{{ request('search') }}">@endif
                     @if(request('subject'))<input type="hidden" name="subject" value="{{ request('subject') }}">@endif
                     @if(request('source'))<input type="hidden" name="source" value="{{ request('source') }}">@endif
-                    @if(request('origin'))<input type="hidden" name="origin" value="{{ request('origin') }}">@endif
+                    @if(request('organization'))<input type="hidden" name="organization" value="{{ request('organization') }}">@endif
                 </form>
 
                 {{-- Compact table --}}
@@ -146,7 +146,7 @@
                                 <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">ID</th>
                                 <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Enunciado</th>
                                 <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Matéria</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Origem</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Organização</th>
                                 <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Status</th>
                                 <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase">Ações</th>
                             </tr>
@@ -169,7 +169,7 @@
                                         <span class="text-gray-400 text-xs">N/A</span>
                                     @endif
                                 </td>
-                                <td class="px-3 py-2 text-xs text-gray-500">{{ Str::limit($q->origin ?? 'N/A', 15) }}</td>
+                                <td class="px-3 py-2 text-xs text-gray-500">{{ Str::limit($q->organization ?? 'N/A', 15) }}</td>
                                 <td class="px-3 py-2">
                                     @if($missingDiff && $missingExpl)
                                         <span class="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full font-medium">🔴 Incompleta</span>
@@ -268,7 +268,7 @@
                     @if(request('triage_search'))<input type="hidden" name="triage_search" value="{{ request('triage_search') }}">@endif
                     @if(request('triage_status'))<input type="hidden" name="triage_status" value="{{ request('triage_status') }}">@endif
                     @if(request('triage_subject'))<input type="hidden" name="triage_subject" value="{{ request('triage_subject') }}">@endif
-                    @if(request('triage_origin'))<input type="hidden" name="triage_origin" value="{{ request('triage_origin') }}">@endif
+                    @if(request('triage_organization'))<input type="hidden" name="triage_organization" value="{{ request('triage_organization') }}">@endif
                 </form>
             </div>
 

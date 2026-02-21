@@ -50,8 +50,8 @@
                             </div>
 
                             <div>
-                                <x-input-label for="origin" value="Tag de Origem (Ex: ENEM 2023)" />
-                                <input type="text" id="origin" name="origin" value="{{ old('origin', $question->origin ?? '') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                <x-input-label for="organization" value="Banca / Organização (Ex: ENEM, CESPE)" />
+                                <input type="text" id="organization" name="organization" value="{{ old('organization', $question->organization ?? '') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                             </div>
 
                             <div>

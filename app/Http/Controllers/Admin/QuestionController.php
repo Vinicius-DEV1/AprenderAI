@@ -39,8 +39,8 @@ class QuestionController extends Controller
                 $q->where('subjects.name', $request->triage_subject);
             });
         }
-        if ($request->filled('triage_origin')) {
-            $pendingQuery->where('origin', $request->triage_origin);
+        if ($request->filled('triage_organization')) {
+            $pendingQuery->where('organization', $request->triage_organization);
         }
 
         $pendingCount = $pendingQuery->count();
@@ -70,9 +70,9 @@ class QuestionController extends Controller
             $query->where('source', $request->source);
         }
 
-        // Filter by origin
-        if ($request->filled('origin')) {
-            $query->where('origin', $request->origin);
+        // Filter by organization
+        if ($request->filled('organization')) {
+            $query->where('organization', $request->organization);
         }
 
         $questions = $query->orderByDesc('id')->paginate(15);
@@ -80,24 +80,24 @@ class QuestionController extends Controller
         // Fetch all unique subject names for the filter
         $availableSubjects = \App\Models\Subject::orderBy('name')->pluck('name');
 
-        // Fetch unique origins for triage filter
-        $availableOrigins = Question::select('origin')
-            ->whereNotNull('origin')
-            ->where('origin', '!=', '')
+        // Fetch unique organizations for triage filter
+        $availableOrganizations = Question::select('organization')
+            ->whereNotNull('organization')
+            ->where('organization', '!=', '')
             ->distinct()
-            ->orderBy('origin')
-            ->pluck('origin');
+            ->orderBy('organization')
+            ->pluck('organization');
 
         // --- Mini-Dashboard Stats ---
         $totalQuestions = Question::count();
         $aiQuestions = Question::where('source', 'ai_generated')->count();
 
-        // Group by origin
-        $questionsByOrigin = Question::select('origin', DB::raw('count(*) as total'))
-            ->whereNotNull('origin')
-            ->where('origin', '!=', '')
-            ->where('origin', '!=', 'IA')
-            ->groupBy('origin')
+        // Group by organization
+        $questionsByOrganization = Question::select('organization', DB::raw('count(*) as total'))
+            ->whereNotNull('organization')
+            ->where('organization', '!=', '')
+            ->where('organization', '!=', 'IA')
+            ->groupBy('organization')
             ->orderByDesc('total')
             ->get();
 
@@ -117,9 +117,9 @@ class QuestionController extends Controller
             'bothMissingCount',
             'totalQuestions',
             'aiQuestions',
-            'questionsByOrigin',
+            'questionsByOrganization',
             'availableSubjects',
-            'availableOrigins',
+            'availableOrganizations',
             'aiModels'
         ));
     }
@@ -148,7 +148,7 @@ class QuestionController extends Controller
             'year'                  => 'nullable|integer',
             'difficulty'            => 'required|in:easy,medium,hard',
             'difficulty_reasoning'  => 'nullable|string',
-            'origin'                => 'nullable|string|max:255',
+            'organization'          => 'nullable|string|max:255',
         ]);
 
         // Extrai campos que NÃO são colunas da tabela questions (foram migrados)
@@ -203,7 +203,7 @@ class QuestionController extends Controller
             'year'                  => 'nullable|integer',
             'difficulty'            => 'required|in:easy,medium,hard',
             'difficulty_reasoning'  => 'nullable|string',
-            'origin'                => 'nullable|string|max:255',
+            'organization'          => 'nullable|string|max:255',
         ]);
 
         // Extrai campos que NÃO são colunas da tabela questions

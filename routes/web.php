@@ -47,6 +47,7 @@ Route::middleware(['auth'])->group(function () {
         function () {
             Route::get('/', [\App\Http\Controllers\QuestionBankController::class, 'index'])->name('index');
             Route::get('/topics', [\App\Http\Controllers\QuestionBankController::class, 'topics'])->name('topics');
+            Route::get('/subjects', [\App\Http\Controllers\QuestionBankController::class, 'subjects'])->name('subjects');
             Route::post('/ai-search', [\App\Http\Controllers\AiSearchController::class, 'search'])->name('ai-search');
             Route::get('/ai-search/{searchRequest}/status', [\App\Http\Controllers\AiSearchController::class, 'status'])->name('ai-search.status');
             Route::post('/{question}/answer', [\App\Http\Controllers\QuestionBankController::class, 'answer'])->name('answer');
