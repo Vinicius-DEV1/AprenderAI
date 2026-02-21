@@ -36,6 +36,47 @@
     .qb-btn-desempenho { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; border-radius: 10px; padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
     .qb-btn-desempenho:hover { background: rgba(255,255,255,0.3); }
 
+    /* ── AI Search ── */
+    .qb-ai-wrapper { position: relative; margin-bottom: 24px; }
+    .qb-ai-search-container { position: relative; background: white; border-radius: 16px; padding: 4px; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.1); border: 1px solid #e0e7ff; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; }
+    :root.dark .qb-ai-search-container { background: #1e293b; border-color: rgba(99, 102, 241, 0.2); }
+    .qb-ai-search-container:focus-within { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(99, 102, 241, 0.15); border-color: #6366f1; }
+    .qb-ai-input { flex: 1; border: none !important; background: transparent !important; padding: 12px 16px; font-size: 15px; color: #1e293b; box-shadow: none !important; }
+    :root.dark .qb-ai-input { color: #f1f5f9; }
+    .qb-ai-input::placeholder { color: #94a3b8; font-style: italic; }
+    .qb-ai-button { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; border-radius: 12px; padding: 10px 24px; font-size: 13px; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 8px; margin-right: 4px; }
+    .qb-ai-button:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+    .qb-ai-button:disabled { opacity: 0.7; cursor: wait; transform: none; }
+    .qb-ai-locked { background: #f1f5f9; color: #94a3b8; cursor: pointer; border-radius: 12px; padding: 10px 24px; font-size: 13px; font-weight: 700; border: none; margin-right: 4px; display: flex; align-items: center; gap: 8px; }
+    :root.dark .qb-ai-locked { background: #334155; }
+    .qb-ai-glow { position: absolute; inset: -2px; background: linear-gradient(90deg, #6366f1, #a855f7, #6366f1); border-radius: 18px; z-index: -1; opacity: 0; transition: opacity 0.3s; background-size: 200% 100%; animation: qb-gradient-shift 3s infinite linear; }
+    .qb-ai-search-container:focus-within .qb-ai-glow { opacity: 0.3; }
+    @keyframes qb-gradient-shift { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+
+    /* ── Xavier Bubble & Toast ── */
+    .xavier-header-badge { margin-bottom: 12px; display: inline-flex; align-items: center; gap: 10px; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); padding: 8px 16px; border-radius: 50px; font-size: 13px; color: #4338ca; font-weight: 500; }
+    :root.dark .xavier-header-badge { background: rgba(99, 102, 241, 0.15); border-color: rgba(99, 102, 241, 0.3); color: #c7d2fe; }
+    .pulse-dot { width: 8px; height: 8px; background: #6366f1; border-radius: 50%; box-shadow: 0 0 0 rgba(99, 102, 241, 0.4); animation: xavier-pulse 2s infinite; }
+    @keyframes xavier-pulse { 0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); } 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); } }
+
+    .xavier-bubble { position: absolute; top: calc(100% + 16px); left: 20px; background: white; border: 1px solid #6366f1; border-radius: 20px; padding: 20px 28px; box-shadow: 0 15px 40px rgba(99, 102, 241, 0.2); max-width: 520px; z-index: 50; display: flex; gap: 16px; align-items: flex-start; animation: xavier-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); border-left-width: 6px; }
+    :root.dark .xavier-bubble { background: #1e293b; border-color: #6366f1; }
+    .xavier-bubble::after { content: ''; position: absolute; bottom: 100%; left: 32px; border: 12px solid transparent; border-bottom-color: white; }
+    :root.dark .xavier-bubble::after { border-bottom-color: #1e293b; }
+    .xavier-btns-row { display: flex; flex-direction: row; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+    .xavier-bubble .txt { font-size: 14px; color: #1e293b; line-height: 1.7; flex: 1; }
+    :root.dark .xavier-bubble .txt { color: #f1f5f9; }
+    .xavier-action-btn { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); white-space: nowrap; }
+    .xavier-action-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(99, 102, 241, 0.4); }
+    
+    .xavier-sug-btn { background: rgba(99, 102, 241, 0.05); color: #4f46e5; border: 1.5px solid rgba(99, 102, 241, 0.2); padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .xavier-sug-btn:hover { background: rgba(99, 102, 241, 0.1); border-color: #6366f1; transform: translateY(-1px); }
+    
+    .qb-toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 24px; border-radius: 50px; font-weight: 600; font-size: 14px; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3); z-index: 1000; animation: toast-in 0.4s ease-out forwards; }
+    
+    @keyframes xavier-pop { from { opacity: 0; transform: translateY(10px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
     /* ── Filters ── */
     .qb-filters { background: white; border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.07); margin-bottom: 20px; border: 1px solid #e2e8f0; }
     .qb-filter-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
@@ -188,7 +229,7 @@
 <div class="qb-header">
     <div class="qb-header-left">
         <h1>📋 Banco de Questões</h1>
-        <p>Resolva questões, veja explicações e tire dúvidas com IA</p>
+        <p>Resolva questões, veja explicações e tire dúvidas com {{ $aiName }}</p>
     </div>
     <div style="display:flex; flex-direction:column; align-items:flex-end; gap:12px">
         <button class="qb-btn-desempenho" @click="$dispatch('open-stats')">📊 Ver Meu Desempenho</button>
@@ -201,8 +242,107 @@
     </div>
 </div>
 
+
+<div class="xavier-header-badge">
+    <span class="pulse-dot"></span>
+    <strong>{{ $aiName }}</strong> — faças buscas inteligentes com {{ $aiName }} em nossa base de {{ $overview['total'] }} questões.
+</div>
+<div class="qb-ai-wrapper" x-data="aiSearch()" x-init="initTypewriter()">
+    {{-- Balão de Fala do Xavier --}}
+    <template x-if="suggestion || message || suggestions.length > 0">
+        <div class="xavier-bubble" @click.away="closeBubble()" x-show="suggestion || message || suggestions.length > 0" x-transition:enter="xavier-pop 0.3s ease-out">
+            <div style="background: #6366f1; border-radius: 12px; padding: 8px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);">
+                <span style="font-size: 20px; color: white;">🤖</span>
+            </div>
+            <div class="txt">
+                <strong x-text="message ? '{{ $aiName }} diz:' : 'Dica do {{ $aiName }}:'"></strong><br>
+                <div x-html="message || suggestion"></div>
+                <div class="xavier-btns-row" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
+                    <template x-if="loading">
+                        <div class="bg-gray-100 dark:bg-slate-700 rounded-lg px-3 py-2 text-xs text-gray-500 flex items-center gap-2 border border-gray-200">
+                            <span class="font-medium">{{ $aiName }} digitando</span>
+                            <span class="flex gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style="animation-delay: 0s;"></span>
+                                <span class="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style="animation-delay: 0.2s;"></span>
+                                <span class="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style="animation-delay: 0.4s;"></span>
+                            </span>
+                        </div>
+                    </template>
+                    <template x-if="!loading && !isError && !isQuotaExceeded && !lastSearchHadResults">
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="sug in suggestions" :key="sug.label">
+                                <button class="xavier-sug-btn" @click="applyXavierSuggestion(sug.filters)">
+                                    <span style="font-size: 14px;">🔍</span>
+                                    <span x-text="sug.label"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </template>
+
+                    <template x-if="isError">
+                        <div class="flex items-center gap-2">
+                            <button @click="tryAgain()" class="xavier-action-btn" style="background: #4f46e5; color: white; border: none;">
+                                🔄 Tentar novamente
+                            </button>
+                            <button @click="tryLater()" class="xavier-action-btn" style="background: #94a3b8; color: white; border: none; opacity: 0.8;">
+                                ⏳ Tentar mais tarde
+                            </button>
+                        </div>
+                    </template>
+
+                    <template x-if="isQuotaExceeded">
+                        <div class="flex items-center gap-2">
+                            <a href="{{ route('plans.index') }}" class="xavier-action-btn" style="background: #fbbf24; color: #78350f; border: none; font-weight: bold; text-decoration: none;">
+                                ⭐ Fazer Upgrade
+                            </a>
+                            <button @click="closeBubble()" class="xavier-action-btn" style="background: #e2e8f0; color: #475569; border: none;">
+                                ✕ Fechar
+                            </button>
+                        </div>
+                    </template>
+                </div>
+                <div style="margin-top: 16px; font-size: 11px; opacity: 0.6; cursor: pointer; text-decoration: underline;" @click="closeBubble()">
+                    [Fechar conversa]
+                </div>
+            </div>
+        </div>
+</template>
+
+    <div class="qb-ai-search-container">
+        <div class="qb-ai-glow"></div>
+        <div style="display: flex; align-items: center; padding-left: 16px;">
+            <span style="font-size: 20px;">✨</span>
+        </div>
+        <input type="text" 
+               x-model="prompt" 
+               @keydown.enter="submitSearch()"
+               :placeholder="placeholderText" 
+               class="qb-ai-input"
+               :disabled="loading">
+        
+        @if(auth()->user()->plan && auth()->user()->plan->name !== 'Gratuito')
+            <button @click="submitSearch()" class="qb-ai-button" :disabled="loading || !prompt.trim()">
+                <span x-show="!loading">🚀 Buscar com {{ $aiName }}</span>
+                <span x-show="loading" class="animate-pulse" x-text="statusText">🪄 Processando...</span>
+            </button>
+        @else
+            <button @click="window.location.href='{{ route('plans.index') }}'" class="qb-ai-locked">
+                <span>🔒 Liberação Plus</span>
+            </button>
+        @endif
+    </div>
+
+    {{-- Toast de Sucesso --}}
+    <template x-if="showToast">
+        <div class="qb-toast">
+            ✅ Busca realizada com sucesso! {{ $aiName }} encontrou o que você precisava.
+        </div>
+    </template>
+</div>
+
 {{-- ===== FILTROS ADAPTATIVOS ===== --}}
-<div class="qb-filters" x-data="filterPanel({{ json_encode(request()->all()) }})">
+<div class="qb-filters" x-data="filterPanel({{ json_encode(request()->all()) }})" 
+     @ai-no-results.window="handleNoResults($event.detail)">
     <form method="GET" action="{{ route('questions.index') }}" @submit.prevent="submitForm($el)">
         <div class="qb-filter-row">
             <div class="qb-filter-item qb-filter-master" style="max-width:130px">
@@ -223,12 +363,13 @@
                 </select>
             </div>
             <div class="qb-filter-item">
-                <label>Assunto</label>
-                <select name="topic" x-model="filters.topic">
-                    <option value="">Ex: Trigonometria, Funções...</option>
-                    @foreach($filterOptions['topics'] as $t)
-                        <option value="{{ $t }}" {{ request('topic') == $t ? 'selected' : '' }}>{{ $t }}</option>
-                    @endforeach
+                <!-- O Label muda dinamicamente: "Eixo Temático" para ENEM, "Assunto" para Concurso -->
+                <label x-text="filters.type === 'enem' ? 'Eixo Temático' : 'Assunto'"></label>
+                <select name="topic" x-model="filters.topic" :disabled="loadingTopics">
+                    <option value="" x-text="loadingTopics ? 'Carregando...' : (!filters.subject ? 'Ex: Trigonometria, Funções...' : (topics.length === 0 ? 'Sem assuntos disponíveis' : 'Selecione um assunto...'))"></option>
+                    <template x-for="t in topics" :key="t">
+                        <option :value="t" x-text="t" :selected="filters.topic == t"></option>
+                    </template>
                 </select>
             </div>
             <div class="qb-filter-item" style="min-width:200px">
@@ -309,142 +450,19 @@
     </form>
 </div>
 
-{{-- ===== FEED DE QUESTÕES ===== --}}
-@forelse($questions as $question)
-    <div class="qb-card" x-data="questionCard({{ $question->id }}, {{ json_encode(isset($answeredMap[$question->id])) }}, {{ json_encode($answeredMap[$question->id] ?? null) }})">
-        <div class="qb-card-meta">
-            <span class="qb-card-id">#{{ $question->external_id ?? $question->id }}</span>
-            @if($question->source === 'ai_generated')
-                <span class="qb-badge qb-badge-ai">✨ INÉDITA</span>
-            @endif
-            @if($question->year)<span class="qb-badge qb-badge-origin">{{ $question->year }}</span>@endif
-            @if($question->organization)<span class="qb-badge qb-badge-origin">{{ $question->organization }}</span>@endif
-            <span class="qb-badge qb-badge-origin">{{ $question->subjects->pluck('name')->join(', ') }}</span>
-            @php
-                $dc = match($question->difficulty) {
-                    'easy' => ['class' => 'qb-badge-easy', 'label' => 'Fácil'],
-                    'medium' => ['class' => 'qb-badge-medium', 'label' => 'Média'],
-                    'hard' => ['class' => 'qb-badge-hard', 'label' => 'Difícil'],
-                    default => null,
-                };
-            @endphp
-            @if($dc)<span class="qb-badge {{ $dc['class'] }}">{{ $dc['label'] }}</span>@endif
-            <template x-if="alreadyAnswered && !answered">
-                <span class="qb-badge" :class="wasCorrect ? 'qb-badge-correct' : 'qb-badge-incorrect'" x-text="wasCorrect ? '✓ Já Resolvida' : '✗ Já Resolvida'"></span>
-            </template>
-        </div>
-
-        <div class="qb-statement">{!! nl2br(e($question->statement)) !!}</div>
-
-        @foreach($question->alternatives->sortBy('label') as $alt)
-            <div class="qb-alt"
-                 :class="{
-                    'selected': selectedAnswer === '{{ $alt->label }}' && !answered,
-                    'correct-reveal': answered && '{{ $alt->label }}' === correctAnswer,
-                    'incorrect-reveal': answered && selectedAnswer === '{{ $alt->label }}' && '{{ $alt->label }}' !== correctAnswer,
-                    'disabled': answered
-                 }"
-                 @click="!answered ? selectAnswer('{{ $alt->label }}') : null">
-                <div class="qb-alt-letter">{{ $alt->label }}</div>
-                <div style="display: flex; flex-direction: column; gap: 8px; flex-grow: 1; overflow: hidden;">
-                    @if($alt->content)
-                        <div class="qb-alt-text" style="word-break: break-word;">{{ $alt->content }}</div>
-                    @endif
-                    @if($alt->image_path)
-                        <img src="{{ Storage::url($alt->image_path) }}" alt="Alternativa {{ $alt->label }}" style="max-width: 100%; height: auto; border-radius: 4px; object-fit: contain;">
-                    @endif
-                </div>
-            </div>
-        @endforeach
-
-        <div class="qb-card-actions">
-            <button class="qb-action-btn primary" x-show="!answered" @click="submitAnswer()" :disabled="!selectedAnswer || submitting">
-                <span x-show="!submitting">📝 Responder</span>
-                <span x-show="submitting">⏳ Enviando...</span>
-            </button>
-            <button class="qb-action-btn" x-show="answered" @click="toggleChat()">
-                <span x-text="showChat ? '▲ Ocultar Chat' : '💬 Tirar Dúvida'"></span>
-            </button>
-            <button class="qb-action-btn" x-show="answered" @click="toggleHistory()">📜 Meu Histórico</button>
-            <button class="qb-action-btn retry" x-show="answered" @click="resetCard()">
-                <span>🔄 Tentar Novamente</span>
-            </button>
-        </div>
-
-        <template x-if="answered">
-            <div class="qb-feedback" :class="isCorrect ? 'correct' : 'incorrect'">
-                <div class="qb-feedback-title">
-                    <span x-text="isCorrect ? '✅ Resposta Correta!' : '❌ Resposta Incorreta'"></span>
-                    <span style="font-weight:400; font-size:12px; color:#64748b" x-show="!isCorrect">
-                        Correta: <strong x-text="correctAnswer" style="color:#065f46"></strong>
-                    </span>
-                </div>
-                <div class="qb-explanation" x-show="explanation">
-                    <h4>📖 Resolução Comentada</h4>
-                    <div class="qb-explanation-text" x-html="renderMd(explanation)"></div>
-                </div>
-                <div class="qb-difficulty-box" x-show="difficultyReasoning">
-                    <h5>🎯 Por que essa dificuldade?</h5>
-                    <p x-text="difficultyReasoning"></p>
-                </div>
-            </div>
-        </template>
-
-        <div x-show="showHistory" x-transition x-cloak class="qb-history-popover">
-            <h4 style="font-size:13px; font-weight:700; color:#6366f1; margin-bottom:8px">📜 Seu Histórico nesta Questão</h4>
-            <template x-if="historyLoading"><p style="font-size:12px; color:#94a3b8">Carregando...</p></template>
-            <template x-if="!historyLoading && historyData.length === 0"><p style="font-size:12px; color:#94a3b8">Nenhum registro encontrado.</p></template>
-            <template x-for="h in historyData" :key="h.answered_at">
-                <div class="qb-history-row">
-                    <span style="color:#64748b" x-text="formatDate(h.answered_at)"></span>
-                    <span>Resposta: <strong x-text="h.selected_answer"></strong></span>
-                    <span class="qb-badge" :class="h.is_correct ? 'qb-badge-correct' : 'qb-badge-incorrect'" x-text="h.is_correct ? 'Acerto' : 'Erro'"></span>
-                </div>
-            </template>
-        </div>
-
-        <div x-show="showChat" x-transition x-cloak class="qb-chat-container">
-            <div class="qb-chat-history space-y-2 p-1" x-ref="chatHistory">
-                <template x-for="msg in chatMessages" :key="msg.id || msg.created_at">
-                    <div :class="msg.role === 'user' ? 'flex justify-end' : (msg.role === 'system' ? 'flex justify-center' : 'flex justify-start')">
-                        <template x-if="msg.role === 'user'">
-                            <div class="rounded-lg px-3 py-1.5 max-w-[85%] text-xs shadow-sm" style="background:#4f46e5;color:white" x-text="msg.message"></div>
-                        </template>
-                        <template x-if="msg.role === 'assistant'">
-                            <div class="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 max-w-[85%] text-xs shadow-sm" x-html="renderMd(msg.message)"></div>
-                        </template>
-                        <template x-if="msg.role === 'system'">
-                            <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-center w-[90%]">
-                                <p class="text-xs text-red-800 font-bold" x-text="msg.message"></p>
-                                <a :href="msg.upgrade_url || '/'" class="mt-2 inline-block bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs font-bold py-1.5 px-4 rounded-full">🚀 Turbinar Plano</a>
-                            </div>
-                        </template>
-                    </div>
-                </template>
-                <div x-show="chatTyping" class="flex items-start">
-                    <div class="bg-gray-100 dark:bg-slate-700 rounded-lg px-3 py-2 text-xs text-gray-500 flex items-center gap-2 border border-gray-200">
-                        <span class="font-medium">Xavier digitando</span>
-                        <span class="flex gap-1">
-                            <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></span>
-                            <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style="animation-delay:0.1s"></span>
-                            <span class="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style="animation-delay:0.2s"></span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-            <div class="flex gap-2 mt-2">
-                <input type="text" x-model="chatInput" x-ref="chatInput" @keydown.enter.prevent="sendChat()" placeholder="Qual sua dúvida, @auth {{ auth()->user()->first_name }}? @else estudante? @endauth" :disabled="chatTyping" class="flex-1 rounded-md border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 shadow-sm text-xs px-3 py-2">
-                <button @click="sendChat()" :disabled="chatTyping || !chatInput.trim()" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-xs font-medium disabled:opacity-50">Enviar</button>
-            </div>
-        </div>
+{{-- ===== FEED DE QUESTÕES (ZERO REFRESH) ===== --}}
+<div id="questions-container" style="position: relative; min-height: 400px;">
+    {{-- Overlay de Carregamento --}}
+    <div x-show="globalLoading" x-transition.opacity 
+         style="position: absolute; inset: 0; background: rgba(255,255,255,0.7); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+        <div style="font-weight: 700; color: #4338ca; font-size: 14px;" x-text="statusText">Xavier está pensando...</div>
     </div>
-@empty
-    <div class="qb-card" style="text-align:center; padding:48px">
-        <p style="font-size:18px; color:#94a3b8">🔍 Nenhuma questão encontrada</p>
-    </div>
-@endforelse
 
-<div style="display:flex; justify-content:center; margin-top:20px">{{ $questions->links() }}</div>
+    <div id="questions-content">
+        @include('questions._list')
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -486,14 +504,396 @@ function statsSlideOver() {
 function filterPanel(currentFilters) {
     return {
         filters: {
-            type: currentFilters.type || '', subject: currentFilters.subject || '', topic: currentFilters.topic || '',
-            keyword: currentFilters.keyword || '', year: currentFilters.year || '', difficulty: currentFilters.difficulty || '',
-            status: currentFilters.status || '', organization: currentFilters.organization || '', institution: currentFilters.institution || '', role: currentFilters.role || ''
+            type: currentFilters.type || '',
+            subject: currentFilters.subject || '',
+            topic: currentFilters.topic || '',
+            keyword: currentFilters.keyword || '',
+            year: currentFilters.year || '',
+            difficulty: currentFilters.difficulty || '',
+            status: currentFilters.status || '',
+            organization: currentFilters.organization || '',
+            institution: currentFilters.institution || '',
+            role: currentFilters.role || ''
         },
+        topics: [],
+        loadingTopics: false,
         moreFilters: !!(currentFilters.year || currentFilters.difficulty || currentFilters.status || currentFilters.organization || currentFilters.institution || currentFilters.role),
-        onTypeChange() { if (this.filters.type === 'enem') { this.filters.organization = ''; this.filters.institution = ''; this.filters.role = ''; } },
-        clearFilters() { Object.keys(this.filters).forEach(k => this.filters[k] = ''); window.location.href = '{{ route("questions.index") }}'; },
-        submitForm(form) { const url = new URL(form.action); Object.entries(this.filters).forEach(([k, v]) => { if (v) url.searchParams.set(k, v); }); window.location.href = url.toString(); }
+        statusText: '🪄 Processando...',
+        globalLoading: false,
+        isApplyingAiFilters: false,
+        
+        init() {
+            window.addEventListener('ai-loading-start', () => { this.globalLoading = true; });
+            window.addEventListener('ai-loading-stop', () => { this.globalLoading = false; });
+            // Se já vier com matéria no request, carrega os tópicos
+            if (this.filters.subject) this.loadTopics();
+            
+            // Watch para trocar os tópicos quando a matéria mudar
+            this.$watch('filters.subject', () => {
+                if (!this.isApplyingAiFilters) {
+                    this.filters.topic = '';
+                }
+                this.loadTopics();
+            });
+
+            this.$watch('filters.type', () => {
+                if (!this.isApplyingAiFilters) {
+                    this.filters.topic = '';
+                }
+                this.loadTopics();
+            });
+
+            // Interceptar cliques em links de paginação para usar AJAX
+            document.addEventListener('click', (e) => {
+                const link = e.target.closest('.qb-pagination a, .pagination a');
+                if (link) {
+                    e.preventDefault();
+                    this.fetchQuestions(link.href);
+                }
+            });
+
+            // Listener para filtros aplicados via IA
+            window.addEventListener('ai-filters-applied', (e) => {
+                const { filters, shouldScroll, statusText } = e.detail;
+                if (statusText) this.statusText = statusText;
+                this.applyAiFilters(filters, shouldScroll !== false);
+            });
+        },
+
+        handleNoResults() {
+            // Se não houver resultados secundários ou algo assim, podemos disparar eventos aqui também
+        },
+
+        /**
+         * Carrega os Assuntos (Concurso) ou Eixos Temáticos (ENEM) via AJAX.
+         * O backend detecta se deve retornar valores da coluna 'topic' ou 'theme'
+         * com base no parâmetro 'type' enviado.
+         */
+        async loadTopics() {
+            if (!this.filters.subject) {
+                this.topics = [];
+                return;
+            }
+            this.loadingTopics = true;
+            try {
+                const params = new URLSearchParams({
+                    subject: this.filters.subject,
+                    type: this.filters.type // Envia o tipo para buscar na coluna correta (tema ou tópico)
+                });
+                const res = await fetch(`{{ route('questions.topics') }}?${params.toString()}`);
+                this.topics = await res.json();
+            } catch (e) { console.error('Tópicos erro', e); }
+            finally { this.loadingTopics = false; }
+        },
+
+        onTypeChange() { 
+            if (this.filters.type === 'enem') { 
+                this.filters.organization = ''; 
+                this.filters.institution = ''; 
+                this.filters.role = ''; 
+            }
+            this.loadTopics();
+        },
+        
+        applyAiFilters(newFilters, shouldScroll = true) {
+            this.isApplyingAiFilters = true;
+            Object.keys(newFilters).forEach(key => {
+                if (this.filters.hasOwnProperty(key)) {
+                    this.filters[key] = newFilters[key];
+                }
+            });
+            if (newFilters.year || newFilters.difficulty || newFilters.organization || newFilters.institution || newFilters.role) {
+                this.moreFilters = true;
+            }
+            
+            // Usamos nextTick para garantir que as reatividades (como o watch de subject) 
+            // ocorram enquanto isApplyingAiFilters ainda é true
+            this.$nextTick(() => {
+                this.submitForm(shouldScroll);
+                this.isApplyingAiFilters = false;
+            });
+        },
+
+        async submitForm(shouldScroll = true) {
+            const url = new URL('{{ route("questions.index") }}');
+            Object.entries(this.filters).forEach(([k, v]) => { if (v) url.searchParams.set(k, v); });
+            await this.fetchQuestions(url.toString(), shouldScroll);
+        },
+
+        async fetchQuestions(url, shouldScroll = true) {
+            window.dispatchEvent(new CustomEvent('ai-loading-start'));
+            try {
+                const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                const html = await res.text();
+                const container = document.getElementById('questions-content');
+                container.innerHTML = html;
+                
+                // Detection: Se houver a classe qb-no-results, não rola
+                const hasResults = !container.querySelector('.qb-no-results');
+                
+                this.$nextTick(() => {
+                    window.dispatchEvent(new CustomEvent('ai-search-finished', { detail: { hasResults } }));
+                });
+
+                if (shouldScroll && hasResults) {
+                    window.scrollTo({ top: document.getElementById('questions-container').offsetTop - 100, behavior: 'smooth' });
+                }
+            } catch (e) { alert('Erro ao carregar questões.'); }
+            finally { window.dispatchEvent(new CustomEvent('ai-loading-stop')); }
+        },
+
+        clearFilters() { 
+            Object.keys(this.filters).forEach(k => this.filters[k] = ''); 
+            this.submitForm();
+        }
+    };
+}
+
+function aiSearch() {
+    return {
+        prompt: '',
+        loading: false,
+        placeholderText: 'Comece agora busque: ex: ',
+        statusText: '🪄 {{ $aiName }} está processando...',
+        globalLoading: false,
+        suggestion: '',
+        suggestions: [],
+        message: '',
+        pendingSuggestion: '',
+        pendingSuggestions: [],
+        pendingMessage: '',
+        isError: false,
+        isQuotaExceeded: false,
+        showToast: false,
+        lastSearchHadResults: true,
+        failureMessages: [
+            'O Xavier tropeçou na pilha de livros e se perdeu.',
+            'O assistente foi tomar um café para pensar melhor na sua busca.',
+            'O Xavier se distraiu assistindo uma aula de história.',
+            'Derrubamos um pote de café nos servidores do Xavier.',
+            'O Xavier está tentando resolver uma questão de física quântica e travou.',
+            'O assistente se perdeu no labirinto da biblioteca.'
+        ],
+        staticPrefix: 'Comece agora busque: ex: ',
+        placeholders: [
+            "Questões de Trigonometria do ENEM 2022...",
+            "Quero questões fáceis de Interpretação de Texto...",
+            "Questões de Revolução Industrial para Concurso...",
+            "Getúlio Vargas e o Estado Novo - Questões ENEM...",
+            "Geometria Espacial nível difícil - Questões...",
+            "Biologia Celular: Questões sobre Organelas...",
+            "Leis de Newton: Questões de dinâmica e força...",
+            "Questões de Gramática: Orações subordinadas...",
+            "Questões de Química: Tabela periódica e Ligações...",
+            "Questões de Matemática: Probabilidade e Análise...",
+            "Questões de Sociologia: Cidadania e Ética...",
+            "Política Brasileira: Questões sobre a redemocratização...",
+            "Questões de Filosofia: Ética e Moral...",
+            "Questões de Biologia: Mitose e Meiose...",
+            "Questões de Química: Cálculo de estequiometria...",
+            "Questões de História: Segunda Guerra Mundial...",
+            "Questões de Literatura: Modernismo no Brasil...",
+            "Questões de Matemática: Áreas e volumes complexos...",
+            "Questões de Biologia: Fotossíntese e respiração...",
+            "Questões de lógica e raciocínio matemático...",
+            "Apenas questões que caíram no ENEM 2023...",
+            "Questões desafiadoras de Eletromagnetismo! ⚡",
+            "{{ $aiName }}, filtre questões de Genética Mendeliana! 🧬",
+            "Busque uma maratona de questões de Português! 🏃‍♂️",
+            "Questões de atualidades sobre Geopolítica Mundial... 🌍",
+            "Questões de Ecologia: Cadeia alimentar e ciclos... 🌱"
+        ],
+        funMessages: [
+            "{{ $aiName }} está mergulhando nos editais mais recentes... 🌊",
+            "Organizando as matérias por ordem de importância para você... 📚",
+            "{{ $aiName }} está polindo os enunciados para você... ✨",
+            "Transformando sua busca em conhecimento... 💡",
+            "{{ $aiName }} está ativando o modo de super-busca... 🚀",
+            "Preparando o café e buscando as questões mais quentes... ☕",
+            "{{ $aiName }} está vasculhando décadas de avaliações... 🕰️",
+            "Separando o joio do trigo no banco de questões... 🌾",
+            "{{ $aiName }} está removendo as distrações para você focar... 🧘",
+            "Quase lá! Sinto cheiro de aprovação no ar... ✨",
+            "{{ $aiName }} está quase lá! Segure firme... ⏳",
+            "{{ $aiName }} está sorrindo porque encontrou algo bom... 😊"
+        ],
+        placeholderIndex: 0,
+        
+        init() {
+            this.initTypewriter();
+            window.addEventListener('ai-loading-start', () => { this.globalLoading = true; });
+            window.addEventListener('ai-loading-stop', () => { this.globalLoading = false; });
+            
+            window.addEventListener('ai-search-finished', (e) => {
+                this.lastSearchHadResults = e.detail.hasResults;
+
+                // Sempre aplica pendências se existirem
+                if (this.pendingSuggestion || this.pendingSuggestions.length > 0 || this.pendingMessage) {
+                    this.suggestion = this.pendingSuggestion;
+                    this.suggestions = this.pendingSuggestions;
+                    this.message = this.pendingMessage;
+                } else if (!this.lastSearchHadResults) {
+                    // Fallback se não deram nada mas não houve resultados
+                    this.message = 'Não encontrei questões para essa busca.';
+                } else {
+                    this.suggestion = '';
+                    this.suggestions = [];
+                    this.message = '';
+                }
+                
+                this.pendingSuggestion = '';
+                this.pendingSuggestions = [];
+                this.pendingMessage = '';
+            });
+        },
+
+        async initTypewriter() {
+            let currentSuffix = '';
+            let isDeleting = false;
+            const type = () => {
+                const fullText = this.placeholders[this.placeholderIndex];
+                currentSuffix = isDeleting ? fullText.substring(0, currentSuffix.length - 1) : fullText.substring(0, currentSuffix.length + 1);
+                this.placeholderText = this.staticPrefix + currentSuffix;
+                let speed = isDeleting ? 30 : 50;
+                if (!isDeleting && currentSuffix === fullText) { speed = 2500; isDeleting = true; }
+                else if (isDeleting && currentSuffix === '') { isDeleting = false; this.placeholderIndex = (this.placeholderIndex + 1) % this.placeholders.length; speed = 500; }
+                setTimeout(type, speed);
+            };
+            type();
+        },
+
+        async applyXavierSuggestion(filters) {
+            this.suggestions = [];
+            this.message = '';
+            this.isError = false;
+            this.isQuotaExceeded = false;
+            window.dispatchEvent(new CustomEvent('ai-filters-applied', { detail: filters }));
+        },
+
+        async submitSearch() {
+            if (!this.prompt.trim() || this.loading) return;
+            this.loading = true;
+            this.suggestion = '';
+            this.suggestions = [];
+            this.message = '';
+            this.pendingSuggestion = '';
+            this.pendingSuggestions = [];
+            this.pendingMessage = '';
+            this.isError = false;
+            this.isQuotaExceeded = false;
+            
+            let msgIdx = 0;
+            const statusInterval = setInterval(() => {
+                this.statusText = this.funMessages[msgIdx];
+                msgIdx = (msgIdx + 1) % this.funMessages.length;
+            }, 1500);
+
+            try {
+                const res = await fetch('{{ route("questions.ai-search") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                    body: JSON.stringify({ prompt: this.prompt })
+                });
+                const data = await res.json();
+                
+                if (data.status === 'queued') {
+                    this.pollSearch(data.request_id, statusInterval);
+                } else {
+                    clearInterval(statusInterval);
+                    this.loading = false;
+                    this.statusText = '🪄 Processando...';
+                    this.message = data.message || 'O {{ $aiName }} não conseguiu interpretar essa busca.';
+                    if (data.code === 'quota_exceeded' || data.code === 'plan_restricted') {
+                        this.isQuotaExceeded = true;
+                    }
+                }
+            } catch (e) { 
+                clearInterval(statusInterval); 
+                this.loading = false;
+                this.statusText = '🪄 Processando...';
+                this.message = 'Erro na conexão com o {{ $aiName }}.'; 
+            }
+        },
+
+        async pollSearch(requestId, statusInterval) {
+            let attempts = 0;
+            const maxAttempts = 30; // 30 * 2s = 60s
+            
+            const poller = setInterval(async () => {
+                attempts++;
+                try {
+                    const res = await fetch(`/questions/ai-search/${requestId}/status`);
+                    const data = await res.json();
+
+                    if (data.status === 'completed') {
+                        clearInterval(poller);
+                        clearInterval(statusInterval);
+                        this.loading = false;
+                        this.statusText = '🪄 Processando...';
+
+                        if (data.suggestion_tip) this.pendingSuggestion = data.suggestion_tip;
+                        if (data.suggestions) this.pendingSuggestions = data.suggestions;
+                        
+                        this.showToast = true;
+                        setTimeout(() => this.showToast = false, 4000);
+
+                        window.dispatchEvent(new CustomEvent('ai-filters-applied', { 
+                            detail: {
+                                filters: data.filters,
+                                shouldScroll: this.pendingSuggestions.length === 0,
+                                statusText: this.statusText
+                            }
+                        }));
+                    } else if (data.status === 'failed') {
+                        clearInterval(poller);
+                        clearInterval(statusInterval);
+                        this.loading = false;
+                        this.isError = true;
+                        this.statusText = '🪄 Processando...';
+                        
+                        const funny = this.getRandomFailure();
+                        this.message = `${funny}<br><br><small style="opacity: 0.8">${data.error || 'Não conseguimos processar sua busca agora.'}</small>`;
+                    }
+                } catch (e) {
+                    // Silently fail and continue polling until timeout
+                }
+
+                if (attempts >= maxAttempts) {
+                    clearInterval(poller);
+                    clearInterval(statusInterval);
+                    this.loading = false;
+                    this.statusText = '🪄 Processando...';
+                    this.message = 'A busca demorou demais. Tente novamente.';
+                }
+            }, 2000);
+        },
+
+        getRandomFailure() {
+            return this.failureMessages[Math.floor(Math.random() * this.failureMessages.length)];
+        },
+
+        tryAgain() {
+            this.message = '';
+            this.isError = false;
+            this.statusText = '🪄 Processando...';
+            this.submitSearch();
+        },
+
+        tryLater() {
+            this.message = '';
+            this.isError = false;
+            this.isQuotaExceeded = false;
+            this.prompt = '';
+            this.statusText = '🪄 Processando...';
+        },
+
+        closeBubble() {
+            this.suggestion = '';
+            this.message = '';
+            this.suggestions = [];
+            this.isError = false;
+            this.isQuotaExceeded = false;
+        }
     };
 }
 
@@ -543,11 +943,12 @@ function questionCard(questionId, alreadyAnswered, wasCorrect) {
                     const history = await res.json();
                     if (history.length === 0) {
                         // Injecting welcome message ONLY visuals
-                        this.chatMessages = [{
+                        this.chatMessages.push({
+                            id: Date.now(),
                             role: 'assistant',
-                            message: 'Olá! Eu sou o Xavier. Qual sua dúvida sobre essa questão?',
+                            message: 'Olá! Eu sou o {{ $aiName }}. Qual sua dúvida sobre essa questão?',
                             created_at: new Date().toISOString()
-                        }];
+                        });
                     } else {
                         this.chatMessages = history;
                     }

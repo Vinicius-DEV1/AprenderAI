@@ -599,6 +599,51 @@ class AIService
         return ['data' => $result['content']];
     }
 
+    public function interpretSearchPrompt(string $userPrompt, array $filterOptions): ?array
+    {
+        if (!$this->hasActiveKey()) {
+            return null;
+        }
+
+        $provider = $this->getFirstAvailableProvider();
+        if (!$provider) {
+            return null;
+        }
+
+        $apiKey = ApiKey::getActiveKeyForProvider($provider);
+
+        try {
+            $aiName = \App\Models\Setting::where('key', 'ai_name')->value('value') ?? 'Xavier';
+            // LÓGICA DE MAPEAMENTO (Tema vs Assunto):
+            // O Xavier deve mapear a coluna 'topic' do JSON resultante para:
+            // - 'theme' (no banco) se o tipo for 'enem'
+            // - 'topic' (no banco) se o tipo for 'concurso'
+            $prompt = $this->promptService->get('ai_search_interpreter', [
+                'user_prompt' => $userPrompt,
+                'filter_options' => json_encode($filterOptions)
+            ], "Você é o {$aiName}, um assistente de estudos inteligente e proativo. Transforme a busca do usuário em um JSON de filtros válidos.
+
+DIRETRIZES CRÍTICAS:
+1. FILTROS SEMPRE: Você deve SEMPRE preencher os campos técnicos ('subject', 'topic', 'keyword') mapeando o que o usuário pediu. NUNCA envie filtros vazios se a busca tiver um tema.
+2. TEMA vs ASSUNTO: No seu JSON, use o campo 'topic' para ambos. Mas saiba que:
+   - Se 'type' for 'enem', o valor de 'topic' deve ser mapeado a partir de 'themes' em filter_options.
+   - Se 'type' for 'concurso', o valor de 'topic' deve ser mapeado a partir de 'topics' em filter_options.
+3. ZERO RESULTADOS: Se a busca for por algo que não temos (ex: Inglês), preencha 'keyword': 'inglês', preencha 'suggestion_tip' explicando e 'suggestions' com 2 alternativas reais do banco.
+4. FORMATO: Retorne APENAS o JSON: { \"type\": \"enem|concurso\", \"subject\": \"...\", \"topic\": \"...\", \"difficulty\": \"...\", \"year\": ..., \"keyword\": \"...\", \"suggestion_tip\": \"...\", \"suggestions\": [ {\"label\": \"Texto do Botão\", \"filters\": {...}} ] }
+
+Busca do usuário: '{user_prompt}'
+Opções válidas (JSON): {filter_options}");
+
+            $result = $this->callAI($provider, $apiKey, $prompt);
+            $apiKey->incrementUsage();
+
+            return $result['content'];
+        } catch (\Exception $e) {
+            Log::error('AI Search Interpretation failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
     protected function validateOpenAIKey(string $key): array
     {
         try {

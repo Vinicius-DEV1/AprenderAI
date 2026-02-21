@@ -91,6 +91,7 @@ class UserController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'phone' => 'nullable|string|max:20',
             'ai_questions_count' => 'nullable|integer|min:0',
+            'max_ai_questions_override' => 'nullable|integer|min:0',
         ]);
 
         $original = $user->getOriginal();
@@ -98,6 +99,9 @@ class UserController extends Controller
         $data = $request->only('name', 'email', 'phone');
         if ($request->has('ai_questions_count')) {
             $data['ai_questions_count'] = $request->ai_questions_count;
+        }
+        if ($request->has('max_ai_questions_override')) {
+            $data['max_ai_questions_override'] = $request->max_ai_questions_override;
         }
 
         $user->update($data);
@@ -110,8 +114,10 @@ class UserController extends Controller
             $changes[] = "Email: {$original['email']} -> {$user->email}";
         if ($original['phone'] !== $user->phone)
             $changes[] = "Telefone: {$original['phone']} -> {$user->phone}";
-        if ($original['ai_questions_count'] !== $user->ai_questions_count)
-            $changes[] = "Cota IA: {$original['ai_questions_count']} -> {$user->ai_questions_count}";
+        if ($original['ai_questions_count'] != $user->ai_questions_count)
+            $changes[] = "Consumo IA: {$original['ai_questions_count']} -> {$user->ai_questions_count}";
+        if ($original['max_ai_questions_override'] != $user->max_ai_questions_override)
+            $changes[] = "Limite IA Custom: " . ($original['max_ai_questions_override'] ?? 'N/A') . " -> " . ($user->max_ai_questions_override ?? 'N/A');
 
         if (!empty($changes)) {
             UserLog::create([

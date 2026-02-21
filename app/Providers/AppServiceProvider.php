@@ -22,17 +22,22 @@ class AppServiceProvider extends ServiceProvider
         \Illuminate\Support\Facades\Blade::component('layouts.app', 'layouts.app');
         \Illuminate\Support\Facades\Blade::component('layouts.admin', 'layouts.admin');
 
-        // Compartilhar nome do site globalmente
+        // Compartilhar configurações globais
         view()->composer('*', function ($view) {
-            $siteName = \Illuminate\Support\Facades\Cache::remember('site_name', 3600, function () {
-                    return \App\Models\Setting::where('key', 'site_name')->value('value') ?? config('app.name');
-                }
-                );
-
-                // Update config dynamically for emails and other components
-                config(['app.name' => $siteName]);
-
-                $view->with('siteName', $siteName);
+            $siteSettings = \Illuminate\Support\Facades\Cache::remember('site_settings', 3600, function () {
+                return \App\Models\Setting::whereIn('key', ['site_name', 'ai_name'])->pluck('value', 'key');
             });
+
+            $siteName = $siteSettings['site_name'] ?? config('app.name');
+            $aiName = $siteSettings['ai_name'] ?? 'Xavier';
+
+            // Update config dynamically for emails and other components
+            config(['app.name' => $siteName]);
+
+            $view->with([
+                'siteName' => $siteName,
+                'aiName' => $aiName
+            ]);
+        });
     }
 }
