@@ -143,17 +143,15 @@ class QuestionService
             // Lista de matérias — busca na tabela subjects (após merge, sem duplicatas)
             'subjects' => \App\Models\Subject::orderBy('name')->pluck('name'),
 
-            // Lista de temas (ENEM) - Carregados da coluna 'theme'
-            'themes' => Question::select('theme')
-                ->where('type', 'enem')
-                ->whereNotNull('theme')->where('theme', '!=', '')
-                ->distinct()->orderBy('theme')->pluck('theme'),
+            // Lista de temas (ENEM) - Buscados da tabela Topics via relacionamento N:N
+            'themes' => \App\Models\Topic::whereHas('questions', function($q) {
+                $q->where('type', 'enem');
+            })->orderBy('name')->pluck('name'),
 
-            // Lista de assuntos (Concurso) - Carregados da coluna 'topic'
-            'topics' => Question::select('topic')
-                ->where('type', 'concurso')
-                ->whereNotNull('topic')->where('topic', '!=', '')
-                ->distinct()->orderBy('topic')->pluck('topic'),
+            // Lista de assuntos (Concurso) - Buscados da tabela Topics via relacionamento N:N
+            'topics' => \App\Models\Topic::whereHas('questions', function($q) {
+                $q->where('type', 'concurso');
+            })->orderBy('name')->pluck('name'),
 
             // Lista de anos disponíveis (ordem decrescente: mais recente primeiro)
             'years' => Question::select('year')
