@@ -247,13 +247,13 @@
 <div class="qb-ai-wrapper" x-data="aiSearch()" x-init="initTypewriter()">
     {{-- Balão de Fala do Xavier --}}
     <template x-if="suggestion || message">
-        <div class="xavier-bubble" @click.away="suggestion = ''; message = ''; suggestions = []">
+        <div class="xavier-bubble" @click.away="closeBubble()">
             <div style="background: #6366f1; border-radius: 12px; padding: 8px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);">
                 <span style="font-size: 20px; color: white;">🤖</span>
             </div>
             <div class="txt">
                 <strong x-text="message ? '{{ $aiName }} diz:' : 'Dica do {{ $aiName }}:'"></strong><br>
-                <span x-text="message || suggestion"></span>
+                <div x-html="message || suggestion"></div>
                 <div class="xavier-btns-row">
                     <template x-if="loading">
                         <div class="bg-gray-100 dark:bg-slate-700 rounded-lg px-3 py-2 text-xs text-gray-500 flex items-center gap-2 border border-gray-200">
@@ -265,18 +265,44 @@
                             </span>
                         </div>
                     </template>
-                    <template x-for="sug in suggestions" :key="sug.label">
-                        <button class="xavier-action-btn" @click="applyXavierSuggestion(sug.filters)">
-                            <span x-text="sug.label"></span>
-                        </button>
+                    <template x-if="!loading && !isError && !isQuotaExceeded">
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="sug in suggestions" :key="sug.label">
+                                <button class="xavier-action-btn" @click="applyXavierSuggestion(sug.filters)">
+                                    <span x-text="sug.label"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </template>
+
+                    <template x-if="isError">
+                        <div class="flex items-center gap-2">
+                            <button @click="tryAgain()" class="xavier-action-btn" style="background: #4f46e5; color: white; border: none;">
+                                🔄 Tentar novamente
+                            </button>
+                            <button @click="tryLater()" class="xavier-action-btn" style="background: #94a3b8; color: white; border: none; opacity: 0.8;">
+                                ⏳ Tentar mais tarde
+                            </button>
+                        </div>
+                    </template>
+
+                    <template x-if="isQuotaExceeded">
+                        <div class="flex items-center gap-2">
+                            <a href="{{ route('checkout.index') }}" class="xavier-action-btn" style="background: #fbbf24; color: #78350f; border: none; font-weight: bold; text-decoration: none;">
+                                ⭐ Fazer Upgrade
+                            </a>
+                            <button @click="closeBubble()" class="xavier-action-btn" style="background: #e2e8f0; color: #475569; border: none;">
+                                ✕ Fechar
+                            </button>
+                        </div>
                     </template>
                 </div>
-                <div style="margin-top: 16px; font-size: 11px; opacity: 0.6; cursor: pointer; text-decoration: underline;" @click="suggestion = ''; message = ''; suggestions = []">
+                <div style="margin-top: 16px; font-size: 11px; opacity: 0.6; cursor: pointer; text-decoration: underline;" @click="closeBubble()">
                     [Fechar conversa]
                 </div>
             </div>
         </div>
-    </template>
+</template>
 
     <div class="qb-ai-search-container">
         <div class="qb-ai-glow"></div>
@@ -599,6 +625,16 @@ function aiSearch() {
         pendingSuggestion: '',
         pendingSuggestions: [],
         pendingMessage: '',
+        isError: false,
+        isQuotaExceeded: false,
+        failureMessages: [
+            'O Xavier tropeçou na pilha de livros e se perdeu.',
+            'O assistente foi tomar um café para pensar melhor na sua busca.',
+            'O Xavier se distraiu assistindo uma aula de história.',
+            'Derrubamos um pote de café nos servidores do Xavier.',
+            'O Xavier está tentando resolver uma questão de física quântica e travou.',
+            'O assistente se perdeu no labirinto da biblioteca.'
+        ],
         staticPrefix: 'Comece agora busque: ex: ',
         placeholders: [
             "Questões de Trigonometria do ENEM 2022...",
@@ -681,9 +717,10 @@ function aiSearch() {
         },
 
         async applyXavierSuggestion(filters) {
-            this.suggestion = '';
             this.suggestions = [];
             this.message = '';
+            this.isError = false;
+            this.isQuotaExceeded = false;
             window.dispatchEvent(new CustomEvent('ai-filters-applied', { detail: filters }));
         },
 
@@ -696,6 +733,8 @@ function aiSearch() {
             this.pendingSuggestion = '';
             this.pendingSuggestions = [];
             this.pendingMessage = '';
+            this.isError = false;
+            this.isQuotaExceeded = false;
             
             let msgIdx = 0;
             const statusInterval = setInterval(() => {
@@ -710,26 +749,104 @@ function aiSearch() {
                     body: JSON.stringify({ prompt: this.prompt })
                 });
                 const data = await res.json();
-                clearInterval(statusInterval);
+                
+                if (data.status === 'queued') {
+                    this.pollSearch(data.request_id, statusInterval);
+                } else {
+                    clearInterval(statusInterval);
+                    this.loading = false;
+                    this.statusText = '🪄 Processando...';
+                    this.message = data.message || 'O {{ $aiName }} não conseguiu interpretar essa busca.';
+                    if (data.code === 'quota_exceeded' || data.code === 'plan_restricted') {
+                        this.isQuotaExceeded = true;
+                    }
+                }
+            } catch (e) { 
+                clearInterval(statusInterval); 
+                this.loading = false;
+                this.statusText = '🪄 Processando...';
+                this.message = 'Erro na conexão com o {{ $aiName }}.'; 
+            }
+        },
 
-                if (data.status === 'success') {
-                    if (data.suggestion_tip) this.pendingSuggestion = data.suggestion_tip;
-                    if (data.suggestions) this.pendingSuggestions = data.suggestions;
-                    
-                    this.showToast = true;
-                    setTimeout(() => this.showToast = false, 4000);
-                    // Se houver sugestões proativas pendentes, não rola a página caso 
-                    // a busca inicial retorne zero.
-                    window.dispatchEvent(new CustomEvent('ai-filters-applied', { 
-                        detail: {
-                            filters: data.filters,
-                            shouldScroll: this.pendingSuggestions.length === 0,
-                            statusText: this.statusText
-                        }
-                    }));
-                } else { this.message = data.message || 'O {{ $aiName }} não conseguiu interpretar essa busca.'; }
-            } catch (e) { clearInterval(statusInterval); this.message = 'Erro na conexão com o {{ $aiName }}.'; }
-            finally { this.loading = false; this.statusText = '🪄 Processando...'; }
+        async pollSearch(requestId, statusInterval) {
+            let attempts = 0;
+            const maxAttempts = 30; // 30 * 2s = 60s
+            
+            const poller = setInterval(async () => {
+                attempts++;
+                try {
+                    const res = await fetch(`/questions/ai-search/${requestId}/status`);
+                    const data = await res.json();
+
+                    if (data.status === 'completed') {
+                        clearInterval(poller);
+                        clearInterval(statusInterval);
+                        this.loading = false;
+                        this.statusText = '🪄 Processando...';
+
+                        if (data.suggestion_tip) this.pendingSuggestion = data.suggestion_tip;
+                        if (data.suggestions) this.pendingSuggestions = data.suggestions;
+                        
+                        this.showToast = true;
+                        setTimeout(() => this.showToast = false, 4000);
+
+                        window.dispatchEvent(new CustomEvent('ai-filters-applied', { 
+                            detail: {
+                                filters: data.filters,
+                                shouldScroll: this.pendingSuggestions.length === 0,
+                                statusText: this.statusText
+                            }
+                        }));
+                    } else if (data.status === 'failed') {
+                        clearInterval(poller);
+                        clearInterval(statusInterval);
+                        this.loading = false;
+                        this.isError = true;
+                        this.statusText = '🪄 Processando...';
+                        
+                        const funny = this.getRandomFailure();
+                        this.message = `${funny}<br><br><small style="opacity: 0.8">${data.error || 'Não conseguimos processar sua busca agora.'}</small>`;
+                    }
+                } catch (e) {
+                    // Silently fail and continue polling until timeout
+                }
+
+                if (attempts >= maxAttempts) {
+                    clearInterval(poller);
+                    clearInterval(statusInterval);
+                    this.loading = false;
+                    this.statusText = '🪄 Processando...';
+                    this.message = 'A busca demorou demais. Tente novamente.';
+                }
+            }, 2000);
+        },
+
+        getRandomFailure() {
+            return this.failureMessages[Math.floor(Math.random() * this.failureMessages.length)];
+        },
+
+        tryAgain() {
+            this.message = '';
+            this.isError = false;
+            this.statusText = '🪄 Processando...';
+            this.submitSearch();
+        },
+
+        tryLater() {
+            this.message = '';
+            this.isError = false;
+            this.isQuotaExceeded = false;
+            this.prompt = '';
+            this.statusText = '🪄 Processando...';
+        },
+
+        closeBubble() {
+            this.suggestion = '';
+            this.message = '';
+            this.suggestions = [];
+            this.isError = false;
+            this.isQuotaExceeded = false;
         }
     };
 }
