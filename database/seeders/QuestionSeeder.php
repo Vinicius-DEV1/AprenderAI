@@ -29,12 +29,12 @@ class QuestionSeeder extends Seeder
 
         // Garante a existência dos Assuntos nas respectivas matérias
         $portTopic = Topic::firstOrCreate(
-            ['name' => trim(strtoupper('INTERPRETAÇÃO DE TEXTOS')), 'subject_id' => $portSubject->id],
+            ['name' => trim(strtoupper('INTERPRETAÇÃO DE TEXTOS'))],
             ['slug' => Str::slug('INTERPRETAÇÃO DE TEXTOS')]
         );
 
         $mathTopic = Topic::firstOrCreate(
-            ['name' => trim(strtoupper('GEOMETRIA PLANA')), 'subject_id' => $mathSubject->id],
+            ['name' => trim(strtoupper('GEOMETRIA PLANA'))],
             ['slug' => Str::slug('GEOMETRIA PLANA')]
         );
 

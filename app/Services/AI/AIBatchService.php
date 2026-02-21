@@ -150,7 +150,7 @@ class AIBatchService
                 
                 if (!empty($data['topic'])) {
                     $topicModel = \App\Models\Topic::firstOrCreate(
-                        ['name' => $data['topic'], 'subject_id' => $subjectModel->id],
+                        ['name' => trim($data['topic'])],
                         ['slug' => \Illuminate\Support\Str::slug($data['topic'])]
                     );
                     $question->topics()->sync([$topicModel->id]);
