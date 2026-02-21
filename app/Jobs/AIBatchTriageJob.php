@@ -69,20 +69,32 @@ class AIBatchTriageJob implements ShouldQueue
     protected function updateProgress(int $applied, int $errors): void
     {
         $key = "batch_progress_{$this->batchId}";
-        $data = Cache::get($key, [
-            'total' => 0,
-            'processed' => 0,
-            'errors' => 0,
-            'status' => 'processing'
-        ]);
+        $lock = Cache::lock($key . "_lock", 10);
 
-        $data['processed'] += $applied;
-        $data['errors'] += $errors;
+        try {
+            $lock->block(5); // Wait up to 5s for lock
 
-        if ($data['processed'] + $data['errors'] >= $data['total']) {
-            $data['status'] = 'completed';
+            $data = Cache::get($key, [
+                'total' => 0,
+                'processed' => 0,
+                'errors' => 0,
+                'status' => 'processing'
+            ]);
+
+            $data['processed'] += $applied;
+            $data['errors'] += $errors;
+
+            // Mark as completed if all questions in the batch were processed
+            if ($data['processed'] + $data['errors'] >= $data['total']) {
+                $data['status'] = 'completed';
+            }
+
+            Cache::put($key, $data, now()->addHours(2));
+
+        } catch (\Exception $e) {
+            Log::error("[AIBATCH] Failed to update progress: " . $e->getMessage());
+        } finally {
+            $lock->release();
         }
-
-        Cache::put($key, $data, now()->addHours(2));
     }
 }

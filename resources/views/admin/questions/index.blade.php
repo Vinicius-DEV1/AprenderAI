@@ -615,7 +615,21 @@
                                 </div>
                             </div>
 
-                            <div class="mt-4" x-show="isProcessing">
+                                {{-- MECANISMO DE ENVIO: Informações para o Admin --}}
+                                <div class="p-3 bg-blue-50 rounded-lg border border-blue-100 mb-2">
+                                    <div class="flex gap-2">
+                                        <svg class="w-4 h-4 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        <div class="text-xs text-blue-800 leading-tight">
+                                            <p class="font-bold mb-1">Como o sistema processa isto?</p>
+                                            <ul class="list-disc ml-4 space-y-1">
+                                                <li><strong>Fatiamento (Chunks):</strong> O lote é dividido em blocos de 10 questões.</li>
+                                                <li><strong>Filas (Queues):</strong> Cada bloco é processado em segundo plano para evitar "travar" seu navegador.</li>
+                                                <li><strong>Tempo Real:</strong> Esta barra de progresso usa SSE para refletir o estado exato da fila no servidor.</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="relative pt-1">
                                     <div class="flex mb-2 items-center justify-between">
                                         <div>
@@ -652,6 +666,14 @@
     </div>
 
     <script>
+        /**
+         * Módulo de Processamento em Lote com Alpine.js
+         * 
+         * Este script gerencia toda a lógica de:
+         * 1. Abertura do modal e reset de estado
+         * 2. Disparo da requisição inicial para criar o lote no servidor
+         * 3. Conexão via Server-Sent Events (SSE) para monitoramento em tempo real
+         */
         document.addEventListener('alpine:init', () => {
             Alpine.data('batchProcessor', () => ({
                 isOpen: false,
@@ -666,6 +688,7 @@
                 progress: 0,
                 statusMessage: 'Iniciando...',
                 eventSource: null,
+                retryCount: 0,
 
                 openModal() {
                     this.isOpen = true;
@@ -675,11 +698,14 @@
                     this.errors = 0;
                 },
 
+                /**
+                 * Inicia o processo de lote enviando os filtros atuais e parâmetros escolhidos.
+                 */
                 async startBatch() {
                     this.isProcessing = true;
-                    this.statusMessage = 'Preparando lote...';
+                    this.statusMessage = 'Preparando lote no servidor...';
 
-                    // Use current URL triage filters
+                    // Recupera os filtros ativos na URL para garantir que o lote processe o que o admin está vendo
                     const urlParams = new URLSearchParams(window.location.search);
                     
                     try {
@@ -702,54 +728,77 @@
                         const data = await response.json();
 
                         if (data.success) {
+                            // Lote criado com sucesso, agora conectamos para ouvir o progresso
                             this.batchId = data.batch_id;
                             this.total = data.total;
-                            this.statusMessage = 'Fila Iniciada...';
+                            this.statusMessage = 'Lote enviado para a fila de Jobs...';
                             this.connectSSE();
                         } else {
                             alert(data.message || 'Erro ao iniciar lote.');
                             this.isProcessing = false;
                         }
                     } catch (error) {
-                        console.error(error);
-                        alert('Erro na requisição.');
+                        console.error('Erro no startBatch:', error);
+                        alert('Erro técnico na requisição inicial. Verifique os logs do servidor.');
                         this.isProcessing = false;
                     }
                 },
 
+                /**
+                 * Estabelece conexão SSE para receber atualizações assíncronas do progresso.
+                 * Crucial para não depender de pooling agressivo no banco de dados.
+                 */
                 connectSSE() {
+                    if (this.eventSource) this.eventSource.close();
+
                     this.eventSource = new EventSource(`/admin/questions-batch/progress/${this.batchId}`);
 
                     this.eventSource.onmessage = (event) => {
-                        const data = JSON.parse(event.data);
-                        
-                        if (data.status === 'not_found') {
-                            this.eventSource.close();
-                            return;
-                        }
+                        try {
+                            const data = JSON.parse(event.data);
+                            
+                            // Caso o ID sumiu do cache (raro, mas possível em limpezas)
+                            if (data.status === 'not_found') {
+                                this.eventSource.close();
+                                this.statusMessage = 'Erro: Lote não encontrado.';
+                                return;
+                            }
 
-                        this.processed = data.processed;
-                        this.errors = data.errors;
-                        this.total = data.total;
-                        
-                        const completedCount = this.processed + this.errors;
-                        this.progress = Math.min(100, Math.round((completedCount / this.total) * 100));
+                            // Sincroniza estado com os dados vindos do Cache via SSE
+                            this.processed = data.processed;
+                            this.errors = data.errors;
+                            this.total = data.total;
+                            
+                            const completedCount = this.processed + this.errors;
+                            // Cálculo de porcentagem seguro
+                            this.progress = Math.min(100, Math.round((completedCount / this.total) * 100));
 
-                        if (data.status === 'completed') {
-                            this.statusMessage = 'Finalizado!';
-                            this.progress = 100;
-                            this.eventSource.close();
-                            showToast('Processamento em lote concluído!', 'success');
-                        } else {
-                            this.statusMessage = `Processando ${completedCount} de ${this.total}...`;
+                            if (data.status === 'completed') {
+                                this.statusMessage = 'Processamento finalizado com sucesso!';
+                                this.progress = 100;
+                                this.eventSource.close();
+                                if (typeof showToast !== 'undefined') {
+                                    showToast('⚡ Lote processado 100%!', 'success');
+                                }
+                            } else {
+                                this.statusMessage = `Processando chunk atual (${completedCount}/${this.total})...`;
+                            }
+                        } catch (e) {
+                            console.error('Erro ao processar mensagem SSE:', e);
                         }
                     };
 
-                    this.eventSource.onerror = () => {
-                        console.error('SSE Error');
-                        // Optional: Retry logic or close
+                    this.eventSource.onerror = (e) => {
+                        console.error('SSE Connection Error:', e);
+                        // Tentativa de reconexão automática em caso de instabilidade
                         this.eventSource.close();
-                        setTimeout(() => this.connectSSE(), 5000); // Retry after 5s if still processing
+                        if (this.isProcessing && this.progress < 100 && this.retryCount < 5) {
+                            this.retryCount++;
+                            this.statusMessage = `Reconectando ao monitor (${this.retryCount}/5)...`;
+                            setTimeout(() => this.connectSSE(), 3000);
+                        } else if (this.retryCount >= 5) {
+                            this.statusMessage = 'Conexão perdida. Verifique se o processamento continuou no histórico.';
+                        }
                     };
                 }
             }));
