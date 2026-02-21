@@ -21,119 +21,331 @@
         @endif
     </div>
 
-    <div class="max-w-7xl mx-auto space-y-6">
+    <div class="max-w-7xl mx-auto space-y-6" x-data="{ 
+        showHelp: false, 
+        helpTitle: '', 
+        helpBody: '',
+        ruleText: '🚨 Lembre-se: Apenas uma chave pode estar ativa para esta função por vez para garantir controle total de custos.',
         
-        <!-- Adicionar Nova Chave -->
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border border-gray-100">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Adicionar/Testar Nova Chave</h3>
-            <form action="{{ route('admin.api-keys.store') }}" method="POST" class="space-y-4">
-                @csrf
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <x-input-label for="provider" value="Provedor" />
-                        <select name="provider" id="provider" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full" onchange="resetValidation()">
-                            <option value="gemini">Google Gemini</option>
-                            <option value="openai">OpenAI (GPT-4)</option>
-                            <option value="grok">Grok (xAI)</option>
-                        </select>
+        // Log Modal State
+        showLogModal: false,
+        activeLog: { user: '', provider: '', model: '', prompt: '', response: '', input_tokens: 0, output_tokens: 0, execution_time: 0, estimated_cost: 0 },
+
+        openHelp(title, body) {
+            this.helpTitle = title;
+            this.helpBody = body;
+            this.showHelp = true;
+        },
+        openLog(log) {
+            this.activeLog = log;
+            this.showLogModal = true;
+        }
+    }" @keydown.escape.window="showHelp = false; showLogModal = false">
+        
+        <!-- 1. COFRE DE CHAVES (KEY VAULT) -->
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100" 
+             x-data="{ collapsed: localStorage.getItem('sre_vault_collapsed') === 'true' }">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors" @click="collapsed = !collapsed; localStorage.setItem('sre_vault_collapsed', collapsed)">
+                <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <span class="p-2 bg-indigo-50 text-indigo-600 rounded-lg">🔐</span>
+                    Cofre de Chaves (Key Vault)
+                </h3>
+                <svg class="w-5 h-5 text-gray-400 transition-transform duration-300" :class="collapsed ? '' : 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+            <div x-show="!collapsed" x-collapse x-transition class="p-6 pt-4">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Form de Cadastro no Cofre -->
+                    <div class="lg:col-span-1 border-r border-gray-100 pr-0 lg:pr-6">
+                        <h4 class="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider">Novo Registro</h4>
+                        <form action="{{ route('admin.api-keys.vault.store') }}" method="POST" class="space-y-4" id="form-vault">
+                            @csrf
+                            <div>
+                                <x-input-label for="vault_nickname" value="Apelido da Chave (Ex: Google Prod)" />
+                                <x-text-input name="nickname" id="vault_nickname" class="block w-full mt-1" required placeholder="Nome amigável" />
+                            </div>
+                            <div>
+                                <x-input-label for="vault_provider" value="Provedor" />
+                                <select name="provider" id="vault_provider" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full">
+                                    <option value="gemini">Google Gemini</option>
+                                    <option value="openai">OpenAI</option>
+                                    <option value="grok">Grok (xAI)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <x-input-label for="vault_key" value="Chave Secreta" />
+                                <x-text-input name="key" id="vault_key" type="password" class="block w-full mt-1" required placeholder="sk-..." />
+                            </div>
+                            <div class="pt-2">
+                                <x-primary-button class="w-full justify-center">Guardar no Cofre</x-primary-button>
+                            </div>
+                        </form>
                     </div>
-                    <div>
-                        <x-input-label for="key" value="Chave de API" />
-                        <div class="flex gap-2">
-                            <x-text-input id="key" name="key" type="password" class="mt-1 block w-full" required placeholder="Insira a chave para testar" oninput="resetValidation()" />
-                            <button type="button" onclick="testConnection()" id="btn-test" class="mt-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors flex items-center gap-2">
-                                <span id="btn-text">Testar</span>
-                                <span id="btn-loader" class="hidden animate-spin">⌛</span>
-                            </button>
+
+                    <!-- Listagem do Cofre -->
+                    <div class="lg:col-span-2">
+                        <h4 class="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider">Chaves Armazenadas</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            @forelse($vaultKeys as $vk)
+                                <div class="p-4 rounded-xl border border-gray-100 bg-gray-50/50 flex justify-between items-center group hover:border-indigo-200 transition-colors shadow-sm bg-white">
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-bold text-gray-800">{{ $vk->nickname }}</span>
+                                            <span class="text-[10px] uppercase px-1.5 py-0.5 rounded {{ $vk->provider === 'openai' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700' }}">
+                                                {{ $vk->provider }}
+                                            </span>
+                                        </div>
+                                        <p class="text-xs text-gray-400 mt-1">Status: {{ $vk->is_valid ? '✅ Validada' : '❓ Não Testada' }}</p>
+                                    </div>
+                                    <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <span class="text-xs text-gray-300 italic">No Cofre</span>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="col-span-2 py-8 text-center text-gray-400 italic">O cofre está vazio.</div>
+                            @endforelse
                         </div>
                     </div>
                 </div>
-
-                <!-- Model Selection (Hidden by default) -->
-                <div id="model-section" class="hidden bg-indigo-50 p-4 rounded-md border border-indigo-100">
-                    <x-input-label for="preferred_model" value="Modelo Preferido (Detectado)" />
-                    <select name="preferred_model" id="preferred_model" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full">
-                        <!-- Populated via JS -->
-                    </select>
-                    <p class="text-xs text-indigo-600 mt-1">✓ Chave validada com sucesso. Selecione o modelo para uso.</p>
-                </div>
-
-                <!-- Capabilities Selection -->
-                <div class="mt-4 bg-gray-50 border border-gray-200 rounded-md p-4">
-                    <x-input-label value="Capacidades desta Chave (Roteamento Inteligente)" class="mb-2" />
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        @php
-                            $tooltips = [
-                                'questions' => 'Utilizada para a criação de novas questões via IA e correção/ajuste de enunciados/alternativas.',
-                                'essays' => 'Responsável pelo motor de correção de redações, analisando critérios e fornecendo feedback.',
-                                'triage' => 'Classifica automaticamente (scraping) a Disciplina, Assunto, Dificuldade e segurança do conteúdo.',
-                                'search' => 'Alimenta o agente de busca (Xavier), tirando dúvidas e pesquisando conteúdo em linguagem natural.',
-                                'general' => 'Chave reserva para funções administrativas ou fallback caso não haja chave específica definida.'
-                            ];
-                        @endphp
-                        @foreach($availableCapabilities as $code => $label)
-                            <label class="flex items-start bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:border-indigo-100 transition-colors">
-                                <div class="flex items-center h-5 mt-0.5">
-                                    <input type="checkbox" name="capabilities[]" value="{{ $code }}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" {{ $code === 'general' ? 'checked' : '' }}>
-                                </div>
-                                <div class="ml-3 flex flex-col">
-                                    <span class="text-sm font-bold text-gray-700 flex items-center gap-1">
-                                        {{ $label }}
-                                        <span title="{{ $tooltips[$code] ?? '' }}" class="cursor-help text-xs text-gray-400 bg-gray-100 hover:bg-gray-200 rounded-full w-4 h-4 flex items-center justify-center" aria-label="Ajuda">?</span>
-                                    </span>
-                                    <span class="text-xs text-gray-500 mt-1 leading-snug">{{ $tooltips[$code] ?? '' }}</span>
-                                </div>
-                            </label>
-                        @endforeach
-                    </div>
-                </div>
-
-                <div id="feedback-area" class="hidden p-4 rounded-md text-sm"></div>
-
-                <div class="flex justify-end">
-                    <x-primary-button id="btn-save" class="opacity-50 cursor-not-allowed" disabled>Salvar Configuração</x-primary-button>
-                </div>
-            </form>
+            </div>
         </div>
 
-        <!-- Listagem e Status -->
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
-            <div class="p-6">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Chaves Ativas e Saúde</h3>
-                @if($keys->isEmpty())
-                    <div class="text-center py-8 text-gray-500">Nenhuma chave configurada.</div>
+        <!-- 2. CONFIGURAÇÃO POR FUNCIONALIDADE (ROUTING) -->
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100" 
+             x-data="{ 
+                collapsed: localStorage.getItem('sre_routing_collapsed') === 'true',
+                loadingModels: false,
+                models: [],
+                showModelModal: false,
+                selectedVaultId: '',
+                selectedModel: '',
+                discoveryError: ''
+             }">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors" @click="collapsed = !collapsed; localStorage.setItem('sre_routing_collapsed', collapsed)">
+                <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <span class="p-2 bg-purple-50 text-purple-600 rounded-lg">🎯</span>
+                    Configuração por Funcionalidade (Roteamento)
+                </h3>
+                <svg class="w-5 h-5 text-gray-400 transition-transform duration-300" :class="collapsed ? '' : 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+            
+            <div x-show="!collapsed" x-collapse x-transition class="p-6 pt-4">
+                <form action="{{ route('admin.api-keys.store') }}" method="POST" class="space-y-6">
+                    @csrf
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Seleção de Origem -->
+                        <div>
+                            <x-input-label for="vault_id" value="1. Selecione a Chave do Cofre" />
+                            <select name="vault_id" id="vault_id" x-model="selectedVaultId" 
+                                    @change="discoverModels()"
+                                    class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full bg-gray-50">
+                                <option value="">-- Escolha um Apelido --</option>
+                                @foreach($vaultKeys as $vk)
+                                    <option value="{{ $vk->id }}">{{ $vk->nickname }} ({{ strtoupper($vk->provider) }})</option>
+                                @endforeach
+                            </select>
+                            <p class="text-[10px] text-gray-400 mt-1 italic">O sistema disparará um ping de descoberta automático ao selecionar.</p>
+                        </div>
+
+                        <!-- Modelo Selecionado (Visual only until modal) -->
+                        <div>
+                            <x-input-label value="2. Modelo Selecionado" />
+                            <div class="mt-1 flex gap-2">
+                                <div class="flex-1 p-2 bg-gray-100 border border-gray-200 rounded-md text-sm font-mono text-gray-600 flex items-center gap-2 h-[42px]">
+                                    <template x-if="selectedModel">
+                                        <span class="flex items-center gap-2">
+                                            <span class="text-green-500">✨</span>
+                                            <span x-text="selectedModel"></span>
+                                        </span>
+                                    </template>
+                                    <template x-if="!selectedModel">
+                                        <span class="text-gray-400 italic">Aguardando descoberta...</span>
+                                    </template>
+                                    <input type="hidden" name="preferred_model" :value="selectedModel">
+                                </div>
+                                <button type="button" @click="discoverModels()" :disabled="!selectedVaultId || loadingModels"
+                                        class="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none disabled:opacity-50">
+                                    <span x-show="!loadingModels">🔍</span>
+                                    <span x-show="loadingModels" class="animate-spin inline-block">⌛</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Erro de Descoberta -->
+                    <div x-show="discoveryError" class="p-3 bg-red-50 border border-red-100 rounded-lg text-xs text-red-600 flex items-center gap-2">
+                        <span>❌</span>
+                        <span x-text="discoveryError"></span>
+                    </div>
+
+                    <!-- Grid de Capacidades -->
+                    <div class="bg-gray-50/80 border border-gray-200 rounded-xl p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <x-input-label value="3. Atribuir Funcionalidades" class="!mb-0" />
+                            <span class="text-[10px] bg-white border border-gray-200 px-2 py-1 rounded text-gray-400 font-bold uppercase tracking-tighter">Roteamento N:N</span>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            @php
+                                $helpContent = [
+                                    'general' => [
+                                        'title' => 'Uso Geral / Fallback',
+                                        'body' => 'Chave de segurança padrão para qualquer tarefa sem mapeamento específico.'
+                                    ],
+                                    'questions' => [
+                                        'title' => 'Geração/Correção de Questões',
+                                        'body' => 'Motor de IA para criação de questões, melhoria do banco e avaliações de dificuldade.'
+                                    ],
+                                    'essays' => [
+                                        'title' => 'Avaliação de Redações',
+                                        'body' => 'Processamento de redações dos alunos, análise de competências e feedbacks estruturados.'
+                                    ],
+                                    'triage' => [
+                                        'title' => 'Triagem e Moderação',
+                                        'body' => 'Classificação automática de Disciplinas e Assuntos em importações de lotes.'
+                                    ],
+                                    'search' => [
+                                        'title' => 'Busca Inteligente (Xavier)',
+                                        'body' => 'Alimenta o chat tutor Xavier para tirar dúvidas dos alunos.'
+                                    ],
+                                    'study_plans' => [
+                                        'title' => 'Geração de Plano de Estudos',
+                                        'body' => 'Criação de calendários de estudo personalizados baseados no desempenho real do aluno em simulados.'
+                                    ]
+                                ];
+                            @endphp
+                            @foreach($availableCapabilities as $code => $label)
+                                @php $content = $helpContent[$code] ?? ['title' => $label, 'body' => '']; @endphp
+                                <label class="relative flex items-center bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:border-indigo-200 transition-all group cursor-pointer">
+                                    <input type="checkbox" name="capabilities[]" value="{{ $code }}" class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                    <div class="ml-3">
+                                        <span class="text-sm font-bold text-gray-700 block">{{ $label }}</span>
+                                        <button type="button" @click="openHelp({{ json_encode($content['title']) }}, {{ json_encode($content['body']) }})" 
+                                                class="text-[10px] text-indigo-400 hover:text-indigo-600 underline font-medium mt-0.5">
+                                            Como funciona?
+                                        </button>
+                                    </div>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end pt-2">
+                        <x-primary-button class="h-12 px-8 shadow-lg shadow-indigo-200" x-bind:disabled="!selectedModel">
+                            Ativar Roteamento
+                        </x-primary-button>
+                    </div>
+                </form>
+
+                <!-- Model Selection Modal (Premium) -->
+                <div x-show="showModelModal" class="fixed inset-0 z-[150] flex items-center justify-center p-4" x-cloak>
+                    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showModelModal = false"></div>
+                    <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-gray-100" 
+                         x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                        <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white">
+                            <h3 class="font-bold flex items-center gap-2">
+                                <span>🤖</span> Modelos Disponíveis no Provedor
+                            </h3>
+                            <button @click="showModelModal = false">✕</button>
+                        </div>
+                        <div class="p-6 max-h-[60vh] overflow-y-auto">
+                            <div class="grid grid-cols-1 gap-2">
+                                <template x-for="model in models" :key="model.id">
+                                    <div @click="selectedModel = model.id; showModelModal = false" 
+                                         class="p-4 rounded-xl border border-gray-100 hover:bg-indigo-50 hover:border-indigo-200 cursor-pointer transition-all flex justify-between items-center group">
+                                        <div class="flex flex-col">
+                                            <span class="font-bold text-gray-800" x-text="model.name"></span>
+                                            <span class="text-[10px] font-mono text-gray-400" x-text="model.id"></span>
+                                        </div>
+                                        <span class="opacity-0 group-hover:opacity-100 text-indigo-500">Selecionar →</span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 px-6 py-4 text-center text-[10px] text-gray-400 italic">
+                            O acesso aos modelos depende da sua quota na conta do provedor.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Discovery Script JS (Scoped to Routing Card) -->
+            <script>
+                function routingData() {
+                    return {
+                        discoverModels() {
+                            if (!this.selectedVaultId) return;
+                            this.loadingModels = true;
+                            this.discoveryError = '';
+                            this.models = [];
+                            
+                            fetch("{{ route('admin.api-keys.discover') }}", {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                                },
+                                body: JSON.stringify({ vault_id: this.selectedVaultId })
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.is_valid && data.models) {
+                                    this.models = data.models;
+                                    this.showModelModal = true;
+                                } else {
+                                    this.discoveryError = data.error || 'Falha na descoberta de modelos.';
+                                }
+                            })
+                            .catch(err => {
+                                this.discoveryError = 'Erro de rede ao conectar com o servidor.';
+                            })
+                            .finally(() => {
+                                this.loadingModels = false;
+                            });
+                        }
+                    }
+                }
+            </script>
+        </div>
+
+        <!-- 3. LISTAGEM E SAÚDE -->
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100"
+             x-data="{ collapsed: localStorage.getItem('sre_active_keys_collapsed') === 'true' }">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors" @click="collapsed = !collapsed; localStorage.setItem('sre_active_keys_collapsed', collapsed)">
+                <h3 class="text-lg font-medium text-gray-900">Roteamentos Ativos (Infraestrutura)</h3>
+                <svg class="w-5 h-5 text-gray-400 transition-transform duration-300" :class="collapsed ? '' : 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+            <div x-show="!collapsed" x-collapse x-transition>
+                <div class="p-6 pt-4">
+                @if($routingKeys->isEmpty())
+                    <div class="text-center py-8 text-gray-500">Nenhum roteamento configurado.</div>
                 @else
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Provedor / Modelo</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Saúde (SRE)</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Check / Adição</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uso Acumulado</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Provider / Origem</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Saúde & Model</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Capacidades</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uso</th>
                                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
-                                    @foreach($keys as $key)
+                                    @foreach($routingKeys as $key)
                                         <tr>
                                             <td class="px-6 py-4">
                                                 <div class="flex flex-col">
-                                                    <span class="font-bold capitalize text-gray-900 text-base">{{ $key->provider }}</span>
-                                                    <span class="text-xs font-mono bg-indigo-50 text-indigo-700 px-1 rounded inline-block w-fit mt-1">
-                                                        {{ $key->preferred_model ?? 'Padrão' }}
+                                                    <span class="font-bold capitalize text-gray-900 text-base">
+                                                        {{ $key->effective_provider }}
                                                     </span>
-                                                    <div class="mt-2 flex flex-wrap gap-1">
-                                                        @foreach((array)$key->capabilities as $cap)
-                                                            <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200" title="{{ $availableCapabilities[$cap] ?? $cap }}">
-                                                                {{ $cap }}
-                                                            </span>
-                                                        @endforeach
-                                                    </div>
+                                                    <span class="text-[10px] text-gray-400 italic">
+                                                        Origem: {{ $key->vault ? $key->vault->nickname : 'Legado/Direto' }}
+                                                    </span>
                                                 </div>
                                             </td>
                                             <td class="px-6 py-4">
-                                                <div class="flex items-center gap-2">
+                                                <div class="flex flex-col gap-1">
                                                     @php
                                                         $statusClasses = match($key->status) {
                                                             'online' => 'bg-green-100 text-green-800',
@@ -148,25 +360,24 @@
                                                             default => '⚪ Desconhecido'
                                                         };
                                                     @endphp
-                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $statusClasses }}">
+                                                    <span class="px-2 w-fit inline-flex text-[10px] leading-5 font-semibold rounded-full {{ $statusClasses }}">
                                                         {{ $statusLabel }}
                                                     </span>
-                                                    
-                                                    <form action="{{ route('admin.api-keys.retest', $key) }}" method="POST" class="inline">
-                                                        @csrf
-                                                        <button type="submit" title="Forçar reteste agora" class="text-gray-400 hover:text-indigo-600 transition-colors">
-                                                            🔄
-                                                        </button>
-                                                    </form>
+                                                    <span class="text-xs font-mono bg-indigo-50 text-indigo-700 px-1 rounded inline-block w-fit">
+                                                        {{ $key->preferred_model ?? 'Padrão' }}
+                                                    </span>
                                                 </div>
                                             </td>
                                             <td class="px-6 py-4">
-                                                <div class="flex flex-col text-xs text-gray-500">
-                                                    <span><strong>Check:</strong> {{ $key->last_health_check_at ? $key->last_health_check_at->diffForHumans() : 'Nunca' }}</span>
-                                                    <span><strong>Criado:</strong> {{ $key->created_at->format('d/m/y H:i') }}</span>
+                                                <div class="flex flex-wrap gap-1 max-w-xs">
+                                                    @foreach((array)$key->capabilities as $cap)
+                                                        <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200" title="{{ $availableCapabilities[$cap] ?? $cap }}">
+                                                            {{ $cap }}
+                                                        </span>
+                                                    @endforeach
                                                 </div>
                                             </td>
-                                            <td class="px-6 py-4 text-sm text-gray-500 font-mono">
+                                            <td class="px-6 py-4 text-xs text-gray-500 font-mono">
                                                 {{ number_format($key->requests_count) }} reqs
                                             </td>
                                             <td class="px-6 py-4 text-right text-sm">
@@ -176,7 +387,7 @@
                                                         {{ $key->is_active ? '🔓' : '🔒' }}
                                                     </button>
                                                 </form>
-                                                <form action="{{ route('admin.api-keys.destroy', $key) }}" method="POST" class="inline" onsubmit="return confirm('Apagar chave?');">
+                                                <form action="{{ route('admin.api-keys.destroy', $key) }}" method="POST" class="inline" onsubmit="return confirm('Apagar roteamento?');">
                                                     @csrf @method('DELETE')
                                                     <button type="submit" class="text-red-600 hover:text-red-900 p-1 border rounded hover:bg-red-50" title="Excluir">🗑️</button>
                                                 </form>
@@ -187,29 +398,21 @@
                         </table>
                     </div>
                 @endif
+                </div>
             </div>
         </div>
 
         <!-- Histórico de Uso (AI Requests) -->
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100" 
-             x-data="{ 
-                openModal: false, 
-                activeLog: {
-                    user: '',
-                    provider: '',
-                    model: '',
-                    prompt: '',
-                    response: '',
-                    input_tokens: 0,
-                    output_tokens: 0,
-                    execution_time: 0,
-                    estimated_cost: 0
-                } 
-             }">
-            <div class="p-6 border-b border-gray-100">
-                <h3 class="text-lg font-medium text-gray-900">Histórico de Uso (Últimas 20 Transações)</h3>
-                <p class="text-xs text-gray-500">Log detalhado de prompts e respostas enviadas para a IA.</p>
+             x-data="{ collapsed: localStorage.getItem('sre_history_collapsed') === 'true' }">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors" @click="collapsed = !collapsed; localStorage.setItem('sre_history_collapsed', collapsed)">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900">Histórico de Uso (Últimas 20 Transações)</h3>
+                    <p class="text-xs text-gray-500">Log detalhado de prompts e respostas enviadas para a IA.</p>
+                </div>
+                <svg class="w-5 h-5 text-gray-400 transition-transform duration-300" :class="collapsed ? '' : 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
             </div>
+            <div x-show="!collapsed" x-collapse x-transition>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -245,7 +448,7 @@
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <button 
-                                        @click="activeLog = {
+                                        @click="openLog({
                                             user: {{ json_encode($log->user ? $log->user->name : 'Sistema/Job') }},
                                             provider: {{ json_encode($log->provider) }},
                                             model: {{ json_encode($log->model) }},
@@ -255,7 +458,7 @@
                                             output_tokens: {{ $log->tokens_used_output }},
                                             execution_time: {{ round($log->execution_time, 3) }},
                                             estimated_cost: {{ round($log->estimated_cost, 4) }}
-                                        }; openModal = true;"
+                                        })"
                                         class="text-indigo-600 hover:text-indigo-900 text-xs font-bold border border-indigo-100 px-2 py-1 rounded hover:bg-indigo-50">
                                         Ver Detalhes
                                     </button>
@@ -269,73 +472,22 @@
                     </tbody>
                 </table>
             </div>
-
-            <!-- Modal -->
-            <div x-show="openModal" class="fixed inset-0 z-[100] overflow-y-auto" style="display: none;">
-                <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                    <div x-show="openModal" @click="openModal = false" class="fixed inset-0 transition-opacity" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
-                        <div class="absolute inset-0 bg-gray-900 opacity-75"></div>
-                    </div>
-
-                    <span class="hidden sm:inline-block sm:align-middle sm:h-screen"></span>&#8203;
-
-                    <div x-show="openModal" class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full border border-gray-200" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100">
-                        <div class="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                            <h3 class="text-lg font-bold text-gray-800">Detalhes da Transação IA</h3>
-                            <button @click="openModal = false" class="text-gray-400 hover:text-gray-600">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                            </button>
-                        </div>
-                        <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto font-sans">
-                            <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 text-[10px] uppercase tracking-wider font-bold text-gray-400">
-                                <div>
-                                    <p>Usuário</p>
-                                    <p class="text-gray-800 text-xs" x-text="activeLog.user"></p>
-                                </div>
-                                <div>
-                                    <p>Provedor / Modelo</p>
-                                    <p class="text-gray-800 text-xs" x-text="activeLog.provider + ' / ' + activeLog.model"></p>
-                                </div>
-                                <div>
-                                    <p>Tokens (In / Out)</p>
-                                    <p class="text-gray-800 text-xs" x-text="activeLog.input_tokens + ' / ' + activeLog.output_tokens"></p>
-                                </div>
-                                <div>
-                                    <p>Tempo de Execução</p>
-                                    <p class="text-gray-800 text-xs" x-text="activeLog.execution_time + 's'"></p>
-                                </div>
-                                <div>
-                                    <p>Custo Estimado</p>
-                                    <p class="text-indigo-600 text-xs font-bold" x-text="'R$ ' + activeLog.estimated_cost.toFixed(4)"></p>
-                                </div>
-                            </div>
-
-                            <hr class="border-gray-100">
-
-                            <div>
-                                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Prompt Enviado</h4>
-                                <div class="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-[11px] overflow-x-auto whitespace-pre-wrap border border-gray-800 shadow-inner" x-text="activeLog.prompt"></div>
-                            </div>
-
-                            <div>
-                                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Resposta da IA</h4>
-                                <div class="bg-indigo-50 text-indigo-900 p-4 rounded-lg font-mono text-[11px] overflow-x-auto whitespace-pre-wrap border border-indigo-100 shadow-inner" x-text="activeLog.response"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </div></div>
 
         <!-- Ranking de Consumo (Top 20 Usuários) -->
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
-            <div class="p-6 border-b border-gray-100 bg-gray-50/50">
-                <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
-                    <span>🏆</span>
-                    Top 20 Usuários - Consumo de IA
-                </h3>
-                <p class="text-xs text-gray-500">Ranking baseado no volume total de tokens consumidos.</p>
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100"
+             x-data="{ collapsed: localStorage.getItem('sre_ranking_collapsed') === 'true' }">
+            <div class="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center cursor-pointer hover:bg-gray-100/50 transition-colors" @click="collapsed = !collapsed; localStorage.setItem('sre_ranking_collapsed', collapsed)">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                        <span>🏆</span>
+                        Top 20 Usuários - Consumo de IA
+                    </h3>
+                    <p class="text-xs text-gray-500">Ranking baseado no volume total de tokens consumidos.</p>
+                </div>
+                <svg class="w-5 h-5 text-gray-400 transition-transform duration-300" :class="collapsed ? '' : 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
             </div>
+            <div x-show="!collapsed" x-collapse x-transition>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -383,17 +535,22 @@
                     </tbody>
                 </table>
             </div>
-        </div>
+        </div></div>
 
         <!-- Logs de Atividade -->
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
-            <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100"
+             x-data="{ collapsed: localStorage.getItem('sre_logs_collapsed') === 'true' }">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors" @click="collapsed = !collapsed; localStorage.setItem('sre_logs_collapsed', collapsed)">
                 <h3 class="text-lg font-medium text-gray-900">Logs de Eventos da API (Últimos 20)</h3>
-                <form action="{{ route('admin.api-keys.clear-logs') }}" method="POST" onsubmit="return confirm('Limpar histórico?')">
-                    @csrf
-                    <button type="submit" class="text-sm text-gray-500 hover:text-red-600">Limpar Histórico</button>
-                </form>
+                <svg class="w-5 h-5 text-gray-400 transition-transform duration-300" :class="collapsed ? '' : 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
             </div>
+            <div x-show="!collapsed" x-collapse x-transition>
+                <div class="p-4 bg-gray-50/50 border-b border-gray-100 flex justify-end">
+                    <form action="{{ route('admin.api-keys.clear-logs') }}" method="POST" onsubmit="return confirm('Limpar histórico?')">
+                        @csrf
+                        <button type="submit" class="text-sm text-gray-500 hover:text-red-600 transition-colors">Limpar Histórico</button>
+                    </form>
+                </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <tbody class="bg-white divide-y divide-gray-50">
@@ -443,7 +600,75 @@
                     </tbody>
                 </table>
             </div>
+            </div>
         </div>
+
+        <!-- Modais Globais (Help & Logs) -->
+        
+        <!-- Modal de Ajuda Técnica -->
+        <template x-if="showHelp">
+            <div class="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm shadow-2xl" @click="showHelp = false" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"></div>
+                
+                <div class="relative bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] max-w-lg w-full overflow-hidden border border-indigo-100" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100">
+                    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            <svg class="w-5 h-5 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span x-text="helpTitle"></span>
+                        </h3>
+                        <button type="button" @click="showHelp = false" class="text-white hover:text-indigo-200 transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <div class="p-8">
+                        <div class="text-slate-600 leading-relaxed text-sm mb-6" x-html="helpBody"></div>
+                        <div class="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg">
+                            <p class="text-[11px] text-amber-700 font-bold" x-text="ruleText"></p>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 px-6 py-4 flex justify-end">
+                        <button type="button" @click="showHelp = false" class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-100 transition-colors text-sm font-semibold">
+                            Entendi, fechar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- Modal de Detalhes de Log -->
+        <template x-if="showLogModal">
+            <div class="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm shadow-2xl" @click="showLogModal = false" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"></div>
+                
+                <div class="relative bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-gray-200" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100">
+                    <div class="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-gray-800">Detalhes da Transação IA</h3>
+                        <button @click="showLogModal = false" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <div class="p-6 space-y-4 overflow-y-auto font-sans flex-1">
+                        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 text-[10px] uppercase tracking-wider font-bold text-gray-400">
+                            <div><p>Usuário</p><p class="text-gray-800 text-xs" x-text="activeLog.user"></p></div>
+                            <div><p>Provedor / Modelo</p><p class="text-gray-800 text-xs" x-text="activeLog.provider + ' / ' + activeLog.model"></p></div>
+                            <div><p>Tokens (In / Out)</p><p class="text-gray-800 text-xs" x-text="activeLog.input_tokens + ' / ' + activeLog.output_tokens"></p></div>
+                            <div><p>Tempo</p><p class="text-gray-800 text-xs" x-text="activeLog.execution_time + 's'"></p></div>
+                            <div><p>Custo Estimado</p><p class="text-indigo-600 text-xs font-bold" x-text="'R$ ' + activeLog.estimated_cost.toFixed(4)"></p></div>
+                        </div>
+                        <hr class="border-gray-100">
+                        <div>
+                            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Prompt Enviado</h4>
+                            <div class="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-[11px] overflow-x-auto whitespace-pre-wrap border border-gray-800 shadow-inner" x-text="activeLog.prompt"></div>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Resposta da IA</h4>
+                            <div class="bg-indigo-50 text-indigo-900 p-4 rounded-lg font-mono text-[11px] overflow-x-auto whitespace-pre-wrap border border-indigo-100 shadow-inner" x-text="activeLog.response"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+
     </div>
 
     <script>
