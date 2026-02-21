@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('institution')->nullable();
             $table->string('role')->nullable();
             $table->string('theme')->nullable(); // Guardado de Forma Original (Eixos ENEM)
+            $table->string('topic')->nullable(); // Guardado de Forma Original (Assuntos Concurso)
             $table->string('external_id');
             $table->string('review_status')->nullable();
             $table->string('image_path')->nullable();
