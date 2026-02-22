@@ -55,7 +55,7 @@ class SubscriptionFlowTest extends TestCase
             'card_expiry_month' => '12',
             'card_expiry_year' => '2030',
             'card_ccv' => '123',
-            'card_cpf' => '12345678900',
+            'cpf' => '12345678900',
         ]);
 
         $response->assertStatus(200); // Renders success view
@@ -76,6 +76,7 @@ class SubscriptionFlowTest extends TestCase
 
         $response = $this->actingAs($user)->post(route('plans.store', $plan), [
             'payment_method' => 'pix',
+            'cpf' => '12345678900',
         ]);
 
         $response->assertStatus(200);
