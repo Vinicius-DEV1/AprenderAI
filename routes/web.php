@@ -242,6 +242,7 @@ Route::middleware(['auth'])->group(function () {
             Route::prefix('enem-import')->name('enem-import.')->group(function () {
                 Route::get('/', [\App\Http\Controllers\Admin\EnemImportController::class, 'index'])->name('index');
                 Route::post('/', [\App\Http\Controllers\Admin\EnemImportController::class, 'store'])->name('store');
+                Route::get('/status', [\App\Http\Controllers\Admin\EnemImportController::class, 'status'])->name('status');
             });
 
             // Chat Logs

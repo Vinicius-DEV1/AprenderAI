@@ -17,6 +17,11 @@ class EnemImportController extends Controller
         $activeBatchId = session('enem_import_batch_id');
         $activeBatch = $activeBatchId ? Bus::findBatch($activeBatchId) : null;
 
+        // Limpa a flag de sessão permanentemente se o lote já estiver concluído/falho
+        if ($activeBatch && ($activeBatch->finished() || $activeBatch->cancelled())) {
+            session()->forget('enem_import_batch_id');
+        }
+
         return view('admin.enem-import.index', compact('logs', 'activeBatch'));
     }
 
@@ -73,5 +78,33 @@ class EnemImportController extends Controller
         } catch (\Exception $e) {
             return back()->with('error', 'Erro ao iniciar importação: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Endpoint XHR leve para o Frontend (Alpine.js) acompanhar o progresso real sem reload 
+     * e sem travar a navegação usando Server-Sent Events/Long Polling.
+     */
+    public function status(Request $request)
+    {
+        // 1. Session Unblocking: Libera a trava do arquivo de sessão do usuário
+        session_write_close();
+
+        $activeBatchId = $request->input('batch_id');
+        if (!$activeBatchId) {
+            return response()->json(['finished' => true, 'progress' => 100]);
+        }
+
+        $batch = Bus::findBatch($activeBatchId);
+        
+        if (!$batch) {
+            return response()->json(['finished' => true, 'progress' => 100]);
+        }
+
+        return response()->json([
+            'finished' => $batch->finished() || $batch->cancelled(),
+            'progress' => $batch->progress(),
+            'processed' => $batch->processedJobs(),
+            'total' => $batch->totalJobs
+        ]);
     }
 }
