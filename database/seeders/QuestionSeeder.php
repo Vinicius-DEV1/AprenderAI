@@ -43,6 +43,7 @@ class QuestionSeeder extends Seeder
         // --- QUESTÃO 1: ENEM ---
         $this->createQuestion(
             type: 'enem',
+            format: 'multiple_choice',
             organization: 'ENEM',
             year: 2023,
             institution: 'MEC',
@@ -65,6 +66,7 @@ class QuestionSeeder extends Seeder
         // --- QUESTÃO 2: CONCURSO ---
         $this->createQuestion(
             type: 'concurso',
+            format: 'multiple_choice',
             organization: 'CEBRASPE',
             year: 2024,
             institution: 'Polícia Federal',
@@ -81,16 +83,47 @@ class QuestionSeeder extends Seeder
             ],
             correctLetter: 'B',
             explanation: 'Sendo h = 10/2 = 5cm. A área é b(base) * h(altura) = 10 * 5 = 50 cm².',
-            theme: null // Concursos usam banco de topics/subjects robusto e não herdam "Eixos Temáticos"
+            theme: null
+        );
+
+        // --- QUESTÃO 3: CONCURSO (CERTO OU ERRADO) ---
+        // Este formato ignora a lógica de 5 alternativas (A-E) e foca na validação binária do formato Concurso/Cebraspe.
+        $adminSubject = Subject::firstOrCreate(
+            ['name' => trim(strtoupper('DIREITO ADMINISTRATIVO'))],
+            ['slug' => Str::slug('DIREITO ADMINISTRATIVO'), 'type' => 'geral']
+        );
+
+        $actsTopic = Topic::firstOrCreate(
+            ['name' => trim(strtoupper('ATOS ADMINISTRATIVOS'))],
+            ['slug' => Str::slug('ATOS ADMINISTRATIVOS')]
+        );
+
+        $this->createQuestion(
+            type: 'concurso',
+            format: 'true_false',
+            organization: 'CEBRASPE',
+            year: 2024,
+            institution: 'ANATEL',
+            role: 'Especialista em Regulação',
+            statement: "A respeito dos atributos dos atos administrativos, julgue o item a seguir.\n\nA imperatividade é o atributo pelo qual os atos administrativos se impõem a terceiros, independentemente de sua concordância.",
+            subjects: [$adminSubject->id],
+            topics: [$actsTopic->id],
+            alternatives: [
+                'C' => 'Certo',
+                'E' => 'Errado'
+            ],
+            correctLetter: 'C',
+            explanation: 'A imperatividade é, de fato, o atributo que permite a imposição do ato administrativo a terceiros sem necessidade de anuência prévia.',
+            theme: null
         );
         
-        $this->command->info('QuestionSeeder: Documentação Viva gerada com sucesso (Velocidade otimizada: 2 questões com N:N).');
+        $this->command->info('QuestionSeeder: Documentação Viva gerada com sucesso (Incluindo formato Certo/Errado).');
     }
 
     /**
      * Auxiliar de inserção para documentar as etapas de popular a estrutura relacional.
      */
-    private function createQuestion($type, $organization, $year, $institution, $role, $statement, $subjects, $topics, $alternatives, $correctLetter, $explanation, $theme)
+    private function createQuestion($type, $format, $organization, $year, $institution, $role, $statement, $subjects, $topics, $alternatives, $correctLetter, $explanation, $theme)
     {
         // 1. Geração de Identificador Idempotente (Evita Duplicadas)
         // A external_id é uma hash MD5 de atributos chave que compõem a identidade única macro da questão.
@@ -98,18 +131,18 @@ class QuestionSeeder extends Seeder
         $externalId = md5($uniqueString);
 
         // 2. Inserção na Tabela Base (questions)
-        // As colunas legadas (origin, topic original string, alternativas em JSON bruto) NÃO DEVEM mais ser imputadas.
-        $question = clone Question::updateOrCreate(
+        $question = Question::updateOrCreate(
             ['external_id' => $externalId],
             [
                 'type' => $type,
+                'format' => $format,
                 'difficulty' => 'medium',
                 'difficulty_reasoning' => 'Dificuldade avaliada pelo sistema central ou IA.',
                 'year' => $year,
                 'statement' => $statement,
                 'explanation' => $explanation,
-                'source' => 'manual', // Manual no sentido de seed/painel, e não crawler web
-                'theme' => $theme,    // IMPORTANTE: Preservado unicamente como repositório de metadado orgânico de Eixo ENEM.
+                'source' => 'manual',
+                'theme' => $theme,
                 'organization' => $organization,
                 'institution' => $institution,
                 'role' => $role,
@@ -118,12 +151,10 @@ class QuestionSeeder extends Seeder
         );
 
         // 3. Relacionamentos N:N (Pivot Tables)
-        // O método sync() atrela os IDs à tabela pivô e desataca o restante, mantendo referencial imaculado aos Subjects.
         $question->subjects()->sync($subjects);
         $question->topics()->sync($topics);
 
         // 4. Inserção de Alternativas (HasMany)
-        // Remove as anteriores em caso de update do Seeder, e re-popula as opções.
         $question->alternatives()->delete();
         
         $altsToInsert = [];
@@ -135,7 +166,6 @@ class QuestionSeeder extends Seeder
             ];
         }
         
-        // Injeção de registros 1:N no modelo relacional question_alternatives
         $question->alternatives()->createMany($altsToInsert);
     }
 }
