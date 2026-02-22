@@ -188,6 +188,7 @@ Route::middleware(['auth'])->group(function () {
             Route::post('questions/batch-evaluate-difficulty', [\App\Http\Controllers\Admin\QuestionController::class, 'batchEvaluateDifficulty'])->name('questions.batch-evaluate-difficulty');
             Route::post('questions/{question}/generate-explanation', [\App\Http\Controllers\Admin\QuestionController::class, 'generateExplanation'])->name('questions.generate-explanation');
             Route::post('questions/{question}/complete', [\App\Http\Controllers\Admin\QuestionController::class, 'completeQuestion'])->name('questions.complete');
+            Route::post('questions/{question}/classify', [\App\Http\Controllers\Admin\QuestionController::class, 'classifyQuestion'])->name('questions.classify');
             Route::post('questions/batch-complete', [\App\Http\Controllers\Admin\QuestionController::class, 'batchCompleteQuestions'])->name('questions.batch-complete');
 
             // Novo Batch Triage (Asíncrono)

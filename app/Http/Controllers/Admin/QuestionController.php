@@ -27,12 +27,15 @@ class QuestionController extends Controller
         }
         if ($request->filled('triage_status')) {
             match ($request->triage_status) {
-                    'missing_difficulty' => $pendingQuery->missingField('difficulty_reasoning'),
-                    'missing_explanation' => $pendingQuery->missingField('explanation'),
-                    'both_missing' => $pendingQuery->missingField('difficulty_reasoning')
+                'missing_difficulty' => $pendingQuery->missingField('difficulty_reasoning'),
+                'missing_explanation' => $pendingQuery->missingField('explanation'),
+                'missing_classification' => $pendingQuery->where(function ($q) {
+                    $q->whereDoesntHave('subjects')->orWhereDoesntHave('topics');
+                }),
+                'both_missing' => $pendingQuery->missingField('difficulty_reasoning')
                     ->missingField('explanation'),
-                    default => null,
-                };
+                default => null,
+            };
         }
         if ($request->filled('triage_subject')) {
             $pendingQuery->whereHas('subjects', function ($q) use ($request) {
@@ -49,6 +52,7 @@ class QuestionController extends Controller
         // Sub-counters by type (global, unfiltered)
         $missingDifficultyCount = Question::missingField('difficulty_reasoning')->count();
         $missingExplanationCount = Question::missingField('explanation')->count();
+        $missingClassificationCount = Question::whereDoesntHave('subjects')->orWhereDoesntHave('topics')->count();
         $bothMissingCount = Question::missingField('difficulty_reasoning')
             ->missingField('explanation')->count();
 
@@ -114,6 +118,7 @@ class QuestionController extends Controller
             'pendingCount',
             'missingDifficultyCount',
             'missingExplanationCount',
+            'missingClassificationCount',
             'bothMissingCount',
             'totalQuestions',
             'aiQuestions',
@@ -303,6 +308,28 @@ class QuestionController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Processamento completo iniciado em segundo plano. Dificuldade e explicação serão preenchidas.'
+        ]);
+    }
+
+    public function classifyQuestion(Question $question)
+    {
+        Log::info('[IA_QUEUE] Despachando classificação N:N individual para fila', [
+            'question_id' => $question->id
+        ]);
+
+        // Reusing the CompleteJob (which we will adapt or trust it handles the new type logic internally by routing as a batch of 1)
+        // Alternatively we can use a fresh Job, but for now we route to CompleteJob and we'll ensure AIBatchService handles it.
+        // Actually, since AIBatchTriageJob handles 'classification' cleanly, let's use it as a batch of 1.
+        \App\Jobs\AIBatchTriageJob::dispatch(
+            \Illuminate\Support\Str::uuid()->toString(),
+            [$question->id],
+            'classification',
+            null // uses default model
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Classificação de Matéria e Assunto iniciada em segundo plano.'
         ]);
     }
 
