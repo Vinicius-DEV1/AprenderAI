@@ -1,5 +1,9 @@
+@php
+    $streamingEnabled = \App\Models\Setting::where('key', 'ai_streaming_enabled')->value('value') === 'true';
+@endphp
+
 @forelse($questions as $question)
-    <div class="qb-card" x-data="questionCard({{ $question->id }}, {{ json_encode(isset($answeredMap[$question->id])) }}, {{ json_encode($answeredMap[$question->id] ?? null) }}, '{{ $question->subjects->first()->name ?? 'Geral' }}')">
+    <div class="qb-card" x-data="questionCard({{ $question->id }}, {{ json_encode(isset($answeredMap[$question->id])) }}, {{ json_encode($answeredMap[$question->id] ?? null) }}, '{{ $question->subjects->first()->name ?? 'Geral' }}', {{ json_encode($streamingEnabled) }})">
         <div class="qb-card-meta">
             {{-- Removido external_id para limpeza visual --}}
             @if($question->source === 'ai_generated')

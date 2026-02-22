@@ -31,6 +31,14 @@ class AIService
     }
 
     /**
+     * Checks if streaming is globally enabled.
+     */
+    public function isStreamingEnabled(): bool
+    {
+        return \App\Models\Setting::where('key', 'ai_streaming_enabled')->value('value') === 'true';
+    }
+
+    /**
      * Checks if at least one provider has an active key for a given capability.
      */
     public function hasActiveKey(string $capability = ApiKey::CAPABILITY_GENERAL): bool
@@ -162,6 +170,41 @@ class AIService
             throw $e;
         }
     }
+
+    /**
+     * Orchestrates streaming AI calls. Yields chunks as they arrive.
+     */
+    protected function callAIStream(string $provider, ApiKey $apiKey, string $prompt, ?int $userId = null): \Generator
+    {
+        $provider = $apiKey->effective_provider;
+        Log::info("DEBUG: Using Streaming API Key ID: {$apiKey->id} for provider: {$provider}");
+        $startTime = microtime(true);
+        $fullText = "";
+
+        try {
+            $stream = match ($provider) {
+                'openai' => $this->callOpenAIStream($apiKey, $prompt),
+                'gemini' => $this->callGeminiStream($apiKey, $prompt),
+                default => throw new \Exception("Streaming not supported for provider: $provider")
+            };
+
+            foreach ($stream as $chunk) {
+                $fullText .= $chunk;
+                yield $chunk;
+            }
+
+            $executionTime = microtime(true) - $startTime;
+            // Note: Token count estimation or final check might be needed here
+            $this->telemetryService->logRequest($apiKey, $prompt, [
+                'content' => $fullText,
+                'usage' => ['input_tokens' => 0, 'output_tokens' => 0, 'total_tokens' => 0] // Usage usually comes in stream for OpenAI
+            ], $executionTime, $userId);
+
+        } catch (\Exception $e) {
+            Log::error("Streaming AI Error: " . $e->getMessage());
+            throw $e;
+        }
+    }
     /**
      * Makes a request to OpenAI API.
      */
@@ -202,6 +245,51 @@ class AIService
                 'total_tokens' => $usage['total_tokens'] ?? 0,
             ]
         ];
+    }
+
+    protected function callOpenAIStream(ApiKey $apiKey, string $prompt): \Generator
+    {
+        $url = 'https://api.openai.com/v1/chat/completions';
+        $model = $apiKey->preferred_model ?? 'gpt-4o';
+
+        $client = new \GuzzleHttp\Client();
+        $response = $client->post($url, [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $apiKey->decrypted_key,
+                'Content-Type' => 'application/json',
+            ],
+            'json' => [
+                'model' => $model,
+                'messages' => [['role' => 'user', 'content' => $prompt]],
+                'temperature' => 0.7,
+                'stream' => true,
+            ],
+            'stream' => true,
+        ]);
+
+        $body = $response->getBody();
+        while (!$body->eof()) {
+            $line = $this->readLine($body);
+            if (str_starts_with($line, 'data: ')) {
+                $data = substr($line, 6);
+                if ($data === '[DONE]') break;
+                
+                $json = json_decode($data, true);
+                $content = $json['choices'][0]['delta']['content'] ?? '';
+                if ($content) yield $content;
+            }
+        }
+    }
+
+    protected function readLine($body): string
+    {
+        $line = '';
+        while (!$body->eof()) {
+            $char = $body->read(1);
+            if ($char === "\n") break;
+            $line .= $char;
+        }
+        return trim($line);
     }
 
     /**
@@ -283,6 +371,34 @@ class AIService
                 'total_tokens' => $usageMeta['totalTokenCount'] ?? 0,
             ]
         ];
+    }
+
+    protected function callGeminiStream(ApiKey $apiKey, string $prompt): \Generator
+    {
+        $model = $apiKey->preferred_model;
+        $decryptedKey = $apiKey->decrypted_key;
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:streamGenerateContent?alt=sse&key={$decryptedKey}";
+
+        $client = new \GuzzleHttp\Client();
+        $response = $client->post($url, [
+            'headers' => ['Content-Type' => 'application/json'],
+            'json' => [
+                'contents' => [['parts' => [['text' => $prompt]]]],
+                'generationConfig' => ['temperature' => 0.7]
+            ],
+            'stream' => true,
+        ]);
+
+        $body = $response->getBody();
+        while (!$body->eof()) {
+            $line = $this->readLine($body);
+            if (str_starts_with($line, 'data: ')) {
+                $data = substr($line, 6);
+                $json = json_decode($data, true);
+                $content = $json['candidates'][0]['content']['parts'][0]['text'] ?? '';
+                if ($content) yield $content;
+            }
+        }
     }
 
     protected function callGrok(ApiKey $apiKey, string $prompt): array
@@ -443,9 +559,7 @@ class AIService
 
         try {
             $questionText = $question->statement;
-            // alternativesAsMap(): ['A'=>'texto', 'B'=>'texto'...] — limpo para o prompt
             $alternatives = json_encode($question->alternativesAsMap());
-            // correct_answer agora é um accessor virtual que lê is_correct da tabela relacional
             $correctAnswer = $question->correct_answer;
 
             $userAnswer = $simulation->answers()->where('question_id', $question->id)->first();
@@ -480,6 +594,36 @@ class AIService
         }
     }
 
+    public function streamChatAboutQuestion(mixed $question, mixed $simulation, string $userMessage, array $history): \Generator
+    {
+        if (!$this->hasActiveKey(ApiKey::CAPABILITY_QUESTIONS)) {
+            yield "Desculpe, o sistema de IA está offline no momento.";
+            return;
+        }
+
+        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_QUESTIONS);
+        $provider = $apiKey->provider;
+
+        $questionText = $question->statement;
+        $alternatives = json_encode($question->alternativesAsMap());
+        $correctAnswer = $question->correct_answer;
+        $userAnswer = $simulation->answers()->where('question_id', $question->id)->first();
+        $userAnswerText = $userAnswer ? $userAnswer->user_answer : 'Não respondida';
+
+        $prompt = $this->promptService->get('xavier_tutor', [
+            'question_text' => $questionText,
+            'alternatives' => $alternatives,
+            'correct_answer' => $correctAnswer,
+            'user_answer' => $userAnswerText,
+            'chat_history' => $this->formatChatHistory($history),
+            'user_message' => $userMessage
+        ]);
+
+        yield from $this->callAIStream($provider, $apiKey, $prompt, $simulation->user_id);
+        
+        $apiKey->incrementUsage();
+    }
+
     /**
      * Interaction chat for standalone questions (outside simulations).
      * @param Question $question
@@ -499,9 +643,7 @@ class AIService
 
         try {
             $questionText = $question->statement;
-            // alternativesAsMap(): ['A'=>'texto', 'B'=>'texto'...] — limpo para o prompt
             $alternatives = json_encode($question->alternativesAsMap());
-            // correct_answer agora é um accessor virtual que lê is_correct da tabela relacional
             $correctAnswer = $question->correct_answer;
 
             $result = $this->callAI($provider, $apiKey, $this->promptService->get('xavier_tutor', [
@@ -531,6 +673,34 @@ class AIService
                 $apiKey->incrementUsage();
             }
         }
+    }
+
+    public function streamChatAboutStandaloneQuestion(Question $question, string $userAnswer, string $userMessage, array $history): \Generator
+    {
+        if (!$this->hasActiveKey(ApiKey::CAPABILITY_QUESTIONS)) {
+            yield "Desculpe, o sistema de IA está offline no momento.";
+            return;
+        }
+
+        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_QUESTIONS);
+        $provider = $apiKey->provider;
+
+        $questionText = $question->statement;
+        $alternatives = json_encode($question->alternativesAsMap());
+        $correctAnswer = $question->correct_answer;
+
+        $prompt = $this->promptService->get('xavier_tutor', [
+            'question_text' => $questionText,
+            'alternatives' => $alternatives,
+            'correct_answer' => $correctAnswer,
+            'user_answer' => $userAnswer,
+            'chat_history' => $this->formatChatHistory($history),
+            'user_message' => $userMessage
+        ]);
+
+        yield from $this->callAIStream($provider, $apiKey, $prompt);
+
+        $apiKey->incrementUsage();
     }
 
     /**

@@ -345,7 +345,10 @@
 
                 <!-- Chat Contextual -->
                 <div class="mt-2 border-t border-gray-100 pt-2"
-                    x-data="chatComponent({{ $simulation->id }}, {{ $answer->question_id }})">
+                    @php
+                        $streamingEnabled = \App\Models\Setting::where('key', 'ai_streaming_enabled')->value('value') === 'true';
+                    @endphp
+                    x-data="chatComponent({{ $simulation->id }}, {{ $answer->question_id }}, {{ json_encode($streamingEnabled) }})">
 
                     <button @click="toggleChat()"
                         class="text-xs text-indigo-600 font-medium hover:text-indigo-800 flex items-center gap-1.5 transition-colors">
@@ -459,7 +462,7 @@
             mangle: false
         });
 
-        window.chatComponent = function (simulationId, questionId) {
+        window.chatComponent = function (simulationId, questionId, streamingEnabled = false) {
             return {
                 showChat: false,
                 isLoadingHistory: false,
@@ -467,6 +470,7 @@
                 newMessage: '',
                 messages: [],
                 errorMessage: null,
+                streamingEnabled: streamingEnabled,
 
                 init() {
                     // No automatic init actions needed for basic chat
@@ -535,42 +539,111 @@
                     this.isTyping = true;
                     this.errorMessage = null;
 
+                    if (this.streamingEnabled) {
+                        await this.sendMessageStreaming(messageToSend);
+                    } else {
+                        try {
+                            const response = await fetch(`/simulations/${simulationId}/questions/${questionId}/chat`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                                },
+                                body: JSON.stringify({ message: messageToSend })
+                            });
+
+                            const data = await response.json();
+
+                            if (!response.ok) {
+                                throw new Error(data.error || "Erro ao enviar mensagem.");
+                            }
+
+                            // Check for Quota Exceeded
+                            if (data.status === 'quota_exceeded') {
+                                this.messages.push({
+                                    role: 'system',
+                                    message: data.message,
+                                    upgrade_url: data.upgrade_url,
+                                    reset_date: data.reset_date,
+                                    id: Date.now()
+                                });
+                                this.isTyping = false;
+                                this.$nextTick(() => this.scrollToBottom());
+                                return; // Stop polling
+                            }
+
+                            // Start Polling for Answer
+                            this.pollForAnswer();
+
+                        } catch (error) {
+                            this.errorMessage = error.message;
+                            this.isTyping = false;
+                        }
+                    }
+                },
+
+                async sendMessageStreaming(message) {
                     try {
-                        const response = await fetch(`/simulations/${simulationId}/questions/${questionId}/chat`, {
+                        const response = await fetch(`/simulations/${simulationId}/questions/${questionId}/chat/stream`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                                'Accept': 'text/event-stream'
                             },
-                            body: JSON.stringify({ message: messageToSend })
+                            body: JSON.stringify({ message })
                         });
 
-                        const data = await response.json();
-
                         if (!response.ok) {
-                            throw new Error(data.error || "Erro ao enviar mensagem.");
-                        }
-
-                        // Check for Quota Exceeded
-                        if (data.status === 'quota_exceeded') {
-                            this.messages.push({
-                                role: 'system',
-                                message: data.message,
-                                upgrade_url: data.upgrade_url,
-                                reset_date: data.reset_date,
-                                id: Date.now()
-                            });
+                            const errorData = await response.json();
+                            if (errorData.status === 'quota_exceeded') {
+                                this.messages.push({
+                                    role: 'system',
+                                    message: errorData.message,
+                                    upgrade_url: errorData.upgrade_url,
+                                    reset_date: errorData.reset_date,
+                                    id: Date.now()
+                                });
+                            } else {
+                                throw new Error(errorData.error || 'Falha na conexão');
+                            }
                             this.isTyping = false;
-                            this.$nextTick(() => this.scrollToBottom());
-                            return; // Stop polling
+                            return;
                         }
 
-                        // Start Polling for Answer
-                        this.pollForAnswer();
-
-                    } catch (error) {
-                        this.errorMessage = error.message;
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+                        let assistantMsg = { role: 'assistant', message: '', id: Date.now() };
+                        this.messages.push(assistantMsg);
                         this.isTyping = false;
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+
+                            const chunk = decoder.decode(value, { stream: true });
+                            const lines = chunk.split('\n');
+
+                            for (const line of lines) {
+                                if (line.startsWith('data: ')) {
+                                    try {
+                                        const data = JSON.parse(line.substring(6));
+                                        if (data.text) {
+                                            assistantMsg.message += data.text;
+                                            this.$nextTick(() => this.scrollToBottom());
+                                        }
+                                    } catch (e) {
+                                        console.error('SSE Parse Error:', e, line);
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Streaming fail:', e);
+                        this.errorMessage = "Erro no streaming: " + e.message;
+                    } finally {
+                        this.isTyping = false;
+                        this.$nextTick(() => this.scrollToBottom());
                     }
                 },
 

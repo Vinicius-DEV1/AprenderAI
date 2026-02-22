@@ -970,9 +970,10 @@ function aiSearch() {
     };
 }
 
-function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a') {
+function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a', streamingEnabled = false) {
     return {
-        questionId, alreadyAnswered, wasCorrect, subject, selectedAnswer: null, answered: false, isCorrect: null,
+        questionId, alreadyAnswered, wasCorrect, subject, streamingEnabled,
+        selectedAnswer: null, answered: false, isCorrect: null,
         correctAnswer: null, explanation: null, difficultyReasoning: null, submitting: false,
         showChat: false, chatMessages: [], chatInput: '', chatTyping: false, chatLoaded: false,
         showHistory: false, historyData: [], historyLoading: false, historyLoaded: false,
@@ -1045,11 +1046,75 @@ function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a') 
             const msg = this.chatInput; this.chatMessages.push({ role: 'user', message: msg, id: Date.now() });
             this.chatInput = ''; this.chatTyping = true;
             this.$nextTick(() => this.scrollToBottom());
+            
+            if (this.streamingEnabled) {
+                await this.sendChatStreaming(msg);
+            } else {
+                try {
+                    const res = await fetch(`/questions/${this.questionId}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }, body: JSON.stringify({ message: msg }) });
+                    const data = await res.json(); if (data.status === 'quota_exceeded') { this.chatMessages.push({ role: 'system', message: data.message, upgrade_url: data.upgrade_url, id: Date.now() }); this.chatTyping = false; this.$nextTick(() => this.scrollToBottom()); return; }
+                    this.pollChat();
+                } catch (e) { this.chatTyping = false; this.chatMessages.push({ role: 'assistant', message: 'Erro ao processar.', id: Date.now() }); this.$nextTick(() => this.scrollToBottom()); }
+            }
+        },
+        async sendChatStreaming(message) {
             try {
-                const res = await fetch(`/questions/${this.questionId}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }, body: JSON.stringify({ message: msg }) });
-                const data = await res.json(); if (data.status === 'quota_exceeded') { this.chatMessages.push({ role: 'system', message: data.message, upgrade_url: data.upgrade_url, id: Date.now() }); this.chatTyping = false; this.$nextTick(() => this.scrollToBottom()); return; }
-                this.pollChat();
-            } catch (e) { this.chatTyping = false; this.chatMessages.push({ role: 'assistant', message: 'Erro ao processar.', id: Date.now() }); this.$nextTick(() => this.scrollToBottom()); }
+                const response = await fetch(`/questions/${this.questionId}/chat/stream`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'text/event-stream'
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    if (errorData.status === 'quota_exceeded') {
+                        this.chatMessages.push({ role: 'system', message: errorData.message, upgrade_url: errorData.upgrade_url, id: Date.now() });
+                    } else {
+                        throw new Error('Falha na conexão');
+                    }
+                    this.chatTyping = false;
+                    return;
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let assistantMsg = { role: 'assistant', message: '', id: Date.now() };
+                this.chatMessages.push(assistantMsg);
+                this.chatTyping = false;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.substring(6));
+                                if (data.text) {
+                                    assistantMsg.message += data.text;
+                                    this.$nextTick(() => this.scrollToBottom());
+                                }
+                            } catch (e) {
+                                console.error('Error parsing SSE:', e, line);
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Streaming error:', e);
+                this.chatTyping = false;
+                this.chatMessages.push({ role: 'assistant', message: 'Erro ao processar o streaming.', id: Date.now() });
+            } finally {
+                this.chatTyping = false;
+                this.$nextTick(() => this.scrollToBottom());
+            }
         },
         pollChat() {
             let attempts = 0; const poller = setInterval(async () => {

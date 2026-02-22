@@ -1,6 +1,7 @@
 <x-layouts.admin>
     @push('head')
     <style>
+        [x-cloak] { display: none !important; }
         .custom-scrollbar::-webkit-scrollbar {
             width: 8px;
         }
@@ -251,90 +252,9 @@
                     </div>
                 </form>
 
-                <!-- Model Selection Modal (Premium) -->
-                <div x-show="showModelModal" class="fixed inset-0 z-[150] flex items-center justify-center p-4" x-cloak>
-                    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showModelModal = false"></div>
-                    <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden border border-gray-100" 
-                         x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
-                        <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white shrink-0">
-                            <h3 class="font-bold flex items-center gap-2">
-                                <span>🤖</span> Modelos Disponíveis no Provedor
-                            </h3>
-                            <button @click="showModelModal = false">✕</button>
-                        </div>
-                        <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
-                            <div class="grid grid-cols-1 gap-2">
-                                <template x-for="model in models" :key="model.id">
-                                    <div @click="selectedModel = model.id; showModelModal = false" 
-                                         class="p-4 rounded-xl border border-gray-100 hover:bg-indigo-50 hover:border-indigo-200 cursor-pointer transition-all flex justify-between items-center group">
-                                        <div class="flex flex-col">
-                                            <span class="font-bold text-gray-800" x-text="model.name"></span>
-                                            <span class="text-[10px] font-mono text-gray-400" x-text="model.id"></span>
-                                        </div>
-                                        <span class="opacity-0 group-hover:opacity-100 text-indigo-500">Selecionar →</span>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-                        <div class="bg-gray-50 px-6 py-4 text-center text-[10px] text-gray-400 italic shrink-0">
-                            O acesso aos modelos depende da sua quota na conta do provedor.
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Discovery Script JS (Scoped to Routing Card) -->
-            <script>
-                function routingData() {
-                    return {
-                        collapsed: localStorage.getItem('sre_routing_collapsed') === 'true',
-                        loadingModels: false,
-                        models: [],
-                        showModelModal: false,
-                        selectedVaultId: '',
-                        selectedModel: '',
-                        discoveryError: '',
-
-                        toggleCollapse() {
-                            this.collapsed = !this.collapsed;
-                            localStorage.setItem('sre_routing_collapsed', this.collapsed);
-                        },
-
-                        discoverModels() {
-                            if (!this.selectedVaultId) return;
-                            this.loadingModels = true;
-                            this.discoveryError = '';
-                            this.models = [];
-                            
-                            fetch("{{ route('admin.api-keys.discover') }}", {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Accept': 'application/json',
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
-                                },
-                                body: JSON.stringify({ vault_id: this.selectedVaultId })
-                            })
-                            .then(res => res.json())
-                            .then(data => {
-                                if (data.is_valid && data.models) {
-                                    this.models = data.models;
-                                    this.showModelModal = true;
-                                } else {
-                                    this.discoveryError = data.error || 'Falha na descoberta de modelos.';
-                                }
-                            })
-                            .catch(err => {
-                                this.discoveryError = 'Erro de rede ao conectar com o servidor.';
-                            })
-                            .finally(() => {
-                                this.loadingModels = false;
-                            });
-                        }
-                    }
-                }
-            </script>
         </div>
+    </div>
+
 
         <!-- 3. LISTAGEM E SAÚDE -->
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100"
@@ -697,7 +617,89 @@
             </div>
         </template>
 
+
+        <!-- Model Selection Modal (Premium) -->
+        <div x-show="showModelModal" class="fixed inset-0 z-[150] flex items-center justify-center p-4" x-cloak>
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showModelModal = false"></div>
+            <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden border border-gray-100" 
+                 x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white shrink-0">
+                    <h3 class="font-bold flex items-center gap-2">
+                        <span>🤖</span> Modelos Disponíveis no Provedor
+                    </h3>
+                    <button @click="showModelModal = false">✕</button>
+                </div>
+                <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
+                    <div class="grid grid-cols-1 gap-2">
+                        <template x-for="model in models" :key="model.id">
+                            <div @click="selectedModel = model.id; showModelModal = false" 
+                                 class="p-4 rounded-xl border border-gray-100 hover:bg-indigo-50 hover:border-indigo-200 cursor-pointer transition-all flex justify-between items-center group">
+                                <div class="flex flex-col">
+                                    <span class="font-bold text-gray-800" x-text="model.name"></span>
+                                    <span class="text-[10px] font-mono text-gray-400" x-text="model.id"></span>
+                                </div>
+                                <span class="opacity-0 group-hover:opacity-100 text-indigo-500">Selecionar →</span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-6 py-4 text-center text-[10px] text-gray-400 italic shrink-0">
+                    O acesso aos modelos depende da sua quota na conta do provedor.
+                </div>
+            </div>
+        </div>
+
     </div>
 
+    <!-- Scripts da Página -->
+    <script>
+        function routingData() {
+            return {
+                collapsed: localStorage.getItem('sre_routing_collapsed') === 'true',
+                loadingModels: false,
+                models: [],
+                showModelModal: false,
+                selectedVaultId: '',
+                selectedModel: '',
+                discoveryError: '',
 
+                toggleCollapse() {
+                    this.collapsed = !this.collapsed;
+                    localStorage.setItem('sre_routing_collapsed', this.collapsed);
+                },
+
+                discoverModels() {
+                    if (!this.selectedVaultId) return;
+                    this.loadingModels = true;
+                    this.discoveryError = '';
+                    this.models = [];
+                    
+                    fetch("{{ route('admin.api-keys.discover') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                        },
+                        body: JSON.stringify({ vault_id: this.selectedVaultId })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.is_valid && data.models) {
+                            this.models = data.models;
+                            this.showModelModal = true;
+                        } else {
+                            this.discoveryError = data.error || 'Falha na descoberta de modelos.';
+                        }
+                    })
+                    .catch(err => {
+                        this.discoveryError = 'Erro de rede ao conectar com o servidor.';
+                    })
+                    .finally(() => {
+                        this.loadingModels = false;
+                    });
+                }
+            }
+        }
+    </script>
 </x-layouts.admin>
