@@ -117,6 +117,14 @@ class GoogleAuthController extends Controller
         // Log in the user
         Auth::login($user);
 
+        // CRO: Redirecionamento de Conversão
+        // Se o usuário for novo ou estiver no plano gratuito, enviamos para o Welcome/Onboarding
+        // Usamos a sessão para garantir que ele veja isso apenas uma vez por login.
+        if ((!$user->plan || $user->plan->slug === 'free') && !session('onboarding_shown')) {
+            session(['onboarding_shown' => true]);
+            return redirect()->route('onboarding.welcome');
+        }
+
         return redirect()->intended(route('dashboard'));
     }
 }
