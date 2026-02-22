@@ -1086,26 +1086,36 @@ function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a', 
                 this.chatMessages.push(assistantMsg);
                 this.chatTyping = false;
 
+                let buffer = '';
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
 
-                    const chunk = decoder.decode(value, { stream: true });
-                    const lines = chunk.split('\n');
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); // Keep the last partial line in the buffer
 
                     for (const line of lines) {
-                        if (line.startsWith('data: ')) {
+                        const trimmedLine = line.trim();
+                        if (trimmedLine.startsWith('data: ')) {
                             try {
-                                const data = JSON.parse(line.substring(6));
+                                const data = JSON.parse(trimmedLine.substring(6));
                                 if (data.text) {
                                     assistantMsg.message += data.text;
                                     this.$nextTick(() => this.scrollToBottom());
                                 }
                             } catch (e) {
-                                console.error('Error parsing SSE:', e, line);
+                                console.error('Error parsing SSE line:', trimmedLine, e);
                             }
                         }
                     }
+                }
+                // Process any remaining data in buffer
+                if (buffer.trim().startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(buffer.trim().substring(6));
+                        if (data.text) assistantMsg.message += data.text;
+                    } catch (e) {}
                 }
             } catch (e) {
                 console.error('Streaming error:', e);
