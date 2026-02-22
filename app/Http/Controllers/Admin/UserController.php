@@ -97,13 +97,14 @@ class UserController extends Controller
             'max_simulations_override'   => 'nullable|integer|min:0',
             // Essay quota override (null = use plan default, 0 = unlimited)
             'max_essays_override'        => 'nullable|integer|min:0',
+            'role'                       => ['required', Rule::in(['user', 'admin'])],
         ]);
 
         // Snapshot before update for audit log
         $original = $user->getOriginal();
 
         // Build update payload with only fields that were submitted
-        $data = $request->only('name', 'email', 'phone');
+        $data = $request->only('name', 'email', 'phone', 'role');
 
         // AI quota fields
         if ($request->has('ai_questions_count')) {
@@ -149,6 +150,8 @@ class UserController extends Controller
             $changes[] = "Limite Simulados Custom: " . ($original['max_simulations_override'] ?? 'padrão do plano') . " -> " . ($user->max_simulations_override ?? 'padrão do plano');
         if ($original['max_essays_override'] != $user->max_essays_override)
             $changes[] = "Limite Redações Custom: " . ($original['max_essays_override'] ?? 'padrão do plano') . " -> " . ($user->max_essays_override ?? 'padrão do plano');
+        if ($original['role'] !== $user->role)
+            $changes[] = "Cargo: {$original['role']} -> {$user->role}";
 
         if (!empty($changes)) {
             UserLog::create([
