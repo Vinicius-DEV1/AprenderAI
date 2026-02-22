@@ -223,11 +223,11 @@ Route::middleware(['auth'])->group(function () {
                     ->name('review.show');
 
                 // Salva um recorte de imagem como alternativa (coordenadas do Cropper.js → GD → storage)
-                Route::post('/review/{question}/crop', [\App\Http\Controllers\Admin\QuestionImportController::class, 'crop'])
+                Route::post('/review/{image}/crop', [\App\Http\Controllers\Admin\QuestionImportController::class, 'crop'])
                     ->name('review.crop');
 
                 // Remove a imagem principal de uma questão
-                Route::delete('/review/{question}/image', [\App\Http\Controllers\Admin\QuestionImportController::class, 'deleteImage'])
+                Route::delete('/review/{image}/image', [\App\Http\Controllers\Admin\QuestionImportController::class, 'deleteImage'])
                     ->name('review.delete-image');
 
                 // Aprova a questão (pending → approved, registra no log de auditoria)
