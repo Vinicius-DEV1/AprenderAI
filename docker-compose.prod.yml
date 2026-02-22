@@ -43,6 +43,9 @@ services:
 
   # PHP Worker
   worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
     image: aprovado-ai-app
     restart: always
     working_dir: /var/www
@@ -58,6 +61,9 @@ services:
 
   # PHP Scheduler
   scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
     image: aprovado-ai-app
     restart: always
     working_dir: /var/www
