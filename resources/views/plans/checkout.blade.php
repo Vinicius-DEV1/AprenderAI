@@ -1,4 +1,16 @@
 <x-layouts.app>
+    {{-- ======================================================= --}}
+    {{-- SANDBOX BANNER: exibido quando o sistema está em testes  --}}
+    {{-- (injetado via session pela middleware CheckPaymentActive) --}}
+    {{-- ======================================================= --}}
+    @if (session('sandbox_mode'))
+        <div class="bg-amber-400 text-amber-900 text-center text-sm font-semibold py-2 px-4">
+            🧪 <strong>Ambiente de Testes (Sandbox)</strong> — Nenhuma cobrança real será realizada.
+            Use os <a href="https://asaasv3.docs.apiary.io/#introduction/sandbox" target="_blank"
+                class="underline hover:text-amber-700">dados de teste do Asaas</a>.
+        </div>
+    @endif
+
     <div class="py-12">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
