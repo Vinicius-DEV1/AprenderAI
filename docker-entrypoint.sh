@@ -8,20 +8,21 @@ echo "Aguardando inicialização do ambiente..."
 chown -R 1337:www-data storage bootstrap/cache
 chmod -R 775 storage bootstrap/cache
 
-# Roda as migrações se o arquivo .env existir
-if [ -f .env ]; then
-    echo "Rodando migrações..."
-    # --force é obrigatório em produção
-    php artisan migrate --force
-    
-    echo "Alimentando banco de dados (Seeds)..."
-    # Popula planos e configurações iniciais necessárias
-    php artisan db:seed --force
-    
-    echo "Otimizando aplicação..."
-    # Cache de configurações e rotas para máxima performance
-    php artisan optimize
+# Otimização opcional
+if [ "$1" = "php-fpm" ] || [ -z "$1" ]; then
+    if [ -f .env ]; then
+        echo "Rodando migrações..."
+        php artisan migrate --force
+        
+        echo "Alimentando banco de dados (Seeds)..."
+        php artisan db:seed --force
+        
+        echo "Otimizando aplicação..."
+        php artisan optimize
+    fi
+    echo "Iniciando PHP-FPM..."
+    exec php-fpm
+else
+    echo "Executando comando customizado: $@"
+    exec "$@"
 fi
-
-echo "Iniciando PHP-FPM..."
-exec php-fpm
