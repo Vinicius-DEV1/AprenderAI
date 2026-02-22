@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Log;
  */
 class AsaasService
 {
-    protected string $apiKey;
+    protected ?string $apiKey;
     protected string $baseUrl;
 
     public function __construct()
