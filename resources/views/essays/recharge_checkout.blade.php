@@ -77,14 +77,15 @@
                                         class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                                 </div>
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">CPF do
-                                    Titular</label>
-                                <input type="text" name="card_cpf"
-                                    class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                            </div>
+                            <!-- (CPF field moved down) -->
                         </div>
-
+                        <!-- Shared Fields -->
+                        <div class="mb-6 border-t dark:border-slate-700 pt-4">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">CPF / CNPJ</label>
+                            <input type="text" name="cpf" required placeholder="000.000.000-00"
+                                class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                            <p class="mt-1 text-xs text-gray-500 dark:text-slate-500">Obrigatório para processamento via Asaas.</p>
+                        </div>
                         <div class="flex items-center justify-end">
                             <a href="{{ route('essays.index') }}"
                                 class="text-sm text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200 mr-4">Cancelar</a>

@@ -73,7 +73,7 @@ class SubscriptionController extends Controller
             'card_expiry_month'=> 'required_if:payment_method,credit_card',
             'card_expiry_year' => 'required_if:payment_method,credit_card',
             'card_ccv'         => 'required_if:payment_method,credit_card',
-            'card_cpf'         => 'required_if:payment_method,credit_card',
+            'cpf'              => 'required|string',
             'coupon_code'      => 'nullable|string|exists:coupons,code',
         ]);
 
@@ -99,18 +99,18 @@ class SubscriptionController extends Controller
                 }
             }
 
-            // ---- Dados do Cartão ------------------------------------------------
+            // ---- Dados do Cartão / Titular -------------------------------------
             // ⚠️ PCI: Estes dados são passados ao gateway mas NUNCA logados/salvos aqui
-            $cardData = [];
+            $cardData = ['cpf' => $request->cpf]; // CPF is always required for Asaas customers
+            
             if ($request->payment_method === 'credit_card') {
-                $cardData = [
+                $cardData = array_merge($cardData, [
                     'holder_name'  => $request->card_name,
                     'number'       => $request->card_number,
                     'expiry_month' => $request->card_expiry_month,
                     'expiry_year'  => $request->card_expiry_year,
                     'ccv'          => $request->card_ccv,
-                    'cpf'          => $request->card_cpf,
-                ];
+                ]);
             }
 
             // ---- Criar Assinatura no Asaas --------------------------------------

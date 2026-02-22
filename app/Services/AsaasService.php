@@ -48,10 +48,11 @@ class AsaasService
      *  3. Se não encontrar, cria novo cliente e salva o ID
      *
      * @param User $user Usuário do sistema
+     * @param string|null $cpf CPF ou CNPJ do cliente (opcional)
      * @return string ID do cliente no Asaas (cus_...)
      * @throws \Exception Se houver erro na criação
      */
-    public function getOrCreateCustomer(User $user): string
+    public function getOrCreateCustomer(User $user, ?string $cpf = null): string
     {
         // ---- STEP 1: Checar ID local (evita duplicidade) --------------------
         if (!empty($user->asaas_customer_id)) {
@@ -76,12 +77,18 @@ class AsaasService
         }
 
         // ---- STEP 3: Criar novo cliente -------------------------------------
+        $payload = [
+            'name'              => $user->name,
+            'email'             => $user->email,
+            'externalReference' => (string) $user->id,
+        ];
+
+        if ($cpf) {
+            $payload['cpfCnpj'] = $cpf;
+        }
+
         $response = Http::withHeader('access_token', $this->apiKey)
-            ->post("{$this->baseUrl}/customers", [
-                'name'              => $user->name,
-                'email'             => $user->email,
-                'externalReference' => (string) $user->id,
-            ]);
+            ->post("{$this->baseUrl}/customers", $payload);
 
         if ($response->failed()) {
             // ⚠️ PCI: Logar apenas o body da resposta da API, nunca dados do cartão
@@ -114,7 +121,7 @@ class AsaasService
      */
     public function createSubscription(User $user, $plan, string $paymentMethod, array $cardData = [], ?array $discount = null): array
     {
-        $customerId = $this->getOrCreateCustomer($user);
+        $customerId = $this->getOrCreateCustomer($user, $cardData['cpf'] ?? null);
 
         $data = [
             'customer'    => $customerId,
@@ -184,7 +191,7 @@ class AsaasService
      */
     public function createOneTimePayment(User $user, float $value, string $description, string $paymentMethod, array $cardData = []): array
     {
-        $customerId = $this->getOrCreateCustomer($user);
+        $customerId = $this->getOrCreateCustomer($user, $cardData['cpf'] ?? null);
 
         $data = [
             'customer'    => $customerId,
