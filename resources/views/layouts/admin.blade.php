@@ -83,7 +83,7 @@
 
                         {{-- Link para o Módulo de Importação de Questões --}}
                         <a href="{{ route('admin.import.index') }}"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all {{ request()->routeIs('admin.import.*') ? 'bg-yellow-50 text-yellow-700' : 'text-gray-600 hover:bg-gray-100' }}">
+                            class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all {{ request()->routeIs('admin.import.*') ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-100' }}">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                             </svg>
@@ -191,16 +191,34 @@
                     </header>
                 @endisset
 
-                <!-- Success/Error Messages -->
-                @if (session('success'))
-                    <div class="mb-6 p-4 bg-green-50 border-l-4 border-green-500 rounded-lg">
-                        <p class="text-green-700 font-medium">{{ session('success') }}</p>
-                    </div>
-                @endif
+                <!-- Success/Error Messages (Toast) -->
+                @if (session('success') || session('error'))
+                    <div x-data="{ show: true }" 
+                         x-show="show" 
+                         x-init="setTimeout(() => show = false, 5000)"
+                         x-transition.duration.500ms
+                         class="fixed bottom-4 right-4 z-50 flex flex-col gap-3 pointer-events-none">
+                        @if (session('success'))
+                        <div class="pointer-events-auto flex items-start gap-3 min-w-[300px] p-4 bg-white border-l-4 border-green-500 rounded-lg shadow-xl shrink-0">
+                            <div class="flex-1">
+                                <p class="text-gray-800 text-sm font-medium">{{ session('success') }}</p>
+                            </div>
+                            <button @click="show = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+                        @endif
 
-                @if (session('error'))
-                    <div class="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
-                        <p class="text-red-700 font-medium">{{ session('error') }}</p>
+                        @if (session('error'))
+                        <div class="pointer-events-auto flex items-start gap-3 min-w-[300px] p-4 bg-white border-l-4 border-red-500 rounded-lg shadow-xl shrink-0">
+                            <div class="flex-1">
+                                <p class="text-gray-800 text-sm font-medium">{{ session('error') }}</p>
+                            </div>
+                            <button @click="show = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+                        @endif
                     </div>
                 @endif
 
