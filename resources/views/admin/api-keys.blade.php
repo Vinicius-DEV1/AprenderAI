@@ -2,18 +2,22 @@
     @push('head')
     <style>
         .custom-scrollbar::-webkit-scrollbar {
-            width: 5px;
+            width: 8px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
             background: rgba(0, 0, 0, 0.05);
             border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #6366f1; /* indigo-500 */
+            background: #cbd5e1; /* slate-300 */
             border-radius: 10px;
+            border: 2px solid transparent;
+            background-clip: content-box;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #4f46e5; /* indigo-600 */
+            background: #94a3b8; /* slate-400 */
+            border: 2px solid transparent;
+            background-clip: content-box;
         }
     </style>
     @endpush
@@ -250,15 +254,15 @@
                 <!-- Model Selection Modal (Premium) -->
                 <div x-show="showModelModal" class="fixed inset-0 z-[150] flex items-center justify-center p-4" x-cloak>
                     <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showModelModal = false"></div>
-                    <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-gray-100" 
+                    <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden border border-gray-100" 
                          x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
-                        <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white">
+                        <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white shrink-0">
                             <h3 class="font-bold flex items-center gap-2">
                                 <span>🤖</span> Modelos Disponíveis no Provedor
                             </h3>
                             <button @click="showModelModal = false">✕</button>
                         </div>
-                        <div class="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                        <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
                             <div class="grid grid-cols-1 gap-2">
                                 <template x-for="model in models" :key="model.id">
                                     <div @click="selectedModel = model.id; showModelModal = false" 
@@ -272,7 +276,7 @@
                                 </template>
                             </div>
                         </div>
-                        <div class="bg-gray-50 px-6 py-4 text-center text-[10px] text-gray-400 italic">
+                        <div class="bg-gray-50 px-6 py-4 text-center text-[10px] text-gray-400 italic shrink-0">
                             O acesso aos modelos depende da sua quota na conta do provedor.
                         </div>
                     </div>
