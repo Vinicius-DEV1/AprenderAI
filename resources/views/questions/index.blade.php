@@ -1096,6 +1096,39 @@ function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a', 
                 this.chatTyping = false;
 
                 let buffer = '';
+                // SRE Refinement: Smart Typing & Latency
+                this.$dispatch('ai-loading-start', { status: 'Xavier está escrevendo...' });
+                let isFirstByte = true;
+                let textQueue = '';
+                let isWriting = false;
+
+                const processQueue = () => {
+                    if (textQueue.length > 0 && !isWriting) {
+                        isWriting = true;
+                        
+                        // If chunk is small, append immediately
+                        // If large, interpolate (type out)
+                        if (textQueue.length < 5) {
+                            this.chatMessages[msgIndex].message += textQueue;
+                            textQueue = '';
+                            this.$nextTick(() => this.scrollToBottom());
+                            isWriting = false;
+                        } else {
+                            const char = textQueue.charAt(0);
+                            textQueue = textQueue.substring(1);
+                            this.chatMessages[msgIndex].message += char;
+                            this.$nextTick(() => this.scrollToBottom());
+                            
+                            // Adjust typing speed based on queue pressure
+                            const delay = textQueue.length > 50 ? 5 : 20;
+                            setTimeout(() => {
+                                isWriting = false;
+                                processQueue();
+                            }, delay);
+                        }
+                    }
+                };
+
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
@@ -1110,8 +1143,13 @@ function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a', 
                             try {
                                 const data = JSON.parse(trimmedLine.substring(6));
                                 if (data.text) {
-                                    this.chatMessages[msgIndex].message += data.text;
-                                    this.$nextTick(() => this.scrollToBottom());
+                                    if (isFirstByte) {
+                                        isFirstByte = false;
+                                        this.$dispatch('ai-loading-stop'); // Kill loading immediately on first byte
+                                    }
+                                    
+                                    textQueue += data.text;
+                                    processQueue();
                                 } else if (data.status === 'quota_exceeded') {
                                     this.chatMessages[msgIndex].role = 'system';
                                     this.chatMessages[msgIndex].message = data.message;
@@ -1132,7 +1170,8 @@ function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a', 
                     try {
                         const data = JSON.parse(buffer.trim().substring(6));
                         if (data.text) {
-                            this.chatMessages[msgIndex].message += data.text;
+                            textQueue += data.text;
+                            processQueue();
                         } else if (data.status === 'quota_exceeded') {
                             this.chatMessages[msgIndex].role = 'system';
                             this.chatMessages[msgIndex].message = data.message;

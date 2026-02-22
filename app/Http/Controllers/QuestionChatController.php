@@ -125,8 +125,9 @@ class QuestionChatController extends Controller
             ->toArray();
 
         return response()->stream(function () use ($question, $simulation, $request, $history, $user) {
-            // Clear all output buffers
-            while (ob_get_level() > 0) ob_end_clean();
+            // Aggressive flushing
+            if (function_exists('ob_implicit_flush')) ob_implicit_flush(true);
+            while (ob_get_level() > 0) ob_end_flush();
 
             $fullText = "";
             try {
@@ -284,8 +285,9 @@ class QuestionChatController extends Controller
         $userAnswerText = $userAnswer ? $userAnswer->selected_answer : 'Não respondida';
 
         return response()->stream(function () use ($question, $userAnswerText, $request, $history, $user) {
-            // Clear all output buffers
-            while (ob_get_level() > 0) ob_end_clean();
+            // Aggressive flushing
+            if (function_exists('ob_implicit_flush')) ob_implicit_flush(true);
+            while (ob_get_level() > 0) ob_end_flush();
 
             $fullText = "";
             try {

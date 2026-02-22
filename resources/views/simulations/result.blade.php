@@ -624,7 +624,36 @@
                         this.isTyping = false;
 
                         let buffer = '';
-                        while (true) {
+                        let isFirstByte = true;
+                    let textQueue = '';
+                    let isWriting = false;
+
+                    const processQueue = () => {
+                        if (textQueue.length > 0 && !isWriting) {
+                            isWriting = true;
+                            
+                            // Interpolated Rendering (SRE)
+                            if (textQueue.length < 5) {
+                                this.messages[msgIndex].message += textQueue;
+                                textQueue = '';
+                                this.$nextTick(() => this.scrollToBottom());
+                                isWriting = false;
+                            } else {
+                                const char = textQueue.charAt(0);
+                                textQueue = textQueue.substring(1);
+                                this.messages[msgIndex].message += char;
+                                this.$nextTick(() => this.scrollToBottom());
+                                
+                                const delay = textQueue.length > 50 ? 5 : 20;
+                                setTimeout(() => {
+                                    isWriting = false;
+                                    processQueue();
+                                }, delay);
+                            }
+                        }
+                    };
+
+                    while (true) {
                             const { done, value } = await reader.read();
                             if (done) break;
 
@@ -638,8 +667,13 @@
                                     try {
                                         const data = JSON.parse(trimmedLine.substring(6));
                                         if (data.text) {
-                                            this.messages[msgIndex].message += data.text;
-                                            this.$nextTick(() => this.scrollToBottom());
+                                            if (isFirstByte) {
+                                                isFirstByte = false;
+                                                this.$dispatch('ai-loading-stop'); // Immediate kill on first byte
+                                            }
+                                            
+                                            textQueue += data.text;
+                                            processQueue();
                                         } else if (data.status === 'quota_exceeded') {
                                             this.messages[msgIndex].role = 'system';
                                             this.messages[msgIndex].message = data.message;
@@ -660,7 +694,8 @@
                             try {
                                 const data = JSON.parse(buffer.trim().substring(6));
                                 if (data.text) {
-                                    this.messages[msgIndex].message += data.text;
+                                    textQueue += data.text;
+                                    processQueue();
                                 } else if (data.status === 'quota_exceeded') {
                                     this.messages[msgIndex].role = 'system';
                                     this.messages[msgIndex].message = data.message;
