@@ -1116,6 +1116,8 @@ function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a', 
                                     this.chatMessages[msgIndex].role = 'system';
                                     this.chatMessages[msgIndex].message = data.message;
                                     this.chatMessages[msgIndex].upgrade_url = data.upgrade_url || '{{ route('plans.index') }}';
+                                } else if (data.status === 'provider_error') {
+                                    this.chatMessages[msgIndex].message = data.message;
                                 } else if (data.error) {
                                     this.chatMessages[msgIndex].message = data.error;
                                 }
@@ -1133,6 +1135,8 @@ function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a', 
                             this.chatMessages[msgIndex].message += data.text;
                         } else if (data.status === 'quota_exceeded') {
                             this.chatMessages[msgIndex].role = 'system';
+                            this.chatMessages[msgIndex].message = data.message;
+                        } else if (data.status === 'provider_error') {
                             this.chatMessages[msgIndex].message = data.message;
                         } else if (data.error) {
                             this.chatMessages[msgIndex].message = data.error;

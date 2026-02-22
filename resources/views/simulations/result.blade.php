@@ -644,6 +644,8 @@
                                             this.messages[msgIndex].role = 'system';
                                             this.messages[msgIndex].message = data.message;
                                             this.messages[msgIndex].upgrade_url = data.upgrade_url || '{{ route('plans.index') }}';
+                                        } else if (data.status === 'provider_error') {
+                                            this.messages[msgIndex].message = data.message;
                                         } else if (data.error) {
                                             this.messages[msgIndex].message = data.error;
                                         }
@@ -661,6 +663,8 @@
                                     this.messages[msgIndex].message += data.text;
                                 } else if (data.status === 'quota_exceeded') {
                                     this.messages[msgIndex].role = 'system';
+                                    this.messages[msgIndex].message = data.message;
+                                } else if (data.status === 'provider_error') {
                                     this.messages[msgIndex].message = data.message;
                                 } else if (data.error) {
                                     this.messages[msgIndex].message = data.error;
