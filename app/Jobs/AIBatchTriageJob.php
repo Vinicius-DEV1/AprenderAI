@@ -139,4 +139,23 @@ class AIBatchTriageJob implements ShouldQueue
             $lock->release();
         }
     }
+
+    /**
+     * The job failed to process.
+     * Captured when the worker throws a Fatal Exception outside the try-catch block (e.g Timeout, Memory Limit).
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error("[AIBATCH] Fatal Worker Error: " . $exception->getMessage(), [
+            'batch_id' => $this->batchId,
+            'trace' => $exception->getTraceAsString()
+        ]);
+
+        // Updates cache and DB to inform frontend that the remaining items in this chunk failed mortally.
+        $this->updateProgress(
+            0,
+            count($this->questionIds),
+            "FATAL WORKER ERROR: " . $exception->getMessage()
+        );
+    }
 }
