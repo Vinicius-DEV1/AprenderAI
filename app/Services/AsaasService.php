@@ -10,6 +10,10 @@ use Illuminate\Support\Facades\Log;
 /**
  * Serviço responsável pela integração com a API do Asaas.
  * Gerencia Clientes, Assinaturas e Cobranças.
+ *
+ * PCI COMPLIANCE:
+ * - Dados do cartão (number, ccv, expiryMonth, expiryYear) NUNCA são logados.
+ * - Apenas respostas da API (sem campos sensíveis) são registradas em log.
  */
 class AsaasService
 {
@@ -27,15 +31,34 @@ class AsaasService
     }
 
     /**
-     * Busca um cliente existente no Asaas pelo email ou cria um novo.
-     * 
+     * Retorna se o serviço está em modo Sandbox.
+     */
+    public function isSandbox(): bool
+    {
+        return Configuration::get('asaas_sandbox', false);
+    }
+
+    /**
+     * Busca ou cria um cliente no Asaas, persistindo o ID no usuário local
+     * para evitar duplicidade em chamadas subsequentes.
+     *
+     * Fluxo de prioridade:
+     *  1. Se o usuário já tem asaas_customer_id → retorna diretamente (sem API call)
+     *  2. Se não, busca por email no Asaas
+     *  3. Se não encontrar, cria novo cliente e salva o ID
+     *
      * @param User $user Usuário do sistema
      * @return string ID do cliente no Asaas (cus_...)
      * @throws \Exception Se houver erro na criação
      */
     public function getOrCreateCustomer(User $user): string
     {
-        // 1. Tenta buscar cliente existente pelo email
+        // ---- STEP 1: Checar ID local (evita duplicidade) --------------------
+        if (!empty($user->asaas_customer_id)) {
+            return $user->asaas_customer_id;
+        }
+
+        // ---- STEP 2: Buscar cliente existente pelo email no Asaas -----------
         $response = Http::withHeader('access_token', $this->apiKey)
             ->get("{$this->baseUrl}/customers", [
                 'email' => $user->email,
@@ -45,34 +68,46 @@ class AsaasService
         if ($response->successful()) {
             $data = $response->json();
             if (!empty($data['data'])) {
-                return $data['data'][0]['id'];
+                $customerId = $data['data'][0]['id'];
+                // Persiste para não precisar buscar novamente
+                $user->update(['asaas_customer_id' => $customerId]);
+                return $customerId;
             }
         }
 
-        // 2. Cria novo cliente se não existir
+        // ---- STEP 3: Criar novo cliente -------------------------------------
         $response = Http::withHeader('access_token', $this->apiKey)
             ->post("{$this->baseUrl}/customers", [
-                'name' => $user->name,
-                'email' => $user->email,
-                'cpfCnpj' => null, // Assumindo que não temos CPF obrigatório neste ponto
-                'externalReference' => $user->id,
+                'name'              => $user->name,
+                'email'             => $user->email,
+                'externalReference' => (string) $user->id,
             ]);
 
         if ($response->failed()) {
-            Log::error('Erro ao Criar Cliente Asaas', ['response' => $response->body()]);
+            // ⚠️ PCI: Logar apenas o body da resposta da API, nunca dados do cartão
+            Log::error('[Asaas] Erro ao criar cliente', [
+                'user_id'  => $user->id,
+                'email'    => $user->email,
+                'response' => $response->body(),
+            ]);
             throw new \Exception('Erro ao criar cliente no gateway de pagamento.');
         }
 
-        return $response->json()['id'];
+        $customerId = $response->json()['id'];
+
+        // Persiste o ID para evitar criações futuras duplicadas
+        $user->update(['asaas_customer_id' => $customerId]);
+
+        return $customerId;
     }
 
     /**
      * Cria uma nova assinatura no Asaas.
-     * 
+     *
      * @param User $user Usuário assinante
      * @param mixed $plan Plano escolhido
      * @param string $paymentMethod Método ('credit_card' ou 'pix')
-     * @param array $cardData Dados do cartão (opcional)
+     * @param array $cardData Dados do cartão (opcional) — NUNCA logados
      * @param array|null $discount Dados do desconto (opcional)
      * @return array Dados da assinatura criada
      * @throws \Exception Se houver erro no processamento
@@ -82,39 +117,38 @@ class AsaasService
         $customerId = $this->getOrCreateCustomer($user);
 
         $data = [
-            'customer' => $customerId,
+            'customer'    => $customerId,
             'billingType' => $paymentMethod === 'credit_card' ? 'CREDIT_CARD' : 'PIX',
-            'value' => $plan->price,
-            'nextDueDate' => now()->format('Y-m-d'), // Cobrança imediata
-            'cycle' => $plan->interval === 'yearly' ? 'YEARLY' : 'MONTHLY',
+            'value'       => $plan->price,
+            'nextDueDate' => now()->format('Y-m-d'),
+            'cycle'       => $plan->interval === 'yearly' ? 'YEARLY' : 'MONTHLY',
             'description' => "Assinatura Plano {$plan->name}",
-            'externalReference' => $plan->id,
+            'externalReference' => (string) $plan->id,
         ];
 
-        // Aplica cupom de desconto se houver
         if ($discount) {
             $data['discount'] = [
                 'value' => $discount['value'],
-                'type' => $discount['type'] === 'percent' ? 'PERCENTAGE' : 'FIXED'
+                'type'  => $discount['type'] === 'percent' ? 'PERCENTAGE' : 'FIXED',
             ];
         }
 
-        // Adiciona dados do cartão se for o método escolhido
         if ($paymentMethod === 'credit_card') {
+            // ⚠️ PCI: Dados do cartão são enviados ao Asaas mas NUNCA persistidos/logados
             $data['creditCard'] = [
-                'holderName' => $cardData['holder_name'],
-                'number' => $cardData['number'],
+                'holderName'  => $cardData['holder_name'],
+                'number'      => $cardData['number'],
                 'expiryMonth' => $cardData['expiry_month'],
-                'expiryYear' => $cardData['expiry_year'],
-                'ccv' => $cardData['ccv']
+                'expiryYear'  => $cardData['expiry_year'],
+                'ccv'         => $cardData['ccv'],
             ];
             $data['creditCardHolderInfo'] = [
-                'name' => $user->name,
-                'email' => $user->email,
-                'cpfCnpj' => $cardData['cpf'],
-                'postalCode' => '00000000', // CEP genérico se não coletado
-                'addressNumber' => '0',
-                'phone' => '0000000000'
+                'name'          => $user->name,
+                'email'         => $user->email,
+                'cpfCnpj'       => $cardData['cpf'],
+                'postalCode'    => $cardData['postal_code'] ?? '00000000',
+                'addressNumber' => $cardData['address_number'] ?? '0',
+                'phone'         => $cardData['phone'] ?? '0000000000',
             ];
         }
 
@@ -122,8 +156,13 @@ class AsaasService
             ->post("{$this->baseUrl}/subscriptions", $data);
 
         if ($response->failed()) {
-            Log::error('Erro ao Criar Assinatura Asaas', ['response' => $response->body()]);
-            // Extrai mensagem de erro amigável
+            // ⚠️ PCI: Logar apenas o body de RESPOSTA da API (nunca o $data com cardData)
+            Log::error('[Asaas] Erro ao criar assinatura', [
+                'user_id'        => $user->id,
+                'plan_id'        => $plan->id,
+                'payment_method' => $paymentMethod,
+                'response'       => $response->body(),
+            ]);
             $errorMsg = $response->json()['errors'][0]['description'] ?? 'Erro no processamento do pagamento.';
             throw new \Exception($errorMsg);
         }
@@ -139,7 +178,7 @@ class AsaasService
      * @param float $value Valor da cobrança
      * @param string $description Descrição da cobrança
      * @param string $paymentMethod 'credit_card' ou 'pix'
-     * @param array $cardData Dados do cartão (obrigatório se credit_card)
+     * @param array $cardData Dados do cartão — NUNCA logados
      * @return array Dados do pagamento criado
      * @throws \Exception Se houver erro no processamento
      */
@@ -148,28 +187,29 @@ class AsaasService
         $customerId = $this->getOrCreateCustomer($user);
 
         $data = [
-            'customer' => $customerId,
+            'customer'    => $customerId,
             'billingType' => $paymentMethod === 'credit_card' ? 'CREDIT_CARD' : 'PIX',
-            'value' => $value,
-            'dueDate' => now()->format('Y-m-d'),
+            'value'       => $value,
+            'dueDate'     => now()->format('Y-m-d'),
             'description' => $description,
         ];
 
         if ($paymentMethod === 'credit_card') {
+            // ⚠️ PCI: Dados enviados ao Asaas mas NUNCA persistidos/logados
             $data['creditCard'] = [
-                'holderName' => $cardData['holder_name'],
-                'number' => $cardData['number'],
+                'holderName'  => $cardData['holder_name'],
+                'number'      => $cardData['number'],
                 'expiryMonth' => $cardData['expiry_month'],
-                'expiryYear' => $cardData['expiry_year'],
-                'ccv' => $cardData['ccv'],
+                'expiryYear'  => $cardData['expiry_year'],
+                'ccv'         => $cardData['ccv'],
             ];
             $data['creditCardHolderInfo'] = [
-                'name' => $user->name,
-                'email' => $user->email,
-                'cpfCnpj' => $cardData['cpf'],
-                'postalCode' => '00000000',
-                'addressNumber' => '0',
-                'phone' => '0000000000',
+                'name'          => $user->name,
+                'email'         => $user->email,
+                'cpfCnpj'       => $cardData['cpf'],
+                'postalCode'    => $cardData['postal_code'] ?? '00000000',
+                'addressNumber' => $cardData['address_number'] ?? '0',
+                'phone'         => $cardData['phone'] ?? '0000000000',
             ];
         }
 
@@ -177,7 +217,12 @@ class AsaasService
             ->post("{$this->baseUrl}/payments", $data);
 
         if ($response->failed()) {
-            Log::error('Erro ao criar pagamento avulso Asaas', ['response' => $response->body()]);
+            Log::error('[Asaas] Erro ao criar pagamento avulso', [
+                'user_id'        => $user->id,
+                'value'          => $value,
+                'payment_method' => $paymentMethod,
+                'response'       => $response->body(),
+            ]);
             $errorMsg = $response->json()['errors'][0]['description'] ?? 'Erro no processamento do pagamento.';
             throw new \Exception($errorMsg);
         }
@@ -188,7 +233,7 @@ class AsaasService
     /**
      * Busca a primeira cobrança pendente de uma assinatura.
      * Útil para obter o ID do pagamento gerado e consequentemente o Pix.
-     * 
+     *
      * @param string $subscriptionId ID da assinatura no Asaas
      * @return array|null Dados da cobrança ou null
      */
@@ -197,7 +242,7 @@ class AsaasService
         $response = Http::withHeader('access_token', $this->apiKey)
             ->get("{$this->baseUrl}/subscriptions/{$subscriptionId}/payments", [
                 'status' => 'PENDING',
-                'limit' => 1
+                'limit'  => 1,
             ]);
 
         if ($response->successful()) {
@@ -212,7 +257,7 @@ class AsaasService
 
     /**
      * Obtém o Payload e Imagem do QR Code Pix para um pagamento.
-     * 
+     *
      * @param string $paymentId ID da cobrança
      * @return array|null Dados do Pix (encodedImage, payload) ou null
      */
@@ -222,7 +267,10 @@ class AsaasService
             ->get("{$this->baseUrl}/payments/{$paymentId}/pixQrCode");
 
         if ($response->failed()) {
-            Log::error('Erro ao buscar QR Code Pix Asaas', ['id' => $paymentId, 'response' => $response->body()]);
+            Log::error('[Asaas] Erro ao buscar QR Code Pix', [
+                'payment_id' => $paymentId,
+                'response'   => $response->body(),
+            ]);
             return null;
         }
 
