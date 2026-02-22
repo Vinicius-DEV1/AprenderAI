@@ -7,7 +7,7 @@
             <a href="{{ route('admin.import.review.index') }}"
                class="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 text-sm font-medium flex items-center gap-2">
                 🔍 Painel de Revisão
-                @php $pendingCount = \App\Models\Question::where('review_status', 'pending')->count(); @endphp
+                @php $pendingCount = \App\Models\Question::where('review_status', 'review')->count(); @endphp
                 @if($pendingCount > 0)
                     <span class="bg-white text-yellow-600 text-xs font-bold px-2 py-0.5 rounded-full">{{ $pendingCount }}</span>
                 @endif
