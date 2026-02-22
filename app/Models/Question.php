@@ -272,4 +272,12 @@ class Question extends Model
             });
         });
     }
+
+    /**
+     * Get the images associated with the question.
+     */
+    public function images()
+    {
+        return $this->hasMany(QuestionImage::class);
+    }
 }
