@@ -26,8 +26,24 @@ class AIBatchTriageController extends Controller
         ]);
 
         // 1. Build the query to find pending questions based on current filters
-        $query = Question::incomplete();
+        // Filter Gate: Apenas busca questões baseadas ESPECIFICAMENTE no que foi pedido.
+        $query = Question::query();
 
+        // Trava de Seleção baseada no Tipo de Ação Solicitada:
+        if ($validated['type'] === 'difficulty') {
+            $query->missingField('difficulty_reasoning');
+        } elseif ($validated['type'] === 'explanation') {
+            $query->missingField('explanation');
+        } elseif ($validated['type'] === 'classification') {
+            $query->where(function($q) {
+                $q->whereDoesntHave('subjects')->orWhereDoesntHave('topics');
+            });
+        } else {
+            // 'complete' ou 'both': pega as incompletas globais (qualquer campo faltando)
+            $query->incomplete();
+        }
+
+        // Refinamento de Status (caso selecionado no Painel)
         if ($request->filled('triage_status')) {
             match ($request->triage_status) {
                 'missing_difficulty' => $query->missingField('difficulty_reasoning'),
@@ -76,7 +92,7 @@ class AIBatchTriageController extends Controller
         ], now()->addHours(2));
 
         // 3. Chunk and Dispatch Jobs
-        $questions->chunk(10)->each(function ($chunk) use ($batchId, $validated) {
+        $questions->chunk(5)->each(function ($chunk) use ($batchId, $validated) {
             AIBatchTriageJob::dispatch(
                 $batchId, 
                 $chunk->pluck('id')->toArray(), 
@@ -97,12 +113,20 @@ class AIBatchTriageController extends Controller
      */
     public function progress(string $batchId)
     {
+        // 1. DESBLOQUEIO DE SESSÃO: Libera a trava do arquivo de sessão do PHP.
+        // Isso impede que o "loading eterno" trave o sistema inteiro para o usuário
+        // enquanto ele aguarda a resposta lenta do AI e do Stream.
+        session_write_close();
+
         return response()->stream(function () use ($batchId) {
             $key = "batch_progress_{$batchId}";
             $startTime = time();
-            $maxDuration = 60 * 5; // 5 minutes max per SSE connection to avoid ghost processes
+            $maxDuration = 60 * 5; // 5 minutes max per SSE connection
+
+            $iteration = 0;
             
             while (true) {
+                $iteration++;
                 // Safety: check if connection is still active and duration is within limits
                 if (connection_aborted() || (time() - $startTime) > $maxDuration) {
                     break;
@@ -130,16 +154,19 @@ class AIBatchTriageController extends Controller
                     }
                 }
 
-                // Send keep-alive comment every 5 iterations if no data change (optional but helps some proxies)
-                echo "data: " . json_encode($data) . "\n\n";
-                ob_flush();
-                flush();
+                // Heartbeat do SSE: a cada 5 iterações (~10s), envia um ping silencioso
+                // Isso impede que proxies (Nginx/Cloudflare) matem a conexão aberta por Inactivity Timeout
+                if ($iteration % 5 === 0) {
+                    echo ": heartbeat\n\n";
+                    ob_flush();
+                    flush();
+                }
 
                 if ($data['status'] === 'completed' || $data['status'] === 'failed') {
                     break;
                 }
 
-                sleep(2); // Increased sleep a bit to reduce CPU/Cache pressure
+                sleep(2); // Sleep cycle
             }
         }, 200, [
             'Content-Type' => 'text/event-stream',
