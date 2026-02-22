@@ -56,7 +56,18 @@ class AsaasService
     {
         // ---- STEP 1: Checar ID local (evita duplicidade) --------------------
         if (!empty($user->asaas_customer_id)) {
-            return $user->asaas_customer_id;
+            $customerId = $user->asaas_customer_id;
+
+            // Se recebemos um CPF mas o usuário já existia, tentamos atualizar 
+            // no Asaas para garantir que ele tenha os dados necessários (como CPF para PIX).
+            if ($cpf) {
+                Http::withHeader('access_token', $this->apiKey)
+                    ->post("{$this->baseUrl}/customers/{$customerId}", [
+                        'cpfCnpj' => $cpf
+                    ]);
+            }
+
+            return $customerId;
         }
 
         // ---- STEP 2: Buscar cliente existente pelo email no Asaas -----------
