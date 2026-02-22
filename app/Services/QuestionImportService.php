@@ -284,9 +284,10 @@ class QuestionImportService
                     $subjectNames = array_map('trim', explode(',', $qData['materias']));
                     $subjectIds = [];
                     foreach ($subjectNames as $name) {
+                        $normalizedName = mb_strtoupper($name, 'UTF-8');
                         $subject = Subject::firstOrCreate(
-                            ['slug' => Str::slug($name)],
-                            ['name' => $name]
+                            ['name' => $normalizedName],
+                            ['slug' => Str::slug($normalizedName)]
                         );
                         $subjectIds[] = $subject->id;
                     }
@@ -298,9 +299,10 @@ class QuestionImportService
                     $topicNames = array_map('trim', explode(',', $qData['assuntos']));
                     $topicIds = [];
                     foreach ($topicNames as $name) {
+                        $normalizedName = mb_strtoupper($name, 'UTF-8');
                         $topic = \App\Models\Topic::firstOrCreate(
-                            ['slug' => Str::slug($name)],
-                            ['name' => $name]
+                            ['name' => $normalizedName],
+                            ['slug' => Str::slug($normalizedName)]
                         );
                         $topicIds[] = $topic->id;
                     }
