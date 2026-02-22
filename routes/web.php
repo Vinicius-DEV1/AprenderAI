@@ -142,6 +142,9 @@ Route::middleware(['auth'])->group(function () {
         }
     );
 
+    // Onboarding / Fluxo de Boas-vindas
+    Route::get('/bem-vindo', [\App\Http\Controllers\OnboardingController::class, 'welcome'])->name('onboarding.welcome');
+
     // Admin
     Route::middleware(['is.admin'])->prefix('admin')->name('admin.')->group(
         function () {
