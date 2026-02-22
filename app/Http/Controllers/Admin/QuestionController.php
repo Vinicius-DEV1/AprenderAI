@@ -127,22 +127,20 @@ class QuestionController extends Controller
     public function create()
     {
         $subjects = \App\Models\Subject::orderBy('name')->get();
-        return view('admin.questions.form', compact('subjects'));
+        $topics = \App\Models\Topic::orderBy('name')->get();
+        return view('admin.questions.form', compact('subjects', 'topics'));
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
             'subject'               => 'required|string',
+            'topic'                 => 'nullable|string',
             'type'                  => 'required|in:enem,concurso',
+            'format'                => 'required|in:multiple_choice,true_false',
             'statement'             => 'required|string',
-            'alternatives'          => 'required|array|min:5',
-            'alternatives.A'        => 'required|string',
-            'alternatives.B'        => 'required|string',
-            'alternatives.C'        => 'required|string',
-            'alternatives.D'        => 'required|string',
-            'alternatives.E'        => 'required|string',
-            'correct_answer'        => 'required|in:A,B,C,D,E',
+            'alternatives'          => 'required|array',
+            'correct_answer'        => 'required|string',
             'explanation'           => 'nullable|string',
             'source'                => 'required|in:manual,ai_generated',
             'year'                  => 'nullable|integer',
@@ -152,10 +150,11 @@ class QuestionController extends Controller
         ]);
 
         // Extrai campos que NÃO são colunas da tabela questions (foram migrados)
-        $subjectName   = $validated['subject'];      // → question_subject pivot
-        $alternativas  = $validated['alternatives']; // → tabela question_alternatives
-        $correctAnswer = $validated['correct_answer']; // → is_correct na question_alternatives
-        unset($validated['subject'], $validated['alternatives'], $validated['correct_answer']);
+        $subjectName   = $validated['subject'];      
+        $topicName     = $validated['topic'] ?? null;
+        $alternativas  = $validated['alternatives']; 
+        $correctAnswer = $validated['correct_answer']; 
+        unset($validated['subject'], $validated['topic'], $validated['alternatives'], $validated['correct_answer']);
 
         $question = Question::create($validated);
 
@@ -174,30 +173,36 @@ class QuestionController extends Controller
             $question->subjects()->sync([$subject->id]);
         }
 
+        // Vincula o tópico via pivot question_topic (N:N)
+        if ($topicName) {
+            $topic = \App\Models\Topic::where('name', 'like', $topicName)->first();
+            if ($topic) {
+                $question->topics()->sync([$topic->id]);
+            }
+        }
+
         return redirect()->route('admin.questions.index')
             ->with('success', 'Questão criada com sucesso!');
     }
 
     public function edit(Question $question)
     {
-        $question->load('alternatives', 'subjects');
+        $question->load('alternatives', 'subjects', 'topics');
         $subjects = \App\Models\Subject::orderBy('name')->get();
-        return view('admin.questions.form', compact('question', 'subjects'));
+        $topics = \App\Models\Topic::orderBy('name')->get();
+        return view('admin.questions.form', compact('question', 'subjects', 'topics'));
     }
 
     public function update(Request $request, Question $question)
     {
         $validated = $request->validate([
             'subject'               => 'required|string',
+            'topic'                 => 'nullable|string',
             'type'                  => 'required|in:enem,concurso',
+            'format'                => 'required|in:multiple_choice,true_false',
             'statement'             => 'required|string',
-            'alternatives'          => 'required|array|min:5',
-            'alternatives.A'        => 'required|string',
-            'alternatives.B'        => 'required|string',
-            'alternatives.C'        => 'required|string',
-            'alternatives.D'        => 'required|string',
-            'alternatives.E'        => 'required|string',
-            'correct_answer'        => 'required|in:A,B,C,D,E',
+            'alternatives'          => 'required|array',
+            'correct_answer'        => 'required|string',
             'explanation'           => 'nullable|string',
             'source'                => 'required|in:manual,ai_generated',
             'year'                  => 'nullable|integer',
@@ -208,11 +213,15 @@ class QuestionController extends Controller
 
         // Extrai campos que NÃO são colunas da tabela questions
         $subjectName   = $validated['subject'];
+        $topicName     = $validated['topic'] ?? null;
         $alternativas  = $validated['alternatives'];
         $correctAnswer = $validated['correct_answer'];
-        unset($validated['subject'], $validated['alternatives'], $validated['correct_answer']);
+        unset($validated['subject'], $validated['topic'], $validated['alternatives'], $validated['correct_answer']);
 
         $question->update($validated);
+
+        // Limpa alternativas que não fazem mais parte do formato (ex: mudar de MC para TF deleta A,B,D,E)
+        $question->alternatives()->whereNotIn('label', array_map('strtoupper', array_keys($alternativas)))->delete();
 
         // Atualiza as alternativas existentes ou cria novas sem excluir os metadados antigos (ex: image_path)
         foreach ($alternativas as $label => $content) {
@@ -232,6 +241,16 @@ class QuestionController extends Controller
         $subject = \App\Models\Subject::where('name', 'like', $subjectName)->first();
         if ($subject) {
             $question->subjects()->sync([$subject->id]);
+        }
+
+        // Atualiza o tópico via pivot (N:N)
+        if ($topicName) {
+            $topic = \App\Models\Topic::where('name', 'like', $topicName)->first();
+            if ($topic) {
+                $question->topics()->sync([$topic->id]);
+            }
+        } else {
+            $question->topics()->detach();
         }
 
         return redirect()->route('admin.questions.index')

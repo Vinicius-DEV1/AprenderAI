@@ -8,7 +8,10 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
+                <div class="p-6 text-gray-900" x-data="{ 
+                    format: '{{ old('format', $question->format ?? 'multiple_choice') }}',
+                    type: '{{ old('type', $question->type ?? 'enem') }}'
+                }">
                     <form method="POST" action="{{ isset($question) ? route('admin.questions.update', $question) : route('admin.questions.store') }}" class="space-y-6">
                         @csrf
                         @if(isset($question))
@@ -34,10 +37,18 @@
                             </div>
 
                             <div>
-                                <x-input-label for="type" value="Tipo" />
-                                <select id="type" name="type" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                <x-input-label for="type" value="Tipo de Prova" />
+                                <select id="type" name="type" x-model="type" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                                     <option value="enem" {{ old('type', $question->type ?? '') == 'enem' ? 'selected' : '' }}>ENEM</option>
                                     <option value="concurso" {{ old('type', $question->type ?? '') == 'concurso' ? 'selected' : '' }}>Concurso</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <x-input-label for="format" value="Formato da Questão" />
+                                <select id="format" name="format" x-model="format" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                    <option value="multiple_choice" {{ old('format', $question->format ?? '') == 'multiple_choice' ? 'selected' : '' }}>Múltipla Escolha (A, B, C, D, E)</option>
+                                    <option value="true_false" {{ old('format', $question->format ?? '') == 'true_false' ? 'selected' : '' }}>Certo ou Errado (Somente C/E)</option>
                                 </select>
                             </div>
 
@@ -52,6 +63,23 @@
                             <div>
                                 <x-input-label for="organization" value="Banca / Organização (Ex: ENEM, CESPE)" />
                                 <input type="text" id="organization" name="organization" value="{{ old('organization', $question->organization ?? '') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                            </div>
+
+                            <div x-show="type === 'concurso'">
+                                <x-input-label for="topic" value="Assunto / Tópico (Opcional)" />
+                                <select id="topic" name="topic" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                    <option value="">Selecione um tópico...</option>
+                                    @php
+                                        $currentTopicName = isset($question) && $question->topics->isNotEmpty() 
+                                                                ? strtolower($question->topics->first()->name) 
+                                                                : '';
+                                    @endphp
+                                    @foreach($topics ?? [] as $topic)
+                                        <option value="{{ strtolower($topic->name) }}" {{ old('topic', $currentTopicName) == strtolower($topic->name) ? 'selected' : '' }}>
+                                            {{ $topic->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
                             </div>
 
                             <div>
@@ -76,36 +104,54 @@
                             <textarea id="statement" name="statement" rows="5" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">{{ old('statement', $question->statement ?? '') }}</textarea>
                         </div>
 
-                        <!-- Alternativas -->
                         <div class="border-t pt-4">
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">Alternativas</h3>
+                            <h3 class="text-lg font-medium text-gray-900 mb-4" x-text="format === 'multiple_choice' ? 'Alternativas (Múltipla Escolha)' : 'Alternativas (Certo ou Errado)'"></h3>
                             <div class="space-y-4">
-                                @foreach(['A', 'B', 'C', 'D', 'E'] as $letter)
-                                    <div>
-                                        <x-input-label for="alt_{{ $letter }}" value="Alternativa {{ $letter }}" />
-                                        <div class="flex items-center gap-2">
-                                            <input type="radio" name="correct_answer" value="{{ $letter }}" {{ old('correct_answer', $question->correct_answer ?? '') == $letter ? 'checked' : '' }} class="text-indigo-600 focus:ring-indigo-500">
-                                            @php
-                                                $alternative = (isset($question) && $question->alternatives)
-                                                    ? $question->alternatives->firstWhere('label', $letter)
-                                                    : null;
-                                                $altContent = old('alternatives.' . $letter, $alternative->content ?? '');
-                                            @endphp
-                                            <div class="flex-1">
-                                                <input type="text" id="alt_{{ $letter }}" name="alternatives[{{ $letter }}]" 
-                                                       value="{{ $altContent }}" 
-                                                       class="block w-full border-gray-300 rounded-md shadow-sm" {{ empty($altContent) && ($alternative && $alternative->image_path) ? '' : 'required' }}>
-                                                
-                                                @if($alternative && $alternative->image_path)
-                                                    <div class="mt-2">
-                                                        <img src="{{ \Illuminate\Support\Facades\Storage::url($alternative->image_path) }}" class="max-h-32 rounded border shadow-sm">
-                                                        <span class="text-xs text-gray-500">Imagem da Alternativa</span>
+                                {{-- Múltipla Escolha --}}
+                                <template x-if="format === 'multiple_choice'">
+                                    <div class="space-y-4">
+                                        @foreach(['A', 'B', 'C', 'D', 'E'] as $letter)
+                                            <div>
+                                                <x-input-label for="alt_{{ $letter }}" value="Alternativa {{ $letter }}" />
+                                                <div class="flex items-center gap-2">
+                                                    <input type="radio" name="correct_answer" value="{{ $letter }}" {{ old('correct_answer', $question->correct_answer ?? '') == $letter ? 'checked' : '' }} class="text-indigo-600 focus:ring-indigo-500" :required="format === 'multiple_choice'">
+                                                    @php
+                                                        $alternative = (isset($question) && $question->alternatives)
+                                                            ? $question->alternatives->firstWhere('label', $letter)
+                                                            : null;
+                                                        $altContent = old('alternatives.' . $letter, $alternative->content ?? '');
+                                                    @endphp
+                                                    <div class="flex-1">
+                                                        <input type="text" id="alt_{{ $letter }}" name="alternatives[{{ $letter }}]" 
+                                                               value="{{ $altContent }}" 
+                                                               class="block w-full border-gray-300 rounded-md shadow-sm" :required="format === 'multiple_choice' && '{{ $letter }}' <= 'E'">
+                                                        
+                                                        @if($alternative && $alternative->image_path)
+                                                            <div class="mt-2 text-xs text-gray-500">📎 Possui imagem anexada</div>
+                                                        @endif
                                                     </div>
-                                                @endif
+                                                </div>
                                             </div>
-                                        </div>
+                                        @endforeach
                                     </div>
-                                @endforeach
+                                </template>
+
+                                {{-- Certo ou Errado --}}
+                                <template x-if="format === 'true_false'">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        @foreach(['C' => 'Certo', 'E' => 'Errado'] as $letter => $label)
+                                            <div class="p-4 border rounded-lg hover:bg-gray-50 flex items-center gap-4">
+                                                <input type="radio" name="correct_answer" value="{{ $letter }}" 
+                                                       {{ old('correct_answer', $question->correct_answer ?? '') == $letter ? 'checked' : '' }} 
+                                                       class="w-6 h-6 text-indigo-600 focus:ring-indigo-500" :required="format === 'true_false'">
+                                                <div class="flex-1">
+                                                    <span class="block font-bold text-gray-700">{{ $label }}</span>
+                                                    <input type="hidden" name="alternatives[{{ $letter }}]" value="{{ $label }}">
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </template>
                             </div>
                         </div>
 
