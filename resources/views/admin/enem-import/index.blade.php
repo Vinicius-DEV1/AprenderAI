@@ -11,23 +11,21 @@
 
     <!-- Seção do Progresso Ativo -->
     @if($activeBatch)
-        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mb-8" wire:poll.2000ms>
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mb-8">
             <h2 class="text-lg font-semibold text-gray-800 mb-4">Lote em Andamento</h2>
             <div class="w-full bg-gray-200 rounded-full h-4 mb-2">
-                <div class="bg-blue-600 h-4 rounded-full transition-all duration-500" style="width: {{ $activeBatch->progress() }}%"></div>
+                <div class="bg-blue-600 h-4 rounded-full transition-all duration-500" :style="`width: ${progress}%`"></div>
             </div>
             <div class="flex justify-between text-sm text-gray-600">
-                <span>Progresso: {{ $activeBatch->progress() }}%</span>
-                <span>Sub-tarefas (Anos): {{ $activeBatch->processedJobs() }} de {{ $activeBatch->totalJobs }}</span>
+                <span x-text="`Progresso: ${progress}%`">Progresso: {{ $activeBatch->progress() }}%</span>
+                <span x-text="`Sub-tarefas (Anos): ${processed} de ${total}`">Sub-tarefas (Anos): {{ $activeBatch->processedJobs() }} de {{ $activeBatch->totalJobs }}</span>
             </div>
             
-            @if($activeBatch->finished())
+            <template x-if="isFinished">
                 <div class="mt-4 p-3 bg-green-50 border-l-4 border-green-500 text-green-700">
-                    O processamento em lote foi concluído!
+                    O processamento em lote foi concluído! Recarregando sistema...
                 </div>
-                <!-- Limpar sessão via JS recarregando a página pra varrer o painel superior -->
-                <script>setTimeout(() => window.location.reload(), 3000);</script>
-            @endif
+            </template>
         </div>
     @endif
 
@@ -158,6 +156,46 @@
         Alpine.data('enemImport', () => ({
             showModal: false,
             currentErrors: [],
+            
+            // Polling Data
+            progress: {{ $activeBatch ? $activeBatch->progress() : 0 }},
+            processed: {{ $activeBatch ? $activeBatch->processedJobs() : 0 }},
+            total: {{ $activeBatch ? $activeBatch->totalJobs : 0 }},
+            isFinished: {{ $activeBatch && ($activeBatch->finished() || $activeBatch->cancelled()) ? 'true' : 'false' }},
+            batchId: '{{ $activeBatch ? $activeBatch->id : "" }}',
+            pollingInterval: null,
+
+            init() {
+                if (this.batchId && !this.isFinished) {
+                    this.startPolling();
+                } else if (this.isFinished && this.batchId) {
+                    // Já terminou, dá o último reset de limpeza.
+                    setTimeout(() => window.location.reload(), 2000);
+                }
+            },
+
+            startPolling() {
+                this.pollingInterval = setInterval(async () => {
+                    try {
+                        const response = await fetch(`/admin/enem-import/status?batch_id=${this.batchId}`);
+                        const data = await response.json();
+                        
+                        this.progress = data.progress;
+                        this.processed = data.processed;
+                        this.total = data.total;
+                        
+                        // Assim que bater 100% ou Cancelado
+                        if (data.finished) {
+                            this.isFinished = true;
+                            clearInterval(this.pollingInterval); // Quebra o Polling
+                            setTimeout(() => window.location.reload(), 2000); // Reload final pra limpar BD/Session
+                        }
+                    } catch (err) {
+                        console.error('Polling error:', err);
+                    }
+                }, 2000);
+            },
+
             openErrorModal(errors) {
                 this.currentErrors = errors;
                 this.showModal = true;
