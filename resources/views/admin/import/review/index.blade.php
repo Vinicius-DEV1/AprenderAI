@@ -21,51 +21,15 @@
         </div>
     </x-slot>
 
-    <div class="py-4">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+    <div class="py-4 bg-gray-50 min-h-screen">
+        <div class="max-w-[1600px] w-full mx-auto sm:px-6 lg:px-8 space-y-6">
 
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
 
                 {{-- ============================================================ --}}
                 {{-- COLUNA PRINCIPAL: Lista de questões pendentes --}}
                 {{-- ============================================================ --}}
-                <div class="xl:col-span-2 space-y-4">
-
-                    {{-- Filtros --}}
-                    <div class="bg-white rounded-lg shadow-sm p-4">
-                        <form method="GET" action="{{ route('admin.import.review.index') }}" class="flex flex-wrap gap-3 items-end">
-                            {{-- Filtro por Lote de Importação --}}
-                            <div class="flex-1 min-w-40">
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Lote</label>
-                                <select name="import_id" class="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-yellow-500 focus:ring-yellow-500">
-                                    <option value="">Todos os lotes</option>
-                                    @foreach($imports as $imp)
-                                        <option value="{{ $imp->id }}" {{ request('import_id') == $imp->id ? 'selected' : '' }}>
-                                            #{{ $imp->id }} — {{ $imp->batch_name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            {{-- Filtro por Banca --}}
-                            <div class="flex-1 min-w-40">
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Banca</label>
-                                <select name="organization" class="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-yellow-500 focus:ring-yellow-500">
-                                    <option value="">Todas as bancas</option>
-                                    @foreach($organizations as $org)
-                                        <option value="{{ $org }}" {{ request('organization') == $org ? 'selected' : '' }}>{{ $org }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="flex gap-2">
-                                <button type="submit" class="px-4 py-2 bg-yellow-500 text-white text-sm rounded-md hover:bg-yellow-600 font-medium">
-                                    Filtrar
-                                </button>
-                                <a href="{{ route('admin.import.review.index') }}" class="px-4 py-2 bg-gray-200 text-gray-700 text-sm rounded-md hover:bg-gray-300">
-                                    Limpar
-                                </a>
-                            </div>
-                        </form>
-                    </div>
+                <div class="xl:col-span-3 space-y-4 order-2 xl:order-1">
 
                     {{-- Lista de questões pendentes --}}
                     @forelse($pendingQuestions as $question)
@@ -166,16 +130,68 @@
                 </div>
 
                 {{-- ============================================================ --}}
-                {{-- COLUNA LATERAL: Histórico de revisões (Fase 3 — Auditoria) --}}
+                {{-- COLUNA LATERAL: Utilidades (Filtros e Auditoria) --}}
                 {{-- ============================================================ --}}
-                <div class="xl:col-span-1">
-                    <div class="bg-white rounded-lg shadow-sm overflow-hidden sticky top-4">
-                        <div class="px-5 py-4 border-b border-gray-100">
-                            <h3 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                📋 Últimas Revisões
+                <div class="xl:col-span-1 order-1 xl:order-2" x-data="{ open: false }">
+                    <div class="mb-4 xl:hidden">
+                        <button type="button" @click="open = !open" class="w-full flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors">
+                            <span class="flex items-center gap-2">
+                                <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                                Filtros e Histórico
+                            </span>
+                            <svg class="w-5 h-5 text-gray-400 transition-transform duration-200" :class="{'rotate-180': open}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                    </div>
+
+                    <div class="space-y-6 static xl:sticky top-4 hidden xl:block" :class="{ '!block': open }">
+                        {{-- Filtros --}}
+                        <div class="bg-white rounded-lg shadow-sm p-5">
+                            <h3 class="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                                Filtros
                             </h3>
+                            <form method="GET" action="{{ route('admin.import.review.index') }}" class="space-y-4">
+                                {{-- Filtro por Lote de Importação --}}
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Lote de Importação</label>
+                                    <select name="import_id" class="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-yellow-500 focus:ring-yellow-500">
+                                        <option value="">Todos</option>
+                                        @foreach($imports as $imp)
+                                            <option value="{{ $imp->id }}" {{ request('import_id') == $imp->id ? 'selected' : '' }}>
+                                                #{{ $imp->id }} — {{ Str::limit($imp->batch_name, 25) }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                {{-- Filtro por Banca --}}
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">Banca Organizadora</label>
+                                    <select name="organization" class="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-yellow-500 focus:ring-yellow-500">
+                                        <option value="">Todas</option>
+                                        @foreach($organizations as $org)
+                                            <option value="{{ $org }}" {{ request('organization') == $org ? 'selected' : '' }}>{{ $org }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="flex gap-2 pt-2">
+                                    <button type="submit" class="flex-1 px-4 py-2 bg-yellow-500 text-white text-sm rounded-md hover:bg-yellow-600 font-medium">
+                                        Aplicar
+                                    </button>
+                                    <a href="{{ route('admin.import.review.index') }}" class="flex-1 text-center px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200 font-medium">
+                                        Limpar
+                                    </a>
+                                </div>
+                            </form>
                         </div>
-                        <div class="divide-y divide-gray-50 max-h-[70vh] overflow-y-auto">
+
+                        {{-- Últimas Revisões --}}
+                        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                            <div class="px-5 py-4 border-b border-gray-100">
+                                <h3 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                    📋 Últimas Revisões
+                                </h3>
+                            </div>
+                            <div class="divide-y divide-gray-50 max-h-[50vh] overflow-y-auto">
                             @forelse($recentActions as $item)
                             <div class="p-4 hover:bg-gray-50">
                                 <div class="flex items-start justify-between gap-2">
