@@ -64,7 +64,7 @@ class QuestionImportController extends Controller
     public function reviewIndex(Request $request): \Illuminate\View\View
     {
         $pendingQuery = Question::with(['subjects', 'alternatives'])
-            ->where('review_status', 'pending');
+            ->where('review_status', 'review');
 
         // Filtro por Banca
         if ($request->filled('organization')) {
@@ -159,11 +159,11 @@ class QuestionImportController extends Controller
 
     public function revert(Question $question): \Illuminate\Http\RedirectResponse
     {
-        $question->update(['review_status' => 'pending']);
+        $question->update(['review_status' => 'review']);
         QuestionImportItem::where('question_id', $question->id)->update([
             'reverted_at' => now(),
             'approved_at' => null
         ]);
-        return redirect()->back()->with('success', 'Status revertido para pendente.');
+        return redirect()->back()->with('success', 'Status revertido para fila de revisão humana.');
     }
 }
