@@ -27,6 +27,16 @@ if [ -f .env ]; then
     echo "Banco de dados disponível!"
 fi
 
+# ----------------------------------------------------------------
+# Garantir link de storage antes de qualquer comando
+# Se public/storage for um diretório real (e não um link), removemos.
+# ----------------------------------------------------------------
+if [ -d "public/storage" ] && [ ! -L "public/storage" ]; then
+    echo "Limpando diretório real de storage para criar link simbólico..."
+    rm -rf public/storage
+fi
+php artisan storage:link --force 2>/dev/null || true
+
 if [ "$1" = "php-fpm" ] || [ -z "$1" ]; then
     if [ -f .env ]; then
         echo "Rodando migrações..."
@@ -34,7 +44,6 @@ if [ "$1" = "php-fpm" ] || [ -z "$1" ]; then
         
         echo "Otimizando aplicação..."
         php artisan optimize
-        php artisan storage:link --force 2>/dev/null || true
     fi
     echo "Iniciando PHP-FPM..."
     exec php-fpm
