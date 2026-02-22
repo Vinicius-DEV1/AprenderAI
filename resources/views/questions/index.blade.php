@@ -449,7 +449,10 @@
 </div>
 
 {{-- ===== FEED DE QUESTÕES (ZERO REFRESH) ===== --}}
-<div id="questions-container" style="position: relative; min-height: 400px;">
+<div id="questions-container" style="position: relative; min-height: 400px;"
+     x-data="{ globalLoading: false, statusText: 'Minerando na base de dados...' }"
+     @ai-loading-start.window="globalLoading = true; if($event.detail && $event.detail.statusText) statusText = $event.detail.statusText;"
+     @ai-loading-stop.window="globalLoading = false;">
     {{-- Overlay de Carregamento --}}
     <div x-show="globalLoading" x-transition.opacity 
          style="position: absolute; inset: 0; background: rgba(255,255,255,0.7); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
