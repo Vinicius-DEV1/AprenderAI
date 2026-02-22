@@ -1,7 +1,7 @@
 @forelse($questions as $question)
     <div class="qb-card" x-data="questionCard({{ $question->id }}, {{ json_encode(isset($answeredMap[$question->id])) }}, {{ json_encode($answeredMap[$question->id] ?? null) }}, '{{ $question->subjects->first()->name ?? 'Geral' }}')">
         <div class="qb-card-meta">
-            <span class="qb-card-id">#{{ $question->external_id ?? $question->id }}</span>
+            {{-- Removido external_id para limpeza visual --}}
             @if($question->source === 'ai_generated')
                 <span class="qb-badge qb-badge-ai">✨ INÉDITA</span>
             @endif
@@ -74,9 +74,16 @@
                     <h4>📖 Resolução Comentada</h4>
                     <div class="qb-explanation-text" x-html="renderMd(explanation)"></div>
                 </div>
-                <div class="qb-difficulty-box" x-show="difficultyReasoning">
-                    <h5>🎯 Por que essa dificuldade?</h5>
-                    <p x-text="difficultyReasoning"></p>
+                <div class="qb-difficulty-box" x-show="difficultyReasoning" 
+                     :style="`border-color: ${isCorrect ? '#bbf7d0' : '#fecaca'}; background: ${isCorrect ? '#f0fdf4' : '#fef2f2'}`">
+                    <h5 :class="{
+                        'text-green-700': '{{ $question->difficulty }}' === 'easy',
+                        'text-yellow-700': '{{ $question->difficulty }}' === 'medium',
+                        'text-red-700': '{{ $question->difficulty }}' === 'hard'
+                    }" style="font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">
+                        [{{ $dc['label'] ?? 'MÉDIA' }}] 🎯 Por que essa dificuldade?
+                    </h5>
+                    <p x-text="difficultyReasoning" style="color: #475569; font-size: 13px;"></p>
                 </div>
             </div>
         </template>
