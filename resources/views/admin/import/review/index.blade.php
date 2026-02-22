@@ -21,17 +21,8 @@
         </div>
     </x-slot>
 
-    <div class="py-8">
+    <div class="py-4">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-
-            {{-- ALERTAS DE SESSÃO --}}
-            @foreach(['success' => 'green', 'error' => 'red', 'info' => 'blue', 'warning' => 'yellow'] as $type => $color)
-                @if(session($type))
-                <div class="bg-{{ $color }}-50 border-l-4 border-{{ $color }}-500 p-4 rounded-lg">
-                    <p class="text-{{ $color }}-800 font-medium">{{ session($type) }}</p>
-                </div>
-                @endif
-            @endforeach
 
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
@@ -82,21 +73,27 @@
                         <div class="p-5">
                             <div class="flex items-start justify-between gap-4">
                                 <div class="flex-1 min-w-0">
-                                    {{-- Metadados da questão --}}
-                                    <div class="flex flex-wrap gap-2 mb-3">
-                                        <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded font-medium">#{{ $question->id }}</span>
-                                        @if($question->organization)
-                                            <span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded font-medium">{{ $question->organization }}</span>
-                                        @endif
-                                        @if($question->year)
-                                            <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">{{ $question->year }}</span>
-                                        @endif
+                                    {{-- Metadados da questão e Título do Cargo --}}
+                                    <div class="mb-3">
+                                        <div class="flex flex-wrap gap-2 mb-2">
+                                            <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded font-medium">#{{ $question->id }}</span>
+                                            @if($question->organization)
+                                                <span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded font-semibold">{{ $question->organization }}</span>
+                                            @endif
+                                            @if($question->year)
+                                                <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded font-medium">{{ $question->year }}</span>
+                                            @endif
+                                        </div>
                                         @if($question->role)
-                                            <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">{{ Str::limit($question->role, 30) }}</span>
+                                        <div class="mb-2">
+                                            <h4 class="text-gray-800 font-bold text-sm leading-tight">{{ $question->role }}</h4>
+                                        </div>
                                         @endif
-                                        @foreach($question->subjects->take(3) as $subject)
-                                            <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded font-medium">{{ $subject->name }}</span>
-                                        @endforeach
+                                        <div class="flex flex-wrap gap-1.5">
+                                            @foreach($question->subjects->take(3) as $subject)
+                                                <span class="px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 text-[11px] uppercase tracking-wider rounded">{{ $subject->name }}</span>
+                                            @endforeach
+                                        </div>
                                     </div>
 
                                     {{-- Enunciado --}}
@@ -124,18 +121,19 @@
                                 </div>
 
                                 {{-- Ações da questão --}}
-                                <div class="flex flex-col gap-2 flex-shrink-0">
+                                <div class="flex flex-col gap-2 flex-shrink-0 min-w-[140px]">
                                     <a href="{{ route('admin.import.review.show', $question) }}"
-                                       class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 font-medium text-center whitespace-nowrap">
-                                        ✏️ Inspecionar
+                                       class="flex items-center justify-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 text-sm rounded-md hover:bg-indigo-100 font-medium transition-colors w-full">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                        Inspecionar
                                     </a>
-                                    {{-- Aprovação rápida (sem necessidade de abrir a questão individual) --}}
-                                    <form method="POST" action="{{ route('admin.import.review.approve', $question) }}">
+                                    <form method="POST" action="{{ route('admin.import.review.approve', $question) }}" class="w-full">
                                         @csrf
                                         <button type="submit"
                                                 onclick="return confirm('Aprovar questão #{{ $question->id }} sem inspeção visual?')"
-                                                class="w-full px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 font-medium whitespace-nowrap">
-                                            ✅ Aprovar
+                                                class="flex items-center justify-center gap-2 w-full px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 font-medium transition-colors">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                            Aprovar
                                         </button>
                                     </form>
                                 </div>
@@ -218,8 +216,10 @@
                                 </div>
                             </div>
                             @empty
-                            <div class="p-6 text-center text-gray-400 text-sm">
-                                <p>Nenhuma revisão ainda.</p>
+                            <div class="p-8 text-center text-gray-400 flex flex-col items-center justify-center">
+                                <svg class="w-12 h-12 text-gray-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                                <p class="text-sm font-medium">Nenhuma revisão ainda.</p>
+                                <p class="text-xs text-gray-400 mt-1">As questões aprovadas aparecerão aqui.</p>
                             </div>
                             @endforelse
                         </div>
