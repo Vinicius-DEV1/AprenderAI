@@ -69,6 +69,15 @@
                         @error('phone') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                     </div>
                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cargo (Acesso)</label>
+                        <select name="role" class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="user" {{ old('role', $user->role) === 'user' ? 'selected' : '' }}>Usuário Comum</option>
+                            <option value="admin" {{ old('role', $user->role) === 'admin' ? 'selected' : '' }}>Administrador</option>
+                        </select>
+                        @error('role') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
+                        <p class="text-[10px] text-amber-600 mt-1 font-semibold">⚠️ Administradores têm acesso total ao painel admin.</p>
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
                             <span>Consumo de IA (O que já usou)</span>
                             <span class="text-xs text-gray-500">Limite Atual: {{ $user->max_ai_questions_override ?? $user->plan->max_ai_questions ?? 'N/A' }}</span>
