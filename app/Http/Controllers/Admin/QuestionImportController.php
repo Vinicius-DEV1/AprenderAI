@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Question;
+use App\Models\QuestionImage;
 use App\Models\QuestionImport;
 use App\Models\QuestionImportItem;
 use App\Services\QuestionImportService;
@@ -107,11 +108,12 @@ class QuestionImportController extends Controller
 
     public function reviewShow(Question $question): \Illuminate\View\View
     {
+        $question->load('images');
         $importItem = QuestionImportItem::where('question_id', $question->id)->first();
         return view('admin.import.review.show', compact('question', 'importItem'));
     }
 
-    public function crop(Request $request, Question $question): \Illuminate\Http\JsonResponse
+    public function crop(Request $request, QuestionImage $image): \Illuminate\Http\JsonResponse
     {
         $validated = $request->validate([
             'target' => ['required', 'string', 'regex:/^(statement|[A-Ea-e])$/'],
@@ -123,7 +125,7 @@ class QuestionImportController extends Controller
 
         try {
             $publicUrl = $this->importService->saveCrop(
-                $question,
+                $image,
                 $validated['target'],
                 $validated['x'],
                 $validated['y'],
@@ -136,10 +138,10 @@ class QuestionImportController extends Controller
         }
     }
 
-    public function deleteImage(Question $question): \Illuminate\Http\JsonResponse
+    public function deleteImage(QuestionImage $image): \Illuminate\Http\JsonResponse
     {
         try {
-            $this->importService->deleteImage($question);
+            $this->importService->deleteImage($image);
             return response()->json(['success' => true]);
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
