@@ -141,17 +141,17 @@ class QuestionService
     {
         return [
             // Lista de matérias — busca na tabela subjects (após merge, sem duplicatas)
-            'subjects' => \App\Models\Subject::orderBy('name')->pluck('name'),
+            'subjects' => \App\Models\Subject::orderBy('name')->select('id', 'name')->get(),
 
             // Lista de temas (ENEM) - Buscados da tabela Topics via relacionamento N:N
             'themes' => \App\Models\Topic::whereHas('questions', function($q) {
                 $q->where('type', 'enem');
-            })->orderBy('name')->pluck('name'),
+            })->orderBy('name')->select('id', 'name')->get(),
 
             // Lista de assuntos (Concurso) - Buscados da tabela Topics via relacionamento N:N
             'topics' => \App\Models\Topic::whereHas('questions', function($q) {
                 $q->where('type', 'concurso');
-            })->orderBy('name')->pluck('name'),
+            })->orderBy('name')->select('id', 'name')->get(),
 
             // Lista de anos disponíveis (ordem decrescente: mais recente primeiro)
             'years' => Question::select('year')

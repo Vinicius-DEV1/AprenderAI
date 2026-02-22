@@ -246,15 +246,15 @@ class Question extends Model
     }
 
     /**
-     * Scope: filtra por matéria (nome)
+     * Scope: filtra por matéria (id)
      *
      * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param string|null $subjectName
+     * @param mixed $subjectId
      */
-    public function scopeFilterBySubject($query, ?string $subjectName)
+    public function scopeFilterBySubject($query, $subjectId)
     {
-        return $query->when($subjectName, fn($q) => 
-            $q->whereHas('subjects', fn($s) => $s->where('subjects.name', $subjectName))
+        return $query->when($subjectId, fn($q) => 
+            $q->whereHas('subjects', fn($s) => $s->where('subjects.id', $subjectId))
         );
     }
 

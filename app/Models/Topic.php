@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -23,6 +24,13 @@ class Topic extends Model
         'name',
         'slug',
     ];
+
+    protected function name(): Attribute
+    {
+        return Attribute::make(
+            set: fn ($value) => mb_strtoupper(trim($value), 'UTF-8'),
+        );
+    }
 
     /**
      * Get the questions associated with the topic.
