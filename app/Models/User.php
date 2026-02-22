@@ -54,6 +54,8 @@ class User extends Authenticatable
         // Individual quota overrides (set by admin per user)
         'max_simulations_override',
         'max_essays_override',
+        // Asaas gateway customer reference — used to avoid duplicate customers
+        'asaas_customer_id',
     ];
 
     // =========================================================================
