@@ -79,6 +79,11 @@ class SubscriptionController extends Controller
 
         $user = Auth::user();
 
+        // Evita duplicidade se o usuário já tem um plano ativo
+        if ($user->plan_id && $user->plan_id != 1 && $user->plan_expires_at && $user->plan_expires_at->isFuture()) {
+            return redirect()->route('dashboard')->with('info', 'Você já possui um plano ativo.');
+        }
+
         try {
             // ---- Lógica de Cupom ------------------------------------------------
             $discount = null;

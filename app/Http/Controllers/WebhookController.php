@@ -54,6 +54,22 @@ class WebhookController extends Controller
             $subscription = Subscription::where('gateway_id', $subscriptionId)->first();
         }
 
+        // Tenta localizar via externalReference se falhou via gateway_id
+        // Isso resolve o race condition onde SUBSCRIPTION_CREATED chega antes do record local ser criado
+        $externalRef = $payment['externalReference'] ?? ($data['subscription']['externalReference'] ?? null);
+        if (!$subscription && $externalRef) {
+            $subscription = Subscription::where('user_id', $externalRef)
+                ->where('plan_id', Configuration::get('last_plan_id_' . $externalRef)) // Opcional: tracking extra
+                ->where('status', 'pending')
+                ->latest()
+                ->first();
+
+            if ($subscription && $subscriptionId) {
+                $subscription->update(['gateway_id' => $subscriptionId]);
+                Log::info('[Webhook] Vinculou gateway_id via externalReference', ['sub_id' => $subscription->id]);
+            }
+        }
+
         // ---- 4. Salvar Audit Log (sempre, mesmo para eventos não encontrados) -
         $auditData = [
             'gateway'                 => 'asaas',
@@ -71,6 +87,7 @@ class WebhookController extends Controller
         if (!$subscription) {
             Log::warning('[Webhook] Subscription não encontrada', [
                 'subscription_id' => $subscriptionId,
+                'external_ref'    => $externalRef,
                 'event'           => $event,
             ]);
             PaymentLog::create(array_merge($auditData, ['status' => 'ignored_not_found']));
