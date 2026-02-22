@@ -2,7 +2,15 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 text-center">
-                @if(isset($pix_payload))
+                @if(Auth::user()->plan_id && Auth::user()->plan_id != 1) {{-- 1 is usually Free --}}
+                    <div class="mb-4 text-green-500">
+                        <svg class="h-16 w-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h2 class="text-2xl font-bold mb-2">Seu Plano já está Ativo!</h2>
+                    <p class="text-gray-600 mb-6">Detectamos que seu pagamento já foi processado e seu acesso foi liberado.</p>
+                @elseif(isset($pix_payload))
                     <div class="mb-4 text-green-500">
                         <svg class="h-16 w-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
@@ -28,6 +36,12 @@
                         <p id="copy-feedback" class="text-sm text-green-600 mt-2 hidden">Código copiado com sucesso!</p>
                     </div>
 
+                    <div class="mb-6">
+                        <button onclick="window.location.reload()" class="text-blue-600 font-semibold hover:underline">
+                            Já paguei? Clique aqui para atualizar
+                        </button>
+                    </div>
+
                     <script>
                         function copyPixCode() {
                             var copyText = document.getElementById("pix-code");
@@ -51,6 +65,11 @@
                     <h2 class="text-2xl font-bold mb-2">Pagamento Pendente</h2>
                     <p class="text-gray-600 mb-6">Estamos processando seu pagamento. Assim que confirmado, seu plano será
                         ativado.</p>
+                    <div class="mb-6">
+                        <button onclick="window.location.reload()" class="text-blue-600 font-semibold hover:underline">
+                            Clique aqui para verificar status agora
+                        </button>
+                    </div>
                 @endif
                 <a href="{{ route('dashboard') }}"
                     class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">Voltar ao Dashboard</a>
