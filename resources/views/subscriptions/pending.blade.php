@@ -54,6 +54,22 @@
                                 document.getElementById("copy-feedback").classList.add("hidden");
                             }, 3000);
                         }
+
+                        // Polling para redirecionamento automático
+                        function checkPaymentStatus() {
+                            fetch('{{ route('plans.check-status') }}')
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.active) {
+                                        // Pagamento confirmado! Redireciona para o dashboard com mensagem de sucesso
+                                        window.location.href = "{{ route('dashboard') }}?payment_success=1";
+                                    }
+                                })
+                                .catch(error => console.error('Erro ao verificar status:', error));
+                        }
+
+                        // Inicia o polling a cada 5 segundos
+                        setInterval(checkPaymentStatus, 5000);
                     </script>
                 @else
                     <div class="mb-4 text-yellow-500">
@@ -70,6 +86,21 @@
                             Clique aqui para verificar status agora
                         </button>
                     </div>
+
+                    <script>
+                        // Polling para redirecionamento automático (também no estado genérico)
+                        function checkPaymentStatus() {
+                            fetch('{{ route('plans.check-status') }}')
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.active) {
+                                        window.location.href = "{{ route('dashboard') }}?payment_success=1";
+                                    }
+                                })
+                                .catch(error => console.error('Erro ao verificar status:', error));
+                        }
+                        setInterval(checkPaymentStatus, 5000);
+                    </script>
                 @endif
                 <a href="{{ route('dashboard') }}"
                     class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">Voltar ao Dashboard</a>

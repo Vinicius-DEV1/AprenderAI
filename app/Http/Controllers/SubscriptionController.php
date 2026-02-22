@@ -211,4 +211,21 @@ class SubscriptionController extends Controller
     {
         return view('subscriptions.pending');
     }
+
+    /**
+     * AJAX endpoint to check if the user's plan has been updated (confirmed).
+     */
+    public function checkStatus(Request $request)
+    {
+        $user = $request->user();
+        
+        // We consider it "active" if it's not the free plan (ID 1) 
+        // OR if the user has an active expiration date in the future.
+        $isActive = $user->plan_id && $user->plan_id != 1 && $user->plan_expires_at && $user->plan_expires_at->isFuture();
+
+        return response()->json([
+            'active' => $isActive,
+            'plan'   => $user->plan ? $user->plan->name : 'Grátis',
+        ]);
+    }
 }

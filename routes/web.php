@@ -108,6 +108,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{plan}', [PlanController::class, 'show'])->name('show');
             Route::get('/{plan}/checkout', [\App\Http\Controllers\SubscriptionController::class, 'showCheckout'])->name('checkout');
             Route::post('/{plan}/validate-coupon', [\App\Http\Controllers\SubscriptionController::class, 'validateCoupon'])->name('validate-coupon');
+            Route::get('/check-status', [\App\Http\Controllers\SubscriptionController::class, 'checkStatus'])->name('check-status');
             Route::post('/{plan}/checkout', [\App\Http\Controllers\SubscriptionController::class, 'store'])
                 ->middleware('check.payment.active')
                 ->name('store');
