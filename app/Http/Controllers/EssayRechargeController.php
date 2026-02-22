@@ -99,19 +99,18 @@ class EssayRechargeController extends Controller
                 'card_expiry_month' => 'required_if:payment_method,credit_card',
                 'card_expiry_year' => 'required_if:payment_method,credit_card',
                 'card_ccv' => 'required_if:payment_method,credit_card',
-                'card_cpf' => 'required_if:payment_method,credit_card',
+                'cpf' => 'required|string',
             ]);
 
-            $cardData = [];
+            $cardData = ['cpf' => $request->cpf];
             if ($data['payment_method'] === 'credit_card') {
-                $cardData = [
+                $cardData = array_merge($cardData, [
                     'holder_name' => $request->card_name,
                     'number' => $request->card_number,
                     'expiry_month' => $request->card_expiry_month,
                     'expiry_year' => $request->card_expiry_year,
                     'ccv' => $request->card_ccv,
-                    'cpf' => $request->card_cpf,
-                ];
+                ]);
             }
 
             $payment = $this->asaasService->createOneTimePayment($user, $price, $description, $data['payment_method'], $cardData);

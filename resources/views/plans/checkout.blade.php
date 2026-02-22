@@ -137,12 +137,7 @@
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">CPF do
-                                        Titular</label>
-                                    <input type="text" name="card_cpf" placeholder="000.000.000-00"
-                                        class="mt-1 block w-full border-gray-300 bg-white text-gray-900 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                </div>
+                                <!-- (CPF was here, moved down) -->
                             </div>
 
                             <!-- Pix Info -->
@@ -160,6 +155,16 @@
                                     Ao confirmar, será gerado um QR Code para pagamento instantâneo. Sua assinatura será
                                     ativada assim que o pagamento for confirmado.
                                 </p>
+                            </div>
+
+                            <!-- Shared Info (CPF) -->
+                            <div class="mt-8 space-y-4 border-t pt-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">CPF / CNPJ para Cobrança</label>
+                                    <input type="text" name="cpf" placeholder="000.000.000-00" required
+                                        class="mt-1 block w-full border-gray-300 bg-white text-gray-900 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                    <p class="mt-1 text-xs text-gray-500">Obrigatório para emissão da nota e processamento (Asaas).</p>
+                                </div>
                             </div>
 
                             <div class="mt-8">
