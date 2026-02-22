@@ -161,8 +161,9 @@
     .qb-history-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f1f5f9; font-size: 12px; }
     .qb-history-row:last-child { border-bottom: none; }
     /* ── Chat ── */
-    .qb-chat-container { margin-top: 10px; background: #f8fafc; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; }
-    .qb-chat-history { max-height: 200px; overflow-y: auto; margin-bottom: 8px; }
+    .qb-chat-container { margin-top: 10px; background: #f8fafc; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; min-height: 450px; display: flex; flex-direction: column; }
+    .qb-chat-history { flex: 1; overflow-y: auto; margin-bottom: 8px; resize: vertical; min-height: 380px; }
+    .qb-chat-history::-webkit-resizer { background-color: #6366f1; border-radius: 4px; }
     @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 
     /* ── Dark Mode ── */
@@ -1117,7 +1118,8 @@ function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a', 
                             const char = textQueue.charAt(0);
                             textQueue = textQueue.substring(1);
                             this.chatMessages[msgIndex].message += char;
-                            this.$nextTick(() => this.scrollToBottom());
+                            // SRE: Removed forced auto-scroll to allow undisturbed reading
+                            // this.$nextTick(() => this.scrollToBottom());
                             
                             // Adjust typing speed based on queue pressure
                             const delay = textQueue.length > 50 ? 5 : 20;
