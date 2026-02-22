@@ -53,10 +53,16 @@
                     <td class="px-6 py-4">
                         @switch($batch->status)
                             @case('processing')
-                                <span class="flex items-center gap-1.5 text-blue-600 font-medium text-sm">
-                                    <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
-                                    Processando
-                                </span>
+                                @if($batch->updated_at < now()->subMinutes(15))
+                                    <span class="flex items-center gap-1.5 text-orange-600 font-medium text-sm" title="O lote não teve atualizações há mais de 15 minutos">
+                                        ⚠️ Provável Falha
+                                    </span>
+                                @else
+                                    <span class="flex items-center gap-1.5 text-blue-600 font-medium text-sm">
+                                        <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+                                        Processando
+                                    </span>
+                                @endif
                                 @break
                             @case('completed')
                                 <span class="flex items-center gap-1.5 text-green-600 font-medium text-sm">
@@ -76,9 +82,13 @@
                     </td>
                     <td class="px-6 py-4 text-right">
                         @if($batch->status === 'processing')
-                            <button @click="$dispatch('open-batch-monitor', { batchId: '{{ $batch->batch_id }}' })" class="text-indigo-600 hover:text-indigo-900 font-medium text-sm">
-                                Monitorar
-                            </button>
+                            @if($batch->updated_at < now()->subMinutes(15))
+                                <span class="text-xs font-semibold text-orange-500 uppercase tracking-widest mr-2">Estagnado</span>
+                            @else
+                                <button @click="$dispatch('open-batch-monitor', { batchId: '{{ $batch->batch_id }}' })" class="text-indigo-600 hover:text-indigo-900 font-medium text-sm">
+                                    Monitorar
+                                </button>
+                            @endif
                         @endif
                         
                         @if($batch->error_count > 0 || $batch->status === 'failed')
