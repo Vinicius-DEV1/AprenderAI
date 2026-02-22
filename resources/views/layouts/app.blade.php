@@ -447,7 +447,7 @@
                         @endif
 
                         {{-- Success Alert --}}
-                        @if (session('success'))
+                        @if (session('success') || request()->has('payment_success') || request()->has('recharge_success'))
                             <div
                                 class="mb-6 bg-green-50 dark:bg-green-950/30 border-l-4 border-green-500 p-4 rounded-r shadow-sm">
                                 <div class="flex">
@@ -459,7 +459,15 @@
                                         </svg>
                                     </div>
                                     <div class="ml-3">
-                                        <p class="text-sm text-green-700 dark:text-green-300">{{ session('success') }}</p>
+                                        <p class="text-sm text-green-700 dark:text-green-300">
+                                            @if(request()->has('payment_success'))
+                                                Pagamento confirmado! Seu plano já está ativo. Aproveite!
+                                            @elseif(request()->has('recharge_success'))
+                                                Recarga confirmada! Seus créditos de redação foram adicionados.
+                                            @else
+                                                {{ session('success') }}
+                                            @endif
+                                        </p>
                                     </div>
                                 </div>
                             </div>

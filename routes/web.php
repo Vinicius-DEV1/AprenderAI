@@ -62,6 +62,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Recarga de Redações (definido antes do grupo essays para evitar conflito com /{essay})
     Route::match(['get', 'post'], '/essays/recharge', [\App\Http\Controllers\EssayRechargeController::class, 'store'])->name('recharge');
+    Route::get('/essays/recharge-status', [\App\Http\Controllers\EssayRechargeController::class, 'checkStatus'])->name('recharge.check-status');
 
     // Redações
     Route::prefix('essays')->name('essays.')->group(

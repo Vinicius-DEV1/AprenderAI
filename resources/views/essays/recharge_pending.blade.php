@@ -39,6 +39,25 @@
                         <p class="mt-2 text-xs text-gray-500 dark:text-slate-400">Seus créditos serão liberados assim
                             que o pagamento for confirmado.</p>
                     </div>
+
+                    <script>
+                        const initialCredits = {{ Auth::user()->essay_credits }};
+                        
+                        function checkRechargeStatus() {
+                            fetch('{{ route('recharge.check-status') }}')
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.credits > initialCredits) {
+                                        // Créditos aumentaram! Redireciona
+                                        window.location.href = "{{ route('essays.index') }}?recharge_success=1";
+                                    }
+                                })
+                                .catch(error => console.error('Erro ao verificar recarga:', error));
+                        }
+
+                        // Polling a cada 5 segundos
+                        setInterval(checkRechargeStatus, 5000);
+                    </script>
                 </div>
             </div>
         </div>

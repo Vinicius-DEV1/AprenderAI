@@ -156,4 +156,17 @@ class EssayRechargeController extends Controller
             return back()->with('error', 'Erro ao processar recarga: ' . $e->getMessage());
         }
     }
+
+    /**
+     * AJAX endpoint to check if the user's credits have been updated.
+     */
+    public function checkStatus(Request $request)
+    {
+        $user = $request->user();
+        
+        // Return current credits to detect the change on frontend
+        return response()->json([
+            'credits' => $user->essay_credits,
+        ]);
+    }
 }
