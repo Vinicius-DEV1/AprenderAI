@@ -14,12 +14,11 @@ class ApiCheckHealth extends Command
     protected $signature = 'api:check-health';
     protected $description = 'Verifica a saúde das chaves de API ativas e atualiza status';
 
-    public function handle()
+    public function handle(\App\Services\AIService $aiService)
     {
         $this->info('Iniciando Teste de Saúde das APIs...');
         
         $keys = \App\Models\ApiKey::where('is_active', true)->get();
-        $aiService = new \App\Services\AIService();
 
         foreach ($keys as $key) {
             $this->info("Testando Provedor: {$key->provider} (ID: {$key->id})");

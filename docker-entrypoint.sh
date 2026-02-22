@@ -7,30 +7,31 @@ echo "Aguardando inicialização do ambiente..."
 chown -R 1337:www-data storage bootstrap/cache
 chmod -R 775 storage bootstrap/cache
 
+if [ -f .env ]; then
+    # ----------------------------------------------------------------
+    # Aguarda o MySQL estar PRONTO para aceitar conexões.
+    # Aplicado a todos os serviços (app, worker, scheduler)
+    # ----------------------------------------------------------------
+    echo "Aguardando o banco de dados ficar disponível..."
+    MAX_TRIES=30
+    COUNT=0
+    until php artisan db:show > /dev/null 2>&1; do
+        COUNT=$((COUNT + 1))
+        if [ "$COUNT" -ge "$MAX_TRIES" ]; then
+            echo "ERRO: Banco de dados não ficou disponível após ${MAX_TRIES} tentativas. Abortando."
+            exit 1
+        fi
+        echo "  Banco não está pronto ainda. Tentativa ${COUNT}/${MAX_TRIES}. Aguardando 3s..."
+        sleep 3
+    done
+    echo "Banco de dados disponível!"
+fi
+
 if [ "$1" = "php-fpm" ] || [ -z "$1" ]; then
     if [ -f .env ]; then
-        # ----------------------------------------------------------------
-        # Aguarda o MySQL estar PRONTO para aceitar conexões.
-        # Sem esse loop, o artisan migrate falha com "Connection refused"
-        # e o script morre antes de executar o php-fpm, causando o 502.
-        # ----------------------------------------------------------------
-        echo "Aguardando o banco de dados ficar disponível..."
-        MAX_TRIES=30
-        COUNT=0
-        until php artisan db:show > /dev/null 2>&1; do
-            COUNT=$((COUNT + 1))
-            if [ "$COUNT" -ge "$MAX_TRIES" ]; then
-                echo "ERRO: Banco de dados não ficou disponível após ${MAX_TRIES} tentativas. Abortando."
-                exit 1
-            fi
-            echo "  Banco não está pronto ainda. Tentativa ${COUNT}/${MAX_TRIES}. Aguardando 3s..."
-            sleep 3
-        done
-        echo "Banco de dados disponível!"
-
         echo "Rodando migrações..."
         php artisan migrate --force
-
+        
         echo "Otimizando aplicação..."
         php artisan optimize
         php artisan storage:link --force 2>/dev/null || true
