@@ -619,8 +619,8 @@
 
                         const reader = response.body.getReader();
                         const decoder = new TextDecoder();
-                        let assistantMsg = { role: 'assistant', message: '', id: Date.now() };
-                        this.messages.push(assistantMsg);
+                        this.messages.push({ role: 'assistant', message: '', id: Date.now() });
+                        const msgIndex = this.messages.length - 1;
                         this.isTyping = false;
 
                         let buffer = '';
@@ -638,7 +638,7 @@
                                     try {
                                         const data = JSON.parse(trimmedLine.substring(6));
                                         if (data.text) {
-                                            assistantMsg.message += data.text;
+                                            this.messages[msgIndex].message += data.text;
                                             this.$nextTick(() => this.scrollToBottom());
                                         }
                                     } catch (e) {
@@ -651,7 +651,7 @@
                         if (buffer.trim().startsWith('data: ')) {
                             try {
                                 const data = JSON.parse(buffer.trim().substring(6));
-                                if (data.text) assistantMsg.message += data.text;
+                                if (data.text) this.messages[msgIndex].message += data.text;
                             } catch (e) {}
                         }
                     } catch (e) {

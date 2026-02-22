@@ -1091,8 +1091,8 @@ function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a', 
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
-                let assistantMsg = { role: 'assistant', message: '', id: Date.now() };
-                this.chatMessages.push(assistantMsg);
+                this.chatMessages.push({ role: 'assistant', message: '', id: Date.now() });
+                const msgIndex = this.chatMessages.length - 1;
                 this.chatTyping = false;
 
                 let buffer = '';
@@ -1110,7 +1110,7 @@ function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a', 
                             try {
                                 const data = JSON.parse(trimmedLine.substring(6));
                                 if (data.text) {
-                                    assistantMsg.message += data.text;
+                                    this.chatMessages[msgIndex].message += data.text;
                                     this.$nextTick(() => this.scrollToBottom());
                                 }
                             } catch (e) {
@@ -1123,7 +1123,7 @@ function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a', 
                 if (buffer.trim().startsWith('data: ')) {
                     try {
                         const data = JSON.parse(buffer.trim().substring(6));
-                        if (data.text) assistantMsg.message += data.text;
+                        if (data.text) this.chatMessages[msgIndex].message += data.text;
                     } catch (e) {}
                 }
             } catch (e) {
