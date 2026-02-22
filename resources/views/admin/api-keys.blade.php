@@ -374,6 +374,12 @@
                                                         {{ $key->is_active ? '🔓' : '🔒' }}
                                                     </button>
                                                 </form>
+                                                 <form action="{{ route('admin.api-keys.retest', $key) }}" method="POST" class="inline">
+                                                    @csrf
+                                                    <button type="submit" class="text-amber-600 hover:text-amber-900 mr-2 p-1 border rounded hover:bg-amber-50" title="Retestar Saúde / Reativar">
+                                                        ⚡
+                                                    </button>
+                                                </form>
                                                 <form action="{{ route('admin.api-keys.destroy', $key) }}" method="POST" class="inline" onsubmit="return confirm('Apagar roteamento?');">
                                                     @csrf @method('DELETE')
                                                     <button type="submit" class="text-red-600 hover:text-red-900 p-1 border rounded hover:bg-red-50" title="Excluir">🗑️</button>
