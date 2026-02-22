@@ -29,18 +29,24 @@ class AIBatchService
      */
     public function processBatch(Collection $questions, string $type, ?string $model = null): array
     {
-        // 1. Constrói o prompt estruturado com os dados das questões
+        // 1. Constrói o prompt estruturado com os dados ESPECÍFICOS faltantes das questões
         $prompt = $this->buildBatchPrompt($questions, $type);
 
         try {
             // 2. Chama o AIService que lida com as chaves e a API da IA escolhida
-            // Esperamos um JSON estruturado como resposta
             $result = $this->aiService->generateJson($prompt, $model);
             
             $data = $result['data'] ?? [];
             
             // 3. Aplica os resultados retornados pela IA no Banco de Dados
-            return $this->applyResults($questions, $data, $type);
+            $appliedData = $this->applyResults($questions, $data, $type);
+            
+            // 4. Gestão de Memória (Garbage Collection): limpa query_logs acumulados do chunk
+            // Vital para não estourar os limites de RAM do Docker ao processar +200 itens em Background
+            \Illuminate\Support\Facades\DB::flushQueryLog();
+            if (gc_enabled()) gc_collect_cycles();
+
+            return $appliedData;
         } catch (\Exception $e) {
             Log::error("AIBatchService: Falha no processamento do lote: " . $e->getMessage(), [
                 'batch_ids' => $questions->pluck('id')->toArray()
@@ -58,11 +64,18 @@ class AIBatchService
     protected function buildBatchPrompt(Collection $questions, string $type): string
     {
         $questionsData = $questions->map(function ($q) {
+            $missingFields = [];
+            if (empty($q->difficulty_reasoning) || empty($q->difficulty)) $missingFields[] = 'difficulty';
+            if (empty($q->explanation)) $missingFields[] = 'explanation';
+            if ($q->subjects()->count() === 0) $missingFields[] = 'subject';
+            if ($q->topics()->count() === 0) $missingFields[] = 'topic';
+
             return [
                 'id' => $q->id,
                 'statement' => $q->statement,
-                'alternatives' => $q->alternativesAsMap(), // Helper que entrega A->Texto, B->Texto...
-                'correct_label' => $q->correct_answer
+                'alternatives' => $q->alternativesAsMap(),
+                'correct_label' => $q->correct_answer,
+                'missing_fields' => $missingFields // Inteligência de Lote: o que a IA deve gerar
             ];
         });
 
@@ -102,14 +115,14 @@ class AIBatchService
            [
              {
                \"id\": ID_DA_QUESTAO,
-               \"difficulty\": \"easy|medium|hard\",
-               \"difficulty_reasoning\": \"Sua justificativa curta...\",
-               \"explanation\": \"Sua explicação pedagógica...\",
-               \"subject\": 12, // ID numérico da lista OU \"Novo Nome da Matéria\" em String
-               \"topic\": 45 // ID numérico da lista OU \"Novo Nome do Assunto\" em String
+               \"difficulty\": \"easy|medium|hard\", // Gerar APENAS se listado em 'missing_fields'
+               \"difficulty_reasoning\": \"Sua justificativa...\", // Gerar APENAS se listado em 'missing_fields'
+               \"explanation\": \"Sua explicação...\", // Gerar APENAS se listado em 'missing_fields'
+               \"subject\": 12, // ID numérico ou stringnova. Gerar APENAS se listado em 'missing_fields'
+               \"topic\": 45 // ID numérico ou stringnova. Gerar APENAS se listado em 'missing_fields'
              }
            ]
-        2. Se um campo não foi solicitado (ex: explicação quando o tipo é 'difficulty'), retorne-o como null.
+        2. Se um campo não está no array 'missing_fields' da questão analisada, RETORNE NULO SEMPRE, pois não é necessário e poupa tempo/tokens.
         3. Mantenha os IDs originais rigorosamente para que possamos mapear de volta.
         4. O JSON deve ser puro, sem blocos de código Markdown ou textos extras.";
     }
@@ -140,15 +153,20 @@ class AIBatchService
 
             $update = [];
             
-            // Atualiza Dificuldade se solicitado
+            // Regra de Ouro: Blindagem contra Sobrescrita (Data Safety)
+            // Só atualiza 'difficulty'/'difficulty_reasoning' se a questão base estiver vazia
             if (in_array($type, ['difficulty', 'complete', 'both']) && isset($data['difficulty'])) {
-                $update['difficulty'] = $data['difficulty'];
-                $update['difficulty_reasoning'] = $data['difficulty_reasoning'] ?? null;
+                if (empty($question->difficulty) || empty($question->difficulty_reasoning)) {
+                    $update['difficulty'] = $data['difficulty'];
+                    $update['difficulty_reasoning'] = $data['difficulty_reasoning'] ?? null;
+                }
             }
 
-            // Atualiza Explicação se solicitada
-            if (in_array($type, ['explanation', 'complete', 'both']) && isset($data['explanation'])) {
-                $update['explanation'] = $data['explanation'];
+            // Só atualiza 'explanation' se estiver vazia
+            if (in_array($type, ['explanation', 'complete', 'both']) && !empty($data['explanation'])) {
+                if (empty($question->explanation) || trim($question->explanation) === '') {
+                    $update['explanation'] = $data['explanation'];
+                }
             }
 
             // Persiste apenas se houver mudanças válidas (para o model Question base)
@@ -159,14 +177,13 @@ class AIBatchService
             // Lógica N:N (Pivot) + Curadoria de Taxonomia
             // Permitido para 'classification', 'complete', ou fallback 'both'
             if (in_array($type, ['classification', 'complete', 'both'])) {
-                // SUBJECT
-                if (isset($data['subject']) && $data['subject'] !== null) {
+                
+                // SUBJECT: Restringe sobrescrita. Só aplica IA se não tiver taxonomia vinculada.
+                if ($question->subjects()->count() === 0 && isset($data['subject']) && $data['subject'] !== null) {
                     $subjectVal = $data['subject'];
                     if (is_numeric($subjectVal)) {
-                        // IA retornou um ID existente
                         $question->subjects()->syncWithoutDetaching([(int) $subjectVal]);
                     } elseif (is_string($subjectVal) && trim($subjectVal) !== '') {
-                        // IA retornou um Nome novo
                         $subjectModel = Subject::firstOrCreate(
                             ['name' => trim($subjectVal)],
                             ['slug' => Str::slug($subjectVal), 'type' => $question->type ?? 'enem']
@@ -175,14 +192,12 @@ class AIBatchService
                     }
                 }
 
-                // TOPIC
-                if (isset($data['topic']) && $data['topic'] !== null) {
+                // TOPIC: Restringe sobrescrita. Só aplica IA se não tiver tópico vinculado.
+                if ($question->topics()->count() === 0 && isset($data['topic']) && $data['topic'] !== null) {
                     $topicVal = $data['topic'];
                     if (is_numeric($topicVal)) {
-                        // IA retornou um ID existente
                         $question->topics()->syncWithoutDetaching([(int) $topicVal]);
                     } elseif (is_string($topicVal) && trim($topicVal) !== '') {
-                        // IA retornou um Nome novo
                         $topicModel = Topic::firstOrCreate(
                             ['name' => trim($topicVal)],
                             ['slug' => Str::slug($topicVal)]
