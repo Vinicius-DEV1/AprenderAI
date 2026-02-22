@@ -7,37 +7,35 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * Trava de Segurança para o Checkout.
+ *
+ * Regras:
+ *  - payment_active = false → BLOQUEIA todos (inclusive admin)
+ *  - asaas_sandbox = true   → PERMITE o checkout, mas injeta flash 'sandbox_mode'
+ *                             para que a view exiba um banner de aviso
+ *  - Ambos normais           → Fluxo normal sem banner
+ */
 class CheckPaymentActive
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     */
     public function handle(Request $request, Closure $next): Response
     {
-        $isActive = Configuration::get('payment_active', true);
-        $isSandbox = Configuration::get('asaas_sandbox', false);
+        $isActive  = (bool) Configuration::get('payment_active', true);
+        $isSandbox = (bool) Configuration::get('asaas_sandbox', false);
 
-        // Se estiver ativo e não for sandbox (ou sandbox não bloquear, dependendo da regra), segue.
-        // A regra diz: Se "Modo Sandbox" ou "Desativado" -> Alerta "Compras suspensas".
-        // Vamos assumir que "Sandbox" = Pagamentos de teste permitidos, mas COM AVISO.
-        // "Desativado" = Bloqueado.
-        
-        // Re-lendo requisito: "Se o sistema estiver em 'Modo Sandbox' ou 'Desativado', o usuário que tentar assinar deve receber um alerta: 'O sistema está em manutenção ou em modo de testes. Compras estão temporariamente suspensas.'"
-        // Isso sugere que o usuário COMUM não deve conseguir assinar em Sandbox?
-        // Vou implementar bloqueio para ambos se o usuário não for admin.
-        
-        if (!$isActive || $isSandbox) {
-            // Se for admin, permite com aviso (aviso será exibido na view se implementado, ou via flash session)
-            if ($request->user() && $request->user()->role === 'admin') {
-                // Apenas um flash message para o admin saber que está em ambiente "controlado"
-                session()->flash('warning', 'Sistema em modo Sandbox/Manutenção. Acesso liberado para Administrador.');
-                return $next($request);
-            }
+        // ---- Pagamentos desativados no admin → bloqueia tudo ----------------
+        if (!$isActive) {
+            return redirect()->back()->with(
+                'error',
+                'O sistema de pagamentos está temporariamente suspenso. Tente novamente em breve.'
+            );
+        }
 
-            // Bloqueia usuários comuns
-            return redirect()->back()->with('error', 'O sistema está em manutenção ou em modo de testes. Compras estão temporariamente suspensas.');
+        // ---- Modo Sandbox → permite mas sinaliza para a view ----------------
+        // O checkout funciona normalmente (User Acceptance Testing).
+        // A view deve exibir um banner de aviso usando session('sandbox_mode').
+        if ($isSandbox) {
+            session()->flash('sandbox_mode', true);
         }
 
         return $next($request);
