@@ -1070,14 +1070,20 @@ function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a', 
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    if (errorData.status === 'quota_exceeded') {
-                        this.chatMessages.push({ role: 'system', message: errorData.message, upgrade_url: errorData.upgrade_url, id: Date.now() });
-                    } else {
-                        throw new Error('Falha na conexão');
+                    let rawError = 'Falha desconhecida';
+                    try {
+                        rawError = await response.text();
+                        console.error('SERVER ERROR RESPONSE:', rawError);
+                        const errorData = JSON.parse(rawError);
+                        if (errorData.status === 'quota_exceeded') {
+                            this.chatMessages.push({ role: 'system', message: errorData.message, upgrade_url: errorData.upgrade_url, id: Date.now() });
+                            this.chatTyping = false;
+                            return;
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse error response. Raw text:', rawError);
                     }
-                    this.chatTyping = false;
-                    return;
+                    throw new Error(`HTTP Error ${response.status}: ` + rawError.substring(0, 100));
                 }
 
                 const reader = response.body.getReader();
