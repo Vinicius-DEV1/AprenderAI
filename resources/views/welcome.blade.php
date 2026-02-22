@@ -1401,18 +1401,18 @@
     <section class="lp-plans" id="plans" x-data="{
             periodo: 'mensal',
             basic: {
-                monthly: '{{ number_format($basicPlan->price, 2, ',', '.') }}',
-                annual_monthly: '{{ number_format($basicAnual->price / 12, 2, ',', '.') }}',
-                total_annual: '{{ number_format($basicAnual->price, 2, ',', '.') }}',
+                monthly: '{{ $basicPlan ? number_format($basicPlan->price, 2, ',', '.') : '0,00' }}',
+                annual_monthly: '{{ $basicAnual ? number_format($basicAnual->price / 12, 2, ',', '.') : '0,00' }}',
+                total_annual: '{{ $basicAnual ? number_format($basicAnual->price, 2, ',', '.') : '0,00' }}',
                 saving: '{{ number_format($basicSaving, 2, ',', '.') }}',
-                discount: {{ $basicAnual->discount_percentage }}
+                discount: {{ $basicAnual->discount_percentage ?? 0 }}
             },
             plus: {
-                monthly: '{{ number_format($plusPlan->price, 2, ',', '.') }}',
-                annual_monthly: '{{ number_format($plusAnual->price / 12, 2, ',', '.') }}',
-                total_annual: '{{ number_format($plusAnual->price, 2, ',', '.') }}',
+                monthly: '{{ $plusPlan ? number_format($plusPlan->price, 2, ',', '.') : '0,00' }}',
+                annual_monthly: '{{ $plusAnual ? number_format($plusAnual->price / 12, 2, ',', '.') : '0,00' }}',
+                total_annual: '{{ $plusAnual ? number_format($plusAnual->price, 2, ',', '.') : '0,00' }}',
                 saving: '{{ number_format($plusSaving, 2, ',', '.') }}',
-                discount: {{ $plusAnual->discount_percentage }}
+                discount: {{ $plusAnual->discount_percentage ?? 0 }}
             }
         }">
         <div style="max-width:980px;margin:0 auto;">
@@ -1475,7 +1475,7 @@
                     <div class="lp-plan-name-paid">Básico</div>
                     <div style="margin-bottom:.25rem;">
                         <span class="lp-plan-price-paid">R$&nbsp;<span
-                                x-text="periodo === 'anual' ? basic.annual_monthly : basic.monthly">{{ number_format($basicPlan->price, 2, ',', '.') }}</span></span>
+                                x-text="periodo === 'anual' ? basic.annual_monthly : basic.monthly">{{ $basicPlan ? number_format($basicPlan->price, 2, ',', '.') : '0,00' }}</span></span>
                         <span class="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
                     </div>
                     <template x-if="periodo === 'anual'">
@@ -1486,7 +1486,7 @@
                     </template>
                     <template x-if="periodo === 'mensal'">
                         <div class="lp-plan-annual-note lp-plan-annual-note-paid">
-                            Ou R$ {{ number_format($basicAnual->price, 2, ',', '.') }} no plano anual (20% OFF)
+                            Ou R$ {{ $basicAnual ? number_format($basicAnual->price, 2, ',', '.') : '0,00' }} no plano anual (20% OFF)
                         </div>
                     </template>
                     <ul class="lp-plan-list lp-plan-list-paid">
@@ -1510,7 +1510,7 @@
                     <div class="lp-plan-name-paid">Plus</div>
                     <div style="margin-bottom:.25rem;">
                         <span class="lp-plan-price-paid">R$&nbsp;<span
-                                x-text="periodo === 'anual' ? plus.annual_monthly : plus.monthly">{{ number_format($plusPlan->price, 2, ',', '.') }}</span></span>
+                                x-text="periodo === 'anual' ? plus.annual_monthly : plus.monthly">{{ $plusPlan ? number_format($plusPlan->price, 2, ',', '.') : '0,00' }}</span></span>
                         <span class="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
                     </div>
                     <template x-if="periodo === 'anual'">
@@ -1521,7 +1521,7 @@
                     </template>
                     <template x-if="periodo === 'mensal'">
                         <div class="lp-plan-annual-note lp-plan-annual-note-paid">
-                            Ou R$ {{ number_format($plusAnual->price, 2, ',', '.') }} no plano anual (20% OFF)
+                            Ou R$ {{ $plusAnual ? number_format($plusAnual->price, 2, ',', '.') : '0,00' }} no plano anual (20% OFF)
                         </div>
                     </template>
                     <ul class="lp-plan-list lp-plan-list-paid">
