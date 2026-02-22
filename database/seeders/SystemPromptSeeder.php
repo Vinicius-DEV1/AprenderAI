@@ -66,8 +66,15 @@ class SystemPromptSeeder extends Seeder
                 'slug' => 'essay_batch_generator',
                 'title' => 'Gerador de Redação em Lote',
                 'description' => 'Gera propostas de redação inéditas por banca.',
-                'content' => "Você é um especialista em concursos.\nGere uma proposta de redação inédita para a banca {banca}.\n\nFormato JSON esperado:\n{\n\"type\": \"essay\",\n\"organization\": \"{banca}\",\n\"title\": \"tema da redação\",\n\"motivational_text\": \"texto motivador inédito\",\n\"instructions\": \"comando claro ao candidato\",\n\"evaluation_criteria\": [\n\"Competência 1\",\n\"Competência 2\",\n\"Competência 3\",\n\"Competência 4\",\n\"Competência 5\"\n]\n}\nNão adicionar texto fora do JSON.",
+                'content' => "Você é um especialista em concursos.\nGere uma proposta de redação inédita para a banca {banca}.\n\nFormato JSON esperado:\n{\n\"type\": \"essay\",\n\"organization\": \"{banca}\",\n\"title\": \"tema da redação\",\n\"motivational_text\": \"texto motivador implement\",\n\"instructions\": \"comando claro ao candidato\",\n\"evaluation_criteria\": [\n\"Competência 1\",\n\"Competência 2\",\n\"Competência 3\",\n\"Competência 4\",\n\"Competência 5\"\n]\n}\nNão adicionar texto fora do JSON.",
                 'variables' => ['banca']
+            ],
+            [
+                'slug' => 'triage_batch_classification',
+                'title' => 'Triagem e Classificação N:N',
+                'description' => 'Instrução para curadoria inteligente de banco de questões, categorizando em Matéria (Subject) e Assunto (Topic).',
+                'content' => "Atue como um Especialista em Educação, IA e Curador de Conteúdo. \nPreciso que você processe o seguinte lote de questões do ENEM/Concursos.\n\nTAREFA: {instruction}\n\n==============\nLISTAS DE REFERÊNCIA PARA CLASSIFICAÇÃO:\n---\nMATÉRIAS (Subject): \n{subjects_reference}\n---\nASSUNTOS (Topic):\n{topics_reference}\n==============\n\nDADOS (JSON):\n{questions_json}\n\nREGRAS DE RETORNO (CRITICAL):\n1. Responda APENAS com um array JSON no formato:\n[\n  {\n    \"id\": ID_DA_QUESTAO,\n    \"difficulty\": \"easy|medium|hard\",\n    \"difficulty_reasoning\": \"Sua justificativa curta...\",\n    \"explanation\": \"Sua explicação pedagógica...\",\n    \"subject\": 12, // ID numérico da lista OU \"Novo Nome da Matéria\" em String\n    \"topic\": 45 // ID numérico da lista OU \"Novo Nome do Assunto\" em String\n  }\n]\n2. Se um campo não foi solicitado (ex: explicação), retorne-o como null.\n3. Mantenha os IDs originais rigorosamente para que possamos mapear de volta.\n4. O JSON deve ser puro, sem blocos de código Markdown ou textos extras.",
+                'variables' => ['instruction', 'subjects_reference', 'topics_reference', 'questions_json']
             ],
         ];
 

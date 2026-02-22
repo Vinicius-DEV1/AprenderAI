@@ -4,9 +4,11 @@ namespace App\Services\AI;
 
 use App\Models\ApiKey;
 use App\Models\Question;
-use App\Services\AIService;
+use App\Models\Subject;
+use App\Models\Topic;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class AIBatchService
 {
@@ -64,18 +66,34 @@ class AIBatchService
             ];
         });
 
+        // Busca referências de IDs para curadoria da IA
+        $subjectsRef = json_encode(Subject::pluck('name', 'id')->toArray());
+        $topicsRef = json_encode(Topic::pluck('name', 'id')->toArray());
+
         // Define a instrução específica baseada na escolha do usuário no modal
         $instruction = match ($type) {
-            'difficulty' => "Avalie a dificuldade (easy, medium, hard), forneça um raciocínio curto, e classifique a Disciplina (Subject, ex: Matemática) e o Assunto (Topic, ex: Geometria).",
-            'explanation' => "Gere uma explicação pedagógica clara, e classifique a Disciplina (Subject, ex: Matemática) e o Assunto (Topic, ex: Geometria).",
-            'both' => "Avalie a dificuldade com raciocínio, gere uma explicação pedagógica, e classifique a Disciplina (Subject, ex: Matemática) e o Assunto (Topic, ex: Geometria).",
+            'difficulty' => "Avalie a dificuldade (easy, medium, hard), forneça um raciocínio curto.",
+            'explanation' => "Gere uma explicação pedagógica clara e completa do porquê a resposta correta é a correta.",
+            'classification' => "Analise a questão e tente mapeá-la para os IDs existentes na lista de referência. Caso a questão trate de um tema que absolutamente não se encaixa em nenhuma das opções fornecidas, você deve sugerir um novo NOME em texto ("string") para a Disciplina ou Assunto. Atenção: Seja criterioso para não criar sinônimos de categorias que já existem.",
+            'complete' => "Avalie a dificuldade (com raciocínio), gere uma explicação pedagógica e classifique a questão mapeando para os IDs existentes ou sugerindo um novo Nome em string caso não exista, evitando sinônimos.",
+            'both' => "Avalie a dificuldade com raciocínio, gere uma explicação pedagógica, e classifique a Disciplina (Subject) e o Assunto (Topic).", // Fallback legacy
         };
 
-        return "Atue como um Especialista em Educação e IA. 
+        return "Atue como um Especialista em Educação, IA e Curador de Conteúdo. 
         Preciso que você processe o seguinte lote de questões do ENEM/Concursos.
         
         TAREFA: {$instruction}
         
+        ==============
+        LISTAS DE REFERÊNCIA PARA CLASSIFICAÇÃO:
+        ---
+        MATÉRIAS (Subject): 
+        {$subjectsRef}
+        ---
+        ASSUNTOS (Topic):
+        {$topicsRef}
+        ==============
+
         DADOS (JSON):
         " . json_encode($questionsData) . "
         
@@ -87,8 +105,8 @@ class AIBatchService
                \"difficulty\": \"easy|medium|hard\",
                \"difficulty_reasoning\": \"Sua justificativa curta...\",
                \"explanation\": \"Sua explicação pedagógica...\",
-               \"subject\": \"Nome da Matéria (ex: História)\",
-               \"topic\": \"Nome do Assunto (ex: Segunda Guerra)\"
+               \"subject\": 12, // ID numérico da lista OU \"Novo Nome da Matéria\" em String
+               \"topic\": 45 // ID numérico da lista OU \"Novo Nome do Assunto\" em String
              }
            ]
         2. Se um campo não foi solicitado (ex: explicação quando o tipo é 'difficulty'), retorne-o como null.
@@ -123,39 +141,54 @@ class AIBatchService
             $update = [];
             
             // Atualiza Dificuldade se solicitado
-            if (in_array($type, ['difficulty', 'both']) && isset($data['difficulty'])) {
+            if (in_array($type, ['difficulty', 'complete', 'both']) && isset($data['difficulty'])) {
                 $update['difficulty'] = $data['difficulty'];
                 $update['difficulty_reasoning'] = $data['difficulty_reasoning'] ?? null;
             }
 
             // Atualiza Explicação se solicitada
-            if (in_array($type, ['explanation', 'both']) && isset($data['explanation'])) {
+            if (in_array($type, ['explanation', 'complete', 'both']) && isset($data['explanation'])) {
                 $update['explanation'] = $data['explanation'];
             }
 
-            // Persiste apenas se houver mudanças válidas
+            // Persiste apenas se houver mudanças válidas (para o model Question base)
             if (!empty($update)) {
                 $question->update($update);
             }
             
-            // Lógica N:N (Pivot): A IA extrai as entidades Subject/Topic brutas (strings).
-            // O código as converte ou vincula em SubjectModels re-aproveitáveis salvos na tabela, conectando
-            // as pontes (FirstOrCreate + Sync) para garantir relacionamentos N:N imaculados e evitar strings raw redundantes.
-            if (!empty($data['subject'])) {
-                $subjectModel = \App\Models\Subject::firstOrCreate(
-                    ['name' => $data['subject']],
-                    ['slug' => \Illuminate\Support\Str::slug($data['subject']), 'type' => $question->type ?? 'enem']
-                );
-                $question->subjects()->sync([$subjectModel->id]);
-                // AVISO CRÍTICO DE ARQUITETURA: 
-                // NUNCA passe 'subject_id' na criação do Topic.
-                // Subjects e Topics são entidades independentes vinculadas via Pivô (N:N).
-                if (!empty($data['topic'])) {
-                    $topicModel = \App\Models\Topic::firstOrCreate(
-                        ['name' => trim($data['topic'])],
-                        ['slug' => \Illuminate\Support\Str::slug($data['topic'])]
-                    );
-                    $question->topics()->sync([$topicModel->id]);
+            // Lógica N:N (Pivot) + Curadoria de Taxonomia
+            // Permitido para 'classification', 'complete', ou fallback 'both'
+            if (in_array($type, ['classification', 'complete', 'both'])) {
+                // SUBJECT
+                if (isset($data['subject']) && $data['subject'] !== null) {
+                    $subjectVal = $data['subject'];
+                    if (is_numeric($subjectVal)) {
+                        // IA retornou um ID existente
+                        $question->subjects()->syncWithoutDetaching([(int) $subjectVal]);
+                    } elseif (is_string($subjectVal) && trim($subjectVal) !== '') {
+                        // IA retornou um Nome novo
+                        $subjectModel = Subject::firstOrCreate(
+                            ['name' => trim($subjectVal)],
+                            ['slug' => Str::slug($subjectVal), 'type' => $question->type ?? 'enem']
+                        );
+                        $question->subjects()->syncWithoutDetaching([$subjectModel->id]);
+                    }
+                }
+
+                // TOPIC
+                if (isset($data['topic']) && $data['topic'] !== null) {
+                    $topicVal = $data['topic'];
+                    if (is_numeric($topicVal)) {
+                        // IA retornou um ID existente
+                        $question->topics()->syncWithoutDetaching([(int) $topicVal]);
+                    } elseif (is_string($topicVal) && trim($topicVal) !== '') {
+                        // IA retornou um Nome novo
+                        $topicModel = Topic::firstOrCreate(
+                            ['name' => trim($topicVal)],
+                            ['slug' => Str::slug($topicVal)]
+                        );
+                        $question->topics()->syncWithoutDetaching([$topicModel->id]);
+                    }
                 }
             }
             

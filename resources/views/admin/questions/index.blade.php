@@ -88,8 +88,11 @@
                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
                         🔵 {{ $missingExplanationCount }} sem explicação
                     </span>
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                        🏷️ {{ $missingClassificationCount }} sem taxonomia
+                    </span>
                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                        🔴 {{ $bothMissingCount }} incompletas (ambos)
+                        🔴 {{ $bothMissingCount }} incompletas (múltiplos)
                     </span>
                 </div>
 
@@ -104,7 +107,8 @@
                             <option value="">Todas as pendências</option>
                             <option value="missing_difficulty" {{ request('triage_status') == 'missing_difficulty' ? 'selected' : '' }}>🟠 Sem Dificuldade</option>
                             <option value="missing_explanation" {{ request('triage_status') == 'missing_explanation' ? 'selected' : '' }}>🔵 Sem Explicação</option>
-                            <option value="both_missing" {{ request('triage_status') == 'both_missing' ? 'selected' : '' }}>🔴 Incompleta (ambos)</option>
+                            <option value="missing_classification" {{ request('triage_status') == 'missing_classification' ? 'selected' : '' }}>🏷️ Sem Taxonomia (Matéria/Assunto)</option>
+                            <option value="both_missing" {{ request('triage_status') == 'both_missing' ? 'selected' : '' }}>🔴 Incompleta (múltiplos)</option>
                         </select>
                     </div>
                     <div>
@@ -156,6 +160,7 @@
                             @php
                                 $missingDiff = empty(trim($q->difficulty_reasoning ?? ''));
                                 $missingExpl = empty(trim($q->explanation ?? ''));
+                                $missingClass = $q->subjects->isEmpty() || $q->topics->isEmpty();
                             @endphp
                             <tr class="hover:bg-purple-50 transition-colors" data-question-id="{{ $q->id }}">
                                 <td class="px-3 py-2 text-gray-600 font-medium">{{ $q->id }}</td>
@@ -170,13 +175,19 @@
                                     @endif
                                 </td>
                                 <td class="px-3 py-2 text-xs text-gray-500">{{ Str::limit($q->organization ?? 'N/A', 15) }}</td>
-                                <td class="px-3 py-2">
-                                    @if($missingDiff && $missingExpl)
-                                        <span class="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full font-medium">🔴 Incompleta</span>
-                                    @elseif($missingDiff)
-                                        <span class="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full font-medium">🟠 Falta Dificuldade</span>
-                                    @elseif($missingExpl)
-                                        <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">🔵 Falta Explicação</span>
+                                <td class="px-3 py-2 flex flex-col items-start gap-1">
+                                    @if($missingDiff && $missingExpl && $missingClass)
+                                        <span class="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full font-medium">🔴 Totalmente Incompleta</span>
+                                    @else
+                                        @if($missingDiff)
+                                            <span class="px-2 py-0.5 bg-orange-100 text-orange-700 text-[10px] rounded-full font-medium">🟠 Falta Dificuldade</span>
+                                        @endif
+                                        @if($missingExpl)
+                                            <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded-full font-medium">🔵 Falta Explicação</span>
+                                        @endif
+                                        @if($missingClass)
+                                            <span class="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] rounded-full font-medium">🏷️ Falta Taxonomia</span>
+                                        @endif
                                     @endif
                                 </td>
                                 <td class="px-3 py-2">
@@ -193,9 +204,15 @@
                                             📝 Explicação
                                         </button>
                                         @endif
+                                        @if($missingClass)
+                                        <button onclick="classifyQuestion({{ $q->id }})" 
+                                            class="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded hover:bg-yellow-200 font-medium flex items-center gap-1" title="Classificar Matéria/Assunto">
+                                            🏷️ Classificar
+                                        </button>
+                                        @endif
                                         <button onclick="completeQuestion({{ $q->id }})" 
                                             class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded hover:bg-green-200 font-medium flex items-center gap-1" title="Completar tudo que falta">
-                                            🚀 Completar
+                                            🚀 Completar Tudo
                                         </button>
                                         <a href="{{ route('admin.questions.edit', $q) }}" 
                                             class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded hover:bg-gray-200 font-medium">
@@ -455,6 +472,37 @@
             }
         }
 
+        // === CLASSIFY QUESTION (individual) ===
+        async function classifyQuestion(questionId) {
+            const btn = event.currentTarget;
+            const originalContent = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '🏷️ Classificando...';
+
+            try {
+                const response = await fetch(`/admin/questions/${questionId}/classify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast('🏷️ Classificação N:N iniciada!', 'success');
+                    handleRowUpdate(questionId);
+                } else {
+                    showToast('Erro: ' + (data.message || 'Falha na classificação.'), 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent;
+                }
+            } catch (error) {
+                console.error(error);
+                showToast('Erro ao processar roteiro de integração local.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+            }
+        }
+
         // === COMPLETE QUESTION (individual - progressive feedback) ===
         async function completeQuestion(questionId) {
             const btn = event.currentTarget;
@@ -608,8 +656,12 @@
                                             <label class="ml-3 block text-sm text-gray-700">Apenas Explicação</label>
                                         </div>
                                         <div class="flex items-center">
-                                            <input type="radio" x-model="type" value="both" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
-                                            <label class="ml-3 block text-sm text-gray-700">Ambos (Dificuldade + Explicação)</label>
+                                            <input type="radio" x-model="type" value="classification" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
+                                            <label class="ml-3 block text-sm text-gray-700">Apenas Classificar (Matéria e Assunto)</label>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <input type="radio" x-model="type" value="complete" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
+                                            <label class="ml-3 block text-sm text-gray-700">Completo (Dificuldade, Explicação e Classificação)</label>
                                         </div>
                                     </div>
                                 </div>

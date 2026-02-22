@@ -18,7 +18,7 @@ class AIBatchTriageController extends Controller
     {
         $validated = $request->validate([
             'quantity' => 'required|integer|min:1',
-            'type' => 'required|in:difficulty,explanation,both',
+            'type' => 'required|in:difficulty,explanation,classification,complete,both',
             'model' => 'nullable|string',
             'triage_status' => 'nullable|string',
             'triage_subject' => 'nullable|string',

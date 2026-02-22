@@ -158,11 +158,12 @@ class Question extends Model
                         ->orWhereRaw("TRIM(difficulty_reasoning) = ''");
                 }
             )->orWhere(
-                    function ($sub) {
-                        $sub->whereNull('explanation')
-                            ->orWhereRaw("TRIM(explanation) = ''");
-                    }
-                );
+                function ($sub) {
+                    $sub->whereNull('explanation')
+                        ->orWhereRaw("TRIM(explanation) = ''");
+                }
+            )->orWhereDoesntHave('subjects')
+             ->orWhereDoesntHave('topics');
         });
     }
 
