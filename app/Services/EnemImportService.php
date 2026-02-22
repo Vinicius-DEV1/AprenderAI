@@ -27,7 +27,7 @@ class EnemImportService
 
         // 1. Gerar external_id em conformidade com o formato MD5
         $organization = 'ENEM';
-        $institution = 'MEC'; // Implicit for ENEM
+        $institution = 'INEP'; // Updated to reflect the correct Banca
         $role = 'Estudante'; // Implicit for ENEM
         
         // Context contains the statement
@@ -46,7 +46,7 @@ class EnemImportService
         $subjectId = $this->resolveSubjectId($apiQuestion['discipline']);
 
         // 5. Iniciar transação para garantir integridade
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($apiQuestion, $externalId, $year, $statement, $subjectId) {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($apiQuestion, $externalId, $year, $statement, $subjectId, $organization, $institution, $role) {
             
             // Tratamento de idioma embutido no tópico ou theme, se aplicável
             $theme = $apiQuestion['language'] ? 'Língua Estrangeira: ' . ucfirst($apiQuestion['language']) : null;
