@@ -111,16 +111,8 @@
 
         <!-- 2. CONFIGURAÇÃO POR FUNCIONALIDADE (ROUTING) -->
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100" 
-             x-data="{ 
-                collapsed: localStorage.getItem('sre_routing_collapsed') === 'true',
-                loadingModels: false,
-                models: [],
-                showModelModal: false,
-                selectedVaultId: '',
-                selectedModel: '',
-                discoveryError: ''
-             }">
-            <div class="p-6 border-b border-gray-100 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors" @click="collapsed = !collapsed; localStorage.setItem('sre_routing_collapsed', collapsed)">
+             x-data="routingData()">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors" @click="toggleCollapse()">
                 <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
                     <span class="p-2 bg-purple-50 text-purple-600 rounded-lg">🎯</span>
                     Configuração por Funcionalidade (Roteamento)
@@ -272,6 +264,19 @@
             <script>
                 function routingData() {
                     return {
+                        collapsed: localStorage.getItem('sre_routing_collapsed') === 'true',
+                        loadingModels: false,
+                        models: [],
+                        showModelModal: false,
+                        selectedVaultId: '',
+                        selectedModel: '',
+                        discoveryError: '',
+
+                        toggleCollapse() {
+                            this.collapsed = !this.collapsed;
+                            localStorage.setItem('sre_routing_collapsed', this.collapsed);
+                        },
+
                         discoverModels() {
                             if (!this.selectedVaultId) return;
                             this.loadingModels = true;
@@ -671,83 +676,5 @@
 
     </div>
 
-    <script>
-        function resetValidation() {
-            document.getElementById('model-section').classList.add('hidden');
-            document.getElementById('feedback-area').classList.add('hidden');
-            document.getElementById('btn-save').disabled = true;
-            document.getElementById('btn-save').classList.add('opacity-50', 'cursor-not-allowed');
-        }
 
-        async function testConnection() {
-            const provider = document.getElementById('provider').value;
-            const key = document.getElementById('key').value;
-            const btnTest = document.getElementById('btn-test');
-            const btnText = document.getElementById('btn-text');
-            const btnLoader = document.getElementById('btn-loader');
-            const feedback = document.getElementById('feedback-area');
-            const modelSection = document.getElementById('model-section');
-            const modelSelect = document.getElementById('preferred_model');
-            const btnSave = document.getElementById('btn-save');
-
-            if (!key) {
-                alert('Por favor, insira uma chave.');
-                return;
-            }
-
-            btnTest.disabled = true;
-            btnText.textContent = 'Testando...';
-            btnLoader.classList.remove('hidden');
-            feedback.classList.add('hidden');
-            modelSection.classList.add('hidden');
-
-            try {
-                const response = await fetch("{{ route('admin.api-keys.test') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': "{{ csrf_token() }}"
-                    },
-                    body: JSON.stringify({ provider, key })
-                });
-
-                const result = await response.json();
-
-                if (result.is_valid) {
-                    feedback.className = 'p-4 rounded-md text-sm bg-green-50 text-green-700 block mb-4 border border-green-100';
-                    feedback.textContent = '✅ Conexão estabelecida com sucesso!';
-                    
-                    modelSelect.innerHTML = '';
-                    if (result.models && result.models.length > 0) {
-                        result.models.forEach(model => {
-                            const option = document.createElement('option');
-                            option.value = model.id;
-                            option.textContent = model.name;
-                            modelSelect.appendChild(option);
-                        });
-                        modelSection.classList.remove('hidden');
-                    } else {
-                        const option = document.createElement('option');
-                        option.value = '';
-                        option.textContent = 'Padrão (Nenhum modelo específico)';
-                        modelSelect.appendChild(option);
-                    }
-
-                    btnSave.disabled = false;
-                    btnSave.classList.remove('opacity-50', 'cursor-not-allowed');
-                } else {
-                    throw new Error(result.error || 'Erro desconhecido no servidor');
-                }
-            } catch (error) {
-                feedback.className = 'p-4 rounded-md text-sm bg-red-50 text-red-700 block border border-red-100';
-                feedback.textContent = '❌ Erro SRE: ' + error.message;
-            } finally {
-                btnTest.disabled = false;
-                btnText.textContent = 'Testar';
-                btnLoader.classList.add('hidden');
-                feedback.classList.remove('hidden');
-            }
-        }
-    </script>
 </x-layouts.admin>
