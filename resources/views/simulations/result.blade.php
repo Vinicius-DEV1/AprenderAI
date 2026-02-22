@@ -203,6 +203,10 @@
         :root.dark .border-gray-100 { border-color: rgba(255,255,255,0.08) !important; }
         :root.dark .border-gray-200 { border-color: rgba(255,255,255,0.1) !important; }
         :root.dark .border-blue-200 { border-color: rgba(37, 99, 235, 0.3) !important; }
+        
+        .chat-container { min-height: 450px; display: flex !important; flex-direction: column; }
+        .chat-history { flex: 1; resize: vertical; min-height: 380px; overflow-y: auto; }
+        .chat-history::-webkit-resizer { background-color: #6366f1; border-radius: 4px; }
     </style>
 
     <div class="result-header">
@@ -360,7 +364,7 @@
                         class="chat-container mt-3 bg-gray-50 rounded-lg p-3 border border-gray-200">
 
                         <!-- History -->
-                        <div class="chat-history space-y-2 mb-3 max-h-48 overflow-y-auto p-1" x-ref="history">
+                        <div class="chat-history space-y-2 mb-3 p-1" x-ref="history">
                             <template x-for="msg in messages" :key="msg.id">
                                 <div class="flex flex-col"
                                     :class="msg.role === 'user' ? 'items-end' : (msg.role === 'system' ? 'items-center' : 'items-start')">
@@ -642,7 +646,8 @@
                                 const char = textQueue.charAt(0);
                                 textQueue = textQueue.substring(1);
                                 this.messages[msgIndex].message += char;
-                                this.$nextTick(() => this.scrollToBottom());
+                                // SRE: Removed forced auto-scroll to allow undisturbed reading
+                                // this.$nextTick(() => this.scrollToBottom());
                                 
                                 const delay = textQueue.length > 50 ? 5 : 20;
                                 setTimeout(() => {
