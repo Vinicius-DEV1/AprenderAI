@@ -161,9 +161,35 @@
     .qb-history-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f1f5f9; font-size: 12px; }
     .qb-history-row:last-child { border-bottom: none; }
     /* ── Chat ── */
-    .qb-chat-container { margin-top: 10px; background: #f8fafc; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; min-height: 450px; display: flex; flex-direction: column; }
-    .qb-chat-history { flex: 1; overflow-y: auto; margin-bottom: 8px; resize: vertical; min-height: 380px; }
-    .qb-chat-history::-webkit-resizer { background-color: #6366f1; border-radius: 4px; }
+    .qb-chat-container { 
+        margin-top: 10px; 
+        background: #f8fafc !important; 
+        border-radius: 10px; 
+        padding: 12px; 
+        border: 1px solid #e2e8f0; 
+        height: 400px; 
+        display: flex; 
+        flex-direction: column; 
+        resize: vertical; 
+        overflow: auto; 
+        position: relative;
+    }
+    :root.dark .qb-chat-container { background: #0f172a !important; border-color: rgba(255,255,255,0.08); }
+    
+    .qb-chat-container::after {
+        content: "";
+        position: absolute;
+        bottom: 2px;
+        right: 2px;
+        width: 12px;
+        height: 12px;
+        background: linear-gradient(135deg, transparent 50%, #6366f1 50%);
+        border-radius: 2px;
+        cursor: s-resize;
+        pointer-events: none;
+    }
+
+    .qb-chat-history { flex: 1; overflow-y: auto; margin-bottom: 8px; }
     @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 
     /* ── Dark Mode ── */
@@ -1097,37 +1123,25 @@ function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a', 
                 this.chatTyping = false;
 
                 let buffer = '';
-                // SRE Refinement: Smart Typing & Latency
-                this.$dispatch('ai-loading-start', { status: 'Xavier está escrevendo...' });
+                // SRE Refinement: Smart Word-by-Word Typing
                 let isFirstByte = true;
-                let textQueue = '';
+                let textBuffer = ''; // Buffer for characters
+                let wordQueue = [];  // Queue for words
                 let isWriting = false;
 
                 const processQueue = () => {
-                    if (textQueue.length > 0 && !isWriting) {
+                    if (wordQueue.length > 0 && !isWriting) {
                         isWriting = true;
                         
-                        // If chunk is small, append immediately
-                        // If large, interpolate (type out)
-                        if (textQueue.length < 5) {
-                            this.chatMessages[msgIndex].message += textQueue;
-                            textQueue = '';
-                            this.$nextTick(() => this.scrollToBottom());
+                        const word = wordQueue.shift();
+                        this.chatMessages[msgIndex].message += word;
+                        
+                        // Smaller delay for natural rhythm
+                        const delay = wordQueue.length > 10 ? 10 : 30;
+                        setTimeout(() => {
                             isWriting = false;
-                        } else {
-                            const char = textQueue.charAt(0);
-                            textQueue = textQueue.substring(1);
-                            this.chatMessages[msgIndex].message += char;
-                            // SRE: Removed forced auto-scroll to allow undisturbed reading
-                            // this.$nextTick(() => this.scrollToBottom());
-                            
-                            // Adjust typing speed based on queue pressure
-                            const delay = textQueue.length > 50 ? 5 : 20;
-                            setTimeout(() => {
-                                isWriting = false;
-                                processQueue();
-                            }, delay);
-                        }
+                            processQueue();
+                        }, delay);
                     }
                 };
 
@@ -1147,11 +1161,19 @@ function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a', 
                                 if (data.text) {
                                     if (isFirstByte) {
                                         isFirstByte = false;
-                                        this.$dispatch('ai-loading-stop'); // Kill loading immediately on first byte
+                                        this.chatTyping = false; // Kill loading instantly
                                     }
                                     
-                                    textQueue += data.text;
-                                    processQueue();
+                                    textBuffer += data.text;
+                                    // Split by space but keep the spaces in the tokens
+                                    if (textBuffer.includes(' ') || textBuffer.includes('\n')) {
+                                        const words = textBuffer.split(/(?=[ \n])/);
+                                        // Keep the last part in buffer if it doesn't end with a delimiter (potentially incomplete word)
+                                        const lastToken = words.pop();
+                                        wordQueue.push(...words);
+                                        textBuffer = lastToken;
+                                        processQueue();
+                                    }
                                 } else if (data.status === 'quota_exceeded') {
                                     this.chatMessages[msgIndex].role = 'system';
                                     this.chatMessages[msgIndex].message = data.message;
@@ -1168,11 +1190,17 @@ function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a', 
                     }
                 }
                 // Process any remaining data in buffer
+                // Final flush of the buffer
+                if (textBuffer) {
+                    wordQueue.push(textBuffer);
+                    processQueue();
+                }
+
                 if (buffer.trim().startsWith('data: ')) {
                     try {
                         const data = JSON.parse(buffer.trim().substring(6));
                         if (data.text) {
-                            textQueue += data.text;
+                            wordQueue.push(data.text);
                             processQueue();
                         } else if (data.status === 'quota_exceeded') {
                             this.chatMessages[msgIndex].role = 'system';

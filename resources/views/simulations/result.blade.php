@@ -204,9 +204,30 @@
         :root.dark .border-gray-200 { border-color: rgba(255,255,255,0.1) !important; }
         :root.dark .border-blue-200 { border-color: rgba(37, 99, 235, 0.3) !important; }
         
-        .chat-container { min-height: 450px; display: flex !important; flex-direction: column; }
-        .chat-history { flex: 1; resize: vertical; min-height: 380px; overflow-y: auto; }
-        .chat-history::-webkit-resizer { background-color: #6366f1; border-radius: 4px; }
+        .chat-container { 
+            height: 400px; 
+            display: flex !important; 
+            flex-direction: column; 
+            resize: vertical; 
+            overflow: auto; 
+            position: relative;
+            background-color: #f9fafb !important;
+        }
+        :root.dark .chat-container { background-color: #0f172a !important; border-color: rgba(255,255,255,0.08) !important; }
+
+        .chat-container::after {
+            content: "";
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 12px;
+            height: 12px;
+            background: linear-gradient(135deg, transparent 50%, #6366f1 50%);
+            border-radius: 2px;
+            cursor: s-resize;
+            pointer-events: none;
+        }
+        .chat-history { flex: 1; overflow-y: auto; }
     </style>
 
     <div class="result-header">
@@ -360,7 +381,7 @@
                             Xavier</span>
                     </button>
 
-                    <div x-show="showChat" x-transition.opacity.duration.300ms x-cloak
+                    <div x-show="showChat" x-cloak
                         class="chat-container mt-3 bg-gray-50 rounded-lg p-3 border border-gray-200">
 
                         <!-- History -->
@@ -629,36 +650,26 @@
 
                         let buffer = '';
                         let isFirstByte = true;
-                    let textQueue = '';
-                    let isWriting = false;
+                        let textBuffer = ''; // Buffer for chars
+                        let wordQueue = [];  // Queue for words
+                        let isWriting = false;
 
-                    const processQueue = () => {
-                        if (textQueue.length > 0 && !isWriting) {
-                            isWriting = true;
-                            
-                            // Interpolated Rendering (SRE)
-                            if (textQueue.length < 5) {
-                                this.messages[msgIndex].message += textQueue;
-                                textQueue = '';
-                                this.$nextTick(() => this.scrollToBottom());
-                                isWriting = false;
-                            } else {
-                                const char = textQueue.charAt(0);
-                                textQueue = textQueue.substring(1);
-                                this.messages[msgIndex].message += char;
-                                // SRE: Removed forced auto-scroll to allow undisturbed reading
-                                // this.$nextTick(() => this.scrollToBottom());
+                        const processQueue = () => {
+                            if (wordQueue.length > 0 && !isWriting) {
+                                isWriting = true;
                                 
-                                const delay = textQueue.length > 50 ? 5 : 20;
+                                const word = wordQueue.shift();
+                                this.messages[msgIndex].message += word;
+                                
+                                const delay = wordQueue.length > 10 ? 10 : 30;
                                 setTimeout(() => {
                                     isWriting = false;
                                     processQueue();
                                 }, delay);
                             }
-                        }
-                    };
+                        };
 
-                    while (true) {
+                        while (true) {
                             const { done, value } = await reader.read();
                             if (done) break;
 
@@ -674,11 +685,17 @@
                                         if (data.text) {
                                             if (isFirstByte) {
                                                 isFirstByte = false;
-                                                this.$dispatch('ai-loading-stop'); // Immediate kill on first byte
+                                                this.isTyping = false; // Kill loading status instantly
                                             }
                                             
-                                            textQueue += data.text;
-                                            processQueue();
+                                            textBuffer += data.text;
+                                            if (textBuffer.includes(' ') || textBuffer.includes('\n')) {
+                                                const words = textBuffer.split(/(?=[ \n])/);
+                                                const lastToken = words.pop();
+                                                wordQueue.push(...words);
+                                                textBuffer = lastToken;
+                                                processQueue();
+                                            }
                                         } else if (data.status === 'quota_exceeded') {
                                             this.messages[msgIndex].role = 'system';
                                             this.messages[msgIndex].message = data.message;
@@ -695,11 +712,16 @@
                             }
                         }
                         // Final buffer check
+                        if (textBuffer) {
+                            wordQueue.push(textBuffer);
+                            processQueue();
+                        }
+
                         if (buffer.trim().startsWith('data: ')) {
                             try {
                                 const data = JSON.parse(buffer.trim().substring(6));
                                 if (data.text) {
-                                    textQueue += data.text;
+                                    wordQueue.push(data.text);
                                     processQueue();
                                 } else if (data.status === 'quota_exceeded') {
                                     this.messages[msgIndex].role = 'system';

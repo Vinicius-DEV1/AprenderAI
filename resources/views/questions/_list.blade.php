@@ -105,7 +105,7 @@
             </template>
         </div>
 
-        <div x-show="showChat" x-transition x-cloak class="qb-chat-container">
+        <div x-show="showChat" x-cloak class="qb-chat-container">
             <div class="qb-chat-history space-y-2 p-1" x-ref="chatHistory">
                 <template x-for="msg in chatMessages" :key="msg.id || msg.created_at">
                     <div :class="msg.role === 'user' ? 'flex justify-end' : (msg.role === 'system' ? 'flex justify-center' : 'flex justify-start')">
