@@ -32,20 +32,22 @@ fi
 # Se public/storage for um diretório real (e não um link), removemos.
 # ----------------------------------------------------------------
 if [ -d "public/storage" ] && [ ! -L "public/storage" ]; then
-    echo "Limpando diretório real de storage para criar link simbólico..."
+    echo "⚠️  AVISO: public/storage é um diretório real. Reconvertendo para link simbólico..."
     rm -rf public/storage
 fi
-php artisan storage:link --force 2>/dev/null || true
+echo "🔗 Criando link simbólico de storage..."
+php artisan storage:link --force || echo "⚠️  Falha ao criar link de storage (pode já existir)"
 
 if [ "$1" = "php-fpm" ] || [ -z "$1" ]; then
     if [ -f .env ]; then
-        echo "Rodando migrações..."
+        echo "🚀 Iniciando rotinas de produção..."
+        echo "📂 Rodando migrações de banco..."
         php artisan migrate --force
         
-        echo "Otimizando aplicação..."
+        echo "⚡ Otimizando cache do Laravel..."
         php artisan optimize
     fi
-    echo "Iniciando PHP-FPM..."
+    echo "✅ Pronto! Iniciando PHP-FPM..."
     exec php-fpm
 else
     echo "Executando comando customizado: $@"
