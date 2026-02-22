@@ -378,7 +378,7 @@
 
         // === BATCH COMPLETE ===
         async function runBatchComplete() {
-            if (!confirm('Deseja iniciar o processamento em lote? Dificuldade e explicação serão preenchidas (10 questões por vez).')) {
+            if (!confirm('Deseja iniciar o processamento em lote? Dificuldade e explicação serão preenchidas (5 questões por vez).')) {
                 return;
             }
 
@@ -684,7 +684,7 @@
                                         <div class="text-xs text-blue-800 leading-tight">
                                             <p class="font-bold mb-1">Como o sistema processa isto?</p>
                                             <ul class="list-disc ml-4 space-y-1">
-                                                <li><strong>Fatiamento (Chunks):</strong> O lote é dividido em blocos de 10 questões.</li>
+                                                <li><strong>Fatiamento (Chunks):</strong> O lote é dividido em blocos de 5 questões.</li>
                                                 <li><strong>Filas (Queues):</strong> Cada bloco é processado em segundo plano para evitar "travar" seu navegador.</li>
                                                 <li><strong>Tempo Real:</strong> Esta barra de progresso usa SSE para refletir o estado exato da fila no servidor.</li>
                                             </ul>
