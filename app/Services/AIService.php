@@ -201,6 +201,30 @@ class AIService
             ], $executionTime, $userId);
 
         } catch (\Exception $e) {
+            $executionTime = microtime(true) - $startTime;
+            $statusCode = 500;
+            $errorMessage = $e->getMessage();
+
+            if (preg_match('/Status Code: (\d+)/', $errorMessage, $matches)) {
+                $statusCode = (int) $matches[1];
+            } elseif (str_contains($errorMessage, '429')) {
+                $statusCode = 429;
+                $errorMessage = " Limite de Requisições Atingido (Quota Exceeded)";
+            } elseif (str_contains($errorMessage, '401') || str_contains($errorMessage, '403')) {
+                $statusCode = 403;
+                $errorMessage = " Erro de Autenticação/Permissão (Invalid Key)";
+            }
+
+            // SRE: Update ApiKey status to trigger auto-healing router
+            if ($statusCode === 429) {
+                $apiKey->update(['status' => 'quota_exceeded']);
+            } elseif (in_array($statusCode, [401, 403])) {
+                $apiKey->update(['status' => 'offline']);
+            }
+
+            // Persistence for Admin Dashboard (ApiLog)
+            $this->telemetryService->log($provider, 'error', $errorMessage, $statusCode, ['error_detail' => $e->getMessage()], $apiKey->id);
+            
             Log::error("Streaming AI Error: " . $e->getMessage());
             throw $e;
         }

@@ -1112,6 +1112,12 @@ function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a', 
                                 if (data.text) {
                                     this.chatMessages[msgIndex].message += data.text;
                                     this.$nextTick(() => this.scrollToBottom());
+                                } else if (data.status === 'quota_exceeded') {
+                                    this.chatMessages[msgIndex].role = 'system';
+                                    this.chatMessages[msgIndex].message = data.message;
+                                    this.chatMessages[msgIndex].upgrade_url = data.upgrade_url || '{{ route('plans.index') }}';
+                                } else if (data.error) {
+                                    this.chatMessages[msgIndex].message = data.error;
                                 }
                             } catch (e) {
                                 console.error('Error parsing SSE line:', trimmedLine, e);
@@ -1123,7 +1129,14 @@ function questionCard(questionId, alreadyAnswered, wasCorrect, subject = 'n/a', 
                 if (buffer.trim().startsWith('data: ')) {
                     try {
                         const data = JSON.parse(buffer.trim().substring(6));
-                        if (data.text) this.chatMessages[msgIndex].message += data.text;
+                        if (data.text) {
+                            this.chatMessages[msgIndex].message += data.text;
+                        } else if (data.status === 'quota_exceeded') {
+                            this.chatMessages[msgIndex].role = 'system';
+                            this.chatMessages[msgIndex].message = data.message;
+                        } else if (data.error) {
+                            this.chatMessages[msgIndex].message = data.error;
+                        }
                     } catch (e) {}
                 }
             } catch (e) {

@@ -129,12 +129,25 @@ class QuestionChatController extends Controller
             while (ob_get_level() > 0) ob_end_clean();
 
             $fullText = "";
-            $stream = $this->aiService->streamChatAboutQuestion($question, $simulation, $request->message, $history);
-            
-            foreach ($stream as $chunk) {
-                $fullText .= $chunk;
-                // SSE format
-                echo "data: " . json_encode(['text' => $chunk]) . "\n\n";
+            try {
+                $stream = $this->aiService->streamChatAboutQuestion($question, $simulation, $request->message, $history);
+                
+                foreach ($stream as $chunk) {
+                    $fullText .= $chunk;
+                    // SSE format
+                    echo "data: " . json_encode(['text' => $chunk]) . "\n\n";
+                    if (ob_get_level() > 0) ob_flush();
+                    flush();
+                }
+            } catch (\Exception $e) {
+                Log::error("Streaming error in simulation chat: " . $e->getMessage());
+                
+                $errorCode = $e->getCode();
+                if (str_contains($e->getMessage(), '429')) {
+                    echo "data: " . json_encode(['status' => 'quota_exceeded', 'message' => 'Limite de IA atingido pelo provedor. Tente novamente em instantes.']) . "\n\n";
+                } else {
+                    echo "data: " . json_encode(['error' => 'Erro no processamento do Xavier: ' . $e->getMessage()]) . "\n\n";
+                }
                 if (ob_get_level() > 0) ob_flush();
                 flush();
             }
@@ -275,11 +288,23 @@ class QuestionChatController extends Controller
             while (ob_get_level() > 0) ob_end_clean();
 
             $fullText = "";
-            $stream = $this->aiService->streamChatAboutStandaloneQuestion($question, $userAnswerText, $request->message, $history);
-            
-            foreach ($stream as $chunk) {
-                $fullText .= $chunk;
-                echo "data: " . json_encode(['text' => $chunk]) . "\n\n";
+            try {
+                $stream = $this->aiService->streamChatAboutStandaloneQuestion($question, $userAnswerText, $request->message, $history);
+                
+                foreach ($stream as $chunk) {
+                    $fullText .= $chunk;
+                    echo "data: " . json_encode(['text' => $chunk]) . "\n\n";
+                    if (ob_get_level() > 0) ob_flush();
+                    flush();
+                }
+            } catch (\Exception $e) {
+                Log::error("Streaming error in standalone chat: " . $e->getMessage());
+                
+                if (str_contains($e->getMessage(), '429')) {
+                    echo "data: " . json_encode(['status' => 'quota_exceeded', 'message' => 'Limite de IA atingido pelo provedor. Tente novamente em instantes.']) . "\n\n";
+                } else {
+                    echo "data: " . json_encode(['error' => 'Erro no processamento do Xavier: ' . $e->getMessage()]) . "\n\n";
+                }
                 if (ob_get_level() > 0) ob_flush();
                 flush();
             }
