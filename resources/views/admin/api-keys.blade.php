@@ -1,4 +1,23 @@
 <x-layouts.admin>
+    @push('head')
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #6366f1; /* indigo-500 */
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #4f46e5; /* indigo-600 */
+        }
+    </style>
+    @endpush
+
     <!-- Header -->
     <div class="mb-8 flex justify-between items-start">
         <div>
@@ -239,7 +258,7 @@
                             </h3>
                             <button @click="showModelModal = false">✕</button>
                         </div>
-                        <div class="p-6 max-h-[60vh] overflow-y-auto">
+                        <div class="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
                             <div class="grid grid-cols-1 gap-2">
                                 <template x-for="model in models" :key="model.id">
                                     <div @click="selectedModel = model.id; showModelModal = false" 
