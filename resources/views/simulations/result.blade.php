@@ -595,20 +595,26 @@
                         });
 
                         if (!response.ok) {
-                            const errorData = await response.json();
-                            if (errorData.status === 'quota_exceeded') {
-                                this.messages.push({
-                                    role: 'system',
-                                    message: errorData.message,
-                                    upgrade_url: errorData.upgrade_url,
-                                    reset_date: errorData.reset_date,
-                                    id: Date.now()
-                                });
-                            } else {
-                                throw new Error(errorData.error || 'Falha na conexão');
+                            let rawError = 'Falha desconhecida';
+                            try {
+                                rawError = await response.text();
+                                console.error('SERVER ERROR RESPONSE:', rawError);
+                                const errorData = JSON.parse(rawError);
+                                if (errorData.status === 'quota_exceeded') {
+                                    this.messages.push({
+                                        role: 'system',
+                                        message: errorData.message,
+                                        upgrade_url: errorData.upgrade_url,
+                                        reset_date: errorData.reset_date,
+                                        id: Date.now()
+                                    });
+                                    this.isTyping = false;
+                                    return;
+                                }
+                            } catch (e) {
+                                console.error('Failed to parse error response. Raw text:', rawError);
                             }
-                            this.isTyping = false;
-                            return;
+                            throw new Error(`HTTP Error ${response.status}: ` + rawError.substring(0, 100));
                         }
 
                         const reader = response.body.getReader();
