@@ -144,7 +144,7 @@ class QuestionChatController extends Controller
                 
                 $errorCode = $e->getCode();
                 if (str_contains($e->getMessage(), '429')) {
-                    echo "data: " . json_encode(['status' => 'quota_exceeded', 'message' => 'Limite de IA atingido pelo provedor. Tente novamente em instantes.']) . "\n\n";
+                    echo "data: " . json_encode(['status' => 'provider_error', 'message' => 'O Xavier está recebendo muitas requisições agora. Tente novamente em alguns segundos.']) . "\n\n";
                 } else {
                     echo "data: " . json_encode(['error' => 'Erro no processamento do Xavier: ' . $e->getMessage()]) . "\n\n";
                 }
@@ -301,7 +301,7 @@ class QuestionChatController extends Controller
                 Log::error("Streaming error in standalone chat: " . $e->getMessage());
                 
                 if (str_contains($e->getMessage(), '429')) {
-                    echo "data: " . json_encode(['status' => 'quota_exceeded', 'message' => 'Limite de IA atingido pelo provedor. Tente novamente em instantes.']) . "\n\n";
+                    echo "data: " . json_encode(['status' => 'provider_error', 'message' => 'O Xavier está recebendo muitas requisições agora. Tente novamente em alguns segundos.']) . "\n\n";
                 } else {
                     echo "data: " . json_encode(['error' => 'Erro no processamento do Xavier: ' . $e->getMessage()]) . "\n\n";
                 }
