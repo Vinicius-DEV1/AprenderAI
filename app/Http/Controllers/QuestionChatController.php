@@ -125,6 +125,9 @@ class QuestionChatController extends Controller
             ->toArray();
 
         return response()->stream(function () use ($question, $simulation, $request, $history, $user) {
+            // Clear all output buffers
+            while (ob_get_level() > 0) ob_end_clean();
+
             $fullText = "";
             $stream = $this->aiService->streamChatAboutQuestion($question, $simulation, $request->message, $history);
             
@@ -268,6 +271,9 @@ class QuestionChatController extends Controller
         $userAnswerText = $userAnswer ? $userAnswer->selected_answer : 'Não respondida';
 
         return response()->stream(function () use ($question, $userAnswerText, $request, $history, $user) {
+            // Clear all output buffers
+            while (ob_get_level() > 0) ob_end_clean();
+
             $fullText = "";
             $stream = $this->aiService->streamChatAboutStandaloneQuestion($question, $userAnswerText, $request->message, $history);
             

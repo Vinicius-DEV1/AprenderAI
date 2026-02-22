@@ -617,26 +617,36 @@
                         this.messages.push(assistantMsg);
                         this.isTyping = false;
 
+                        let buffer = '';
                         while (true) {
                             const { done, value } = await reader.read();
                             if (done) break;
 
-                            const chunk = decoder.decode(value, { stream: true });
-                            const lines = chunk.split('\n');
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop(); // Keep partial line in buffer
 
                             for (const line of lines) {
-                                if (line.startsWith('data: ')) {
+                                const trimmedLine = line.trim();
+                                if (trimmedLine.startsWith('data: ')) {
                                     try {
-                                        const data = JSON.parse(line.substring(6));
+                                        const data = JSON.parse(trimmedLine.substring(6));
                                         if (data.text) {
                                             assistantMsg.message += data.text;
                                             this.$nextTick(() => this.scrollToBottom());
                                         }
                                     } catch (e) {
-                                        console.error('SSE Parse Error:', e, line);
+                                        console.error('SSE Parse Error:', trimmedLine, e);
                                     }
                                 }
                             }
+                        }
+                        // Final buffer check
+                        if (buffer.trim().startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(buffer.trim().substring(6));
+                                if (data.text) assistantMsg.message += data.text;
+                            } catch (e) {}
                         }
                     } catch (e) {
                         console.error('Streaming fail:', e);
