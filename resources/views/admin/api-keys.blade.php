@@ -174,7 +174,10 @@
                                         </span>
                                     </template>
                                     <template x-if="!selectedModel">
-                                        <span class="text-gray-400 italic">Aguardando descoberta...</span>
+                                        <span class="text-gray-400 italic">
+                                            <span x-show="!loadingModels">Aguardando seleção...</span>
+                                            <span x-show="loadingModels">Aguardando descoberta...</span>
+                                        </span>
                                     </template>
                                     <input type="hidden" name="preferred_model" :value="selectedModel">
                                 </div>
@@ -252,8 +255,44 @@
                     </div>
                 </form>
 
+            </div>
+
+            <!-- Model Selection Modal (Premium) -->
+            <div x-show="showModelModal" class="fixed inset-0 z-[150] flex items-center justify-center p-4" x-cloak
+                 @keydown.escape.window="showModelModal = false"
+                 x-effect="document.body.style.overflow = showModelModal ? 'hidden' : ''"
+                 x-init="$watch('showModelModal', value => { if (value) setTimeout(() => { $refs.modalContainer && $refs.modalContainer.focus() }, 50) })">
+                <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[140]" @click="showModelModal = false"></div>
+                <div class="relative z-[160] bg-white rounded-2xl shadow-2xl max-w-lg w-full flex flex-col overflow-hidden border border-gray-100 outline-none" 
+                     x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                     x-ref="modalContainer" tabindex="-1">
+                    <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white shrink-0 sticky top-0 z-10">
+                        <h3 class="font-bold flex items-center gap-2">
+                            <span>🤖</span> Modelos Disponíveis no Provedor
+                        </h3>
+                        <button type="button" @click="showModelModal = false" class="hover:text-gray-200 transition-colors">✕</button>
+                    </div>
+                    <div class="p-6 overflow-y-auto custom-scrollbar flex-1 max-h-[70vh]">
+                        <div class="grid grid-cols-1 gap-2">
+                            <template x-for="model in models" :key="model.id">
+                                <div @click="selectedModel = model.id; showModelModal = false" 
+                                     class="p-4 rounded-xl border border-gray-100 hover:bg-gray-100 hover:border-indigo-200 cursor-pointer transition-all flex justify-between items-center group">
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-gray-800 group-hover:text-indigo-700 transition-colors" x-text="model.name"></span>
+                                        <span class="text-[10px] font-mono text-gray-400 group-hover:text-indigo-400 transition-colors" x-text="model.id"></span>
+                                    </div>
+                                    <span class="opacity-0 group-hover:opacity-100 text-indigo-500 font-medium">Selecionar →</span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-6 py-4 text-center text-[10px] text-gray-400 italic shrink-0">
+                        O acesso aos modelos depende da sua quota na conta do provedor.
+                    </div>
+                </div>
+            </div>
+
         </div>
-    </div>
 
 
         <!-- 3. LISTAGEM E SAÚDE -->
@@ -618,36 +657,7 @@
         </template>
 
 
-        <!-- Model Selection Modal (Premium) -->
-        <div x-show="showModelModal" class="fixed inset-0 z-[150] flex items-center justify-center p-4" x-cloak>
-            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showModelModal = false"></div>
-            <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden border border-gray-100" 
-                 x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
-                <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white shrink-0">
-                    <h3 class="font-bold flex items-center gap-2">
-                        <span>🤖</span> Modelos Disponíveis no Provedor
-                    </h3>
-                    <button @click="showModelModal = false">✕</button>
-                </div>
-                <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
-                    <div class="grid grid-cols-1 gap-2">
-                        <template x-for="model in models" :key="model.id">
-                            <div @click="selectedModel = model.id; showModelModal = false" 
-                                 class="p-4 rounded-xl border border-gray-100 hover:bg-indigo-50 hover:border-indigo-200 cursor-pointer transition-all flex justify-between items-center group">
-                                <div class="flex flex-col">
-                                    <span class="font-bold text-gray-800" x-text="model.name"></span>
-                                    <span class="text-[10px] font-mono text-gray-400" x-text="model.id"></span>
-                                </div>
-                                <span class="opacity-0 group-hover:opacity-100 text-indigo-500">Selecionar →</span>
-                            </div>
-                        </template>
-                    </div>
-                </div>
-                <div class="bg-gray-50 px-6 py-4 text-center text-[10px] text-gray-400 italic shrink-0">
-                    O acesso aos modelos depende da sua quota na conta do provedor.
-                </div>
-            </div>
-        </div>
+        <!-- (Modal movido para dentro do scope routingData) -->
 
     </div>
 
@@ -683,17 +693,42 @@
                         },
                         body: JSON.stringify({ vault_id: this.selectedVaultId })
                     })
-                    .then(res => res.json())
+                    .then(async res => {
+                        if (!res.ok) {
+                            let msg = 'Erro no servidor (' + res.status + ')';
+                            try {
+                                const errData = await res.json();
+                                msg = errData.error || msg;
+                            } catch(e) {}
+                            throw new Error(msg);
+                        }
+                        return res.json();
+                    })
                     .then(data => {
+                        console.log('Discovery Response:', data); // Debug: respose payload
+                        
                         if (data.is_valid && data.models) {
-                            this.models = data.models;
-                            this.showModelModal = true;
+                            if (data.models.length === 0) {
+                                this.discoveryError = 'Nenhum modelo disponível para esta chave.';
+                                alert("Falha: " + this.discoveryError);
+                                this.selectedModel = ''; // prevent 'Aguardando seleção...' state
+                            } else {
+                                this.models = data.models;
+                                this.showModelModal = true;
+                                // Dispatch event to focus modal or just log
+                                console.log('Opening modal with models:', this.models);
+                            }
                         } else {
                             this.discoveryError = data.error || 'Falha na descoberta de modelos.';
+                            alert("Falha: " + this.discoveryError);
+                            this.selectedModel = ''; // reset state
                         }
                     })
                     .catch(err => {
-                        this.discoveryError = 'Erro de rede ao conectar com o servidor.';
+                        console.error('Fetch error:', err);
+                        this.discoveryError = err.message || 'Erro de rede ao conectar com o servidor.';
+                        alert("Falha na conexão: " + this.discoveryError);
+                        this.selectedModel = ''; // reset state
                     })
                     .finally(() => {
                         this.loadingModels = false;

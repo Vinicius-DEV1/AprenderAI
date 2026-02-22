@@ -131,11 +131,22 @@ class AdminController extends Controller
     {
         $request->validate(['vault_id' => 'required|exists:api_key_vaults,id']);
         
-        $vault = \App\Models\ApiKeyVault::findOrFail($request->vault_id);
-        $aiService = app(\App\Services\AIService::class);
-        $result = $aiService->validateKey($vault->provider, $vault->decrypted_key);
+        try {
+            $vault = \App\Models\ApiKeyVault::findOrFail($request->vault_id);
+            $aiService = app(\App\Services\AIService::class);
+            $result = $aiService->validateKey($vault->provider, $vault->decrypted_key);
 
-        return response()->json($result);
+            if (!$result['is_valid']) {
+                return response()->json($result, 422);
+            }
+
+            return response()->json($result);
+        } catch (\Exception $e) {
+            return response()->json([
+                'is_valid' => false,
+                'error' => 'Falha interna: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function storeApiKey(Request $request)
