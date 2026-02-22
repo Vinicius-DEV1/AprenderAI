@@ -44,6 +44,20 @@
                         </p>
                     </div>
 
+                    <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-bold text-blue-900">Efeito Typewriter (Streaming)</h3>
+                                <p class="text-xs text-blue-700">Faz o Xavier responder "letra por letra" em tempo real.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="hidden" name="ai_streaming_enabled" value="false">
+                                <input type="checkbox" name="ai_streaming_enabled" value="true" class="sr-only peer" {{ ($settings['ai_streaming_enabled'] ?? 'false') === 'true' ? 'checked' : '' }}>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+                    </div>
+
                     <div class="pt-4 border-t border-gray-100 flex justify-end">
                         <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-all shadow-md hover:shadow-lg active:transform active:scale-95">
                             Salvar Alterações

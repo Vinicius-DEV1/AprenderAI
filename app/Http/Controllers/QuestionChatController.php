@@ -90,6 +90,69 @@ class QuestionChatController extends Controller
         return response()->json(['status' => 'queued']);
     }
 
+    /**
+     * Handle streaming chat for simulation context.
+     */
+    public function stream(Request $request, Simulation $simulation, Question $question)
+    {
+        $request->validate(['message' => 'required|string|max:1000']);
+
+        if (!$simulation->answers()->where('question_id', $question->id)->exists()) {
+            return response()->json(['error' => 'Questão não pertence a este simulado.'], 403);
+        }
+
+        $user = $request->user();
+
+        if (!$user->hasAiQuota()) {
+            return response()->json(['status' => 'quota_exceeded', 'message' => 'Você atingiu o limite de dúvidas.']);
+        }
+
+        $user->incrementAiUsage();
+
+        QuestionInteraction::create([
+            'simulation_id' => $simulation->id,
+            'question_id' => $question->id,
+            'user_id' => $user->id,
+            'role' => 'user',
+            'message' => $request->message,
+        ]);
+
+        $history = QuestionInteraction::where('simulation_id', $simulation->id)
+            ->where('question_id', $question->id)
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(fn($i) => ['role' => $i->role, 'message' => $i->message])
+            ->toArray();
+
+        return response()->stream(function () use ($question, $simulation, $request, $history, $user) {
+            $fullText = "";
+            $stream = $this->aiService->streamChatAboutQuestion($question, $simulation, $request->message, $history);
+            
+            foreach ($stream as $chunk) {
+                $fullText .= $chunk;
+                // SSE format
+                echo "data: " . json_encode(['text' => $chunk]) . "\n\n";
+                if (ob_get_level() > 0) ob_flush();
+                flush();
+            }
+
+            if ($fullText) {
+                QuestionInteraction::create([
+                    'simulation_id' => $simulation->id,
+                    'question_id' => $question->id,
+                    'user_id' => $user->id,
+                    'role' => 'assistant',
+                    'message' => $fullText,
+                ]);
+            }
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'Connection' => 'keep-alive',
+            'X-Accel-Buffering' => 'no', // For Nginx
+        ]);
+    }
+
     public function index(Request $request, Simulation $simulation, Question $question)
     {
         $history = QuestionInteraction::where('simulation_id', $simulation->id)
@@ -165,6 +228,71 @@ class QuestionChatController extends Controller
         );
 
         return response()->json(['status' => 'queued']);
+    }
+
+    /**
+     * Handle streaming chat for standalone context.
+     */
+    public function streamStandalone(Request $request, Question $question)
+    {
+        $request->validate(['message' => 'required|string|max:1000']);
+
+        $user = $request->user();
+
+        if (!$user->hasAiQuota()) {
+            return response()->json(['status' => 'quota_exceeded', 'message' => 'Você atingiu o limite de dúvidas.']);
+        }
+
+        $user->incrementAiUsage();
+
+        QuestionInteraction::create([
+            'simulation_id' => null,
+            'question_id' => $question->id,
+            'user_id' => $user->id,
+            'role' => 'user',
+            'message' => $request->message,
+        ]);
+
+        $history = QuestionInteraction::whereNull('simulation_id')
+            ->where('question_id', $question->id)
+            ->where('user_id', $user->id)
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(fn($i) => ['role' => $i->role, 'message' => $i->message])
+            ->toArray();
+
+        $userAnswer = \App\Models\UserQuestionAnswer::where('user_id', $user->id)
+            ->where('question_id', $question->id)
+            ->first();
+
+        $userAnswerText = $userAnswer ? $userAnswer->selected_answer : 'Não respondida';
+
+        return response()->stream(function () use ($question, $userAnswerText, $request, $history, $user) {
+            $fullText = "";
+            $stream = $this->aiService->streamChatAboutStandaloneQuestion($question, $userAnswerText, $request->message, $history);
+            
+            foreach ($stream as $chunk) {
+                $fullText .= $chunk;
+                echo "data: " . json_encode(['text' => $chunk]) . "\n\n";
+                if (ob_get_level() > 0) ob_flush();
+                flush();
+            }
+
+            if ($fullText) {
+                QuestionInteraction::create([
+                    'simulation_id' => null,
+                    'question_id' => $question->id,
+                    'user_id' => $user->id,
+                    'role' => 'assistant',
+                    'message' => $fullText,
+                ]);
+            }
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'Connection' => 'keep-alive',
+            'X-Accel-Buffering' => 'no',
+        ]);
     }
 
     /**

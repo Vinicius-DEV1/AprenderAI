@@ -38,6 +38,7 @@ Route::middleware(['auth'])->group(function () {
 
             // Chat Contextual
             Route::post('/{simulation}/questions/{question}/chat', [\App\Http\Controllers\QuestionChatController::class, 'store'])->name('questions.chat.store');
+            Route::post('/{simulation}/questions/{question}/chat/stream', [\App\Http\Controllers\QuestionChatController::class, 'stream'])->name('questions.chat.stream');
             Route::get('/{simulation}/questions/{question}/chat', [\App\Http\Controllers\QuestionChatController::class, 'index'])->name('questions.chat.index');
         }
     );
@@ -56,6 +57,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{question}/history', [\App\Http\Controllers\QuestionBankController::class, 'history'])->name('history');
             // Chat Standalone (Tirar Dúvida)
             Route::post('/{question}/chat', [\App\Http\Controllers\QuestionChatController::class, 'storeStandalone'])->name('chat.store');
+            Route::post('/{question}/chat/stream', [\App\Http\Controllers\QuestionChatController::class, 'streamStandalone'])->name('chat.stream');
             Route::get('/{question}/chat', [\App\Http\Controllers\QuestionChatController::class, 'indexStandalone'])->name('chat.index');
         }
     );
