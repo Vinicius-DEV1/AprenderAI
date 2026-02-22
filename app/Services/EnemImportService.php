@@ -51,6 +51,12 @@ class EnemImportService
             // Tratamento de idioma embutido no tópico ou theme, se aplicável
             $theme = $apiQuestion['language'] ? 'Língua Estrangeira: ' . ucfirst($apiQuestion['language']) : null;
 
+            // Inteligência de Fluxo: Avalia se possui imagens no markdown ou em alguma alternativa
+            $hasImage = str_contains($statement, '![') || collect($apiQuestion['alternatives'])->contains(function($alt) {
+                return !empty($alt['file']);
+            });
+            $initialStatus = $hasImage ? 'review' : 'pending';
+
             // Criar a questão
             $question = \App\Models\Question::create([
                 'external_id' => $externalId,
@@ -66,7 +72,7 @@ class EnemImportService
                 'organization' => $organization,
                 'institution' => $institution,
                 'role' => $role,
-                'review_status' => 'pending', // A API não traz Matéria/Assunto padronizados. Direcionando p/ AI Triage.
+                'review_status' => $initialStatus, // Segmenta: Vai pra revisão visual Humana (review) ou Limpo pra Triagem de Máquina (pending)
             ]);
 
             // Lógica N:N (Pivot): Associando as disciplinas através do relacionamento subjects()
