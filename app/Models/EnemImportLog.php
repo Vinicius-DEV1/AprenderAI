@@ -12,10 +12,12 @@ class EnemImportLog extends Model
         'ignored_count',
         'error_count',
         'errors',
+        'ignored_details',
         'status',
     ];
 
     protected $casts = [
         'errors' => 'array',
+        'ignored_details' => 'array',
     ];
 }

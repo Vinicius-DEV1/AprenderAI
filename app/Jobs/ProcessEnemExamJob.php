@@ -45,6 +45,7 @@ class ProcessEnemExamJob implements ShouldQueue
         $ignored = 0;
         $errors = 0;
         $errorMessages = [];
+        $ignoredItems = [];
 
         while ($hasMore) {
             if ($this->batch() && $this->batch()->cancelled()) {
@@ -59,28 +60,36 @@ class ProcessEnemExamJob implements ShouldQueue
 
                 foreach ($questions as $apiQuestion) {
                     try {
-                        $question = $importService->processQuestion($apiQuestion);
-                        if ($question) {
+                        $result = $importService->processQuestion($apiQuestion);
+                        
+                        if ($result['status'] === 'success') {
                             $inserted++;
-                        } else {
+                        } elseif ($result['status'] === 'ignored') {
                             $ignored++;
+                            $ignoredItems[] = [
+                                'index' => $result['index'] ?? '?',
+                                'title' => $result['title'] ?? 'N/A',
+                                'reason' => $result['reason'] ?? 'unknown',
+                                'full_data' => $result['full_data'] ?? []
+                            ];
+                        } elseif ($result['status'] === 'error') {
+                            $errors++;
+                            $errorMessages[] = "Erro na questão index " . ($result['index'] ?? '?') . ": " . ($result['reason'] ?? 'Erro desconhecido');
                         }
                     } catch (\Exception $e) {
                         $errors++;
-                        $errorMessages[] = "Erro na questão index {$apiQuestion['index']}: " . $e->getMessage();
-                        \Illuminate\Support\Facades\Log::error("EnemImport processQuestion Falhou", ['msg' => $e->getMessage(), 'q' => $apiQuestion]);
+                        $errorMessages[] = "Exceção na questão index " . ($apiQuestion['index'] ?? '?') . ": " . $e->getMessage();
                     }
                 }
 
                 $hasMore = $metadata['hasMore'] ?? false;
                 $offset += $limit;
 
-                // Delay estratégico para não inundar a API
                 sleep(2);
 
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error("EnemImport getExamQuestions Falhou: Ano {$this->year}, Offset {$offset}", ['msg' => $e->getMessage()]);
-                throw $e; // Throw para o backoff da Queue tratar (se configurado) ou para falhar o job
+                throw $e;
             }
         }
 
@@ -91,6 +100,12 @@ class ProcessEnemExamJob implements ShouldQueue
             $log->increment('ignored_count', $ignored);
             $log->increment('error_count', $errors);
             
+            // Persistir Detalhes de Ignorados (Novidade)
+            if (!empty($ignoredItems)) {
+                $existingIgnored = $log->ignored_details ?? [];
+                $log->update(['ignored_details' => array_merge($existingIgnored, $ignoredItems)]);
+            }
+
             if (!empty($errorMessages)) {
                 $existingErrors = $log->errors ?? [];
                 $log->update(['errors' => array_merge($existingErrors, $errorMessages)]);
