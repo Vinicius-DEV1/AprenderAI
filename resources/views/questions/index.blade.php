@@ -382,8 +382,8 @@
                 <label>Matéria</label>
                 <select name="subject" x-model="filters.subject" :disabled="loadingSubjects">
                     <option value="" x-text="loadingSubjects ? 'Carregando...' : 'Todas'"></option>
-                    <template x-for="s in subjects" :key="s">
-                        <option :value="s" x-text="s" :selected="filters.subject == s"></option>
+                    <template x-for="s in subjects" :key="s.id">
+                        <option :value="s.id" x-text="s.name" :selected="filters.subject == s.id"></option>
                     </template>
                 </select>
             </div>
@@ -606,7 +606,7 @@ function filterPanel(currentFilters) {
                 this.subjects = await res.json();
                 
                 // Se a matéria atual (via IA ou manual) não fizer parte desta filtragem, reseta a escolha
-                if (this.filters.subject && !this.subjects.includes(this.filters.subject)) {
+                if (this.filters.subject && !this.subjects.some(s => s.id == this.filters.subject)) {
                     this.filters.subject = '';
                 }
             } catch (e) { console.error('Subjects err', e); }

@@ -871,7 +871,6 @@ Opções válidas (JSON): {filter_options}");
             return [
                 'is_valid' => true,
                 'models' => collect($data)
-                    ->filter(fn($m) => str_contains($m['id'], 'gpt'))
                     ->map(fn($m) => ['id' => $m['id'], 'name' => strtoupper($m['id'])])
                     ->values()
                     ->toArray()
@@ -915,7 +914,6 @@ Opções válidas (JSON): {filter_options}");
             return [
                 'is_valid' => true,
                 'models' => collect($models)
-                    ->filter(fn($m) => str_contains($m['name'], 'gemini') || str_contains($m['name'], 'learnlm'))
                     ->map(fn($m) => [
                         'id' => str_replace('models/', '', $m['name']),
                         'name' => $m['displayName'] ?? $m['name']

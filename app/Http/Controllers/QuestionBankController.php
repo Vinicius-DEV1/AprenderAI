@@ -93,8 +93,9 @@ class QuestionBankController extends Controller
             ->when($type, function($q) use ($type) {
                 $q->whereHas('questions', fn($q2) => $q2->filterByType($type));
             })
+            ->select('id', 'name')
             ->orderBy('name')
-            ->pluck('name');
+            ->get();
 
         return response()->json($subjects);
     }
@@ -108,12 +109,12 @@ class QuestionBankController extends Controller
      */
     public function topics(Request $request)
     {
-        $subjectName = $request->get('subject');
+        $subjectId = $request->get('subject');
         $type = $request->get('type');
         
         $topics = \App\Models\Topic::query()
-            ->whereHas('questions', function($q) use ($type, $subjectName) {
-                $q->filterByType($type)->filterBySubject($subjectName);
+            ->whereHas('questions', function($q) use ($type, $subjectId) {
+                $q->filterByType($type)->filterBySubject($subjectId);
             })
             ->select('id', 'name')
             ->orderBy('name')

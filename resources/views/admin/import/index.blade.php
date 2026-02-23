@@ -7,7 +7,7 @@
             <a href="{{ route('admin.import.review.index') }}"
                class="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 text-sm font-medium flex items-center gap-2">
                 🔍 Painel de Revisão
-                @php $pendingCount = \App\Models\Question::where('review_status', 'pending')->count(); @endphp
+                @php $pendingCount = \App\Models\Question::where('review_status', 'review')->count(); @endphp
                 @if($pendingCount > 0)
                     <span class="bg-white text-yellow-600 text-xs font-bold px-2 py-0.5 rounded-full">{{ $pendingCount }}</span>
                 @endif
@@ -40,21 +40,178 @@
             --}}
             <div class="bg-white overflow-hidden shadow-sm rounded-lg"
                  x-data="{
-                     uploading: false,       /* Controla o estado de carregamento */
-                     fileName: '',           /* Nome do arquivo selecionado */
-                     fileSizeMB: '',         /* Tamanho formatado para exibição */
-                     selectFile(event) {     /* Chamado quando o usuário escolhe o arquivo */
+                     uploading: false,
+                     fileName: '',
+                     fileSizeMB: '',
+                     
+                     progressMode: false,
+                     showBanner: false, // Controla o mini-banner persistente
+                     progressPercent: 0,
+                     totalQuestions: 0,
+                     processedQuestions: 0,
+                     statusText: 'Iniciando Processo...',
+                     importId: null,
+                     pollInterval: null,
+                     
+                     init() {
+                         // Executa ao carregar a página: verifica se tem job em background persistente
+                         this.checkActiveJob();
+                     },
+
+                     async checkActiveJob() {
+                         try {
+                             let response = await fetch('{{ route('admin.import.active-job') }}');
+                             let data = await response.json();
+                             
+                             if (data.active) {
+                                 this.importId = data.import_id;
+                                 this.progressMode = false; // Não trava a tela se já estava em background
+                                 this.showBanner = true;    // Mas mostra o banner superior
+                                 this.totalQuestions = data.total;
+                                 this.processedQuestions = data.processed;
+                                 this.startPolling();
+                             }
+                         } catch (e) {
+                             console.warn('Silent fail check active job');
+                         }
+                     },
+
+                     selectFile(event) {
                          const file = event.target.files[0];
                          if (file) {
                              this.fileName = file.name;
                              this.fileSizeMB = (file.size / 1024 / 1024).toFixed(2) + ' MB';
                          }
                      },
-                     submit(event) {         /* Chamado ao enviar o formulário */
-                         this.uploading = true;
+                     
+                     async submit() {
+                        if (!this.fileName || this.uploading || this.pollInterval) {
+                            alert('Já existe uma operação em andamento paralela. Aguarde!');
+                            return;
+                        }
+                        
+                        this.uploading = true;
+                        this.progressMode = true; // Modal subindo
+                        this.showBanner = false;
+                        this.statusText = 'Fazendo upload do arquivo .zip (Demorará conforme a internet)...';
+                        
+                        let formData = new FormData();
+                        formData.append('zip_file', document.getElementById('zip_file').files[0]);
+                        formData.append('_token', '{{ csrf_token() }}');
+
+                        try {
+                            let response = await fetch('{{ route('admin.import.store') }}', {
+                                method: 'POST',
+                                body: formData,
+                                headers: {
+                                    'Accept': 'application/json'
+                                }
+                            });
+
+                            let result = await response.json();
+
+                            if (response.ok && result.success) {
+                                this.importId = result.import_id;
+                                this.statusText = 'Criando lote e enviando para o Worker extrair...';
+                                this.startPolling();
+                                // Após disparar pro Worker, soltamos o form e ele desminiza se quiser
+                                this.uploading = false; 
+                                document.getElementById('zip_file').value = '';
+                                this.fileName = '';
+                            } else {
+                                alert(result.error || 'Falha ao processar arquivo no servidor.');
+                                this.resetUpload();
+                            }
+                        } catch (e) {
+                            alert('Erro crítico ao comunicar com o servidor.');
+                            this.resetUpload();
+                        }
+                     },
+
+                     moveToBackground() {
+                         // Fechamos o modal Dark, e ativamos o banner persistente do painel (mantendo poller ligado)
+                         this.progressMode = false;
+                         this.showBanner = true;
+                     },
+
+                     startPolling() {
+                        if (this.pollInterval) clearInterval(this.pollInterval);
+
+                        this.pollInterval = setInterval(async () => {
+                            try {
+                                let response = await fetch(`/admin/import/${this.importId}/progress`, {
+                                    headers: { 'Accept': 'application/json' }
+                                });
+                                let data = await response.json();
+
+                                if (data.status === 'processing' || data.status === 'completed' || data.status === 'pending') {
+                                    this.totalQuestions = data.total;
+                                    this.processedQuestions = data.processed;
+                                    
+                                    if (data.total > 0) {
+                                        this.progressPercent = Math.round((data.processed / data.total) * 100);
+                                        this.statusText = `Inserindo via Job: ${data.processed} de ${data.total} questões (${this.progressPercent}%).`;
+                                    } else {
+                                        this.statusText = 'Extraindo o ZIP e aguardando processamento inicial...';
+                                    }
+
+                                    if (data.status === 'completed') {
+                                        this.progressPercent = 100;
+                                        this.statusText = '✅ Importação finalizada com sucesso!';
+                                        this.showBanner = false;
+                                        clearInterval(this.pollInterval);
+                                        
+                                        // Não recarrega abruptamente para não atrapalhar, apenas dá um aviso.
+                                        alert('Lote importado e 100% processado! Clique no Painel de Revisão para gerenciar as novas imagens.');
+                                        
+                                        setTimeout(() => {
+                                            this.progressMode = false;
+                                            window.location.reload();
+                                        }, 3000);
+                                    }
+                                } else if (data.status === 'failed') {
+                                    clearInterval(this.pollInterval);
+                                    alert('A importação falhou no Job em Background: ' + (data.error || 'Erro Desconhecido'));
+                                    this.resetUpload();
+                                }
+
+                            } catch (e) {
+                                console.error('Erro de polling ignorado', e);
+                            }
+                        }, 2500);
+                     },
+
+                     resetUpload() {
+                        this.uploading = false;
+                        this.progressMode = false;
+                        this.showBanner = false;
+                        this.fileName = '';
+                        this.fileSizeMB = '';
+                        this.progressPercent = 0;
+                        document.getElementById('zip_file').value = '';
+                        if (this.pollInterval) clearInterval(this.pollInterval);
                      }
                  }">
-                <div class="p-6">
+                {{-- BANNER PERSISTENTE DE FUNDO (Aparece invés do Modal se recarregar a tela ou encolher) --}}
+                <div x-show="showBanner" style="display: none;" class="bg-indigo-600 text-white rounded-t-lg rounded-b-none px-6 py-4 flex items-center justify-between shadow-md mb-0">
+                    <div class="flex items-center gap-4 w-full">
+                        <svg class="animate-spin w-6 h-6 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-sm uppercase tracking-wide">Importação em Background (Lote)</h4>
+                            <p class="text-xs text-indigo-200 mt-0.5" x-text="statusText"></p>
+                            
+                            {{-- Mini progressBar --}}
+                            <div class="w-full bg-indigo-800 rounded-full h-1.5 mt-2">
+                              <div class="bg-blue-300 h-1.5 rounded-full transition-all duration-300" :style="`width: ${progressPercent}%`"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-6" :class="{ 'rounded-t-none border-t border-indigo-400': showBanner }">
                     <div class="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
                         <div class="p-3 rounded-full bg-indigo-50">
                             <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -70,7 +227,7 @@
                     <form method="POST" 
                           action="{{ route('admin.import.store') }}"
                           enctype="multipart/form-data"
-                          @submit.prevent="submit($event); $el.submit()">
+                          @submit.prevent="submit">
                         @csrf
 
                         {{-- Zona de drag-and-drop para o arquivo .zip --}}
@@ -131,6 +288,50 @@
                         </div>
                     </form>
                 </div>
+                
+                {{-- Modal de Progresso Bloqueador --}}
+                <div x-show="progressMode" 
+                     style="display: none;" 
+                     class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm">
+                    <div class="bg-white rounded-xl shadow-2xl p-8 max-w-lg w-full mx-4 transform transition-all text-center">
+                        <div class="mb-6 flex justify-center">
+                            <div class="p-3 bg-indigo-50 rounded-full">
+                                <svg class="animate-spin w-12 h-12 text-indigo-600" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">Processando Importação</h3>
+                        
+                        <p class="text-sm text-gray-500 mb-6 font-medium bg-gray-50 py-2 px-3 rounded-lg border border-gray-100" x-text="statusText"></p>
+                        
+                        {{-- Barra Visual HTML5 Styled --}}
+                        <div class="relative w-full h-4 bg-gray-200 rounded-full overflow-hidden shadow-inner mb-2">
+                            <div class="absolute top-0 left-0 h-full bg-indigo-600 transition-all duration-500 ease-out"
+                                 :style="`width: ${progressPercent}%`">
+                                 <div class="w-full h-full opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPjxwYXRoIGQ9Ik0tMSsxbDgtOFptMi0yTDggNW0tMiAyTDggNyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjEuNSIvPjwvc3ZnPg==')] bg-repeat" style="background-size: 16px;"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-between text-xs text-gray-500 font-bold uppercase tracking-wider mt-3">
+                            <span>0%</span>
+                            <span x-text="`${progressPercent}%`" class="text-indigo-600"></span>
+                            <span>100%</span>
+                        </div>
+                        
+                        
+                        <p class="mt-5 text-xs text-gray-400 mb-4">Você também pode enviar este processo para background caso queira sair ou navegar em outras abas.</p>
+                        
+                        <button type="button" 
+                                @click="moveToBackground()"
+                                class="w-full inline-flex justify-center flex-row items-center gap-2 py-2.5 px-4 text-sm font-medium border border-gray-300 rounded-md shadow-sm bg-white text-gray-700 hover:bg-gray-50 focus:outline-none transition-colors">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            Ocultar Modal e Rodar em Solitário
+                        </button>
+                    </div>
+                </div>
+
             </div>
 
             {{-- HISTÓRICO DE LOTES DE IMPORTAÇÃO --}}
