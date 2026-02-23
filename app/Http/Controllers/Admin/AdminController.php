@@ -83,7 +83,14 @@ class AdminController extends Controller
     public function apiKeys()
     {
         $vaultKeys = \App\Models\ApiKeyVault::orderBy('nickname')->get();
-        $routingKeys = ApiKey::with('vault')->orderBy('provider')->get();
+        
+        // NOVO: Nós não iteramos mais por "Routing Keys", mas sim por "Capacidades" e suas pilhas de modelos
+        $capabilitiesGrid = [];
+        $availableCapabilities = ApiKey::getAvailableCapabilities();
+
+        foreach($availableCapabilities as $cap => $label) {
+            $capabilitiesGrid[$cap] = ApiKey::getKeysForCapability($cap);
+        }
 
         // SRE: Fetch last 20 health check logs
         $logs = \App\Models\ApiLog::with('apiKey')->latest()->take(20)->get();
@@ -108,10 +115,7 @@ class AdminController extends Controller
             ->where('created_at', '>=', now()->subHours(6))
             ->exists();
 
-        // NEW: Pull capabilities dictionary for UI Rendering
-        $availableCapabilities = ApiKey::getAvailableCapabilities();
-
-        return view('admin.api-keys', compact('vaultKeys', 'routingKeys', 'logs', 'aiLogs', 'aiRanking', 'hasRecentErrors', 'availableCapabilities'));
+        return view('admin.api-keys', compact('vaultKeys', 'capabilitiesGrid', 'logs', 'aiLogs', 'aiRanking', 'hasRecentErrors', 'availableCapabilities'));
     }
 
     public function storeVaultKey(Request $request)
@@ -159,69 +163,63 @@ class AdminController extends Controller
         ]);
 
         $vault = \App\Models\ApiKeyVault::findOrFail($request->vault_id);
-        $requestedCapabilities = $request->capabilities ?? [ApiKey::CAPABILITY_GENERAL];
-
-        // 🚨 REQUISITO: Chave Única por Capacidade
-        $activeKeys = ApiKey::where('is_active', true)->get();
-        $conflicts = [];
-        foreach ($requestedCapabilities as $cap) {
-            foreach ($activeKeys as $ak) {
-                if (is_array($ak->capabilities) && in_array($cap, $ak->capabilities)) {
-                    $conflicts[] = ApiKey::getAvailableCapabilities()[$cap] ?? $cap;
-                    break;
-                }
-            }
+        
+        // Se o usuário não selecionou nada, usamos o General como fallback de segurança
+        $requestedCapabilities = $request->capabilities;
+        if (empty($requestedCapabilities)) {
+            $requestedCapabilities = [ApiKey::CAPABILITY_GENERAL];
         }
 
-        if (!empty($conflicts)) {
-            $conflictLabels = implode(', ', array_unique($conflicts));
-            return back()->with('error', "Conflito de Roteamento: As capacidades [{$conflictLabels}] já estão ativas em outra chave. Desative-as na chave atual antes de registrar uma nova.");
-        }
-
-        // Se for a primeira chave deste provider, torna-a primária
+        // Se for a primeira chave deste provider, torna-a primária (Legacy)
         $isPrimary = !ApiKey::where('provider', $vault->provider)->where('is_primary', true)->exists();
 
-        ApiKey::create([
+        $apiKey = ApiKey::create([
             'vault_id' => $vault->id,
-            'provider' => $vault->provider, // Cache provider locally
+            'provider' => $vault->provider, 
             'preferred_model' => $request->preferred_model,
-            'capabilities' => $requestedCapabilities,
             'is_valid' => true,
             'is_active' => true,
             'is_primary' => $isPrimary,
             'status' => 'online',
         ]);
 
-        return back()->with('success', 'Roteamento configurado com sucesso!');
+        // CADASTRAR APENAS AS CAPACIDADES SELECIONADAS NO FORMULÁRIO
+        foreach($requestedCapabilities as $cap) {
+            // Prioridade: Puxar sempre para o fim da fila daquela categoria específica
+            $currentMaxPriority = \App\Models\ApiKeyCapability::where('capability', $cap)->max('priority') ?? 0;
+            
+            \App\Models\ApiKeyCapability::firstOrCreate([
+                'api_key_id' => $apiKey->id,
+                'capability' => $cap
+            ], [
+                'priority' => $currentMaxPriority + 1
+            ]);
+        }
+
+        return back()->with('success', 'Roteamento configurado com sucesso! O modelo foi vinculado apenas às funcionalidades selecionadas.');
+    }
+
+    public function updateCapabilitiesPriority(Request $request)
+    {
+        $request->validate([
+            'capability' => 'required|string',
+            'ordered_ids' => 'required|array',
+            'ordered_ids.*' => 'exists:api_key_capabilities,id'
+        ]);
+
+        foreach ($request->ordered_ids as $index => $id) {
+            \App\Models\ApiKeyCapability::where('id', $id)
+                ->where('capability', $request->capability)
+                ->update(['priority' => $index + 1]);
+        }
+
+        return response()->json(['success' => true]);
     }
 
     public function toggleApiKey(ApiKey $apiKey)
     {
-        // Se estiver ativando a chave, validar conflitos
-        if (!$apiKey->is_active) {
-            $myCapabilities = $apiKey->capabilities ?? [];
-            if (!empty($myCapabilities)) {
-                $activeKeys = ApiKey::where('is_active', true)->where('id', '!=', $apiKey->id)->get();
-                $conflicts = [];
-                
-                foreach ($myCapabilities as $cap) {
-                    foreach ($activeKeys as $ak) {
-                        if (is_array($ak->capabilities) && in_array($cap, $ak->capabilities)) {
-                            $conflicts[] = ApiKey::getAvailableCapabilities()[$cap] ?? $cap;
-                            break;
-                        }
-                    }
-                }
-
-                if (!empty($conflicts)) {
-                    $conflictLabels = implode(', ', array_unique($conflicts));
-                    return back()->with('error', "Não é possível ativar esta chave. As capacidades [{$conflictLabels}] já estão sendo providas por outra API Ativa. Desative a concorrente primeiro.");
-                }
-            }
-        }
-
         $apiKey->update(['is_active' => !$apiKey->is_active]);
-        return back()->with('success', 'Status da chave atualizado!');
+        return back()->with('success', 'Status da provedor de IA atualizado globalmente!');
     }
 
     /**
@@ -243,9 +241,10 @@ class AdminController extends Controller
 
     public function destroyApiKey(ApiKey $apiKey)
     {
+        // Ao deletar uma API Key com cascade on delete, todas as capabilities atreladas na pivô são excluídas automaticamente
         $apiKey->delete();
 
-        // Se deletou a primária, promove outra
+        // Se deletou a primária, promove outra (Legacy mode)
         if ($apiKey->is_primary) {
             $nextKey = ApiKey::where('provider', $apiKey->provider)->first();
             if ($nextKey) {
@@ -253,7 +252,7 @@ class AdminController extends Controller
             }
         }
 
-        return back()->with('success', 'Chave removida!');
+        return back()->with('success', 'Chave e todos os seus vínculos de roteamento foram removidos!');
     }
 
     /**

@@ -23,6 +23,8 @@
     </style>
     @endpush
 
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    
     <!-- Header -->
     <div class="mb-8 flex justify-between items-start">
         <div>
@@ -295,102 +297,115 @@
         </div>
 
 
-        <!-- 3. LISTAGEM E SAÚDE -->
+        <!-- 3. LISTAGEM E PRIORIDADES (M:N) -->
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100"
-             x-data="{ collapsed: localStorage.getItem('sre_active_keys_collapsed') === 'true' }">
-            <div class="p-6 border-b border-gray-100 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors" @click="collapsed = !collapsed; localStorage.setItem('sre_active_keys_collapsed', collapsed)">
-                <h3 class="text-lg font-medium text-gray-900">Roteamentos Ativos (Infraestrutura)</h3>
+             x-data="priorityGridData()">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors" @click="toggleCollapse()">
+                <h3 class="text-lg font-medium text-gray-900">Prioridades de Roteamento (Failover M:N)</h3>
                 <svg class="w-5 h-5 text-gray-400 transition-transform duration-300" :class="collapsed ? '' : 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
             </div>
+            
             <div x-show="!collapsed" x-collapse x-transition>
-                <div class="p-6 pt-4">
-                @if($routingKeys->isEmpty())
-                    <div class="text-center py-8 text-gray-500">Nenhum roteamento configurado.</div>
-                @else
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Provider / Origem</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Saúde & Model</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Capacidades</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uso</th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    @foreach($routingKeys as $key)
-                                        <tr>
-                                            <td class="px-6 py-4">
-                                                <div class="flex flex-col">
-                                                    <span class="font-bold capitalize text-gray-900 text-base">
-                                                        {{ $key->effective_provider }}
-                                                    </span>
-                                                    <span class="text-[10px] text-gray-400 italic">
-                                                        Origem: {{ $key->vault ? $key->vault->nickname : 'Legado/Direto' }}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td class="px-6 py-4">
-                                                <div class="flex flex-col gap-1">
-                                                    @php
-                                                        $statusClasses = match($key->status) {
-                                                            'online' => 'bg-green-100 text-green-800',
-                                                            'offline' => 'bg-red-100 text-red-800',
-                                                            'quota_exceeded' => 'bg-yellow-100 text-yellow-800',
-                                                            default => 'bg-gray-100 text-gray-800'
-                                                        };
-                                                        $statusLabel = match($key->status) {
-                                                            'online' => '🟢 Online',
-                                                            'offline' => '🔴 Offline',
-                                                            'quota_exceeded' => '🟡 Quota Exceeded',
-                                                            default => '⚪ Desconhecido'
-                                                        };
-                                                    @endphp
-                                                    <span class="px-2 w-fit inline-flex text-[10px] leading-5 font-semibold rounded-full {{ $statusClasses }}">
-                                                        {{ $statusLabel }}
-                                                    </span>
-                                                    <span class="text-xs font-mono bg-indigo-50 text-indigo-700 px-1 rounded inline-block w-fit">
-                                                        {{ $key->preferred_model ?? 'Padrão' }}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td class="px-6 py-4">
-                                                <div class="flex flex-wrap gap-1 max-w-xs">
-                                                    @foreach((array)$key->capabilities as $cap)
-                                                        <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200" title="{{ $availableCapabilities[$cap] ?? $cap }}">
-                                                            {{ $cap }}
-                                                        </span>
-                                                    @endforeach
-                                                </div>
-                                            </td>
-                                            <td class="px-6 py-4 text-xs text-gray-500 font-mono">
-                                                {{ number_format($key->requests_count) }} reqs
-                                            </td>
-                                            <td class="px-6 py-4 text-right text-sm">
-                                                 <form action="{{ route('admin.api-keys.toggle', $key) }}" method="POST" class="inline">
-                                                    @csrf @method('PATCH')
-                                                    <button type="submit" class="text-indigo-600 hover:text-indigo-900 mr-2 p-1 border rounded hover:bg-indigo-50" title="{{ $key->is_active ? 'Desativar' : 'Ativar' }}">
-                                                        {{ $key->is_active ? '🔓' : '🔒' }}
-                                                    </button>
-                                                </form>
-                                                 <form action="{{ route('admin.api-keys.retest', $key) }}" method="POST" class="inline">
-                                                    @csrf
-                                                    <button type="submit" class="text-amber-600 hover:text-amber-900 mr-2 p-1 border rounded hover:bg-amber-50" title="Retestar Saúde / Reativar">
-                                                        ⚡
-                                                    </button>
-                                                </form>
-                                                <form action="{{ route('admin.api-keys.destroy', $key) }}" method="POST" class="inline" onsubmit="return confirm('Apagar roteamento?');">
-                                                    @csrf @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-900 p-1 border rounded hover:bg-red-50" title="Excluir">🗑️</button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                            </tbody>
-                        </table>
+                <div class="p-6 pt-4 bg-gray-50">
+                    <p class="text-sm text-gray-600 mb-6">
+                        (ℹ) Arraste e solte os provedores para definir a ordem de tentativa. O sistema tentará o modelo <strong>primário (top 1)</strong> primeiro. Se falhar por erro temporário (ex: Quota), passará automaticamente para o próximo.
+                    </p>
+
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                        @foreach($availableCapabilities as $cap => $label)
+                            <div class="bg-white border text-sm border-gray-200 shadow-sm rounded-xl overflow-hidden flex flex-col">
+                                <div class="bg-indigo-50/50 border-b border-indigo-100 px-4 py-3 flex justify-between items-center">
+                                    <h4 class="font-bold text-indigo-900 flex items-center gap-2">
+                                        <span class="text-indigo-400">⚡</span> {{ $label }}
+                                    </h4>
+                                    <span class="text-[10px] font-mono bg-white px-2 py-0.5 rounded border border-indigo-100 text-indigo-400">{{ $cap }}</span>
+                                </div>
+                                
+                                <div class="p-3 flex-1 bg-gray-50/30">
+                                    @php $keys = $capabilitiesGrid[$cap] ?? collect([]); @endphp
+                                    
+                                    @if($keys->isEmpty())
+                                        <div class="text-center py-6 text-gray-400 italic text-xs border-2 border-dashed border-gray-200 rounded-lg">
+                                            Nenhum provedor configurado para esta rota.
+                                        </div>
+                                    @else
+                                        <!-- Sortable List -->
+                                        <ul class="space-y-2 sortable-list" data-capability="{{ $cap }}">
+                                            @foreach($keys as $index => $key)
+                                                @php
+                                                    $isTop = $index === 0;
+                                                    $statusClasses = match($key->status) {
+                                                        'online' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                                        'offline' => 'bg-red-50 text-red-700 border-red-200',
+                                                        'quota_exceeded' => 'bg-amber-50 text-amber-700 border-amber-200',
+                                                        default => 'bg-gray-50 text-gray-700 border-gray-200'
+                                                    };
+                                                    
+                                                    // Pivot data
+                                                    $pivotId = $key->pivot->id ?? 'unknown';
+                                                @endphp
+                                                <li class="flex items-center gap-3 p-3 bg-white border rounded-lg shadow-sm hover:border-indigo-300 transition-colors {{ $statusClasses }}" data-id="{{ $pivotId }}">
+                                                    
+                                                    <!-- Drag Handle -->
+                                                    <div class="cursor-grab hover:text-indigo-600 text-gray-400 p-1 drag-handle active:cursor-grabbing">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                                                    </div>
+
+                                                    <!-- Order Badge -->
+                                                    <div class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] {{ $isTop ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600' }}">
+                                                        {{ $index + 1 }}
+                                                    </div>
+
+                                                    <!-- Model Info -->
+                                                    <div class="flex-1 min-w-0">
+                                                        <div class="flex items-center gap-2 mb-0.5">
+                                                            <span class="font-bold text-gray-900 truncate">{{ $key->effective_provider }}</span>
+                                                            <span class="text-[9px] uppercase px-1.5 py-0.5 rounded-full bg-white border border-gray-200 font-bold whitespace-nowrap">
+                                                                {{ $key->vault ? $key->vault->nickname : 'Direto' }}
+                                                            </span>
+                                                        </div>
+                                                        <div class="flex items-center gap-2">
+                                                            <span class="text-xs font-mono text-gray-500 truncate">{{ $key->preferred_model ?? 'Auto' }}</span>
+                                                            @if($key->status === 'online')
+                                                                <span class="text-[9px] text-emerald-600 font-bold">● Online</span>
+                                                            @elseif($key->status === 'quota_exceeded')
+                                                                <span class="text-[9px] text-amber-600 font-bold">● Quota Req</span>
+                                                            @else
+                                                                <span class="text-[9px] text-red-600 font-bold">● Offline</span>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Actions -->
+                                                    <div class="flex flex-col items-end gap-2 shrink-0">
+                                                        <div class="flex border border-gray-200 rounded divide-x divide-gray-200 bg-white">
+                                                            <form action="{{ route('admin.api-keys.retest', $key) }}" method="POST" class="inline m-0 p-0">
+                                                                @csrf
+                                                                <button type="submit" class="px-2 py-1 hover:bg-gray-50 text-amber-600 transition-colors" title="Retestar Conexão">⚡</button>
+                                                            </form>
+                                                            <form action="{{ route('admin.api-keys.destroy', $key) }}" method="POST" class="inline m-0 p-0" onsubmit="return confirm('Remover este vínculo do roteamento?');">
+                                                                @csrf @method('DELETE')
+                                                                <button type="submit" class="px-2 py-1 hover:bg-red-50 text-red-600 transition-colors" title="Remover da Pilha">✕</button>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                                
+                                                <!-- Error details below the card if errored -->
+                                                @if($key->status !== 'online' && $key->last_error_message)
+                                                    <li class="px-4 py-2 mt-[-0.5rem] bg-white border border-t-0 rounded-b-lg border-gray-200 text-[10px] text-red-600 font-mono italic flex items-start gap-2 max-w-full overflow-hidden">
+                                                        <span class="mt-0.5">↳</span>
+                                                        <span class="truncate" title="{{ $key->last_error_message }}">{{ Str::limit($key->last_error_message, 80) }}</span>
+                                                    </li>
+                                                @endif
+
+                                            @endforeach
+                                        </ul>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
-                @endif
                 </div>
             </div>
         </div>
@@ -738,6 +753,73 @@
                     })
                     .finally(() => {
                         this.loadingModels = false;
+                    });
+            }
+        };
+    }
+        function priorityGridData() {
+            return {
+                collapsed: localStorage.getItem('sre_active_keys_collapsed') === 'true',
+                
+                toggleCollapse() {
+                    this.collapsed = !this.collapsed;
+                    localStorage.setItem('sre_active_keys_collapsed', this.collapsed);
+                },
+
+                init() {
+                    const self = this;
+                    // Initialize Sortable for each capability list
+                    document.querySelectorAll('.sortable-list').forEach((el) => {
+                        new Sortable(el, {
+                            animation: 150,
+                            handle: '.drag-handle',
+                            ghostClass: 'bg-indigo-50',
+                            onEnd: function (evt) {
+                                self.savePriorityOrder(evt.to);
+                            }
+                        });
+                    });
+                },
+
+                savePriorityOrder(listElement) {
+                    const capability = listElement.dataset.capability;
+                    const items = Array.from(listElement.querySelectorAll('li[data-id]'));
+                    const orderedIds = items.map(li => li.dataset.id);
+
+                    if (orderedIds.length === 0) return;
+
+                    // Optimistic UI update: re-number the badges
+                    items.forEach((li, index) => {
+                        const badge = li.querySelector('.rounded-full');
+                        if (badge) {
+                            badge.textContent = index + 1;
+                            if (index === 0) {
+                                badge.className = 'flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] bg-indigo-600 text-white';
+                            } else {
+                                badge.className = 'flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] bg-gray-200 text-gray-600';
+                            }
+                        }
+                    });
+
+                    fetch('{{ route("admin.api-keys.update-priority") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            capability: capability,
+                            ordered_ids: orderedIds
+                        })
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error('Falha ao salvar a nova ordem');
+                    })
+                    .catch(error => {
+                        console.error('Error updating priority:', error);
+                        alert('Erro ao salvar a ordem de prioridade. A página será recarregada.');
+                        window.location.reload();
                     });
                 }
             }
