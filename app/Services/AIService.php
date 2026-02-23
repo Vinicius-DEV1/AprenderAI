@@ -6,6 +6,7 @@ use App\Models\ApiKey;
 use App\Models\Question;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use App\Services\AI\ResponseSanitizer;
 use App\Services\AI\AITelemetryService;
 
@@ -47,7 +48,7 @@ class AIService
     }
 
     /**
-     * Evaluates question difficulty using the best available provider.
+     * Evaluates question difficulty using the best available provider with failover.
      */
     public function evaluateQuestionDifficulty(\App\Models\Question $question): ?array
     {
@@ -56,10 +57,9 @@ class AIService
             return null;
         }
 
-        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_TRIAGE);
-        $provider = $apiKey->provider;
+        return $this->executeWithFailover(ApiKey::CAPABILITY_TRIAGE, function($apiKey) use ($question) {
+            $provider = $apiKey->provider;
 
-        try {
             $prompt = $this->promptService->get('question_difficulty_evaluator', [
                 'question_text' => $question->statement,
                 // alternativesAsMap(): retorna ['A'=>'texto', 'B'=>'texto'...]
@@ -101,18 +101,12 @@ class AIService
                 'question_id' => $question->id,
                 'response' => $content
             ]);
-            return null;
-
-        } catch (\Exception $e) {
-            Log::error('AI Difficulty Evaluation failed: Exception', [
-                'question_id' => $question->id,
-                'error' => $e->getMessage()
-            ]);
-            return null;
-        }
+            
+            throw new \Exception('Invalid response format for difficulty evaluation.');
+        });
     }
 
-    // getFirstAvailableProvider was completely replaced by ApiKey::getKeyForCapability router.
+    // getFirstAvailableProvider was completely replaced by ApiKey::getKeysForCapability router.
 
     /**
      * Orchestrates AI calls and logs execution details.
@@ -151,6 +145,11 @@ class AIService
                 $statusCode = 403;
                 $errorMessage = " Erro de Autenticação/Permissão (Invalid Key)";
             }
+
+            $apiKey->update([
+                'last_error_message' => "[$statusCode] $errorMessage",
+                'last_error_at' => now(),
+            ]);
 
             // SRE: Update ApiKey status to trigger auto-healing router
             if ($statusCode === 429) {
@@ -214,6 +213,11 @@ class AIService
                 $statusCode = 403;
                 $errorMessage = " Erro de Autenticação/Permissão (Invalid Key)";
             }
+
+            $apiKey->update([
+                'last_error_message' => "[$statusCode] $errorMessage",
+                'last_error_at' => now(),
+            ]);
 
             // SRE: Update ApiKey status to trigger auto-healing router
             if ($statusCode === 429) {
@@ -449,21 +453,20 @@ class AIService
             throw new \Exception('Avaliador Xavier indisponível no momento (Key)');
         }
 
-        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_ESSAYS);
-        $provider = $apiKey->provider;
+        return $this->executeWithFailover(ApiKey::CAPABILITY_ESSAYS, function($apiKey) use ($type) {
+            $provider = $apiKey->provider;
 
-        $rules = "";
-        if ($type === 'enem') {
-            $rules .= "- Estilo ENEM: Um problema social/ambiental/cultural brasileiro.\n";
-            $rules .= "- Inclua um 'Texto Motivador 1' (max 2 frases).\n";
-            $rules .= "- Inclua 3 'Tópicos de Apoio' (bullets).\n";
-            $rules .= "- Inclua a frase tema explícita.\n";
-        } else {
-            $rules .= "- Estilo CONCURSO PÚBLICO: Tema técnico ou atualidade (ex: Adm Pública, Direito, Tecnologia).\n";
-            $rules .= "- Comando direto: 'Disserte sobre...'.\n";
-        }
+            $rules = "";
+            if ($type === 'enem') {
+                $rules .= "- Estilo ENEM: Um problema social/ambiental/cultural brasileiro.\n";
+                $rules .= "- Inclua um 'Texto Motivador 1' (max 2 frases).\n";
+                $rules .= "- Inclua 3 'Tópicos de Apoio' (bullets).\n";
+                $rules .= "- Inclua a frase tema explícita.\n";
+            } else {
+                $rules .= "- Estilo CONCURSO PÚBLICO: Tema técnico ou atualidade (ex: Adm Pública, Direito, Tecnologia).\n";
+                $rules .= "- Comando direto: 'Disserte sobre...'.\n";
+            }
 
-        try {
             $prompt = $this->promptService->get('essay_topic_generator', [
                 'essay_type' => $type,
                 'rules' => $rules
@@ -481,10 +484,7 @@ class AIService
             }
 
             return $content;
-        } catch (\Exception $e) {
-            Log::error("Xavier Topic Gen Error: " . $e->getMessage());
-            throw $e;
-        }
+        });
     }
 
     public function evaluateEssay(string $title, string $content, string $type): ?array
@@ -492,30 +492,28 @@ class AIService
         if (!$this->hasActiveKey(ApiKey::CAPABILITY_ESSAYS))
             return null;
 
-        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_ESSAYS);
-        $provider = $apiKey->provider;
-
-        $prompt = $this->buildXavierEvaluationPrompt($title, $content, $type);
-
         try {
-            $result = $this->callAI($provider, $apiKey, $prompt);
-            $apiKey->incrementUsage();
+            return $this->executeWithFailover(ApiKey::CAPABILITY_ESSAYS, function($apiKey) use ($title, $content, $type) {
+                $provider = $apiKey->provider;
+                $prompt = $this->buildXavierEvaluationPrompt($title, $content, $type);
 
-            $content = $result['content'];
-            if (!isset($content['score']))
-                $content['score'] = 0;
+                $result = $this->callAI($provider, $apiKey, $prompt);
+                $apiKey->incrementUsage();
 
-            return [
-                'provider' => $provider,
-                'response' => $content,
-                'usage' => $result['usage'] ?? []
-            ];
+                $responseContent = $result['content'];
+                if (!isset($responseContent['score'])) {
+                    $responseContent['score'] = 0;
+                }
+
+                return [
+                    'provider' => $provider,
+                    'response' => $responseContent,
+                    'usage' => $result['usage'] ?? []
+                ];
+            });
         } catch (\Exception $e) {
             Log::error('Xavier Evaluation failed', ['error' => $e->getMessage()]);
             return null;
-        } finally {
-            if (isset($apiKey))
-                $apiKey->incrementUsage();
         }
     }
 
@@ -537,25 +535,23 @@ class AIService
             return [];
         }
 
-        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_QUESTIONS);
-        $provider = $apiKey->provider;
-
         try {
-            $prompt = $this->buildQuestionGenerationPrompt($subject, $quantity);
-            $result = $this->callAI($provider, $apiKey, $prompt);
-            $apiKey->incrementUsage();
+            return $this->executeWithFailover(ApiKey::CAPABILITY_QUESTIONS, function($apiKey) use ($subject, $quantity) {
+                $provider = $apiKey->provider;
+                $prompt = $this->buildQuestionGenerationPrompt($subject, $quantity);
+                $result = $this->callAI($provider, $apiKey, $prompt);
+                $apiKey->incrementUsage();
 
-            $content = $result['content'];
+                $content = $result['content'];
 
-            if (isset($content['questions']) && is_array($content['questions'])) {
-                return $content['questions'];
-            }
+                if (isset($content['questions']) && is_array($content['questions'])) {
+                    return $content['questions'];
+                }
 
-            return [];
-
+                return [];
+            });
         } catch (\Exception $e) {
             Log::error('AI Question Generation failed', [
-                'provider' => $provider,
                 'error' => $e->getMessage()
             ]);
             return [];
@@ -578,43 +574,38 @@ class AIService
             return "Desculpe, o sistema de IA está offline no momento.";
         }
 
-        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_QUESTIONS);
-        $provider = $apiKey->provider;
-
         try {
-            $questionText = $question->statement;
-            $alternatives = json_encode($question->alternativesAsMap());
-            $correctAnswer = $question->correct_answer;
+            return $this->executeWithFailover(ApiKey::CAPABILITY_QUESTIONS, function($apiKey) use ($question, $simulation, $userMessage, $history) {
+                $provider = $apiKey->provider;
 
-            $userAnswer = $simulation->answers()->where('question_id', $question->id)->first();
-            $userAnswerText = $userAnswer ? $userAnswer->user_answer : 'Não respondida';
+                $questionText = $question->statement;
+                $alternatives = json_encode($question->alternativesAsMap());
+                $correctAnswer = $question->correct_answer;
 
-            $result = $this->callAI($provider, $apiKey, $this->promptService->get('xavier_tutor', [
-                'question_text' => $questionText,
-                'alternatives' => $alternatives,
-                'correct_answer' => $correctAnswer,
-                'user_answer' => $userAnswerText,
-                'chat_history' => $this->formatChatHistory($history),
-                'user_message' => $userMessage
-            ]), $simulation->user_id);
-            $content = $result['content'];
+                $userAnswer = $simulation->answers()->where('question_id', $question->id)->first();
+                $userAnswerText = $userAnswer ? $userAnswer->user_answer : 'Não respondida';
 
-            if (is_array($content) && isset($content['text'])) {
-                return $content['text'];
-            }
+                $result = $this->callAI($provider, $apiKey, $this->promptService->get('xavier_tutor', [
+                    'question_text' => $questionText,
+                    'alternatives' => $alternatives,
+                    'correct_answer' => $correctAnswer,
+                    'user_answer' => $userAnswerText,
+                    'chat_history' => $this->formatChatHistory($history),
+                    'user_message' => $userMessage
+                ]), $simulation->user_id);
+                $apiKey->incrementUsage();
+                $content = $result['content'];
 
-            return $content['text'] ?? "Erro ao interpretar resposta.";
+                if (is_array($content) && isset($content['text'])) {
+                    return $content['text'];
+                }
+
+                return $content['text'] ?? "Erro ao interpretar resposta.";
+            });
 
         } catch (\Exception $e) {
-            if (str_contains($e->getMessage(), '429')) {
-                throw $e;
-            }
             Log::error('AI Chat failed', ['error' => $e->getMessage()]);
-            return "Desculpe, ocorreu um erro ao processar sua dúvida.";
-        } finally {
-            if (isset($apiKey)) {
-                $apiKey->incrementUsage();
-            }
+            return "Desculpe, ocorreu um erro ao processar sua dúvida: " . $e->getMessage();
         }
     }
 
@@ -625,8 +616,8 @@ class AIService
             return;
         }
 
-        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_QUESTIONS);
-        $provider = $apiKey->provider;
+        $keys = ApiKey::getKeysForCapability(ApiKey::CAPABILITY_QUESTIONS);
+        $lastException = null;
 
         $questionText = $question->statement;
         $alternatives = json_encode($question->alternativesAsMap());
@@ -643,9 +634,35 @@ class AIService
             'user_message' => $userMessage
         ]);
 
-        yield from $this->callAIStream($provider, $apiKey, $prompt, $simulation->user_id);
-        
-        $apiKey->incrementUsage();
+        foreach ($keys as $apiKey) {
+            try {
+                $provider = $apiKey->provider;
+                $stream = $this->callAIStream($provider, $apiKey, $prompt, $simulation->user_id);
+                // Testa se a primeira linha (conexão iterável) funciona sem erro de auth/quota.
+                // Como Generators não iniciam as exceções sem iteração, o callAIStream capta do $client->post.
+                
+                yield from $stream;
+                
+                $apiKey->incrementUsage();
+                return; // Sucesso na streaming
+
+            } catch (\Exception $e) {
+                $lastException = $e;
+                
+                if ($this->isRetriableError($e)) {
+                    Log::warning("Streaming provider {$apiKey->provider} failed, failing over to next priority...", [
+                        'error' => $e->getMessage()
+                    ]);
+                    $this->banKeyTemporarily($apiKey, $e);
+                    continue; 
+                }
+
+                // Erros locais/formatos ou 400 sem retry vazam
+                break;
+            }
+        }
+
+        yield "Desculpe, ocorreu um erro ao se comunicar com a IA no momento.";
     }
 
     /**
@@ -662,40 +679,38 @@ class AIService
             return "Desculpe, o sistema de IA está offline no momento.";
         }
 
-        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_QUESTIONS);
-        $provider = $apiKey->provider;
-
         try {
-            $questionText = $question->statement;
-            $alternatives = json_encode($question->alternativesAsMap());
-            $correctAnswer = $question->correct_answer;
+            return $this->executeWithFailover(ApiKey::CAPABILITY_QUESTIONS, function($apiKey) use ($question, $userAnswer, $userMessage, $history) {
+                $provider = $apiKey->provider;
 
-            $result = $this->callAI($provider, $apiKey, $this->promptService->get('xavier_tutor', [
-                'question_text' => $questionText,
-                'alternatives' => $alternatives,
-                'correct_answer' => $correctAnswer,
-                'user_answer' => $userAnswer,
-                'chat_history' => $this->formatChatHistory($history),
-                'user_message' => $userMessage
-            ]));
-            $content = $result['content'];
+                $questionText = $question->statement;
+                $alternatives = json_encode($question->alternativesAsMap());
+                $correctAnswer = $question->correct_answer;
 
-            if (is_array($content) && isset($content['text'])) {
-                return $content['text'];
-            }
+                $result = $this->callAI($provider, $apiKey, $this->promptService->get('xavier_tutor', [
+                    'question_text' => $questionText,
+                    'alternatives' => $alternatives,
+                    'correct_answer' => $correctAnswer,
+                    'user_answer' => $userAnswer,
+                    'chat_history' => $this->formatChatHistory($history),
+                    'user_message' => $userMessage
+                ]));
+                $apiKey->incrementUsage();
 
-            return $content['text'] ?? "Erro ao interpretar resposta.";
+                $content = $result['content'];
 
+                if (is_array($content) && isset($content['text'])) {
+                    return $content['text'];
+                }
+
+                return $content['text'] ?? "Erro ao interpretar resposta.";
+            });
         } catch (\Exception $e) {
             Log::error('AI Standalone Chat failed', [
                 'question_id' => $question->id,
                 'error' => $e->getMessage()
             ]);
             throw $e;
-        } finally {
-            if (isset($apiKey)) {
-                $apiKey->incrementUsage();
-            }
         }
     }
 
@@ -706,8 +721,8 @@ class AIService
             return;
         }
 
-        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_QUESTIONS);
-        $provider = $apiKey->provider;
+        $keys = ApiKey::getKeysForCapability(ApiKey::CAPABILITY_QUESTIONS);
+        $lastException = null;
 
         $questionText = $question->statement;
         $alternatives = json_encode($question->alternativesAsMap());
@@ -722,9 +737,32 @@ class AIService
             'user_message' => $userMessage
         ]);
 
-        yield from $this->callAIStream($provider, $apiKey, $prompt);
+        foreach ($keys as $apiKey) {
+            try {
+                $provider = $apiKey->provider;
+                $stream = $this->callAIStream($provider, $apiKey, $prompt);
+                
+                yield from $stream;
+                
+                $apiKey->incrementUsage();
+                return;
 
-        $apiKey->incrementUsage();
+            } catch (\Exception $e) {
+                $lastException = $e;
+                
+                if ($this->isRetriableError($e)) {
+                    Log::warning("Streaming provider {$apiKey->provider} failed, failing over to next...", [
+                        'error' => $e->getMessage()
+                    ]);
+                    $this->banKeyTemporarily($apiKey, $e);
+                    continue; 
+                }
+
+                break;
+            }
+        }
+
+        yield "Desculpe, ocorreu um erro ao se comunicar com a IA no momento.";
     }
 
     /**
@@ -749,22 +787,16 @@ class AIService
     public function generateJson(string $prompt, ?string $model = null): array
     {
         $provider = $model ? $this->getProviderForModel($model) : null;
-        
-        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_GENERAL, $provider);
 
-        if (!$apiKey) {
-            throw new \Exception('Nenhum provedor de IA disponível para geração de JSON.');
-        }
+        return $this->executeWithFailover(ApiKey::CAPABILITY_GENERAL, function($apiKey) use ($prompt, $model) {
+            $provider = $apiKey->provider;
+            if ($model) {
+                $apiKey->preferred_model = $model;
+            }
 
-        $provider = $apiKey->provider;
-        
-        if ($model) {
-            $apiKey->preferred_model = $model;
-        }
-
-        $result = $this->callAI($provider, $apiKey, $prompt);
-
-        return ['data' => $result['content']];
+            $result = $this->callAI($provider, $apiKey, $prompt);
+            return ['data' => $result['content']];
+        }, $provider);
     }
 
     protected function getProviderForModel(string $model): ?string
@@ -780,23 +812,103 @@ class AIService
             return null;
         }
 
-        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_STUDY_PLANS);
-        $provider = $apiKey->effective_provider;
-
         try {
-            $prompt = $this->promptService->get('study_plan_generator', [
-                'stats' => json_encode($stats),
-                'input' => json_encode($input)
-            ]);
+            return $this->executeWithFailover(ApiKey::CAPABILITY_STUDY_PLANS, function($apiKey) use ($stats, $input) {
+                $provider = $apiKey->effective_provider;
+                $prompt = $this->promptService->get('study_plan_generator', [
+                    'stats' => json_encode($stats),
+                    'input' => json_encode($input)
+                ]);
 
-            $result = $this->callAI($provider, $apiKey, $prompt);
-            $apiKey->incrementUsage();
+                $result = $this->callAI($provider, $apiKey, $prompt);
+                $apiKey->incrementUsage();
 
-            return $result['content'];
+                return $result['content'];
+            });
         } catch (\Exception $e) {
             Log::error('AI Study Plan Generation failed: ' . $e->getMessage());
             return null;
         }
+    }
+
+    /**
+     * Engine Central de Failover para as chamadas de API.
+     * Iterates over priorized available keys using $closure.
+     */
+    protected function executeWithFailover(string $capability, \Closure $closure, ?string $provider = null)
+    {
+        $keys = ApiKey::getKeysForCapability($capability, $provider);
+        $lastException = null;
+
+        if ($keys->isEmpty()) {
+            throw new \Exception("Nenhum provedor de IA online ou com quota disponível para a rota: {$capability}.");
+        }
+
+        foreach ($keys as $apiKey) {
+            try {
+                return $closure($apiKey);
+            } catch (\Exception $e) {
+                $lastException = $e;
+                
+                if ($this->isRetriableError($e)) {
+                    Log::warning("AI Provider failed, failing over to next priority...", [
+                        'capability' => $capability,
+                        'key_id' => $apiKey->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    
+                    $this->banKeyTemporarily($apiKey, $e);
+                    continue; 
+                }
+                
+                // Se for erro na formatação do prompt (ex. 400 Bad Request), jogar pra cima pois tentamos e fomos rejeitados na raiz.
+                throw $e;
+            }
+        }
+
+        throw $lastException ?? new \Exception("Falha completa de Failover para a rota de IA: {$capability}.");
+    }
+
+    /**
+     * Verifica se o erro gerado na chamada é passível de retry em outra chave.
+     */
+    protected function isRetriableError(\Exception $e): bool
+    {
+        $message = strtolower($e->getMessage());
+        
+        // 429 = Quota. 500, 502, 503, 504 = Server error do Google/OpenAI.
+        if (str_contains($message, '429') || 
+            str_contains($message, '500') || 
+            str_contains($message, '502') || 
+            str_contains($message, '503') || 
+            str_contains($message, '504') || 
+            str_contains($message, 'quota_exceeded') || 
+            str_contains($message, 'timeout') || 
+            str_contains($message, 'connection refused')) {
+            return true;
+        }
+
+        // Erros 401/403 (Invalid Key) - A chave testada não serve mais
+        if (str_contains($message, '401') || str_contains($message, '403')) {
+            return true; 
+        }
+
+        // 400 Bad Request (conteúdo negado, erro do payload) -> NAO recriar, todas chaves vão dar erro
+        return false;
+    }
+
+    /**
+     * Coloca a ID da key em um cache de blacklist rápido por 60 min
+     * impedindo a extração excessiva do BD enquando o HealthChecker não roda.
+     */
+    protected function banKeyTemporarily(ApiKey $apiKey, \Exception $e): void
+    {
+        $bannedIds = Cache::get('api_key_blacklist', []);
+        if (!in_array($apiKey->id, $bannedIds)) {
+            $bannedIds[] = $apiKey->id;
+        }
+        
+        Cache::put('api_key_blacklist', $bannedIds, now()->addMinutes(60));
     }
 
     public function interpretSearchPrompt(string $userPrompt, array $filterOptions): ?array
@@ -805,19 +917,19 @@ class AIService
             return null;
         }
 
-        $apiKey = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_SEARCH);
-        $provider = $apiKey->provider;
-
         try {
-            $aiName = \App\Models\Setting::where('key', 'ai_name')->value('value') ?? 'Xavier';
-            // LÓGICA DE MAPEAMENTO (Tema vs Assunto):
-            // O Xavier deve mapear a coluna 'topic' do JSON resultante para:
-            // - 'theme' (no banco) se o tipo for 'enem'
-            // - 'topic' (no banco) se o tipo for 'concurso'
-            $prompt = $this->promptService->get('ai_search_interpreter', [
-                'user_prompt' => $userPrompt,
-                'filter_options' => json_encode($filterOptions)
-            ], "Você é o {$aiName}, um Agente de Busca moderno e empático. Seu objetivo é minerar o banco de dados para encontrar exatamente o que o aluno precisa.
+            return $this->executeWithFailover(ApiKey::CAPABILITY_SEARCH, function($apiKey) use ($userPrompt, $filterOptions) {
+                $provider = $apiKey->provider;
+                $aiName = \App\Models\Setting::where('key', 'ai_name')->value('value') ?? 'Xavier';
+
+                // LÓGICA DE MAPEAMENTO (Tema vs Assunto):
+                // O Xavier deve mapear a coluna 'topic' do JSON resultante para:
+                // - 'theme' (no banco) se o tipo for 'enem'
+                // - 'topic' (no banco) se o tipo for 'concurso'
+                $prompt = $this->promptService->get('ai_search_interpreter', [
+                    'user_prompt' => $userPrompt,
+                    'filter_options' => json_encode($filterOptions)
+                ], "Você é o {$aiName}, um Agente de Busca moderno e empático. Seu objetivo é minerar o banco de dados para encontrar exatamente o que o aluno precisa.
 DIRETRIZES:
 1. Respostas Curtas: Use no máximo 5 linhas no campo 'suggestion_tip'. Seja encorajador e proativo.
 2. Formato: Retorne APENAS o JSON: { \"type\": \"enem|concurso\", \"subject\": \"...\", \"topic\": \"...\", \"difficulty\": \"...\", \"year\": ..., \"keyword\": \"...\", \"suggestion_tip\": \"...\", \"suggestions\": [ {\"label\": \"Texto do Botão\", \"filters\": {...}} ] }
@@ -826,22 +938,20 @@ DIRETRIZES:
 Busca do usuário: '{user_prompt}'
 Opções válidas (JSON): {filter_options}");
 
-            $result = $this->callAI($provider, $apiKey, $prompt);
-            $apiKey->incrementUsage();
+                $result = $this->callAI($provider, $apiKey, $prompt);
+                $apiKey->incrementUsage();
 
-            $content = $result['content'];
+                $content = $result['content'];
 
-            // VALIDAÇÃO: Se o sanitizer retornou um array que só contém 'text', 
-            // significa que o prompt não retornou um JSON válido de filtros.
-            // Para a busca assistida, isso deve ser tratado como falha de interpretação.
-            if (isset($content['text']) && count($content) === 1) {
-                Log::warning('AI Search Interpretation failed: AI returned text instead of filters JSON.', [
-                    'text' => $content['text']
-                ]);
-                return null;
-            }
+                // VALIDAÇÃO: Se o sanitizer retornou um array que só contém 'text', 
+                // significa que o prompt não retornou um JSON válido de filtros.
+                // Para a busca assistida, isso deve ser tratado como falha de interpretação.
+                if (isset($content['text']) && count($content) === 1) {
+                    throw new \Exception('AI Search Interpretation failed: AI returned text instead of filters JSON.');
+                }
 
-            return $content;
+                return $content;
+            });
         } catch (\Exception $e) {
             Log::error('AI Search Interpretation failed: ' . $e->getMessage());
             return null;

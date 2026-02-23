@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Collection;
 
 class ApiKey extends Model
 {
@@ -29,12 +30,15 @@ class ApiKey extends Model
         'capabilities',
         'status',
         'last_health_check_at',
+        'last_error_message',
+        'last_error_at',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'is_primary' => 'boolean',
         'last_used_at' => 'datetime',
+        'last_error_at' => 'datetime',
         'capabilities' => 'array',
     ];
 
@@ -55,13 +59,18 @@ class ApiKey extends Model
         return $this->belongsTo(ApiKeyVault::class, 'vault_id');
     }
 
+    public function capabilitiesList()
+    {
+        return $this->hasMany(ApiKeyCapability::class)->orderBy('priority');
+    }
+
     // Dynamic attributes fallback to vault if present
     public function getDecryptedKeyAttribute()
     {
         if ($this->vault_id) {
             return $this->vault->decrypted_key;
         }
-        return Crypt::decryptString($this->attributes['key']);
+        return \Illuminate\Support\Facades\Crypt::decryptString($this->attributes['key']);
     }
 
     public function getEffectiveProviderAttribute()
@@ -75,7 +84,7 @@ class ApiKey extends Model
 
     public function setKeyAttribute($value)
     {
-        $this->attributes['key'] = Crypt::encryptString($value);
+        $this->attributes['key'] = \Illuminate\Support\Facades\Crypt::encryptString($value);
     }
 
     public function incrementUsage(): void
@@ -96,43 +105,71 @@ class ApiKey extends Model
 
     /**
      * Motor de Roteamento de API Keys baseado em Capacidades (Resiliência N:N).
-     *
-     * @param string $capability O uso requerido (ex: 'questions', 'essays')
-     * @param string|null $provider Forçar um provider específico, se necessário.
-     * @return self|null
+     * Retorna UMA ÚNICA CHAVE (Legacy) - será substituída por getKeysForCapability
      */
     public static function getKeyForCapability(string $capability, ?string $provider = null): ?self
     {
-        $query = static::where('is_active', true)->where('status', 'online');
+        return static::getKeysForCapability($capability, $provider)->first();
+    }
+    /**
+     * Motor de Roteamento M:N.
+     * Retorna uma Collection ordenada de chaves disponíveis para o Failover Loop.
+     */
+    public static function getKeysForCapability(string $capability, ?string $provider = null): Collection
+    {
+        $cacheKeys = \Illuminate\Support\Facades\Cache::get('api_key_blacklist', []);
+
+        $query = static::where('is_active', true)
+            ->where('status', 'online')
+            ->whereNotIn('id', $cacheKeys); // Filtra chaves na blacklist temporária
         
         if ($provider) {
             $query->where('provider', $provider);
         }
 
+        // Tentar buscar as chaves com a nova arquitetura M:N ordenadas pela prioridade
+        $keys = (clone $query)
+            ->whereHas('capabilitiesList', function ($q) use ($capability) {
+                $q->where('capability', $capability);
+            })
+            ->with(['capabilitiesList' => function ($q) use ($capability) {
+                $q->where('capability', $capability);
+            }])
+            ->get()
+            ->sortBy(function ($key) {
+                return $key->capabilitiesList->first()->priority ?? 999;
+            })
+            ->values();
+
+        if ($keys->isNotEmpty()) {
+            return $keys;
+        }
+
+        // --- Fallback para arquitetura legada (coluna JSON) até a migração de dados estar completa ---
+        
+        $legacyKeys = collect();
+
         // 1. Prioridade Máxima: Chave exata para a Capabillity requerida
-        $key = (clone $query)
+        $key1 = (clone $query)
             ->whereJsonContains('capabilities', $capability)
             ->orderBy('is_primary', 'desc')
             ->orderBy('last_used_at', 'asc')
             ->first();
 
+        if ($key1) $legacyKeys->push($key1);
+
         // 2. Fallback Inteligente: Tentar uma chave de Uso Geral ('general')
-        if (!$key && $capability !== self::CAPABILITY_GENERAL) {
-            $key = (clone $query)
+        if (!$key1 && $capability !== self::CAPABILITY_GENERAL) {
+            $key2 = (clone $query)
                 ->whereJsonContains('capabilities', self::CAPABILITY_GENERAL)
                 ->orderBy('is_primary', 'desc')
                 ->orderBy('last_used_at', 'asc')
                 ->first();
+            
+            if ($key2) $legacyKeys->push($key2);
         }
 
-        // 3. Fallback Burro Absoluto: Pegar qualquer chave viva para evitar crash da feature
-        if (!$key) {
-             $key = (clone $query)
-                ->orderBy('is_primary', 'desc')
-                ->orderBy('last_used_at', 'asc')
-                ->first();
-        }
-
-        return $key;
+        // 3. Removido Fallback Absoluto que causava exibição em todas as rotas
+        return $legacyKeys;
     }
 }

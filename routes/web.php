@@ -153,6 +153,7 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/api-keys/vault', [\App\Http\Controllers\Admin\AdminController::class, 'storeVaultKey'])->name('api-keys.vault.store');
             Route::post('/api-keys/discover', [\App\Http\Controllers\Admin\AdminController::class, 'discoverModels'])->name('api-keys.discover');
             Route::post('/api-keys', [\App\Http\Controllers\Admin\AdminController::class, 'storeApiKey'])->name('api-keys.store');
+            Route::post('/api-keys/priority', [\App\Http\Controllers\Admin\AdminController::class, 'updateCapabilitiesPriority'])->name('api-keys.update-priority');
             Route::patch('/api-keys/{apiKey}/toggle', [\App\Http\Controllers\Admin\AdminController::class, 'toggleApiKey'])->name('api-keys.toggle');
             Route::post('/api-keys/test-connection', [\App\Http\Controllers\Admin\AdminController::class, 'testConnection'])->name('api-keys.test');
             Route::post('/api-keys/clear-logs', [\App\Http\Controllers\Admin\AdminController::class, 'clearLogs'])->name('api-keys.clear-logs');
