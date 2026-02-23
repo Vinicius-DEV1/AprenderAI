@@ -90,11 +90,12 @@ class AIBatchService
 
         // Define a instrução específica baseada na escolha do usuário no modal
         $instruction = match ($type) {
-            'difficulty' => "Avalie a dificuldade (easy, medium, hard), forneça um raciocínio curto.",
-            'explanation' => "Gere uma explicação pedagógica clara e completa do porquê a resposta correta é a correta.",
-            'classification' => "Analise a questão e tente mapeá-la para os IDs existentes na lista de referência. Caso a questão trate de um tema que absolutamente não se encaixa em nenhuma das opções fornecidas, você deve sugerir um novo NOME em texto ('string') para a Disciplina ou Assunto. Atenção: Seja criterioso para não criar sinônimos de categorias que já existem.",
-            'complete' => "Avalie a dificuldade (com raciocínio), gere uma explicação pedagógica e classifique a questão mapeando para os IDs existentes ou sugerindo um novo Nome em string caso não exista, evitando sinônimos.",
-            'both' => "Avalie a dificuldade com raciocínio, gere uma explicação pedagógica, e classifique a Disciplina (Subject) e o Assunto (Topic).", // Fallback legacy
+            'difficulty'     => "Avalie a dificuldade (easy, medium, hard), forneça um raciocínio curto.",
+            'explanation'    => "Gere uma explicação pedagógica clara e completa do porquê a resposta correta é a correta.",
+            'classification' => "Analise a questão e tente mapeá-la para os IDs existentes na lista de referência. Caso a questão trate de um tema que não se encaixa nas opções, sugira um novo NOME (string) para a Disciplina ou Assunto. Seja criterioso para não criar sinônimos.",
+            'complete'       => "Avalie a dificuldade (com raciocínio), gere uma explicação pedagógica e classifique a questão mapeando para os IDs existentes ou sugerindo um novo Nome caso não exista.",
+            'both'           => "Avalie a dificuldade com raciocínio, gere uma explicação pedagógica, e classifique a Disciplina (Subject) e o Assunto (Topic).",
+            default          => "Avalie a questão e forneça os dados necessários."
         };
 
         return "Atue como um Especialista em Educação, IA e Curador de Conteúdo. 
@@ -119,12 +120,12 @@ class AIBatchService
         1. Responda APENAS com um array JSON no formato:
            [
              {
-               \"id\": ID_DA_QUESTAO,
-               \"difficulty\": \"easy|medium|hard\", // Gerar APENAS se listado em 'missing_fields'
-               \"difficulty_reasoning\": \"Sua justificativa...\", // Gerar APENAS se listado em 'missing_fields'
-               \"explanation\": \"Sua explicação...\", // Gerar APENAS se listado em 'missing_fields'
-               \"subject\": 12, // ID numérico ou stringnova. Gerar APENAS se listado em 'missing_fields'
-               \"topic\": 45 // ID numérico ou stringnova. Gerar APENAS se listado em 'missing_fields'
+               "id": ID_DA_QUESTAO,
+               "difficulty": "easy|medium|hard",
+               "difficulty_reasoning": "Sua justificativa...",
+               "explanation": "Sua explicação...",
+               "subject": 12, // ID numérico ou "Nome Novo" em texto
+               "topic": 45 // ID numérico ou "Nome Novo" em texto
              }
            ]
         2. Se um campo não está no array 'missing_fields' da questão analisada, RETORNE NULO SEMPRE, pois não é necessário e poupa tempo/tokens.

@@ -24,7 +24,7 @@ class SystemPromptSeeder extends Seeder
                 'slug' => 'question_difficulty_evaluator',
                 'title' => 'Avaliador de Dificuldade de Questão',
                 'description' => 'Analisa a complexidade de uma questão e gera um nível e justificativa.',
-                'content' => "Avalie o nível de dificuldade desta questão de concurso/ENEM.\n\nQuestão: {question_text}\nAlternativas: {alternatives}\n\nREGRAS:\n1. Analise o conteúdo técnico, a complexidade do enunciado e as pegadinhas.\n2. Retorne APENAS um JSON válido com: { 'difficulty': 'easy/medium/hard', 'reasoning': 'Uma frase curta explicando o porquê' }.\n3. Use português claro e didático.",
+                'content' => "Avalie o nível de dificuldade desta questão de concurso/ENEM.\n\nQuestão: {question_text}\nAlternativas: {alternatives}\n\nREGRAS:\n1. Analise o conteúdo técnico, a complexidade do enunciado e as pegadinhas.\n2. Retorne APENAS um JSON válido com: { \"difficulty\": \"easy/medium/hard\", \"reasoning\": \"Uma frase curta explicando o porquê\" }.\n3. Use português claro e didático.",
                 'variables' => ['question_text', 'alternatives']
             ],
             [
@@ -81,7 +81,7 @@ class SystemPromptSeeder extends Seeder
 
         foreach ($prompts as $prompt) {
             \App\Models\SystemPrompt::updateOrCreate(
-                ['slug' => $prompt['slug']],
+            ['slug' => $prompt['slug']],
                 $prompt
             );
         }
