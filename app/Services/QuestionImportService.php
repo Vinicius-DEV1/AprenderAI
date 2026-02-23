@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Question;
 use App\Models\QuestionAlternative;
+use App\Models\QuestionImage;
 use App\Models\QuestionImport;
 use App\Models\QuestionImportItem;
 use App\Models\Subject;
@@ -103,6 +104,63 @@ class QuestionImportService
         }
 
         return $import;
+    }
+
+    /**
+     * Ponto de entrada processado por Background Jobs (Fila).
+     * 
+     * Executa a extração a partir do .zip salvo no storage local
+     * e orquestra as dependências gerando o feedback de progresso no DB.
+     *
+     * @param  QuestionImport $import  Registro do lote atual sendo processado.
+     * @param  string         $zipPath Caminho do .zip salvo no disk(local).
+     * @return void
+     * @throws \Exception
+     */
+    public function processZipFromJob(QuestionImport $import, string $zipPath): void
+    {
+        $tmpDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'import_' . Str::uuid();
+
+        $import->update(['status' => 'processing']);
+
+        try {
+            $absoluteZipPath = Storage::disk('local')->path($zipPath);
+            $this->extractZip($absoluteZipPath, $tmpDir);
+
+            $dbPath = $this->findDatabaseFile($tmpDir);
+            $bancaSlug = strtolower(
+                preg_replace('/^banco_/', '', pathinfo($dbPath, PATHINFO_FILENAME))
+            );
+
+            $imageMap = $this->migrateImages($tmpDir, $bancaSlug);
+
+            // Carrega o usuário logado que enviou o zip original
+            $uploader = User::find($import->uploaded_by);
+            if (!$uploader) {
+                // Previne crash caso o admin tenha sido deletado
+                $uploader = User::first();
+            }
+
+            $stats = $this->importFromDatabase($dbPath, $imageMap, $import, $uploader);
+
+            $import->update([
+                'total_questions'     => $stats['total'],
+                'pending_count'       => $stats['pending'],
+                'approved_count'      => $stats['approved'],
+                'processed_questions' => $stats['total'],
+                'status'              => 'completed',
+            ]);
+
+        } catch (\Throwable $e) {
+            $import->update([
+                'status'        => 'failed',
+                'error_message' => $e->getMessage(),
+            ]);
+            Log::error("[QuestionImportService - Job] Falha no lote #{$import->id}: " . $e->getMessage());
+            throw $e;
+        } finally {
+            $this->cleanupTmpDir($tmpDir);
+        }
     }
 
     /**
@@ -220,6 +278,9 @@ class QuestionImportService
 
         $stats = ['total' => 0, 'pending' => 0, 'approved' => 0];
 
+        // Atualização inicial do total_questions 
+        $import->update(['total_questions' => count($questions)]);
+
         foreach ($questions as $qData) {
             DB::transaction(function () use ($qData, $imageMap, $import, $uploader, &$stats) {
                 // Gera uma chave única robusta baseada no conteúdo da questão
@@ -245,12 +306,31 @@ class QuestionImportService
                     ]
                 );
 
-                // Se a questão acabou de ser criada, defina o status inicial e a imagem
+                // Se a questão acabou de ser criada, defina o status inicial e processe as imagens
                 if ($question->wasRecentlyCreated) {
+                    $hasImages = !empty($qData['image_path']);
+                    $status = $qData['review_status'] ?? 'pending';
+                    
+                    if ($hasImages) {
+                        $status = 'review';
+                    }
+
                     $question->update([
-                        'review_status' => $qData['review_status'] ?? 'pending',
-                        'image_path'    => $imageMap[$qData['image_path']] ?? null,
+                        'review_status' => $status,
                     ]);
+
+                    // Insere instâncias de imagem iterativamente para a relação 1:N
+                    if (!empty($qData['image_path'])) {
+                        $imagePaths = explode(',', $qData['image_path']);
+                        foreach ($imagePaths as $imgPath) {
+                            $imgPath = trim($imgPath);
+                            if (isset($imageMap[$imgPath])) {
+                                $question->images()->create([
+                                    'path' => $imageMap[$imgPath],
+                                ]);
+                            }
+                        }
+                    }
                 }
 
                 // Registro de auditoria vinculando item ao lote
@@ -264,9 +344,10 @@ class QuestionImportService
                     $subjectNames = array_map('trim', explode(',', $qData['materias']));
                     $subjectIds = [];
                     foreach ($subjectNames as $name) {
+                        $normalizedName = mb_strtoupper($name, 'UTF-8');
                         $subject = Subject::firstOrCreate(
-                            ['slug' => Str::slug($name)],
-                            ['name' => $name]
+                            ['name' => $normalizedName],
+                            ['slug' => Str::slug($normalizedName)]
                         );
                         $subjectIds[] = $subject->id;
                     }
@@ -278,9 +359,10 @@ class QuestionImportService
                     $topicNames = array_map('trim', explode(',', $qData['assuntos']));
                     $topicIds = [];
                     foreach ($topicNames as $name) {
+                        $normalizedName = mb_strtoupper($name, 'UTF-8');
                         $topic = \App\Models\Topic::firstOrCreate(
-                            ['slug' => Str::slug($name)],
-                            ['name' => $name]
+                            ['name' => $normalizedName],
+                            ['slug' => Str::slug($normalizedName)]
                         );
                         $topicIds[] = $topic->id;
                     }
@@ -307,12 +389,18 @@ class QuestionImportService
                 }
 
                 $stats['total']++;
-                if (($qData['review_status'] ?? 'pending') === 'pending') {
+                $status = $qData['review_status'] ?? 'pending';
+                if ($status === 'pending' || $status === 'review') {
                     $stats['pending']++;
                 } else {
                     $stats['approved']++;
                 }
             });
+
+            // Atualização fragmentada para Feedback Visual da Barra de Progresso
+            if ($stats['total'] % 50 === 0) {
+                $import->update(['processed_questions' => $stats['total']]);
+            }
         }
 
         return $stats;
@@ -331,31 +419,33 @@ class QuestionImportService
      *    - Rationale: Mantém os recortes das alternativas associados à questão pai.
      *    - Atualiza question_alternatives.content com a URL do novo recorte.
      *
-     * @param  Question  $question Registro da questão sendo revisada.
-     * @param  string    $target   Alvo do recorte: 'statement' ou letra da alternativa.
-     * @param  int       $x        Coordenada X inicial (pixels originais).
-     * @param  int       $y        Coordenada Y inicial (pixels originais).
-     * @param  int       $width    Largura do recorte em pixels.
-     * @param  int       $height   Altura do recorte em pixels.
-     * @return string              URL pública do recorte para atualização instantânea no frontend.
-     * @throws \RuntimeException   Se a imagem original for inexistente ou houver falha no processamento GD.
+     * @param  QuestionImage $image  Registro da imagem sendo revisada.
+     * @param  string        $target Alvo do recorte: 'statement' ou letra da alternativa.
+     * @param  int           $x      Coordenada X inicial (pixels originais).
+     * @param  int           $y      Coordenada Y inicial (pixels originais).
+     * @param  int           $width  Largura do recorte em pixels.
+     * @param  int           $height Altura do recorte em pixels.
+     * @return string                URL pública do recorte para atualização instantânea no frontend.
+     * @throws \RuntimeException     Se a imagem original for inexistente ou houver falha no processamento GD.
      */
     public function saveCrop(
-        Question $question,
+        QuestionImage $image,
         string $target,
         int $x,
         int $y,
         int $width,
         int $height
     ): string {
-        if (empty($question->image_path)) {
-            throw new \RuntimeException("A questão #{$question->id} não possui uma imagem associada.");
+        $question = $image->question;
+
+        if (empty($image->path)) {
+            throw new \RuntimeException("A imagem informada não possui um path válido no storage.");
         }
 
-        $originalAbsPath = Storage::disk(self::IMPORT_STORAGE_DISK)->path($question->image_path);
+        $originalAbsPath = Storage::disk(self::IMPORT_STORAGE_DISK)->path($image->path);
 
         if (!file_exists($originalAbsPath)) {
-            throw new \RuntimeException("O arquivo físico da imagem não foi encontrado: {$question->image_path}");
+            throw new \RuntimeException("O arquivo físico da imagem não foi encontrado: {$image->path}");
         }
 
         // ------------------------------------------------------------------
@@ -399,24 +489,24 @@ class QuestionImportService
         if ($isStatement) {
             // Lógica de ENUNCIADO: Sobrescreve in-place para eficiência de storage
             if (in_array($extension, ['png'])) {
-                $originalBasename = pathinfo($question->image_path, PATHINFO_FILENAME);
-                $storageDir       = dirname($question->image_path);
+                $originalBasename = pathinfo($image->path, PATHINFO_FILENAME);
+                $storageDir       = dirname($image->path);
                 $cropStoragePath  = $storageDir . '/' . $originalBasename . '_crop.jpg';
             } else {
-                $cropStoragePath = $question->image_path;
+                $cropStoragePath = $image->path;
             }
 
             Storage::disk(self::IMPORT_STORAGE_DISK)->put($cropStoragePath, $imageData);
 
-            if ($cropStoragePath !== $question->image_path) {
-                Storage::disk(self::IMPORT_STORAGE_DISK)->delete($question->image_path);
-                $question->update(['image_path' => $cropStoragePath]);
+            if ($cropStoragePath !== $image->path) {
+                Storage::disk(self::IMPORT_STORAGE_DISK)->delete($image->path);
+                $image->update(['path' => $cropStoragePath]);
             }
         } else {
             // Lógica de ALTERNATIVA: Novo arquivo com sufixo da letra (A, B, C...)
             $label            = strtoupper($target);
-            $originalBasename = pathinfo($question->image_path, PATHINFO_FILENAME);
-            $storageDir       = dirname($question->image_path);
+            $originalBasename = pathinfo($image->path, PATHINFO_FILENAME);
+            $storageDir       = dirname($image->path);
             $cropStoragePath  = $storageDir . '/' . $originalBasename . '_' . $label . '.jpg';
 
             Storage::disk(self::IMPORT_STORAGE_DISK)->put($cropStoragePath, $imageData);
@@ -440,13 +530,13 @@ class QuestionImportService
     }
 
     /**
-     * Remove fisicamente a imagem principal da questão e limpa o banco.
+     * Remove fisicamente a imagem da questão e limpa o banco QuestionImage.
      */
-    public function deleteImage(Question $question): void
+    public function deleteImage(QuestionImage $image): void
     {
-        if (!empty($question->image_path)) {
-            Storage::disk(self::IMPORT_STORAGE_DISK)->delete($question->image_path);
-            $question->update(['image_path' => null]);
+        if (!empty($image->path)) {
+            Storage::disk(self::IMPORT_STORAGE_DISK)->delete($image->path);
+            $image->delete();
         }
     }
 

@@ -84,15 +84,30 @@
                         {{-- Renderização segura do enunciado com suporte a Markdown de imagens --}}
                         <div class="text-gray-800 text-sm leading-relaxed">{!! $question->statement_html !!}</div>
                         
-                        {{-- Preview da imagem recortada do enunciado (se houver) --}}
-                        @if($question->image_path)
+                        {{-- Preview das imagens associadas ao enunciado (se houver) --}}
+                        @if($question->images->isNotEmpty())
                         <div class="mt-4 pt-4 border-t border-gray-100">
-                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">🖼️ Imagem do Enunciado</p>
-                            <img id="statement-img-preview" 
-                                 src="{{ Storage::url($question->image_path) }}?t={{ time() }}" 
-                                 alt="Imagem do Enunciado"
-                                 class="max-w-full h-auto rounded border border-gray-200">
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">🖼️ Imagens do Enunciado</p>
+                            <div class="space-y-3">
+                                @foreach($question->images as $img)
+                                <img id="statement-img-preview-{{ $img->id }}" 
+                                     src="{{ Storage::url($img->path) }}?t={{ time() }}" 
+                                     alt="Imagem do Enunciado"
+                                     class="max-w-full h-auto rounded border border-gray-200">
+                                @endforeach
+                            </div>
                         </div>
+                        @else
+                            {{-- Fallback para questões antigas que ainda possam ter image_path direto --}}
+                            @if($question->image_path)
+                            <div class="mt-4 pt-4 border-t border-gray-100">
+                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">🖼️ Imagem do Enunciado</p>
+                                <img id="statement-img-preview-legacy" 
+                                     src="{{ Storage::url($question->image_path) }}?t={{ time() }}" 
+                                     alt="Imagem do Enunciado"
+                                     class="max-w-full h-auto rounded border border-gray-200">
+                            </div>
+                            @endif
                         @endif
                     </div>
 
@@ -187,16 +202,12 @@
                 {{-- COLUNA DIREITA: Editor de Crop (Cropper.js) --}}
                 {{-- =================================================================== --}}
                 <div class="xl:col-span-3">
-                @if($question->image_path)
+                @if($question->images->isNotEmpty())
+                    <div class="space-y-6">
+                    @foreach($question->images as $image)
                     {{--
-                        Container Alpine.js para todo o fluxo de crop.
-                        ESTADO:
-                        - target: onde o próximo salvamento vai:
-                            'statement' → atualiza questions.image_path (sobrescreve)
-                            'A'|'B'...  → cria/atualiza question_alternatives.content
-                        - saving: inativa o botão durante o POST (evita duplo-clique)
-                        - savedTarget: qual destino acabou de ser salvo (feedback visual)
-                        - errorMsg: mensagem de erro em caso de falha no AJAX
+                        Container Alpine.js para todo o fluxo de crop de UMA imagem.
+                        O backend enviará requests para /review/{image}/crop.
                     --}}
                     <div class="bg-white rounded-lg shadow-sm overflow-hidden"
                          x-data="{
@@ -205,6 +216,7 @@
                              saving: false,
                              savedTarget: null,
                              errorMsg: null,
+                             imageId: {{ $image->id }},
 
                              /* Inicializa o Cropper.js após o DOM estar pronto */
                              init() {
@@ -224,23 +236,12 @@
                                  });
                              },
 
-                             /*
-                              * saveCrop()
-                              * Fluxo unificado para ambos os destinos:
-                              * 1. Lê as coordenadas do Cropper.js via getData(true)
-                              * 2. Envia POST JSON com { target, x, y, width, height }
-                              * 3. O backend (saveCrop no QuestionImportService) decide:
-                              *    - target='statement' → sobrescreve questions.image_path (sem órfãos)
-                              *    - target='A'..'E'   → gera {original}_{label}.jpg e
-                              *                          atualiza question_alternatives.content
-                              * 4. A URL pública retornada atualiza o preview sem reload de página
-                              */
                              async saveCrop() {
                                  if (!this.cropper || this.saving) return;
                                  this.saving = true;
                                  this.errorMsg = null;
 
-                                 const cropData = this.cropper.getData(true); /* pixels inteiros */
+                                 const cropData = this.cropper.getData(true);
 
                                  if (cropData.width < 1 || cropData.height < 1) {
                                      this.errorMsg = 'Selecione uma área maior antes de salvar.';
@@ -249,7 +250,7 @@
                                  }
 
                                  try {
-                                     const response = await fetch('{{ route('admin.import.review.crop', $question) }}', {
+                                     const response = await fetch('{{ url("/admin/import/review") }}/' + this.imageId + '/crop', {
                                          method: 'POST',
                                          headers: {
                                              'Content-Type': 'application/json',
@@ -269,27 +270,14 @@
 
                                      if (data.success) {
                                          this.savedTarget = this.target;
-                                         const url = data.url + '?t=' + Date.now(); /* cachebust */
+                                         const url = data.url + '?t=' + Date.now();
 
                                          if (this.target === 'statement') {
-                                             /*
-                                              * Destino: ENUNCIADO
-                                              * Atualiza o <img> de preview do enunciado no card
-                                              * esquerdo E a imagem do próprio Cropper para refletir
-                                              * o recorte aplicado (via replace + reinicialização).
-                                              */
-                                             const previewEl = document.getElementById('statement-img-preview');
+                                             const previewEl = document.getElementById('statement-img-preview-' + this.imageId);
                                              if (previewEl) previewEl.src = url;
 
-                                             /* Reinicializa o cropper com a nova imagem */
                                              this.cropper.replace(url);
-
                                          } else {
-                                             /*
-                                              * Destino: ALTERNATIVA
-                                              * Atualiza o card da alternativa no painel esquerdo.
-                                              * Procura #alt-A, #alt-B... e substitui o <p> por <img>.
-                                              */
                                              const altDiv = document.getElementById('alt-' + this.target);
                                              if (altDiv) {
                                                  const contentEl = altDiv.querySelector('p, img');
@@ -304,7 +292,6 @@
                                                  window.location.reload();
                                              }
 
-                                             /* Avança automaticamente para a próxima letra */
                                              const labels = ['A', 'B', 'C', 'D', 'E'];
                                              const nextIdx = labels.indexOf(this.target) + 1;
                                              if (nextIdx < labels.length) {
@@ -323,11 +310,10 @@
                                  }
                              },
 
-                             /* Remove a imagem original da questão */
                              async deleteImage() {
                                  if (!confirm('Remover esta imagem? Esta ação não pode ser desfeita.')) return;
 
-                                 const response = await fetch('{{ route('admin.import.review.delete-image', $question) }}', {
+                                 const response = await fetch('{{ url("/admin/import/review") }}/' + this.imageId + '/image', {
                                      method: 'DELETE',
                                      headers: {
                                          'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -348,7 +334,7 @@
                         {{-- Cabeçalho do editor --}}
                         <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                             <div>
-                                <h3 class="text-sm font-semibold text-gray-800">🖼️ Editor de Recorte (Crop)</h3>
+                                <h3 class="text-sm font-semibold text-gray-800">🖼️ Editor de Recorte (ID: {{ $image->id }})</h3>
                                 <p class="text-xs text-gray-500 mt-0.5">Recorte para o <strong>Enunciado</strong> ou para uma <strong>Alternativa</strong>.</p>
                             </div>
                             <button @click="deleteImage()"
@@ -361,8 +347,8 @@
                         <div class="p-4 bg-gray-900">
                             <div class="max-h-[500px] overflow-hidden">
                                 <img x-ref="cropperImage"
-                                     src="{{ Storage::url($question->image_path) }}"
-                                     alt="Imagem da questão #{{ $question->id }}"
+                                     src="{{ Storage::url($image->path) }}"
+                                     alt="Imagem da questão #{{ $question->id }} - ID {{ $image->id }}"
                                      class="max-w-full"
                                      style="max-height: 500px; display: block; margin: 0 auto;">
                             </div>
@@ -461,7 +447,9 @@
                             </div>
 
                         </div>{{-- /controles --}}
-                    </div>{{-- /Alpine wrapper --}}
+                    </div>{{-- /Alpine wrapper individual --}}
+                    @endforeach
+                    </div>{{-- /space-y-6 wrapper geral das imagens --}}
                 @else
                 {{-- Quando a questão não tem imagem --}}
                 <div class="bg-white rounded-lg shadow-sm p-8 text-center">

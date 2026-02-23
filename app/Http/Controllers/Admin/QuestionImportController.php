@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Question;
+use App\Models\QuestionImage;
 use App\Models\QuestionImport;
 use App\Models\QuestionImportItem;
 use App\Services\QuestionImportService;
@@ -30,7 +31,7 @@ class QuestionImportController extends Controller
         return view('admin.import.index', compact('imports'));
     }
 
-    public function store(Request $request): \Illuminate\Http\RedirectResponse
+    public function store(Request $request)
     {
         $request->validate([
             'zip_file' => ['required', 'file', 'mimes:zip', 'max:204800'], 
@@ -41,21 +42,81 @@ class QuestionImportController extends Controller
         ]);
 
         try {
-            $import = $this->importService->processZip(
-                $request->file('zip_file'),
-                Auth::user()
-            );
+            // Salva o zip de forma local temporária para o Worker conseguir acessar
+            $zipPath = $request->file('zip_file')->store('imports_tmp', 'local');
 
-            return redirect()
-                ->route('admin.import.review.index', ['import' => $import->id])
-                ->with('success', "✅ Lote importado com sucesso!");
+            $import = QuestionImport::create([
+                'batch_name'        => Auth::user()->name . ' — ' . now()->format('d/m/Y H:i'),
+                'original_filename' => $request->file('zip_file')->getClientOriginalName(),
+                'uploaded_by'       => Auth::user()->id,
+                'status'            => 'pending',
+                'total_questions'   => 0,
+            ]);
 
-        } catch (\Throwable $e) {
-            Log::error('[QuestionImportController] Falha no upload: ' . $e->getMessage());
+            \App\Jobs\ProcessQuestionImportJob::dispatch($import, $zipPath);
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success'   => true,
+                    'import_id' => $import->id,
+                    'message'   => 'Importação enviada para fila de processamento.',
+                ]);
+            }
+
             return redirect()
                 ->route('admin.import.index')
-                ->with('error', '❌ Erro ao processar o arquivo: ' . $e->getMessage());
+                ->with('success', "✅ Lote na fila! Aguarde o processamento.");
+
+        } catch (\Throwable $e) {
+            Log::error('[QuestionImportController] Falha ao enfileirar upload: ' . $e->getMessage());
+            
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['error' => 'Erro interno ao processar o arquivo. Tente novamente.'], 500);
+            }
+
+            return redirect()
+                ->route('admin.import.index')
+                ->with('error', '❌ Erro ao enviar arquivo para fila: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Retorna o progresso atual de uma importação em andamento (Endpoint AJAX para UI Alpine)
+     */
+    public function progress($id): \Illuminate\Http\JsonResponse
+    {
+        $import = QuestionImport::findOrFail($id);
+
+        return response()->json([
+            'status'    => $import->status,
+            'total'     => $import->total_questions,
+            'processed' => $import->processed_questions,
+            'error'     => $import->error_message
+        ]);
+    }
+
+    /**
+     * Busca se o usuário possui alguma importação pendente/processando atualmente.
+     * Útil para retomar a barra de progresso caso ele recarregue a página (Non-Blocking UX).
+     */
+    public function activeJob(): \Illuminate\Http\JsonResponse
+    {
+        $activeImport = QuestionImport::where('uploaded_by', Auth::id())
+            ->whereIn('status', ['pending', 'processing'])
+            ->latest()
+            ->first();
+
+        if (!$activeImport) {
+            return response()->json(['active' => false]);
+        }
+
+        return response()->json([
+            'active'    => true,
+            'import_id' => $activeImport->id,
+            'status'    => $activeImport->status,
+            'total'     => $activeImport->total_questions,
+            'processed' => $activeImport->processed_questions,
+        ]);
     }
 
     /**
@@ -107,11 +168,12 @@ class QuestionImportController extends Controller
 
     public function reviewShow(Question $question): \Illuminate\View\View
     {
+        $question->load('images');
         $importItem = QuestionImportItem::where('question_id', $question->id)->first();
         return view('admin.import.review.show', compact('question', 'importItem'));
     }
 
-    public function crop(Request $request, Question $question): \Illuminate\Http\JsonResponse
+    public function crop(Request $request, QuestionImage $image): \Illuminate\Http\JsonResponse
     {
         $validated = $request->validate([
             'target' => ['required', 'string', 'regex:/^(statement|[A-Ea-e])$/'],
@@ -123,7 +185,7 @@ class QuestionImportController extends Controller
 
         try {
             $publicUrl = $this->importService->saveCrop(
-                $question,
+                $image,
                 $validated['target'],
                 $validated['x'],
                 $validated['y'],
@@ -136,10 +198,10 @@ class QuestionImportController extends Controller
         }
     }
 
-    public function deleteImage(Question $question): \Illuminate\Http\JsonResponse
+    public function deleteImage(QuestionImage $image): \Illuminate\Http\JsonResponse
     {
         try {
-            $this->importService->deleteImage($question);
+            $this->importService->deleteImage($image);
             return response()->json(['success' => true]);
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);

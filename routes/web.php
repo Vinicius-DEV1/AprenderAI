@@ -214,6 +214,14 @@ Route::middleware(['auth'])->group(function () {
                 Route::post('/', [\App\Http\Controllers\Admin\QuestionImportController::class, 'store'])
                     ->name('store');
 
+                // Busca se há trabalho em progresso ativo do usuário atual
+                Route::get('/active-job', [\App\Http\Controllers\Admin\QuestionImportController::class, 'activeJob'])
+                    ->name('active-job');
+
+                // Polling do progresso da importação via Background Jobs
+                Route::get('/{import}/progress', [\App\Http\Controllers\Admin\QuestionImportController::class, 'progress'])
+                    ->name('progress');
+
                 // Painel de revisão: lista questões pendentes + histórico de aprovações
                 Route::get('/review', [\App\Http\Controllers\Admin\QuestionImportController::class, 'reviewIndex'])
                     ->name('review.index');
@@ -223,11 +231,11 @@ Route::middleware(['auth'])->group(function () {
                     ->name('review.show');
 
                 // Salva um recorte de imagem como alternativa (coordenadas do Cropper.js → GD → storage)
-                Route::post('/review/{question}/crop', [\App\Http\Controllers\Admin\QuestionImportController::class, 'crop'])
+                Route::post('/review/{image}/crop', [\App\Http\Controllers\Admin\QuestionImportController::class, 'crop'])
                     ->name('review.crop');
 
                 // Remove a imagem principal de uma questão
-                Route::delete('/review/{question}/image', [\App\Http\Controllers\Admin\QuestionImportController::class, 'deleteImage'])
+                Route::delete('/review/{image}/image', [\App\Http\Controllers\Admin\QuestionImportController::class, 'deleteImage'])
                     ->name('review.delete-image');
 
                 // Aprova a questão (pending → approved, registra no log de auditoria)
