@@ -1,0 +1,15 @@
+
+   INFO  Running migrations.  
+
+  2024_01_01_000007_create_simulations_and_stats_tables  8.34ms DONE
+  2024_01_01_000008_create_essays_and_corrections_tables  3.15ms DONE
+  2024_01_01_000009_create_study_plans_and_concursos_tables  2.48ms DONE
+  2024_01_01_000010_create_system_prompts_table  1.69ms DONE
+  2026_02_21_193901_add_capabilities_to_api_keys_table  99.92ms DONE
+  2026_02_21_204500_create_api_key_vaults_table  72.59ms DONE
+  2026_02_21_204600_add_vault_id_to_api_keys_table  256.55ms DONE
+  2026_02_22_000001_add_asaas_customer_id_to_users_table  136.92ms DONE
+  2026_02_22_000002_create_payment_logs_table  153.39ms DONE
+  2026_02_22_000003_add_asaas_webhook_token_to_configurations  35.20ms DONE
+  2026_02_22_001952_add_ai_streaming_setting_to_settings_table  4.38ms DONE
+
