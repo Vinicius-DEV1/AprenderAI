@@ -214,6 +214,14 @@ Route::middleware(['auth'])->group(function () {
                 Route::post('/', [\App\Http\Controllers\Admin\QuestionImportController::class, 'store'])
                     ->name('store');
 
+                // Busca se há trabalho em progresso ativo do usuário atual
+                Route::get('/active-job', [\App\Http\Controllers\Admin\QuestionImportController::class, 'activeJob'])
+                    ->name('active-job');
+
+                // Polling do progresso da importação via Background Jobs
+                Route::get('/{import}/progress', [\App\Http\Controllers\Admin\QuestionImportController::class, 'progress'])
+                    ->name('progress');
+
                 // Painel de revisão: lista questões pendentes + histórico de aprovações
                 Route::get('/review', [\App\Http\Controllers\Admin\QuestionImportController::class, 'reviewIndex'])
                     ->name('review.index');

@@ -107,6 +107,63 @@ class QuestionImportService
     }
 
     /**
+     * Ponto de entrada processado por Background Jobs (Fila).
+     * 
+     * Executa a extração a partir do .zip salvo no storage local
+     * e orquestra as dependências gerando o feedback de progresso no DB.
+     *
+     * @param  QuestionImport $import  Registro do lote atual sendo processado.
+     * @param  string         $zipPath Caminho do .zip salvo no disk(local).
+     * @return void
+     * @throws \Exception
+     */
+    public function processZipFromJob(QuestionImport $import, string $zipPath): void
+    {
+        $tmpDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'import_' . Str::uuid();
+
+        $import->update(['status' => 'processing']);
+
+        try {
+            $absoluteZipPath = Storage::disk('local')->path($zipPath);
+            $this->extractZip($absoluteZipPath, $tmpDir);
+
+            $dbPath = $this->findDatabaseFile($tmpDir);
+            $bancaSlug = strtolower(
+                preg_replace('/^banco_/', '', pathinfo($dbPath, PATHINFO_FILENAME))
+            );
+
+            $imageMap = $this->migrateImages($tmpDir, $bancaSlug);
+
+            // Carrega o usuário logado que enviou o zip original
+            $uploader = User::find($import->uploaded_by);
+            if (!$uploader) {
+                // Previne crash caso o admin tenha sido deletado
+                $uploader = User::first();
+            }
+
+            $stats = $this->importFromDatabase($dbPath, $imageMap, $import, $uploader);
+
+            $import->update([
+                'total_questions'     => $stats['total'],
+                'pending_count'       => $stats['pending'],
+                'approved_count'      => $stats['approved'],
+                'processed_questions' => $stats['total'],
+                'status'              => 'completed',
+            ]);
+
+        } catch (\Throwable $e) {
+            $import->update([
+                'status'        => 'failed',
+                'error_message' => $e->getMessage(),
+            ]);
+            Log::error("[QuestionImportService - Job] Falha no lote #{$import->id}: " . $e->getMessage());
+            throw $e;
+        } finally {
+            $this->cleanupTmpDir($tmpDir);
+        }
+    }
+
+    /**
      * Extrai o arquivo .zip para um diretório temporário.
      * 
      * @param  string $zipPath  Caminho absoluto do arquivo .zip.
@@ -220,6 +277,9 @@ class QuestionImportService
         $questions = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         $stats = ['total' => 0, 'pending' => 0, 'approved' => 0];
+
+        // Atualização inicial do total_questions 
+        $import->update(['total_questions' => count($questions)]);
 
         foreach ($questions as $qData) {
             DB::transaction(function () use ($qData, $imageMap, $import, $uploader, &$stats) {
@@ -336,6 +396,11 @@ class QuestionImportService
                     $stats['approved']++;
                 }
             });
+
+            // Atualização fragmentada para Feedback Visual da Barra de Progresso
+            if ($stats['total'] % 50 === 0) {
+                $import->update(['processed_questions' => $stats['total']]);
+            }
         }
 
         return $stats;

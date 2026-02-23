@@ -62,7 +62,10 @@ services:
     volumes:
       - .:/var/www
     env_file: .env
-    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    # Prioriza explicitamente a fila 'default' (Simulados/Chats) e depois a 'import'
+    command: php artisan queue:work --queue=default,import --sleep=3 --tries=3 --max-time=3600
+    deploy:
+      replicas: 2
     depends_on:
       app:
         condition: service_started
