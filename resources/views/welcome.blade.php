@@ -1285,7 +1285,8 @@
                     Comece hoje e conquiste a sua aprovação.
                 </p>
                 <div class="lp-hero-btns">
-                    <a href="{{ route('register', ['plan' => 'free']) }}" class="lp-btn-primary" onclick="trackCTA('hero', 'free')">
+                    <a href="{{ route('register', ['plan' => 'free']) }}" class="lp-btn-primary"
+                        onclick="trackCTA('hero', 'free')">
                         Comece Gratuitamente
                     </a>
                     <a href="{{ route('login') }}" class="lp-btn-outline">
@@ -1401,18 +1402,18 @@
     <section class="lp-plans" id="plans" x-data="{
             periodo: 'mensal',
             basic: {
-                monthly: '{{ $basicPlan ? number_format($basicPlan->price, 2, ',', '.') : '0,00' }}',
-                annual_monthly: '{{ $basicAnual ? number_format($basicAnual->price / 12, 2, ',', '.') : '0,00' }}',
-                total_annual: '{{ $basicAnual ? number_format($basicAnual->price, 2, ',', '.') : '0,00' }}',
-                saving: '{{ number_format($basicSaving, 2, ',', '.') }}',
-                discount: {{ $basicAnual->discount_percentage ?? 0 }}
+                monthly: '25,00',
+                annual_monthly: '20,00',
+                total_annual: '240,00',
+                saving: '60,00',
+                discount: 20
             },
             plus: {
-                monthly: '{{ $plusPlan ? number_format($plusPlan->price, 2, ',', '.') : '0,00' }}',
-                annual_monthly: '{{ $plusAnual ? number_format($plusAnual->price / 12, 2, ',', '.') : '0,00' }}',
-                total_annual: '{{ $plusAnual ? number_format($plusAnual->price, 2, ',', '.') : '0,00' }}',
-                saving: '{{ number_format($plusSaving, 2, ',', '.') }}',
-                discount: {{ $plusAnual->discount_percentage ?? 0 }}
+                monthly: '49,90',
+                annual_monthly: '40,00',
+                total_annual: '480,00',
+                saving: '118,80',
+                discount: 20
             }
         }">
         <div style="max-width:980px;margin:0 auto;">
@@ -1465,17 +1466,17 @@
                         <li><span class="lp-check-free">✓</span> Correção básica</li>
                         <li><span class="lp-check-free">✓</span> Estatísticas simples</li>
                     </ul>
-                    <a href="{{ route('register', ['plan' => 'free']) }}" class="lp-plan-btn-free" onclick="trackCTA('pricing_free', 'free')">
+                    <a href="{{ route('register', ['plan' => 'free']) }}" class="lp-plan-btn-free"
+                        onclick="trackCTA('pricing_free', 'free')">
                         Começar Agora
                     </a>
                 </div>
 
                 <div class="lp-plan-basic">
-                    <div class="lp-plan-badge lp-badge-popular">⭐ Mais Popular</div>
                     <div class="lp-plan-name-paid">Básico</div>
                     <div style="margin-bottom:.25rem;">
                         <span class="lp-plan-price-paid">R$&nbsp;<span
-                                x-text="periodo === 'anual' ? basic.annual_monthly : basic.monthly">{{ $basicPlan ? number_format($basicPlan->price, 2, ',', '.') : '0,00' }}</span></span>
+                                x-text="periodo === 'anual' ? basic.annual_monthly : basic.monthly">25,00</span></span>
                         <span class="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
                     </div>
                     <template x-if="periodo === 'anual'">
@@ -1486,31 +1487,33 @@
                     </template>
                     <template x-if="periodo === 'mensal'">
                         <div class="lp-plan-annual-note lp-plan-annual-note-paid">
-                            Ou R$ {{ $basicAnual ? number_format($basicAnual->price, 2, ',', '.') : '0,00' }} no plano anual (20% OFF)
+                            Ou R$ 240,00 no plano anual (20% OFF)
                         </div>
                     </template>
                     <ul class="lp-plan-list lp-plan-list-paid">
                         <li><span class="lp-check-paid">✓</span> 10 provas/mês</li>
                         <li><span class="lp-check-paid">✓</span> Correção detalhada</li>
-                        <li><span class="lp-check-paid">✓</span> 2 redações/mês</li>
-                        <li><span class="lp-check-paid">✓</span> Estatísticas completas</li>
+                        <li><span class="lp-check-paid">✓</span> 4 redações/mês</li>
+                        <li><span class="lp-check-paid">✓</span> Nota por Competência (C1–C5)</li>
                         <li><span class="lp-check-paid">✓</span> Radar de concursos</li>
                     </ul>
                     <a :href="'{{ route('register') }}?plan=' + (periodo === 'anual' ? 'basic-annual' : 'basic')"
-                        class="lp-plan-btn-basic" onclick="trackCTA('pricing_basic', periodo === 'anual' ? 'basic-annual' : 'basic')">
+                        class="lp-plan-btn-basic"
+                        onclick="trackCTA('pricing_basic', periodo === 'anual' ? 'basic-annual' : 'basic')">
                         Assinar Agora
                     </a>
-                    <a :href="'{{ route('register') }}?plan=basic-annual'" class="lp-plan-btn-annual" onclick="trackCTA('pricing_basic_annual', 'basic-annual')">
+                    <a :href="'{{ route('register') }}?plan=basic-annual'" class="lp-plan-btn-annual"
+                        onclick="trackCTA('pricing_basic_annual', 'basic-annual')">
                         Assinar Plano Anual (20% OFF)
                     </a>
                 </div>
 
                 <div class="lp-plan-plus">
-                    <div class="lp-plan-badge lp-badge-value">🏆 Melhor Valor</div>
+                    <div class="lp-plan-badge lp-badge-popular">⭐ Mais Popular</div>
                     <div class="lp-plan-name-paid">Plus</div>
                     <div style="margin-bottom:.25rem;">
                         <span class="lp-plan-price-paid">R$&nbsp;<span
-                                x-text="periodo === 'anual' ? plus.annual_monthly : plus.monthly">{{ $plusPlan ? number_format($plusPlan->price, 2, ',', '.') : '0,00' }}</span></span>
+                                x-text="periodo === 'anual' ? plus.annual_monthly : plus.monthly">49,90</span></span>
                         <span class="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
                     </div>
                     <template x-if="periodo === 'anual'">
@@ -1521,7 +1524,7 @@
                     </template>
                     <template x-if="periodo === 'mensal'">
                         <div class="lp-plan-annual-note lp-plan-annual-note-paid">
-                            Ou R$ {{ $plusAnual ? number_format($plusAnual->price, 2, ',', '.') : '0,00' }} no plano anual (20% OFF)
+                            Ou R$ 480,00 no plano anual (20% OFF)
                         </div>
                     </template>
                     <ul class="lp-plan-list lp-plan-list-paid">
@@ -1529,15 +1532,18 @@
                                 ilimitados</strong></li>
                         <li><span class="lp-check-paid">✓</span> <strong style="color:#fff;">15 redações/mês</strong>
                         </li>
-                        <li><span class="lp-check-paid">✓</span> Plano personalizado</li>
+                        <li><span class="lp-check-paid">✓</span> Nota por Competência (C1–C5)</li>
+                        <li><span class="lp-check-paid">✓</span> Estatísticas completas</li>
                         <li><span class="lp-check-paid">✓</span> Análise estratégica</li>
                         <li><span class="lp-check-paid">✓</span> Radar de concursos</li>
                     </ul>
                     <a :href="'{{ route('register') }}?plan=' + (periodo === 'anual' ? 'plus-annual' : 'plus')"
-                        class="lp-plan-btn-plus" onclick="trackCTA('pricing_plus', periodo === 'anual' ? 'plus-annual' : 'plus')">
+                        class="lp-plan-btn-plus"
+                        onclick="trackCTA('pricing_plus', periodo === 'anual' ? 'plus-annual' : 'plus')">
                         Assinar Agora
                     </a>
-                    <a :href="'{{ route('register') }}?plan=plus-annual'" class="lp-plan-btn-annual" onclick="trackCTA('pricing_plus_annual', 'plus-annual')">
+                    <a :href="'{{ route('register') }}?plan=plus-annual'" class="lp-plan-btn-annual"
+                        onclick="trackCTA('pricing_plus_annual', 'plus-annual')">
                         Assinar Plano Anual (20% OFF)
                     </a>
                 </div>
