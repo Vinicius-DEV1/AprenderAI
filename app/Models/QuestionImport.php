@@ -15,6 +15,7 @@ class QuestionImport extends Model
         'total_questions',
         'pending_count',
         'approved_count',
+        'processed_questions',
         'status',
         'error_message',
     ];
