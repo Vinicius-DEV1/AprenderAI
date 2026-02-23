@@ -16,91 +16,112 @@ class EnemImportService
 {
     /**
      * Tenta processar e salvar uma questão vinda da API.
-     * Ignora se já existir.
-     * Retorna a Question criada, ou null se foi ignorada.
+     * Retorna um array com o resultado detalhado.
      */
-    public function processQuestion(array $apiQuestion): ?\App\Models\Question
+    public function processQuestion(array $apiQuestion): array
     {
         $year = $apiQuestion['year'];
-        $discipline = strtolower($apiQuestion['discipline']);
-        $index = $apiQuestion['index'];
+        $index = $apiQuestion['index'] ?? 'N/A';
+        $context = $apiQuestion['context'] ?? 'Sem título/enunciado';
 
-        // 1. Gerar external_id em conformidade com o formato MD5
+        // 1. Gerar external_id
         $organization = 'ENEM';
-        $institution = 'INEP'; // Updated to reflect the correct Banca
-        $role = 'Estudante'; // Implicit for ENEM
+        $institution = 'INEP';
+        $role = 'Estudante';
         
-        // Context contains the statement
-        $uniqueString = $organization . '|' . $year . '|' . $institution . '|' . $role . '|' . trim($apiQuestion['context']);
+        $uniqueString = $organization . '|' . $year . '|' . $institution . '|' . $role . '|' . trim($context);
         $externalId = md5($uniqueString);
 
-        // 2. Verificar se já existe
+        // 2. Verificar se já existe (Idempotência)
         if (\App\Models\Question::where('external_id', $externalId)->exists()) {
-            return null; // Já importada, idempotente
+            return [
+                'status' => 'ignored',
+                'reason' => 'duplicate',
+                'external_id' => $externalId,
+                'index' => $index,
+                'title' => \Illuminate\Support\Str::limit($context, 100),
+                'full_data' => $apiQuestion
+            ];
+        }
+
+        // Validação básica de dados essenciais
+        if (empty($apiQuestion['alternatives']) || count($apiQuestion['alternatives']) < 2) {
+            return [
+                'status' => 'ignored',
+                'reason' => 'invalid_data',
+                'index' => $index,
+                'title' => \Illuminate\Support\Str::limit($context, 100),
+                'full_data' => $apiQuestion
+            ];
         }
 
         // 3. Processar Enunciado e Imagens
-        $statement = $this->formatStatement($apiQuestion['context'], $apiQuestion['alternativesIntroduction'], $year);
+        $statement = $this->formatStatement($context, $apiQuestion['alternativesIntroduction'] ?? '', $year);
 
         // 4. Normalizar Disciplina
-        $subjectId = $this->resolveSubjectId($apiQuestion['discipline']);
+        $subjectId = $this->resolveSubjectId($apiQuestion['discipline'] ?? 'Geral');
 
-        // 5. Iniciar transação para garantir integridade
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($apiQuestion, $externalId, $year, $statement, $subjectId, $organization, $institution, $role) {
-            
-            // Tratamento de idioma embutido no tópico ou theme, se aplicável
-            $theme = $apiQuestion['language'] ? 'Língua Estrangeira: ' . ucfirst($apiQuestion['language']) : null;
-
-            // Inteligência de Fluxo: Avalia se possui imagens no markdown ou em alguma alternativa
-            $hasImage = str_contains($statement, '![') || collect($apiQuestion['alternatives'])->contains(function($alt) {
-                return !empty($alt['file']);
-            });
-            $initialStatus = $hasImage ? 'review' : 'pending';
-
-            // Criar a questão
-            $question = \App\Models\Question::create([
-                'external_id' => $externalId,
-                'type' => 'enem',
-                'format' => 'multiple_choice',
-                'difficulty' => 'medium', // Default, será substituído via AI Triage se aplicável
-                'year' => $year,
-                'statement' => $statement,
-                'source' => 'api',
-                // IMPORTANTE: A coluna 'theme' foi preservada para uso futuro, pois contém o Eixo Temático essencial retornado pela API ENEM Dev.
-                // Ela não é mais usada para filtros de triagem/busca, mas sim como meta-dado orgânico.
-                'theme' => $theme, 
-                'organization' => $organization,
-                'institution' => $institution,
-                'role' => $role,
-                'review_status' => $initialStatus, // Segmenta: Vai pra revisão visual Humana (review) ou Limpo pra Triagem de Máquina (pending)
-            ]);
-
-            // Lógica N:N (Pivot): Associando as disciplinas através do relacionamento subjects()
-            // Isso substitui as antigas colunas 'subject_id' diretas para permitir múltiplas matérias.
-            if ($subjectId) {
-                $question->subjects()->attach($subjectId);
-            }
-
-            // Criar as alternativas
-            foreach ($apiQuestion['alternatives'] as $altData) {
+        // 5. Iniciar transação
+        try {
+            $question = \Illuminate\Support\Facades\DB::transaction(function () use ($apiQuestion, $externalId, $year, $statement, $subjectId, $organization, $institution, $role) {
                 
-                $imagePath = null;
-                // Baixar imagem da alternativa, se houver
-                if (!empty($altData['file'])) {
-                    $imagePath = $this->downloadImage($altData['file'], $year);
+                $theme = ($apiQuestion['language'] ?? null) ? 'Língua Estrangeira: ' . ucfirst($apiQuestion['language']) : null;
+
+                $hasImage = str_contains($statement, '![') || collect($apiQuestion['alternatives'] ?? [])->contains(function($alt) {
+                    return !empty($alt['file']);
+                });
+                $initialStatus = $hasImage ? 'review' : 'pending';
+
+                $question = \App\Models\Question::create([
+                    'external_id' => $externalId,
+                    'type' => 'enem',
+                    'format' => 'multiple_choice',
+                    'difficulty' => 'medium',
+                    'year' => $year,
+                    'statement' => $statement,
+                    'source' => 'api',
+                    'theme' => $theme, 
+                    'organization' => $organization,
+                    'institution' => $institution,
+                    'role' => $role,
+                    'review_status' => $initialStatus,
+                ]);
+
+                if ($subjectId) {
+                    $question->subjects()->attach($subjectId);
                 }
 
-                \App\Models\QuestionAlternative::create([
-                    'question_id' => $question->id,
-                    'label' => $altData['letter'],
-                    'content' => $altData['text'] ?? '',
-                    'image_path' => $imagePath,
-                    'is_correct' => $altData['isCorrect'] ?? false,
-                ]);
-            }
+                foreach ($apiQuestion['alternatives'] as $altData) {
+                    $imagePath = null;
+                    if (!empty($altData['file'])) {
+                        $imagePath = $this->downloadImage($altData['file'], $year);
+                    }
 
-            return $question;
-        });
+                    \App\Models\QuestionAlternative::create([
+                        'question_id' => $question->id,
+                        'label' => $altData['letter'] ?? '?',
+                        'content' => $altData['text'] ?? '',
+                        'image_path' => $imagePath,
+                        'is_correct' => $altData['isCorrect'] ?? false,
+                    ]);
+                }
+
+                return $question;
+            });
+
+            return [
+                'status' => 'success',
+                'question' => $question
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'status' => 'error',
+                'reason' => $e->getMessage(),
+                'index' => $index,
+                'title' => \Illuminate\Support\Str::limit($context, 100)
+            ];
+        }
     }
 
     /**
