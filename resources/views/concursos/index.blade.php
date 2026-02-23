@@ -47,12 +47,11 @@
                     class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Situação</label>
                 <select id="situacao" name="situacao"
                     class="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="" {{ ($filtros['situacao'] ?? '') === '' ? 'selected' : '' }}>Ativos</option>
-                    <option value="todos" {{ ($filtros['situacao'] ?? '') === 'todos' ? 'selected' : '' }}>Todos</option>
-                    <option value="" disabled>─────</option>
-                    <option disabled>Inscrições Abertas</option>
-                    <option disabled>Previsto</option>
-                    <option disabled>Encerrado</option>
+                    <option value="Ativo" {{ ($filtros['situacao'] ?? 'Ativo') === 'Ativo' ? 'selected' : '' }}>Ativo</option>
+                    <option value="Previsto" {{ ($filtros['situacao'] ?? '') === 'Previsto' ? 'selected' : '' }}>Previsto
+                    </option>
+                    <option value="Encerrado" {{ ($filtros['situacao'] ?? '') === 'Encerrado' ? 'selected' : '' }}>Encerrado
+                    </option>
                 </select>
             </div>
 
@@ -83,13 +82,16 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 @foreach($concursos as $concurso)
                     @php
-                        $sit = $concurso->situacao;
-                        if ($sit === 'Inscrições Abertas') {
+                        $sitDb = mb_strtolower($concurso->situacao, 'UTF-8');
+                        if (in_array($sitDb, ['inscrições abertas', 'aberto', 'andamento', 'ativo'])) {
                             $badgeClass = 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300';
-                        } elseif ($sit === 'Previsto') {
+                            $sitLabel = 'Ativo';
+                        } elseif (in_array($sitDb, ['previsto'])) {
                             $badgeClass = 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300';
+                            $sitLabel = 'Previsto';
                         } else {
                             $badgeClass = 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400';
+                            $sitLabel = 'Encerrado';
                         }
                     @endphp
 
@@ -111,7 +113,7 @@
                                 @endif
                             </div>
                             <span class="flex-shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full {{ $badgeClass }}">
-                                {{ $sit }}
+                                {{ $sitLabel }}
                             </span>
                         </div>
 

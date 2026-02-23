@@ -35,16 +35,17 @@ class AIBatchService
         try {
             // 2. Chama o AIService que lida com as chaves e a API da IA escolhida
             $result = $this->aiService->generateJson($prompt, $model);
-            
+
             $data = $result['data'] ?? [];
-            
+
             // 3. Aplica os resultados retornados pela IA no Banco de Dados
             $appliedData = $this->applyResults($questions, $data, $type);
-            
+
             // 4. Gestão de Memória (Garbage Collection): limpa query_logs acumulados do chunk
             // Vital para não estourar os limites de RAM do Docker ao processar +200 itens em Background
             \Illuminate\Support\Facades\DB::flushQueryLog();
-            if (gc_enabled()) gc_collect_cycles();
+            if (gc_enabled())
+                gc_collect_cycles();
 
             return $appliedData;
         } catch (\Exception $e) {
@@ -65,10 +66,14 @@ class AIBatchService
     {
         $questionsData = $questions->map(function ($q) {
             $missingFields = [];
-            if (empty($q->difficulty_reasoning) || empty($q->difficulty)) $missingFields[] = 'difficulty';
-            if (empty($q->explanation)) $missingFields[] = 'explanation';
-            if ($q->subjects()->count() === 0) $missingFields[] = 'subject';
-            if ($q->topics()->count() === 0) $missingFields[] = 'topic';
+            if (empty($q->difficulty_reasoning) || empty($q->difficulty))
+                $missingFields[] = 'difficulty';
+            if (empty($q->explanation))
+                $missingFields[] = 'explanation';
+            if ($q->subjects()->count() === 0)
+                $missingFields[] = 'subject';
+            if ($q->topics()->count() === 0)
+                $missingFields[] = 'topic';
 
             return [
                 'id' => $q->id,
@@ -87,7 +92,7 @@ class AIBatchService
         $instruction = match ($type) {
             'difficulty' => "Avalie a dificuldade (easy, medium, hard), forneça um raciocínio curto.",
             'explanation' => "Gere uma explicação pedagógica clara e completa do porquê a resposta correta é a correta.",
-            'classification' => "Analise a questão e tente mapeá-la para os IDs existentes na lista de referência. Caso a questão trate de um tema que absolutamente não se encaixa em nenhuma das opções fornecidas, você deve sugerir um novo NOME em texto ("string") para a Disciplina ou Assunto. Atenção: Seja criterioso para não criar sinônimos de categorias que já existem.",
+            'classification' => "Analise a questão e tente mapeá-la para os IDs existentes na lista de referência. Caso a questão trate de um tema que absolutamente não se encaixa em nenhuma das opções fornecidas, você deve sugerir um novo NOME em texto ('string') para a Disciplina ou Assunto. Atenção: Seja criterioso para não criar sinônimos de categorias que já existem.",
             'complete' => "Avalie a dificuldade (com raciocínio), gere uma explicação pedagógica e classifique a questão mapeando para os IDs existentes ou sugerindo um novo Nome em string caso não exista, evitando sinônimos.",
             'both' => "Avalie a dificuldade com raciocínio, gere uma explicação pedagógica, e classifique a Disciplina (Subject) e o Assunto (Topic).", // Fallback legacy
         };
@@ -139,7 +144,7 @@ class AIBatchService
 
         // Normalização manual: se a IA retornar um objeto único em vez de lista, envolvemos em array
         if (!is_array($results) || (count($results) > 0 && !isset($results[0]))) {
-             $results = [$results];
+            $results = [$results];
         }
 
         foreach ($questions as $question) {
@@ -152,7 +157,7 @@ class AIBatchService
             }
 
             $update = [];
-            
+
             // Regra de Ouro: Blindagem contra Sobrescrita (Data Safety)
             // Só atualiza 'difficulty'/'difficulty_reasoning' se a questão base estiver vazia
             if (in_array($type, ['difficulty', 'complete', 'both']) && isset($data['difficulty'])) {
@@ -173,11 +178,11 @@ class AIBatchService
             if (!empty($update)) {
                 $question->update($update);
             }
-            
+
             // Lógica N:N (Pivot) + Curadoria de Taxonomia
             // Permitido para 'classification', 'complete', ou fallback 'both'
             if (in_array($type, ['classification', 'complete', 'both'])) {
-                
+
                 // SUBJECT: Restringe sobrescrita. Só aplica IA se não tiver taxonomia vinculada.
                 if ($question->subjects()->count() === 0 && isset($data['subject']) && $data['subject'] !== null) {
                     $subjectVal = $data['subject'];
@@ -206,7 +211,7 @@ class AIBatchService
                     }
                 }
             }
-            
+
             // Marca status principal como analisado/aprovado
             $question->update(['review_status' => 'approved']);
             $applied++;

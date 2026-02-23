@@ -11,14 +11,20 @@ class ConcursoController extends Controller
     {
         $uf = $request->input('uf');
         $busca = $request->input('busca');
-        $situacao = $request->input('situacao');
+        $situacao = $request->input('situacao', 'Ativo'); // Default para Ativo
 
-        // Por padrão, exibe apenas concursos ativos (Inscrições Abertas ou Previsto).
-        // Se situacao = 'todos', remove o filtro.
-        if ($situacao === 'todos') {
-            $query = Concurso::query();
+        $query = Concurso::query();
+
+        // Mapeamento interno cirúrgico
+        if ($situacao === 'Ativo') {
+            $query->whereIn('situacao', ['Inscrições Abertas', 'aberto', 'andamento', 'ativo', 'Ativo']);
+        } elseif ($situacao === 'Previsto') {
+            $query->whereIn('situacao', ['Previsto', 'previsto']);
+        } elseif ($situacao === 'Encerrado') {
+            $query->whereIn('situacao', ['Encerrado', 'encerrado', 'finalizado']);
         } else {
-            $query = Concurso::query()->ativos();
+            // Em caso de valor inesperado, reverte para o comportamento padrão (Ativo)
+            $query->whereIn('situacao', ['Inscrições Abertas', 'aberto', 'andamento', 'ativo', 'Ativo']);
         }
 
         if (!empty($uf)) {
