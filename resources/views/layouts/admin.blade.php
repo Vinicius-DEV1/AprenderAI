@@ -208,6 +208,316 @@
         </div>
     </div>
     @stack('scripts')
+
+    {{-- BATCH MONITOR GLOBAL --}}
+    <div x-data="batchMonitor" 
+         x-on:batch-started.window="startMonitoring($event.detail.batchId)" 
+         x-on:open-batch-monitor.window="startMonitoring($event.detail.batchId)"
+         class="relative z-50">
+        
+        <div x-show="isOpen" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+            <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div x-show="isOpen" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="isOpen = false" aria-hidden="true"></div>
+
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+                <div x-show="isOpen" 
+                     x-transition:enter="ease-out duration-300" 
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave="ease-in duration-200" 
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                     class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full z-10">
+                    
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <svg class="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                                    Processamento em Lote Inteligente
+                                </h3>
+
+                                <div class="mt-4 space-y-4" x-show="!isProcessing && status === 'completed'">
+                                    <p class="text-sm text-green-600 font-medium">O processamento foi concluído com sucesso. Você pode fechar este monitor ou revisar os resultados no histórico.</p>
+                                </div>
+                                
+                                <div class="mt-4 space-y-4" x-show="!isProcessing && status === 'cancelled'">
+                                    <p class="text-sm text-red-600 font-medium">O lote foi cancelado. Nenhum novo registro será processado.</p>
+                                </div>
+
+                                <div class="mt-4" x-show="isProcessing">
+                                    <div class="relative pt-1">
+                                        <div class="flex mb-2 items-center justify-between">
+                                            <div>
+                                                <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-indigo-600 bg-indigo-200" x-text="statusMessage">
+                                                    Processando...
+                                                </span>
+                                            </div>
+                                            <div class="text-right">
+                                                <span class="text-xs font-semibold inline-block text-indigo-600" x-text="progress + '%'"></span>
+                                            </div>
+                                        </div>
+                                        <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-indigo-200">
+                                            <div :style="'width: ' + progress + '%'" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-500 transition-all duration-500"></div>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <div class="flex items-center gap-2">
+                                                <p class="text-xs text-gray-500" x-text="'Sucessos: ' + processed"></p>
+                                                <button type="button" 
+                                                    class="text-xs font-bold transition-colors"
+                                                    :class="errors > 0 ? 'text-red-500 hover:text-red-700 underline' : 'text-gray-400 cursor-default'"
+                                                    @click="errors > 0 ? $dispatch('show-batch-errors', { errors: errorsLog }) : null"
+                                                    x-text="'Erros: ' + errors"></button>
+                                            </div>
+                                            <template x-if="lastError">
+                                                <p class="text-[10px] text-red-500 font-bold truncate max-w-[200px]" :title="lastError" x-text="'Erro: ' + lastError"></p>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
+                        <button x-show="isProcessing && progress < 100 && status !== 'failed' && status !== 'cancelled'" @click="minify()" type="button" class="w-full inline-flex justify-center rounded-md border border-indigo-200 shadow-sm px-4 py-2 bg-indigo-50 text-base font-medium text-indigo-700 hover:bg-indigo-100 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                            Minimizar
+                        </button>
+
+                        <button x-show="isProcessing && progress >= 100" @click="isOpen = false; removePersistence(); window.location.reload();" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                            Concluído
+                        </button>
+
+                        <div x-show="isProcessing && (retryCount >= 5 || status === 'failed')" class="flex gap-2 w-full sm:w-auto">
+                            <button @click="connectSSE()" type="button" class="flex-1 inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-yellow-500 text-base font-medium text-white hover:bg-yellow-600 focus:outline-none sm:w-auto sm:text-sm">
+                                Tentar Reconectar
+                            </button>
+                        </div>
+
+                        <button x-show="isProcessing && progress < 100 && status === 'processing'" 
+                                @click="cancelBatch()" 
+                                type="button" 
+                                class="w-full inline-flex justify-center rounded-md border border-red-200 shadow-sm px-4 py-2 bg-red-50 text-base font-medium text-red-700 hover:bg-red-100 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                            Cancelar Lote
+                        </button>
+
+                        <button @click="isOpen = false" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Fechar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Floating Bar --}}
+        <div x-data="floatingBatchMonitor" 
+             x-show="show" 
+             @batch-update.window="update($event.detail)"
+             class="fixed bottom-4 right-4 z-50 animate-bounce-subtle" 
+             style="display: none;">
+            <div class="bg-white border-2 border-indigo-500 rounded-xl shadow-2xl p-4 w-72">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-bold text-indigo-700 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
+                        Processamento Ativo...
+                    </span>
+                    <span class="text-xs font-bold text-indigo-600" x-text="progress + '%'"></span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
+                    <div class="bg-indigo-600 h-2 rounded-full transition-all duration-500" :style="'width: ' + progress + '%'"></div>
+                </div>
+                <div class="flex justify-between">
+                    <p class="text-[10px] text-gray-500" x-text="processed + ' concluídos'"></p>
+                    <button @click="maximize()" class="text-[10px] font-bold text-indigo-600 hover:underline">Ver Detalhes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Error Modal --}}
+    <div x-data="{ isOpen: false, errors: [] }" 
+         x-on:show-batch-errors.window="isOpen = true; errors = $event.detail.errors"
+         x-show="isOpen" 
+         class="fixed inset-0 z-[60] overflow-y-auto" 
+         style="display: none;">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="fixed inset-0 bg-black/50 transition-opacity" @click="isOpen = false"></div>
+            <div class="relative bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 text-left">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Log de Erros do Lote</h3>
+                <div class="max-h-96 overflow-y-auto space-y-2">
+                    <template x-for="(error, index) in errors" :key="index">
+                        <div class="p-3 rounded-lg border" :class="error.type === 'fatal' ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'">
+                            <div class="flex justify-between items-start mb-1">
+                                <span class="text-[10px] font-bold uppercase" :class="error.type === 'fatal' ? 'text-red-700' : 'text-orange-700'" x-text="error.type"></span>
+                                <span class="text-[10px] text-gray-500" x-text="error.time"></span>
+                            </div>
+                            <p class="text-xs text-gray-800 break-words" x-text="error.error"></p>
+                        </div>
+                    </template>
+                </div>
+                <div class="mt-6 flex justify-end">
+                    <button @click="isOpen = false" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('batchMonitor', () => ({
+                isOpen: false,
+                isProcessing: false,
+                batchId: null,
+                total: 0,
+                processed: 0,
+                errors: 0,
+                progress: 0,
+                statusMessage: 'Iniciando...',
+                status: 'processing',
+                lastError: null,
+                errorsLog: [],
+                eventSource: null,
+                retryCount: 0,
+
+                init() {
+                    const saved = localStorage.getItem('active_batch_triage');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        if (data.status === 'processing') {
+                            this.batchId = data.batchId;
+                            this.isProcessing = true;
+                            this.connectSSE();
+                        }
+                    }
+                },
+
+                startMonitoring(batchId) {
+                    this.isOpen = true;
+                    this.batchId = batchId;
+                    this.isProcessing = true;
+                    this.connectSSE();
+                },
+
+                savePersistence() {
+                    localStorage.setItem('active_batch_triage', JSON.stringify({
+                        batchId: this.batchId,
+                        isProcessing: this.isProcessing,
+                        status: this.status
+                    }));
+                },
+
+                removePersistence() {
+                    localStorage.removeItem('active_batch_triage');
+                },
+
+                minify() {
+                    this.isOpen = false;
+                    this.savePersistence();
+                },
+
+                async cancelBatch() {
+                    if (!confirm('Tem certeza que deseja cancelar este lote? O processamento será interrompido.')) return;
+                    
+                    try {
+                        const response = await fetch(`/admin/questions-batch/cancel/${this.batchId}`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                                'Accept': 'application/json'
+                            }
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                            this.status = 'cancelled';
+                            this.statusMessage = 'Lote cancelado pelo usuário.';
+                            if (this.eventSource) this.eventSource.close();
+                            this.removePersistence();
+                        }
+                    } catch (e) {
+                        console.error('Erro ao cancelar lote:', e);
+                    }
+                },
+
+                connectSSE() {
+                    if (this.eventSource) this.eventSource.close();
+                    this.eventSource = new EventSource(`/admin/questions-batch/progress/${this.batchId}`);
+                    this.eventSource.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            if (data.status === 'not_found') {
+                                this.eventSource.close();
+                                this.statusMessage = 'Erro: Lote não encontrado.';
+                                return;
+                            }
+                            this.processed = data.processed;
+                            this.errors = data.errors;
+                            this.total = data.total;
+                            this.status = data.status;
+                            this.lastError = data.last_error || null;
+                            this.errorsLog = data.errors_log || [];
+                            const completedCount = this.processed + this.errors;
+                            this.progress = Math.min(100, Math.round((completedCount / this.total) * 100));
+
+                            window.dispatchEvent(new CustomEvent('batch-update', { 
+                                detail: { progress: this.progress, processed: completedCount, status: this.status, batchId: this.batchId } 
+                            }));
+
+                            if (this.status === 'completed' || this.status === 'failed' || this.status === 'cancelled') {
+                                this.eventSource.close();
+                                this.savePersistence();
+                                if (this.status === 'completed') this.statusMessage = 'Finalizado!';
+                            } else {
+                                this.statusMessage = `Processando (${completedCount}/${this.total})...`;
+                                this.savePersistence();
+                            }
+                        } catch (e) {
+                            console.error('Erro SSE:', e);
+                        }
+                    };
+                    this.eventSource.onerror = (e) => {
+                        this.eventSource.close();
+                        if (this.isProcessing && this.progress < 100 && this.retryCount < 5) {
+                            this.retryCount++;
+                            setTimeout(() => this.connectSSE(), 3000);
+                        }
+                    };
+                }
+            }));
+
+            Alpine.data('floatingBatchMonitor', () => ({
+                show: false,
+                progress: 0,
+                processed: 0,
+                status: '',
+                init() {
+                    const saved = localStorage.getItem('active_batch_triage');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        if (data.status === 'processing') this.show = true;
+                    }
+                },
+                update(detail) {
+                    this.progress = detail.progress;
+                    this.processed = detail.processed;
+                    this.status = detail.status;
+                    this.show = this.status === 'processing';
+                },
+                maximize() {
+                    const saved = JSON.parse(localStorage.getItem('active_batch_triage'));
+                    window.dispatchEvent(new CustomEvent('open-batch-monitor', { detail: { batchId: saved ? saved.batchId : this.batchId } }));
+                }
+            }));
+        });
+    </script>
+    <style>
+        @keyframes bounce-subtle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        .animate-bounce-subtle { animation: bounce-subtle 2s ease-in-out infinite; }
+    </style>
 </body>
 
 </html>
