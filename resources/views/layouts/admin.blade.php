@@ -122,6 +122,13 @@
                                     Prompts (Xavier)
                                 </a>
 
+                                <a href="{{ route('admin.analytics.index') }}"
+                                    class="flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition-all {{ request()->routeIs('admin.analytics.*') ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-100' }}">
+                                    <!-- Icon: Chart Bar/Analytics -->
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                                    Analytics
+                                </a>
+
                                 <a href="{{ route('admin.monitor.index') }}"
                                     class="flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition-all {{ request()->routeIs('admin.monitor.*') ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-100' }}">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
@@ -165,11 +172,60 @@
 
             <!-- Main Content -->
             <main class="flex-1 p-8 lg:ml-0 ml-64">
-                @isset($header)
-                    <header class="mb-8">
-                        {{ $header }}
-                    </header>
-                @endisset
+                <div class="flex justify-between items-start mb-8">
+                    @isset($header)
+                        <header>
+                            {{ $header }}
+                        </header>
+                    @else
+                        <div></div>
+                    @endisset
+
+                    <!-- Notifications Bell -->
+                    <div x-data="{ open: false }" class="relative">
+                        @php 
+                            $unreadAlerts = \App\Models\AnalyticsAlert::whereNull('read_at')->orderByDesc('created_at')->take(5)->get(); 
+                            $unreadCount = $unreadAlerts->count();
+                        @endphp
+                        
+                        <button @click="open = !open" @click.away="open = false" class="relative p-2 text-gray-400 hover:text-gray-500 transition-colors focus:outline-none bg-white rounded-full shadow-sm border border-gray-100">
+                            <span class="sr-only">Ver notificações</span>
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            @if($unreadCount > 0)
+                                <span class="absolute top-0 right-0 block h-4 w-4 rounded-full bg-red-500 ring-2 ring-white text-[9px] font-bold text-white flex items-center justify-center">
+                                    {{ $unreadCount }}
+                                </span>
+                            @endif
+                        </button>
+
+                        <div x-show="open" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100" x-transition:leave-end="transform opacity-0 scale-95" class="origin-top-right absolute right-0 mt-2 w-80 rounded-xl shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50 overflow-hidden" style="display: none;">
+                            <div class="px-4 py-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                                <p class="text-sm font-semibold text-gray-800">Notificações</p>
+                                @if($unreadCount > 0)
+                                    <span class="bg-red-100 text-red-800 text-[10px] px-2 py-0.5 rounded-full font-bold">{{ $unreadCount }} novas</span>
+                                @endif
+                            </div>
+                            <div class="max-h-80 overflow-y-auto">
+                                @forelse($unreadAlerts as $alert)
+                                    <a href="{{ route('admin.analytics.alerts', ['highlight' => $alert->id]) }}" class="block px-4 py-3 hover:bg-gray-50 border-b border-gray-50 transition-colors">
+                                        <p class="text-sm text-gray-800 font-medium truncate">{{ $alert->type == 'drop' ? '📉 Queda Detectada' : ($alert->type == 'growth' ? '🚀 Crescimento' : '⚠️ Alerta') }}</p>
+                                        <p class="text-xs text-gray-500 mt-1 line-clamp-2">{{ $alert->message }}</p>
+                                        <p class="text-[10px] text-gray-400 mt-1">{{ $alert->created_at->diffForHumans() }}</p>
+                                    </a>
+                                @empty
+                                    <div class="px-4 py-6 text-center text-sm text-gray-500">
+                                        Nenhuma notificação nova.
+                                    </div>
+                                @endforelse
+                            </div>
+                            <div class="px-4 py-2 border-t border-gray-100 bg-gray-50 text-center">
+                                <a href="{{ route('admin.analytics.alerts') }}" class="text-xs font-medium text-blue-600 hover:text-blue-800">Ver todo o histórico</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Success/Error Messages (Toast) -->
                 @if (session('success') || session('error'))
