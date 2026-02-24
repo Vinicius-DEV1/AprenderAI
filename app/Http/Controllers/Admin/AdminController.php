@@ -137,7 +137,7 @@ class AdminController extends Controller
         
         try {
             $vault = \App\Models\ApiKeyVault::findOrFail($request->vault_id);
-            $aiService = app(\App\Services\AIService::class);
+            $aiService = app(\App\Services\AI\AIService::class);
             $result = $aiService->validateKey($vault->provider, $vault->decrypted_key);
 
             if (!$result['is_valid']) {
@@ -233,7 +233,7 @@ class AdminController extends Controller
             'key' => 'required|string',
         ]);
 
-        $aiService = app(\App\Services\AIService::class);
+        $aiService = app(\App\Services\AI\AIService::class);
         $result = $aiService->validateKey($request->provider, $request->key);
 
         return response()->json($result);
@@ -261,7 +261,7 @@ class AdminController extends Controller
      */
     public function retestApiKey(ApiKey $apiKey)
     {
-        $aiService = app(\App\Services\AIService::class);
+        $aiService = app(\App\Services\AI\AIService::class);
 
         try {
             $result = $aiService->validateKey($apiKey->effective_provider, $apiKey->decrypted_key);

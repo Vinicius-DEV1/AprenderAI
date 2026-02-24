@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\ApiKey;
-use App\Services\AIService;
+use App\Services\AI\AIService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 

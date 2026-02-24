@@ -4,7 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use App\Services\AIService;
+use App\Services\AI\AIService;
 
 class CheckAPIKey
 {
