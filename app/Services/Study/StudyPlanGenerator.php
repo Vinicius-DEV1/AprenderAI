@@ -4,7 +4,7 @@ namespace App\Services\Study;
 
 use App\Models\StudyPlan;
 use App\Models\User;
-use App\Services\AIService;
+use App\Services\AI\AIService;
 use Carbon\Carbon;
 
 class StudyPlanGenerator
