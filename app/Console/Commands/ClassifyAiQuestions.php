@@ -23,7 +23,7 @@ class ClassifyAiQuestions extends Command
     /**
      * Execute the console command.
      */
-    public function handle(\App\Services\AIService $aiService)
+    public function handle(\App\Services\AI\AIService $aiService)
     {
         $query = \App\Models\Question::whereNull('difficulty_reasoning');
 

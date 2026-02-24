@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Essay;
 use App\Models\Simulation;
-use App\Services\AIService;
+use App\Services\AI\AIService;
 use App\Services\PlanService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;

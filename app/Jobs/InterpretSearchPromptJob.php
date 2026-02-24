@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\AiSearchRequest;
-use App\Services\AIService;
+use App\Services\AI\AIService;
 use App\Services\QuestionService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

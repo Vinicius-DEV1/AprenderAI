@@ -5,7 +5,7 @@ namespace App\Jobs;
 use App\Models\Question;
 use App\Models\QuestionInteraction;
 use App\Models\Simulation;
-use App\Services\AIService;
+use App\Services\AI\AIService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;

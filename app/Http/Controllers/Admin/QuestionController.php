@@ -333,7 +333,7 @@ class QuestionController extends Controller
         ]);
     }
 
-    public function batchEvaluateDifficulty(\App\Services\AIService $aiService)
+    public function batchEvaluateDifficulty(\App\Services\AI\AIService $aiService)
     {
         $count = Question::whereNull('difficulty_reasoning')->count();
 

@@ -14,7 +14,7 @@ class ApiCheckHealth extends Command
     protected $signature = 'api:check-health';
     protected $description = 'Verifica a saúde das chaves de API ativas e atualiza status';
 
-    public function handle(\App\Services\AIService $aiService)
+    public function handle(\App\Services\AI\AIService $aiService)
     {
         $this->info('Iniciando Teste de Saúde das APIs...');
         

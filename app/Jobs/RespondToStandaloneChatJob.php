@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Question;
 use App\Models\QuestionInteraction;
-use App\Services\AIService;
+use App\Services\AI\AIService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;

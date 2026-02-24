@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Simulation;
 use App\Models\Correction;
-use App\Services\AIService;
+use App\Services\AI\AIService;
 use App\Services\Study\StudyStatsService; // NEW IMPORT
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

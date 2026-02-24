@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Essay;
 use App\Models\Correction;
-use App\Services\AIService;
+use App\Services\AI\AIService;
 use App\Mail\EssayCorrectedMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
