@@ -52,8 +52,8 @@
                             </svg>
                         </div>
                     </div>
-                    <h3 class="text-gray-500 text-sm font-medium">Lotes Processados</h3>
-                    <p class="text-3xl font-bold text-gray-800 mt-1">{{ $recentImports->count() }} recentes</p>
+                    <h3 class="text-gray-500 text-sm font-medium">Lotes IA Processados</h3>
+                    <p class="text-3xl font-bold text-gray-800 mt-1">{{ $totalBatchCount }} total</p>
                     <a href="{{ route('admin.triagem.historico') }}" class="mt-4 inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700">
                         Histórico de Triagem →
                     </a>

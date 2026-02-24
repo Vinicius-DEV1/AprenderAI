@@ -27,15 +27,15 @@ class QuestionController extends Controller
         }
         if ($request->filled('triage_status')) {
             match ($request->triage_status) {
-                'missing_difficulty' => $pendingQuery->missingField('difficulty_reasoning'),
-                'missing_explanation' => $pendingQuery->missingField('explanation'),
-                'missing_classification' => $pendingQuery->where(function ($q) {
+                    'missing_difficulty' => $pendingQuery->missingField('difficulty_reasoning'),
+                    'missing_explanation' => $pendingQuery->missingField('explanation'),
+                    'missing_classification' => $pendingQuery->where(function ($q) {
                     $q->whereDoesntHave('subjects')->orWhereDoesntHave('topics');
                 }),
-                'both_missing' => $pendingQuery->missingField('difficulty_reasoning')
+                    'both_missing' => $pendingQuery->missingField('difficulty_reasoning')
                     ->missingField('explanation'),
-                default => null,
-            };
+                    default => null,
+                };
         }
         if ($request->filled('triage_subject')) {
             $pendingQuery->whereHas('subjects', function ($q) use ($request) {
@@ -139,26 +139,26 @@ class QuestionController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'subject'               => 'required|string',
-            'topic'                 => 'nullable|string',
-            'type'                  => 'required|in:enem,concurso',
-            'format'                => 'required|in:multiple_choice,true_false',
-            'statement'             => 'required|string',
-            'alternatives'          => 'required|array',
-            'correct_answer'        => 'required|string',
-            'explanation'           => 'nullable|string',
-            'source'                => 'required|in:manual,ai_generated',
-            'year'                  => 'nullable|integer',
-            'difficulty'            => 'required|in:easy,medium,hard',
-            'difficulty_reasoning'  => 'nullable|string',
-            'organization'          => 'nullable|string|max:255',
+            'subject' => 'required|string',
+            'topic' => 'nullable|string',
+            'type' => 'required|in:enem,concurso',
+            'format' => 'required|in:multiple_choice,true_false',
+            'statement' => 'required|string',
+            'alternatives' => 'required|array',
+            'correct_answer' => 'required|string',
+            'explanation' => 'nullable|string',
+            'source' => 'required|in:manual,ai_generated',
+            'year' => 'nullable|integer',
+            'difficulty' => 'required|in:easy,medium,hard',
+            'difficulty_reasoning' => 'nullable|string',
+            'organization' => 'nullable|string|max:255',
         ]);
 
         // Extrai campos que NÃO são colunas da tabela questions (foram migrados)
-        $subjectName   = $validated['subject'];      
-        $topicName     = $validated['topic'] ?? null;
-        $alternativas  = $validated['alternatives']; 
-        $correctAnswer = $validated['correct_answer']; 
+        $subjectName = $validated['subject'];
+        $topicName = $validated['topic'] ?? null;
+        $alternativas = $validated['alternatives'];
+        $correctAnswer = $validated['correct_answer'];
         unset($validated['subject'], $validated['topic'], $validated['alternatives'], $validated['correct_answer']);
 
         $question = Question::create($validated);
@@ -166,8 +166,8 @@ class QuestionController extends Controller
         // Salva cada alternativa como uma linha em question_alternatives
         foreach ($alternativas as $label => $content) {
             $question->alternatives()->create([
-                'label'      => strtoupper($label),
-                'content'    => $content,
+                'label' => strtoupper($label),
+                'content' => $content,
                 'is_correct' => (strtoupper($label) === strtoupper($correctAnswer)),
             ]);
         }
@@ -201,25 +201,25 @@ class QuestionController extends Controller
     public function update(Request $request, Question $question)
     {
         $validated = $request->validate([
-            'subject'               => 'required|string',
-            'topic'                 => 'nullable|string',
-            'type'                  => 'required|in:enem,concurso',
-            'format'                => 'required|in:multiple_choice,true_false',
-            'statement'             => 'required|string',
-            'alternatives'          => 'required|array',
-            'correct_answer'        => 'required|string',
-            'explanation'           => 'nullable|string',
-            'source'                => 'required|in:manual,ai_generated',
-            'year'                  => 'nullable|integer',
-            'difficulty'            => 'required|in:easy,medium,hard',
-            'difficulty_reasoning'  => 'nullable|string',
-            'organization'          => 'nullable|string|max:255',
+            'subject' => 'required|string',
+            'topic' => 'nullable|string',
+            'type' => 'required|in:enem,concurso',
+            'format' => 'required|in:multiple_choice,true_false',
+            'statement' => 'required|string',
+            'alternatives' => 'required|array',
+            'correct_answer' => 'required|string',
+            'explanation' => 'nullable|string',
+            'source' => 'required|in:manual,ai_generated',
+            'year' => 'nullable|integer',
+            'difficulty' => 'required|in:easy,medium,hard',
+            'difficulty_reasoning' => 'nullable|string',
+            'organization' => 'nullable|string|max:255',
         ]);
 
         // Extrai campos que NÃO são colunas da tabela questions
-        $subjectName   = $validated['subject'];
-        $topicName     = $validated['topic'] ?? null;
-        $alternativas  = $validated['alternatives'];
+        $subjectName = $validated['subject'];
+        $topicName = $validated['topic'] ?? null;
+        $alternativas = $validated['alternatives'];
         $correctAnswer = $validated['correct_answer'];
         unset($validated['subject'], $validated['topic'], $validated['alternatives'], $validated['correct_answer']);
 
@@ -231,14 +231,14 @@ class QuestionController extends Controller
         // Atualiza as alternativas existentes ou cria novas sem excluir os metadados antigos (ex: image_path)
         foreach ($alternativas as $label => $content) {
             \App\Models\QuestionAlternative::updateOrCreate(
-                [
-                    'question_id' => $question->id,
-                    'label'       => strtoupper($label),
-                ],
-                [
-                    'content'     => $content ?? '',
-                    'is_correct'  => (strtoupper($label) === strtoupper($correctAnswer)),
-                ]
+            [
+                'question_id' => $question->id,
+                'label' => strtoupper($label),
+            ],
+            [
+                'content' => $content ?? '',
+                'is_correct' => (strtoupper($label) === strtoupper($correctAnswer)),
+            ]
             );
         }
 
@@ -254,7 +254,8 @@ class QuestionController extends Controller
             if ($topic) {
                 $question->topics()->sync([$topic->id]);
             }
-        } else {
+        }
+        else {
             $question->topics()->detach();
         }
 
@@ -262,11 +263,42 @@ class QuestionController extends Controller
             ->with('success', 'Questão atualizada com sucesso!');
     }
 
+    /**
+     * Delete a question with referential integrity.
+     *
+     * After the question is deleted (cascades handle pivots and alternatives),
+     * we clean up any orphaned Subject/Topic records that no longer have
+     * any questions linked to them. This prevents data pollution.
+     */
     public function destroy(Question $question)
     {
-        $question->delete();
+        DB::transaction(function () use ($question) {
+            // Step 1: Memorize pivot IDs before deletion (cascade will wipe pivots)
+            $subjectIds = $question->subjects()->pluck('subjects.id')->toArray();
+            $topicIds = $question->topics()->pluck('topics.id')->toArray();
+
+            // Step 2: Delete the question (cascadeOnDelete handles:
+            //   question_alternatives, question_subject pivot, question_topic pivot,
+            //   question_import_items)
+            $question->delete();
+
+            // Step 3: Clean up orphaned subjects (no remaining question links)
+            foreach ($subjectIds as $sid) {
+                if (DB::table('question_subject')->where('subject_id', $sid)->doesntExist()) {
+                    DB::table('subjects')->where('id', $sid)->delete();
+                }
+            }
+
+            // Step 4: Clean up orphaned topics (no remaining question links)
+            foreach ($topicIds as $tid) {
+                if (DB::table('question_topic')->where('topic_id', $tid)->doesntExist()) {
+                    DB::table('topics')->where('id', $tid)->delete();
+                }
+            }
+        });
+
         return redirect()->route('admin.questions.index')
-            ->with('success', 'Questão removida!');
+            ->with('success', 'Questão removida com integridade relacional!');
     }
 
     public function evaluateDifficulty(Question $question)
@@ -322,7 +354,7 @@ class QuestionController extends Controller
         // Actually, since AIBatchTriageJob handles 'classification' cleanly, let's use it as a batch of 1.
         \App\Jobs\AIBatchTriageJob::dispatch(
             \Illuminate\Support\Str::uuid()->toString(),
-            [$question->id],
+        [$question->id],
             'classification',
             null // uses default model
         );
