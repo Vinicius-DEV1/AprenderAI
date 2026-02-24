@@ -53,7 +53,7 @@ class AIBatchTriageJob implements ShouldQueue
                 'type' => $this->type
             ]);
 
-            $result = $batchService->processBatch($questions, $this->type, $this->model);
+            $result = $batchService->processBatch($questions, $this->type, $this->model, $this->batchId);
 
             $this->updateProgress($result['applied'], count($result['errors']), null, $result['errors'] ?? []);
 
