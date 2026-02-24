@@ -65,6 +65,12 @@ class PromptService
      */
     protected function replaceVariables(string $content, array $variables): string
     {
+        // Auto-inject global system variables that should always be available.
+        // This avoids requiring every single caller to pass 'app_name' manually.
+        $variables = array_merge([
+            'app_name' => config('app.name'),
+        ], $variables);
+
         foreach ($variables as $key => $value) {
             if (is_array($value)) {
                 $value = json_encode($value, JSON_UNESCAPED_UNICODE);
