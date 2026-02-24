@@ -37,6 +37,13 @@ class AIBatchTriageJob implements ShouldQueue
      */
     public function handle(AIBatchService $batchService): void
     {
+        // Check if batch was cancelled before starting
+        $batch = \App\Models\AiProcessingBatch::where('batch_id', $this->batchId)->first();
+        if ($batch && $batch->status === 'cancelled') {
+            Log::info("[AIBATCH] Batch job skipped (Cancelled)", ['batch_id' => $this->batchId]);
+            return;
+        }
+
         $questions = Question::whereIn('id', $this->questionIds)->get();
 
         try {
@@ -56,12 +63,13 @@ class AIBatchTriageJob implements ShouldQueue
                 'errors' => count($result['errors'])
             ]);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             Log::error("[AIBATCH] Batch job failed", [
                 'batch_id' => $this->batchId,
                 'error' => $e->getMessage()
             ]);
-            
+
             $this->updateProgress(0, count($this->questionIds), $e->getMessage());
         }
     }
@@ -86,7 +94,7 @@ class AIBatchTriageJob implements ShouldQueue
 
             $data['processed'] += $applied;
             $data['errors'] += $errors;
-            
+
             if (!empty($detailedErrors) || $errorMessage) {
                 if ($errorMessage) {
                     $entry = ['time' => now()->toDateTimeString(), 'error' => $errorMessage, 'type' => 'fatal'];
@@ -110,7 +118,7 @@ class AIBatchTriageJob implements ShouldQueue
                 $dbBatch->processed_count += $applied;
                 $dbBatch->error_count += $errors;
                 $dbBatch->status = $data['status'];
-                
+
                 if (!empty($detailedErrors) || $errorMessage) {
                     $existingLogs = $dbBatch->errors_log ?? [];
                     if ($errorMessage) {
@@ -129,13 +137,15 @@ class AIBatchTriageJob implements ShouldQueue
                     }
                     $dbBatch->errors_log = $existingLogs;
                 }
-                
+
                 $dbBatch->save();
             }
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             Log::error("[AIBATCH] Failed to update progress: " . $e->getMessage());
-        } finally {
+        }
+        finally {
             $lock->release();
         }
     }

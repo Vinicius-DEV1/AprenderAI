@@ -32,13 +32,16 @@ class AIBatchTriageController extends Controller
         // Trava de Seleção baseada no Tipo de Ação Solicitada:
         if ($validated['type'] === 'difficulty') {
             $query->missingField('difficulty_reasoning');
-        } elseif ($validated['type'] === 'explanation') {
+        }
+        elseif ($validated['type'] === 'explanation') {
             $query->missingField('explanation');
-        } elseif ($validated['type'] === 'classification') {
-            $query->where(function($q) {
-                $q->whereDoesntHave('subjects')->orWhereDoesntHave('topics');
+        }
+        elseif ($validated['type'] === 'classification') {
+            $query->where(function ($q) {
+                return $q->whereDoesntHave('subjects')->orWhereDoesntHave('topics');
             });
-        } else {
+        }
+        else {
             // 'complete' ou 'both': pega as incompletas globais (qualquer campo faltando)
             $query->incomplete();
         }
@@ -46,11 +49,11 @@ class AIBatchTriageController extends Controller
         // Refinamento de Status (caso selecionado no Painel)
         if ($request->filled('triage_status')) {
             match ($request->triage_status) {
-                'missing_difficulty' => $query->missingField('difficulty_reasoning'),
-                'missing_explanation' => $query->missingField('explanation'),
-                'both_missing' => $query->missingField('difficulty_reasoning')->missingField('explanation'),
-                default => null,
-            };
+                    'missing_difficulty' => $query->missingField('difficulty_reasoning'),
+                    'missing_explanation' => $query->missingField('explanation'),
+                    'both_missing' => $query->missingField('difficulty_reasoning')->missingField('explanation'),
+                    default => null,
+                };
         }
 
         if ($request->filled('triage_subject')) {
@@ -72,7 +75,7 @@ class AIBatchTriageController extends Controller
 
         // 2. Create batch ID and initial progress record
         $batchId = Str::uuid()->toString();
-        
+
         // Persistência no Banco de Dados
         \App\Models\AiProcessingBatch::create([
             'batch_id' => $batchId,
@@ -94,9 +97,9 @@ class AIBatchTriageController extends Controller
         // 3. Chunk and Dispatch Jobs
         $questions->chunk(5)->each(function ($chunk) use ($batchId, $validated) {
             AIBatchTriageJob::dispatch(
-                $batchId, 
-                $chunk->pluck('id')->toArray(), 
-                $validated['type'], 
+                $batchId,
+                $chunk->pluck('id')->toArray(),
+                $validated['type'],
                 $validated['model']
             );
         });
@@ -106,6 +109,35 @@ class AIBatchTriageController extends Controller
             'batch_id' => $batchId,
             'total' => $total
         ]);
+    }
+
+    /**
+     * Cancel an active batch.
+     */
+    public function cancel($batchId)
+    {
+        $batch = \App\Models\AiProcessingBatch::where('batch_id', $batchId)->first();
+
+        if ($batch) {
+            $batch->update(['status' => 'cancelled']);
+
+            // Sync cache
+            $key = "batch_progress_{$batchId}";
+            $data = Cache::get($key, [
+                'total' => $batch->total_count,
+                'processed' => $batch->processed_count,
+                'errors' => $batch->error_count,
+                'status' => 'processing',
+                'last_error' => null,
+                'errors_log' => $batch->errors_log ?? []
+            ]);
+            $data['status'] = 'cancelled';
+            Cache::put($key, $data, now()->addHours(2));
+
+            return response()->json(['success' => true]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Lote não encontrado.'], 404);
     }
 
     /**
@@ -124,7 +156,7 @@ class AIBatchTriageController extends Controller
             $maxDuration = 60 * 5; // 5 minutes max per SSE connection
 
             $iteration = 0;
-            
+
             while (true) {
                 $iteration++;
                 // Safety: check if connection is still active and duration is within limits
@@ -143,22 +175,34 @@ class AIBatchTriageController extends Controller
                             'processed' => $dbBatch->processed_count,
                             'errors' => $dbBatch->error_count,
                             'status' => $dbBatch->status,
-                            'last_error' => !empty($dbBatch->errors_log) ? end($dbBatch->errors_log)['error'] : null,
+                            'last_error' => !empty($dbBatch->errors_log) ? collect($dbBatch->errors_log)->last()['error'] : null,
                             'errors_log' => $dbBatch->errors_log ?? []
                         ];
-                    } else {
+                    }
+                    else {
                         echo "data: " . json_encode(['status' => 'not_found', 'message' => 'Lote não encontrado.']) . "\n\n";
-                        ob_flush();
+                        if (ob_get_level() > 0) {
+                            ob_flush();
+                        }
                         flush();
                         break;
                     }
                 }
 
+                if ($data) {
+                    echo "data: " . json_encode($data) . "\n\n";
+                    if (ob_get_level() > 0) {
+                        ob_flush();
+                    }
+                    flush();
+                }
+
                 // Heartbeat do SSE: a cada 5 iterações (~10s), envia um ping silencioso
-                // Isso impede que proxies (Nginx/Cloudflare) matem a conexão aberta por Inactivity Timeout
                 if ($iteration % 5 === 0) {
                     echo ": heartbeat\n\n";
-                    ob_flush();
+                    if (ob_get_level() > 0) {
+                        ob_flush();
+                    }
                     flush();
                 }
 

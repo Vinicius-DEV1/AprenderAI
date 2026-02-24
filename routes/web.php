@@ -201,10 +201,11 @@ Route::middleware(['auth'])->group(function () {
             Route::prefix('questions-batch')->name('questions.batch.')->group(function () {
                     Route::post('/start', [\App\Http\Controllers\Admin\AIBatchTriageController::class , 'start'])->name('start');
                     Route::get('/progress/{batch_id}', [\App\Http\Controllers\Admin\AIBatchTriageController::class , 'progress'])->name('progress');
+                    Route::post('/cancel/{batch_id}', [\App\Http\Controllers\Admin\AIBatchTriageController::class , 'cancel'])->name('cancel');
                     Route::get('/history', [\App\Http\Controllers\Admin\AIBatchTriageController::class , 'history'])->name('history');
                 }
                 );
-                Route::get('/admin/triagem/historico', [\App\Http\Controllers\Admin\AIBatchTriageController::class , 'history'])->name('triagem.historico');
+                Route::get('/triagem/historico', [\App\Http\Controllers\Admin\AIBatchTriageController::class , 'history'])->name('triagem.historico');
 
                 // ----------------------------------------------------------------
                 // Módulo de Importação de Questões (scraper.py → .zip → produção)
@@ -278,7 +279,8 @@ Route::middleware(['auth'])->group(function () {
             );
 
             // Concursos
-            Route::get('/concursos', [ConcursoController::class , 'index'])->name('concursos.index');        });
+            Route::get('/concursos', [ConcursoController::class , 'index'])->name('concursos.index');
+        });
 
 // Google Auth
 Route::get('auth/google', [\App\Http\Controllers\Auth\GoogleAuthController::class , 'redirect'])->name('auth.google');
