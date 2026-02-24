@@ -163,8 +163,12 @@
                                 $missingClass = $q->subjects->isEmpty() || $q->topics->isEmpty();
                             @endphp
                             <tr class="hover:bg-purple-50 transition-colors" data-question-id="{{ $q->id }}">
-                                <td class="px-3 py-2 text-gray-600 font-medium">{{ $q->id }}</td>
-                                <td class="px-3 py-2 text-gray-900">{{ Str::limit($q->statement, 50) }}</td>
+                                <td class="px-3 py-2.5 align-top text-gray-600 font-medium">{{ $q->id }}</td>
+                                <td class="px-3 py-2.5 align-top text-gray-900">
+                                    <div style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;" class="text-xs text-gray-700">
+                                        {{ Str::limit(strip_tags($q->statement), 200) }}
+                                    </div>
+                                </td>
                                 <td class="px-3 py-2">
                                     @if($q->subjects->count() > 0)
                                         <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded font-medium">
@@ -177,16 +181,16 @@
                                 <td class="px-3 py-2 text-xs text-gray-500">{{ Str::limit($q->organization ?? 'N/A', 15) }}</td>
                                 <td class="px-3 py-2 flex flex-col items-start gap-1">
                                     @if($missingDiff && $missingExpl && $missingClass)
-                                        <span class="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full font-medium">🔴 Totalmente Incompleta</span>
+                                        <span class="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded-full font-medium">🔴 Incompleta</span>
                                     @else
                                         @if($missingDiff)
-                                            <span class="px-2 py-0.5 bg-orange-100 text-orange-700 text-[10px] rounded-full font-medium">🟠 Falta Dificuldade</span>
+                                            <span class="px-2 py-0.5 bg-orange-100 text-orange-700 text-[10px] rounded-full font-medium">Dificuldade</span>
                                         @endif
                                         @if($missingExpl)
-                                            <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded-full font-medium">🔵 Falta Explicação</span>
+                                            <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded-full font-medium">Explicação</span>
                                         @endif
                                         @if($missingClass)
-                                            <span class="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] rounded-full font-medium">🏷️ Falta Taxonomia</span>
+                                            <span class="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] rounded-full font-medium">Taxonomia</span>
                                         @endif
                                     @endif
                                 </td>
@@ -194,28 +198,32 @@
                                     <div class="flex gap-1.5 flex-wrap">
                                         @if($missingDiff)
                                         <button onclick="evaluateDifficulty({{ $q->id }})" 
-                                            class="px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded hover:bg-orange-200 font-medium flex items-center gap-1" title="Gerar apenas dificuldade">
+                                            class="px-2 py-0.5 bg-orange-100 text-orange-700 text-[10px] rounded hover:bg-orange-200 font-medium flex items-center gap-1" title="Gerar dificuldade">
                                             ⚡ Dificuldade
                                         </button>
                                         @endif
                                         @if($missingExpl)
                                         <button onclick="generateExplanation({{ $q->id }})" 
-                                            class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded hover:bg-blue-200 font-medium flex items-center gap-1" title="Gerar apenas explicação">
+                                            class="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded hover:bg-blue-200 font-medium flex items-center gap-1" title="Gerar explicação">
                                             📝 Explicação
                                         </button>
                                         @endif
                                         @if($missingClass)
                                         <button onclick="classifyQuestion({{ $q->id }})" 
-                                            class="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded hover:bg-yellow-200 font-medium flex items-center gap-1" title="Classificar Matéria/Assunto">
+                                            class="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] rounded hover:bg-yellow-200 font-medium flex items-center gap-1" title="Classificar">
                                             🏷️ Classificar
                                         </button>
                                         @endif
+                                        <button onclick="previewQuestion({{ $q->id }}, {{ json_encode($q->statement_html) }})" 
+                                            class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] rounded hover:bg-indigo-200 font-medium flex items-center gap-1" title="Visualizar">
+                                            👁️ Ver
+                                        </button>
                                         <button onclick="completeQuestion({{ $q->id }})" 
-                                            class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded hover:bg-green-200 font-medium flex items-center gap-1" title="Completar tudo que falta">
-                                            🚀 Completar Tudo
+                                            class="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] rounded hover:bg-green-200 font-medium flex items-center gap-1" title="Completar tudo">
+                                            🚀 IA Full
                                         </button>
                                         <a href="{{ route('admin.questions.edit', $q) }}" 
-                                            class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded hover:bg-gray-200 font-medium">
+                                            class="px-2 py-0.5 bg-gray-100 text-gray-700 text-[10px] rounded hover:bg-gray-200 font-medium">
                                             ✏️ Editar
                                         </a>
                                     </div>
@@ -314,11 +322,13 @@
                         <tbody class="bg-white divide-y divide-gray-200">
                             @foreach ($questions as $question)
                                 <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <td class="px-6 py-2.5 whitespace-nowrap text-sm text-gray-500">
                                         {{ $question->id }}
                                     </td>
-                                    <td class="px-6 py-4 text-sm text-gray-900">
-                                        {{ Str::limit($question->statement, 60) }}
+                                    <td class="px-3 py-2.5 align-top text-gray-900">
+                                        <div style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;" class="text-xs text-gray-700">
+                                            {{ Str::limit(strip_tags($question->statement), 200) }}
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         @foreach($question->subjects as $subject)
@@ -351,12 +361,16 @@
                                             {{ $diffLabel }}
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <div class="flex items-center space-x-3">
-                                            <a href="{{ route('admin.questions.edit', $question) }}" class="text-indigo-600 hover:text-indigo-900">Editar</a>
-                                            <button onclick="evaluateDifficulty({{ $question->id }})" class="text-purple-600 hover:text-purple-900 flex items-center gap-1" title="Reavaliar com IA">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                                                IA
+                                    <td class="px-6 py-4 whitespace-nowrap align-top text-sm font-medium">
+                                        <div class="flex items-center gap-2">
+                                            <button onclick="previewQuestion({{ $question->id }}, {{ json_encode($question->statement_html) }})" class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] rounded hover:bg-indigo-200 font-medium flex items-center gap-1" title="Visualizar">
+                                                👁️ Ver
+                                            </button>
+                                            <a href="{{ route('admin.questions.edit', $question) }}" class="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded hover:bg-blue-200 font-medium flex items-center gap-1">
+                                                ✏️ Editar
+                                            </a>
+                                            <button onclick="evaluateDifficulty({{ $question->id }})" class="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] rounded hover:bg-purple-200 font-medium flex items-center gap-1" title="Reavaliar">
+                                                ⚡ IA
                                             </button>
                                         </div>
                                     </td>
@@ -593,14 +607,13 @@
     </script>
     @endpush
 
-    {{-- BATCH PROCESSING MODAL --}}
-    <div x-data="batchProcessor" 
+    {{-- BATCH CONFIGURATION MODAL (LOCAL) --}}
+    <div x-data="batchConfigurator" 
          @open-batch-modal.window="openModal()" 
          x-show="isOpen" 
          class="fixed inset-0 z-50 overflow-y-auto" 
          style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            {{-- Background backdrop --}}
             <div x-show="isOpen" 
                  x-transition:enter="ease-out duration-300" 
                  x-transition:enter-start="opacity-0" 
@@ -624,7 +637,6 @@
                  x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                  class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full z-10">
                 
-                {{-- Modal Body --}}
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div class="sm:flex sm:items-start">
                         <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 sm:mx-0 sm:h-10 sm:w-10">
@@ -633,14 +645,13 @@
                             </svg>
                         </div>
                         <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                                Processamento em Lote Inteligente
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">
+                                Configurar Lote de IA
                             </h3>
 
-                            {{-- Form: Only visible when NOT processing --}}
-                            <div class="mt-4 space-y-4" x-show="!isProcessing">
+                            <div class="mt-4 space-y-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700">Quantidade de Questões (Pendentes: {{ $pendingCount }})</label>
+                                    <label class="block text-sm font-medium text-gray-700">Quantidade (Disponível: {{ $pendingCount }})</label>
                                     <input type="number" x-model="quantity" max="{{ $pendingCount }}" min="1" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                                 </div>
 
@@ -657,11 +668,11 @@
                                         </div>
                                         <div class="flex items-center">
                                             <input type="radio" x-model="type" value="classification" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
-                                            <label class="ml-3 block text-sm text-gray-700">Apenas Classificar (Matéria e Assunto)</label>
+                                            <label class="ml-3 block text-sm text-gray-700">Apenas Classificar</label>
                                         </div>
                                         <div class="flex items-center">
                                             <input type="radio" x-model="type" value="complete" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
-                                            <label class="ml-3 block text-sm text-gray-700">Completo (Dificuldade, Explicação e Classificação)</label>
+                                            <label class="ml-3 block text-sm text-gray-700">Completo</label>
                                         </div>
                                     </div>
                                 </div>
@@ -676,86 +687,17 @@
                                         @endforelse
                                     </select>
                                 </div>
-
-                                {{-- MECANISMO DE ENVIO: Informações para o Admin --}}
-                                <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                                    <div class="flex gap-2">
-                                        <svg class="w-4 h-4 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                        <div class="text-xs text-blue-800 leading-tight">
-                                            <p class="font-bold mb-1">Como o sistema processa isto?</p>
-                                            <ul class="list-disc ml-4 space-y-1">
-                                                <li><strong>Fatiamento (Chunks):</strong> O lote é dividido em blocos de 5 questões.</li>
-                                                <li><strong>Filas (Queues):</strong> Cada bloco é processado em segundo plano para evitar "travar" seu navegador.</li>
-                                                <li><strong>Tempo Real:</strong> Esta barra de progresso usa SSE para refletir o estado exato da fila no servidor.</li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {{-- Progress Section: Only visible when processing --}}
-                            <div class="mt-4" x-show="isProcessing">
-                                <div class="relative pt-1">
-                                    <div class="flex mb-2 items-center justify-between">
-                                        <div>
-                                            <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-indigo-600 bg-indigo-200" x-text="statusMessage">
-                                                Processando...
-                                            </span>
-                                        </div>
-                                        <div class="text-right">
-                                            <span class="text-xs font-semibold inline-block text-indigo-600" x-text="progress + '%'"></span>
-                                        </div>
-                                    </div>
-                                    <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-indigo-200">
-                                        <div :style="'width: ' + progress + '%'" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-500 transition-all duration-500"></div>
-                                    </div>
-                                    <div class="flex justify-between items-center">
-                                        <div class="flex items-center gap-2">
-                                            <p class="text-xs text-gray-500" x-text="'Sucessos: ' + processed"></p>
-                                            <button type="button" 
-                                                class="text-xs font-bold transition-colors"
-                                                :class="errors > 0 ? 'text-red-500 hover:text-red-700 underline' : 'text-gray-400 cursor-default'"
-                                                @click="errors > 0 ? $dispatch('show-batch-errors', { errors: errorsLog }) : null"
-                                                x-text="'Erros: ' + errors"></button>
-                                        </div>
-                                        <template x-if="lastError">
-                                            <p class="text-[10px] text-red-500 font-bold truncate max-w-[200px]" :title="lastError" x-text="'Erro: ' + lastError"></p>
-                                        </template>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {{-- Modal Footer --}}
                 <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
-                    {{-- Botão Iniciar --}}
-                    <button x-show="!isProcessing" @click="startBatch()" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
-                        Iniciar Processamento
+                    <button @click="startBatch()" type="button" :disabled="isSubmitting" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50">
+                        <span x-show="!isSubmitting">Iniciar Lote</span>
+                        <span x-show="isSubmitting">Iniciando...</span>
                     </button>
-                    
-                    {{-- Botão Rodar em Segundo Plano --}}
-                    <button x-show="isProcessing && progress < 100 && status !== 'failed'" @click="minify()" type="button" class="w-full inline-flex justify-center rounded-md border border-indigo-200 shadow-sm px-4 py-2 bg-indigo-50 text-base font-medium text-indigo-700 hover:bg-indigo-100 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
-                        Rodar em Segundo Plano
-                    </button>
-
-                    {{-- Botão Concluído --}}
-                    <button x-show="isProcessing && progress >= 100" @click="isOpen = false; removePersistence(); window.location.reload();" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
-                        Concluído
-                    </button>
-
-                    {{-- Botões de Erro / Conexão Perdida --}}
-                    <div x-show="isProcessing && (retryCount >= 5 || status === 'failed')" class="flex gap-2 w-full sm:w-auto">
-                        <button @click="connectSSE()" type="button" class="flex-1 inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-yellow-500 text-base font-medium text-white hover:bg-yellow-600 focus:outline-none sm:w-auto sm:text-sm">
-                            Tentar Reconectar
-                        </button>
-                        <a href="{{ route('admin.triagem.historico') }}" class="flex-1 inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:w-auto sm:text-sm text-center">
-                            Ir para Histórico
-                        </a>
-                    </div>
-
-                    <button x-show="!isProcessing" @click="isOpen = false" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                    <button @click="isOpen = false" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
                         Cancelar
                     </button>
                 </div>
@@ -763,117 +705,23 @@
         </div>
     </div>
 
-    {{-- Floating Progress Bar (Background Mode) --}}
-    <div x-data="floatingBatchMonitor" 
-         x-show="show" 
-         @batch-update.window="update($event.detail)"
-         class="fixed bottom-4 right-4 z-50 animate-bounce-subtle" 
-         style="display: none;">
-        <div class="bg-white border-2 border-indigo-500 rounded-xl shadow-2xl p-4 w-72">
-            <div class="flex justify-between items-center mb-2">
-                <span class="text-xs font-bold text-indigo-700 flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
-                    Triagem na Fila...
-                </span>
-                <span class="text-xs font-bold text-indigo-600" x-text="progress + '%'"></span>
-            </div>
-            <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
-                <div class="bg-indigo-600 h-2 rounded-full transition-all duration-500" :style="'width: ' + progress + '%'"></div>
-            </div>
-            <div class="flex justify-between">
-                <p class="text-[10px] text-gray-500" x-text="processed + ' processados'"></p>
-                <button @click="maximize()" class="text-[10px] font-bold text-indigo-600 hover:underline">Abrir Detalhes</button>
-            </div>
-        </div>
-    </div>
-            </div>
-        </div>
-    </div>
-
+    @push('scripts')
     <script>
-        /**
-         * Módulo de Processamento em Lote com Alpine.js
-         * 
-         * Este script gerencia toda a lógica de:
-         * 1. Abertura do modal e reset de estado
-         * 2. Disparo da requisição inicial para criar o lote no servidor
-         * 3. Conexão via Server-Sent Events (SSE) para monitoramento em tempo real
-         */
         document.addEventListener('alpine:init', () => {
-            Alpine.data('batchProcessor', () => ({
+            Alpine.data('batchConfigurator', () => ({
                 isOpen: false,
-                isProcessing: false,
+                isSubmitting: false,
                 quantity: 10,
-                type: 'both',
+                type: 'complete',
                 model: '{{ $aiModels->first()?->preferred_model ?? "" }}',
-                batchId: null,
-                total: 0,
-                processed: 0,
-                errors: 0,
-                progress: 0,
-                statusMessage: 'Iniciando...',
-                status: 'processing',
-                lastError: null,
-                errorsLog: [],
-                eventSource: null,
-                retryCount: 0,
-
-                init() {
-                    // Recupera persistência do localStorage se houver um lote rodando
-                    const saved = localStorage.getItem('active_batch_triage');
-                    if (saved) {
-                        const data = JSON.parse(saved);
-                        // Se o lote salvo ainda for o mesmo que estamos monitorando ou se viemos do histórico
-                        if (data.status === 'processing') {
-                            this.batchId = data.batchId;
-                            this.isProcessing = true;
-                            this.connectSSE();
-                        }
-                    }
-
-                    // Listener para abrir monitor de um lote específico (vindo do histórico)
-                    window.addEventListener('open-batch-monitor', (e) => {
-                        this.isOpen = true;
-                        this.batchId = e.detail.batchId;
-                        this.isProcessing = true;
-                        this.connectSSE();
-                    });
-                },
-
-                // Salva estado para persistência cross-page
-                savePersistence() {
-                    localStorage.setItem('active_batch_triage', JSON.stringify({
-                        batchId: this.batchId,
-                        isProcessing: this.isProcessing,
-                        status: this.status
-                    }));
-                },
-
-                removePersistence() {
-                    localStorage.removeItem('active_batch_triage');
-                },
-
-                minify() {
-                    this.isOpen = false;
-                    this.savePersistence();
-                },
 
                 openModal() {
                     this.isOpen = true;
-                    this.isProcessing = false;
-                    this.progress = 0;
-                    this.processed = 0;
-                    this.errors = 0;
                 },
 
-                /**
-                 * Inicia o processo de lote enviando os filtros atuais e parâmetros escolhidos.
-                 */
                 async startBatch() {
-                    this.isProcessing = true;
-                    this.statusMessage = 'Preparando lote no servidor...';
-
-                    // Recupera os filtros ativos na URL para garantir que o lote processe o que o admin está vendo
+                    this.isSubmitting = true;
+                    // Filtros da URL
                     const urlParams = new URLSearchParams(window.location.search);
                     
                     try {
@@ -894,175 +742,24 @@
                         });
 
                         const data = await response.json();
-
                         if (data.success) {
-                            // Lote criado com sucesso, agora conectamos para ouvir o progresso
-                            this.batchId = data.batch_id;
-                            this.total = data.total;
-                            this.statusMessage = 'Lote enviado para a fila de Jobs...';
-                            this.connectSSE();
+                            // Dispara evento global para o Monitor
+                            window.dispatchEvent(new CustomEvent('batch-started', { 
+                                detail: { batchId: data.batch_id } 
+                            }));
+                            this.isOpen = false;
                         } else {
                             alert(data.message || 'Erro ao iniciar lote.');
-                            this.isProcessing = false;
                         }
                     } catch (error) {
-                        console.error('Erro no startBatch:', error);
-                        alert('Erro técnico na requisição inicial. Verifique os logs do servidor.');
-                        this.isProcessing = false;
+                        console.error('Erro:', error);
+                        alert('Erro técnico ao iniciar lote.');
+                    } finally {
+                        this.isSubmitting = false;
                     }
-                },
-
-                /**
-                 * Estabelece conexão SSE para receber atualizações assíncronas do progresso.
-                 * Crucial para não depender de pooling agressivo no banco de dados.
-                 */
-                connectSSE() {
-                    if (this.eventSource) this.eventSource.close();
-
-                    this.eventSource = new EventSource(`/admin/questions-batch/progress/${this.batchId}`);
-
-                    this.eventSource.onmessage = (event) => {
-                        try {
-                            const data = JSON.parse(event.data);
-                            
-                            // Caso o ID sumiu do cache (raro, mas possível em limpezas)
-                            if (data.status === 'not_found') {
-                                this.eventSource.close();
-                                this.statusMessage = 'Erro: Lote não encontrado.';
-                                return;
-                            }
-
-                            // Sincroniza estado com os dados vindos do Cache via SSE
-                            this.processed = data.processed;
-                            this.errors = data.errors;
-                            this.total = data.total;
-                            this.status = data.status;
-                            this.lastError = data.last_error || null;
-                            this.errorsLog = data.errors_log || []; // Caso o backend envie a lista
-                            
-                            const completedCount = this.processed + this.errors;
-                            // Cálculo de porcentagem seguro
-                            this.progress = Math.min(100, Math.round((completedCount / this.total) * 100));
-
-                            // Dispara evento para o floating monitor
-                            window.dispatchEvent(new CustomEvent('batch-update', { 
-                                detail: { 
-                                    progress: this.progress, 
-                                    processed: completedCount, 
-                                    status: this.status,
-                                    batchId: this.batchId
-                                } 
-                            }));
-
-                            if (this.status === 'completed') {
-                                this.statusMessage = 'Processamento finalizado com sucesso!';
-                                this.progress = 100;
-                                this.eventSource.close();
-                                this.savePersistence();
-                                if (typeof showToast !== 'undefined') {
-                                    showToast('⚡ Lote processado 100%!', 'success');
-                                }
-                            } else if (this.status === 'failed') {
-                                this.statusMessage = 'ERRO: ' + (this.lastError || 'Falha no processamento.');
-                                this.eventSource.close();
-                                this.savePersistence();
-                            } else {
-                                this.statusMessage = `Processando chunk atual (${completedCount}/${this.total})...`;
-                                this.savePersistence();
-                            }
-                        } catch (e) {
-                            console.error('Erro ao processar mensagem SSE:', e);
-                        }
-                    };
-
-                    this.eventSource.onerror = (e) => {
-                        console.error('SSE Connection Error:', e);
-                        // Tentativa de reconexão automática em caso de instabilidade
-                        this.eventSource.close();
-                        if (this.isProcessing && this.progress < 100 && this.retryCount < 5) {
-                            this.retryCount++;
-                            this.statusMessage = `Reconectando ao monitor (${this.retryCount}/5)...`;
-                            setTimeout(() => this.connectSSE(), 3000);
-                        } else if (this.retryCount >= 5) {
-                            this.statusMessage = 'Conexão perdida. Verifique se o processamento continuou no histórico.';
-                        }
-                    };
-                }
-            }));
-
-            // Floating Bar Controller
-            Alpine.data('floatingBatchMonitor', () => ({
-                show: false,
-                progress: 0,
-                processed: 0,
-                status: '',
-
-                init() {
-                    const saved = localStorage.getItem('active_batch_triage');
-                    if (saved) {
-                        const data = JSON.parse(saved);
-                        if (data.status === 'processing') {
-                            this.show = true;
-                        }
-                    }
-                },
-
-                update(detail) {
-                    this.progress = detail.progress;
-                    this.processed = detail.processed;
-                    this.status = detail.status;
-                    this.show = this.status === 'processing' && !Alpine.find('batchProcessor').isOpen;
-                },
-
-                maximize() {
-                    window.dispatchEvent(new CustomEvent('open-batch-monitor', { 
-                        detail: { batchId: localStorage.getItem('active_batch_triage') ? JSON.parse(localStorage.getItem('active_batch_triage')).batchId : null } 
-                    }));
                 }
             }));
         });
     </script>
-    <style>
-        @keyframes bounce-subtle {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
-        }
-        .animate-bounce-subtle {
-            animation: bounce-subtle 2s ease-in-out infinite;
-        }
-    </style>
-
-    {{-- Modal de Erros (Compartilhado) --}}
-    <div x-data="{ isOpen: false, errors: [] }" 
-         x-on:show-batch-errors.window="isOpen = true; errors = $event.detail.errors"
-         x-show="isOpen" 
-         class="fixed inset-0 z-[60] overflow-y-auto" 
-         style="display: none;">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="fixed inset-0 bg-black/50 transition-opacity" @click="isOpen = false"></div>
-            
-            <div class="relative bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 text-left">
-                <h3 class="text-xl font-bold text-gray-800 mb-4">Log de Erros do Lote</h3>
-                
-                <div class="max-h-96 overflow-y-auto space-y-2">
-                    <template x-for="(error, index) in errors" :key="index">
-                        <div class="p-3 rounded-lg border" :class="error.type === 'fatal' ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'">
-                            <div class="flex justify-between items-start mb-1">
-                                <span class="text-[10px] font-bold uppercase" :class="error.type === 'fatal' ? 'text-red-700' : 'text-orange-700'" x-text="error.type"></span>
-                                <span class="text-[10px] text-gray-500" x-text="error.time"></span>
-                            </div>
-                            <p class="text-xs text-gray-800 break-words" x-text="error.error"></p>
-                        </div>
-                    </template>
-                    <template x-if="errors.length === 0">
-                        <p class="text-center text-gray-500 py-4">Nenhum detalhe de erro disponível.</p>
-                    </template>
-                </div>
-                
-                <div class="mt-6 flex justify-end">
-                    <button @click="isOpen = false" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200">Fechar</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    @endpush
 </x-layouts.admin>
