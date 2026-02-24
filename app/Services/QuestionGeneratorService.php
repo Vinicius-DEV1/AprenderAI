@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Question;
+use App\Services\AI\AIService;
+use App\Services\PromptService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -42,15 +44,15 @@ class QuestionGeneratorService
                 // Ensure correct structure and values
                 $qData['type'] = 'concurso';
                 $qData['source'] = 'ai_generated';
-                
+
                 // Extrai as alternativas que vieram do array para tratar no relacionamento
                 $altsData = $qData['alternatives'] ?? [];
                 unset($qData['alternatives']);
-                
+
                 // Extrai o subject
                 $subjectName = reset($qData['subject']) ?: ($qData['subject'] ?? 'Geral');
                 unset($qData['subject']);
-                
+
                 // Extrai gabarito
                 $correctAnswer = $qData['correct_answer'] ?? 'A';
                 unset($qData['correct_answer']);
@@ -63,7 +65,7 @@ class QuestionGeneratorService
 
                 if (!$exists) {
                     $createdQ = Question::create($qData);
-                    
+
                     if (!empty($altsData) && is_array($altsData)) {
                         foreach ($altsData as $label => $content) {
                             $createdQ->alternatives()->create([
@@ -73,13 +75,13 @@ class QuestionGeneratorService
                             ]);
                         }
                     }
-                    
+
                     $subjectModel = \App\Models\Subject::firstOrCreate(
-                        ['name' => $subjectName],
-                        ['slug' => \Illuminate\Support\Str::slug($subjectName), 'type' => 'concurso']
+                    ['name' => $subjectName],
+                    ['slug' => \Illuminate\Support\Str::slug($subjectName), 'type' => 'concurso']
                     );
                     $createdQ->subjects()->attach($subjectModel->id);
-                    
+
                     $savedCount++;
                 }
             }
