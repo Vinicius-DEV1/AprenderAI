@@ -8,10 +8,7 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900" x-data="{ 
-                    format: '{{ old('format', $question->format ?? 'multiple_choice') }}',
-                    type: '{{ old('type', $question->type ?? 'enem') }}'
-                }">
+                <div class="p-6 text-gray-900" x-data="questionFormHandler(@js($question->format ?? 'multiple_choice'), @js($question->type ?? 'enem'), @js(old('statement', $question->statement ?? '')))">
                     <form method="POST" action="{{ isset($question) ? route('admin.questions.update', $question) : route('admin.questions.store') }}" class="space-y-6">
                         @csrf
                         @if(isset($question))
@@ -99,9 +96,21 @@
                         </div>
 
                         <!-- Enunciado -->
-                        <div>
-                            <x-input-label for="statement" value="Enunciado (Markdown/Texto)" />
-                            <textarea id="statement" name="statement" rows="5" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">{{ old('statement', $question->statement ?? '') }}</textarea>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <x-input-label for="statement" value="Enunciado (Markdown/Texto)" />
+                                <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">Live Preview Ativo</span>
+                            </div>
+
+                            {{-- Preview Area --}}
+                            <div x-show="statement" class="p-6 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl mb-4">
+                                <h4 class="text-[10px] uppercase font-bold text-gray-400 mb-3 tracking-widest">Prévia do Aluno</h4>
+                                <div class="prose prose-indigo max-w-none text-gray-800" x-html="statementHtml"></div>
+                            </div>
+
+                            <textarea id="statement" name="statement" x-model="statement" rows="5" 
+                                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" 
+                                      placeholder="Ex: ![Imagem](url) ...">{{ old('statement', $question->statement ?? '') }}</textarea>
                         </div>
 
                         <div class="border-t pt-4">
@@ -173,4 +182,26 @@
             </div>
         </div>
     </div>
+    @push('scripts')
+    <script>
+        function questionFormHandler(initialFormat, initialType, initialStatement) {
+            return {
+                format: initialFormat,
+                type: initialType,
+                statement: initialStatement,
+                get statementHtml() {
+                    if (!this.statement) return '';
+                    // Sanitização básica e conversão de markdown imagem -> img
+                    let html = this.statement
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="max-w-full h-auto rounded-lg my-4 mx-auto block shadow-sm" />')
+                        .replace(/\n/g, '<br>');
+                    return html;
+                }
+            }
+        }
+    </script>
+    @endpush
 </x-layouts.admin>

@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="p-6">
+<div class="p-6" x-data="{}">
     <div class="flex justify-between items-center mb-6">
         <div>
             <h1 class="text-2xl font-bold text-gray-800">Histórico de Triagem IA</h1>
@@ -92,7 +92,8 @@
                         @endif
                         
                         @if($batch->error_count > 0 || $batch->status === 'failed')
-                            <button @click="$dispatch('show-batch-errors', { errors: {{ json_encode($batch->errors_log ?? []) }} })" class="ml-3 text-red-600 hover:text-red-900 font-medium text-sm">
+                            <button @click="$dispatch('show-batch-errors', { errors: @js($batch->errors_log ?? []) })" 
+                                    class="ml-3 text-red-600 hover:text-red-900 font-medium text-sm">
                                 Ver Erros
                             </button>
                         @endif
