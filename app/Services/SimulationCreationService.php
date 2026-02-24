@@ -180,7 +180,7 @@ class SimulationCreationService
                 if ($missing > 0) {
                     // Trigger AI generation with context
                     try {
-                        $aiService = app(\App\Services\AIService::class);
+                        $aiService = app(\App\Services\AI\AIService::class);
                         $generated = $aiService->generateQuestions($subject, $missing, $context);
 
                         foreach ($generated as $nq) {
@@ -266,7 +266,7 @@ class SimulationCreationService
                 // This covers the remaining IA quota AND the Real exhaustion exhaustion.
                 if ($missingTotal > 0) {
                     try {
-                        $aiService = app(\App\Services\AIService::class);
+                        $aiService = app(\App\Services\AI\AIService::class);
                         $batchSize = 5;
                         $attempts = 0;
                         $maxAttempts = 3;

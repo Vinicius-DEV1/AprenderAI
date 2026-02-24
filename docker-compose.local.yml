@@ -54,19 +54,21 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.local
-    #container_name: aprovado-ai-worker // comentado para permitir varios workers
+    container_name: aprovado-ai-worker
+    restart: unless-stopped
     volumes:
       - .:/var/www
     env_file: .env
-    command: php artisan queue:work --sleep=3 --tries=3
+    command: php artisan queue:work --sleep=3 --tries=3 --timeout=90
     depends_on:
-      - app
-      - db
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
     networks:
       - local-network
-      # --- ADICIONE ESTE BLOCO ABAIXO ---
     deploy:
-      replicas: 3  # Defina aqui quantos processos quer em paralelo
+      replicas: 1
 
 networks:
   local-network:
