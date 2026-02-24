@@ -199,10 +199,15 @@ Route::middleware(['auth'])->group(function () {
 
             // Novo Batch Triage (Asíncrono)
             Route::prefix('questions-batch')->name('questions.batch.')->group(function () {
+                    Route::post('/preview', [\App\Http\Controllers\Admin\AIBatchTriageController::class , 'preview'])->name('preview');
                     Route::post('/start', [\App\Http\Controllers\Admin\AIBatchTriageController::class , 'start'])->name('start');
                     Route::get('/progress/{batch_id}', [\App\Http\Controllers\Admin\AIBatchTriageController::class , 'progress'])->name('progress');
                     Route::post('/cancel/{batch_id}', [\App\Http\Controllers\Admin\AIBatchTriageController::class , 'cancel'])->name('cancel');
                     Route::get('/history', [\App\Http\Controllers\Admin\AIBatchTriageController::class , 'history'])->name('history');
+                    Route::get('/details/{batch_id}', [\App\Http\Controllers\Admin\AIBatchTriageController::class , 'batchDetails'])->name('details');
+                    Route::post('/undo-item/{item}', [\App\Http\Controllers\Admin\AIBatchTriageController::class , 'undoItem'])->name('undo-item');
+                    Route::post('/undo-batch/{batch_id}', [\App\Http\Controllers\Admin\AIBatchTriageController::class , 'undoBatch'])->name('undo-batch');
+                    Route::post('/retry/{batch_id}', [\App\Http\Controllers\Admin\AIBatchTriageController::class , 'retryBatch'])->name('retry');
                 }
                 );
                 Route::get('/triagem/historico', [\App\Http\Controllers\Admin\AIBatchTriageController::class , 'history'])->name('triagem.historico');

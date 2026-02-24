@@ -34,4 +34,13 @@ class AiProcessingBatch extends Model
     {
         return $query->where('batch_id', $batchId);
     }
+
+    /**
+     * Per-question tracking items with before/after snapshots.
+     * Used for batch detail views, individual undo, and retry operations.
+     */
+    public function items()
+    {
+        return $this->hasMany(AiBatchItem::class , 'batch_id', 'batch_id');
+    }
 }
