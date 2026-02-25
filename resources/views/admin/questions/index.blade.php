@@ -607,5 +607,5 @@
     </script>
     @endpush
 
-    @include(\'admin.questions.partials.batch-modal\')
+    @include('admin.questions.partials.batch-modal')
 </x-layouts.admin>
