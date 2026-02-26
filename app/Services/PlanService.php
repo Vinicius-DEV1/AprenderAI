@@ -30,13 +30,13 @@ class PlanService
     public function assignPlanToUser(User $user, Plan $plan): void
     {
         $user->update([
-            'plan_id'                    => $plan->id,
-            'plan_started_at'            => now(),
-            'plan_expires_at'            => now()->addMonth(),
+            'plan_id' => $plan->id,
+            'plan_started_at' => now(),
+            'plan_expires_at' => now()->addMonth(),
             // Reset counters on plan assignment; new cycle begins now
             'simulations_used_this_month' => 0,
-            'essays_used_this_month'      => 0,
-            'usage_reset_at'              => now()->addMonth(),
+            'essays_used_this_month' => 0,
+            'usage_reset_at' => now()->addMonth(),
         ]);
     }
 
@@ -57,39 +57,39 @@ class PlanService
     {
         $user->loadMissing('plan');
 
+        $limit = $user->simulationQuotaLimit();
+        $used = $user->monthlySimulationUsed();
+        $remaining = ($limit === 0) ? 'ilimitado' : max(0, $limit - $used);
+
         if (!$user->plan) {
             return [
                 'can_create' => false,
-                'message'    => 'Você precisa de um plano ativo para criar simulados.',
+                'limit' => 0,
+                'used' => 0,
+                'remaining' => 0,
+                'message' => 'Você precisa de um plano ativo para criar simulados.',
             ];
         }
-
-        $limit = $user->simulationQuotaLimit();
-        $used  = $user->monthlySimulationUsed();
 
         if (!$user->canCreateSimulation()) {
             $planName = $user->plan->name;
 
             return [
                 'can_create' => false,
-                'limit'      => $limit,
-                'used'       => $used,
-                'message'    => $limit === 0
+                'limit' => $limit,
+                'used' => $used,
+                'remaining' => 0,
+                'message' => $limit === 0
                     ? "Simulados não estão disponíveis no plano {$planName}. Faça upgrade!"
                     : "Você atingiu o limite de {$limit} simulados no plano {$planName}. Faça upgrade para continuar!",
             ];
         }
 
-        // Determine "remaining" display value
-        $remaining = ($limit === 0)
-            ? 'ilimitado'
-            : ($limit - $used);
-
         return [
             'can_create' => true,
-            'limit'      => $limit,
-            'used'       => $used,
-            'remaining'  => $remaining,
+            'limit' => $limit,
+            'used' => $used,
+            'remaining' => $remaining,
         ];
     }
 
@@ -108,38 +108,39 @@ class PlanService
     {
         $user->loadMissing('plan');
 
+        $limit = $user->essayQuotaLimit();
+        $used = $user->monthlyEssayUsed();
+        $remaining = ($limit === 0) ? 'ilimitado' : max(0, $limit - $used);
+
         if (!$user->plan) {
             return [
                 'can_create' => false,
-                'message'    => 'Você precisa de um plano ativo para enviar redações.',
+                'limit' => 0,
+                'used' => 0,
+                'remaining' => 0,
+                'message' => 'Você precisa de um plano ativo para enviar redações.',
             ];
         }
-
-        $limit = $user->essayQuotaLimit();
-        $used  = $user->monthlyEssayUsed();
 
         if (!$user->canCreateEssay()) {
             $planName = $user->plan->name;
 
             return [
                 'can_create' => false,
-                'limit'      => $limit,
-                'used'       => $used,
-                'message'    => $limit === 0
+                'limit' => $limit,
+                'used' => $used,
+                'remaining' => 0,
+                'message' => $limit === 0
                     ? "Redações não estão disponíveis no plano {$planName}. Faça upgrade!"
                     : "Você atingiu o limite de {$limit} redações no plano {$planName}. Faça upgrade para continuar!",
             ];
         }
 
-        $remaining = ($limit === 0)
-            ? 'ilimitado'
-            : ($limit - $used);
-
         return [
             'can_create' => true,
-            'limit'      => $limit,
-            'used'       => $used,
-            'remaining'  => $remaining,
+            'limit' => $limit,
+            'used' => $used,
+            'remaining' => $remaining,
         ];
     }
 

@@ -10,7 +10,25 @@ services:
     container_name: aprovado-ai-app
     volumes:
       - .:/var/www
-    env_file: .env
+    environment:
+      - APP_NAME=aprenderAI
+      - APP_ENV=local
+      - APP_KEY=base64:cwLoa7etFk8s4DQ8goS72l6OyFF41/Qwy84zfacp5xs=
+      - APP_DEBUG=true
+      - APP_URL=http://localhost:8000
+      - FRONTEND_URL=http://localhost:5174
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=aprenderai
+      - DB_USERNAME=admin
+      - DB_PASSWORD=secret
+      - SESSION_DRIVER=database
+      - CACHE_STORE=file
+      - SESSION_SECURE_COOKIE=false
+      - SESSION_SAME_SITE=lax
+      - SANCTUM_STATEFUL_DOMAINS=localhost,localhost:5174,127.0.0.1,127.0.0.1:5174,localhost:8000,127.0.0.1:8000
+    # env_file: .env
     depends_on:
       db:
         condition: service_healthy
