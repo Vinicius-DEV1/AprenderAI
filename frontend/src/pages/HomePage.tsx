@@ -9,8 +9,8 @@ export default function HomePage() {
     const [periodo, setPeriodo] = useState<'mensal' | 'anual'>('mensal');
 
     const faqs = [
-        { q: 'A plataforma é totalmente online?', a: 'Sim. O AprenderAI funciona 100% online. Você pode acessar de qualquer lugar, pelo computador ou celular, sem necessidade de instalação.' },
-        { q: 'O AprenderAI serve para ENEM e concursos?', a: 'Sim. A plataforma foi desenvolvida tanto para preparação para o ENEM quanto para concursos públicos, com simulados, questões e plano de estudos personalizados.' },
+        { q: 'A plataforma é totalmente online?', a: `Sim. O ${appName} funciona 100% online. Você pode acessar de qualquer lugar, pelo computador ou celular, sem necessidade de instalação.` },
+        { q: `O ${appName} serve para ENEM e concursos?`, a: 'Sim. A plataforma foi desenvolvida tanto para preparação para o ENEM quanto para concursos públicos, com simulados, questões e plano de estudos personalizados.' },
         { q: 'Como funciona a correção por IA?', a: 'Nossa inteligência analisa suas respostas e redações, identifica padrões de erro e fornece explicações detalhadas para acelerar sua evolução.' },
         { q: 'Posso testar gratuitamente antes de assinar?', a: 'Sim. O plano gratuito permite que você conheça a plataforma e resolva provas antes de optar por um plano pago.' },
         { q: 'Os simulados seguem o padrão oficial das provas?', a: 'Sim. Os simulados são estruturados para replicar o formato real do ENEM e de concursos, incluindo controle de tempo.' },

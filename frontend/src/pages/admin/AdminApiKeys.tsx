@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axios';
+import { useConfigStore } from '../../stores/configStore';
 
 export default function AdminApiKeys() {
+    const { aiName } = useConfigStore();
     const { data, isLoading } = useQuery({
         queryKey: ['admin-api-keys'],
         queryFn: async () => {
@@ -18,7 +20,7 @@ export default function AdminApiKeys() {
             <header className="mb-10 flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Infraestrutura de IA 🔑</h1>
-                    <p className="text-gray-600 dark:text-slate-400">Gerencie provedores e monitore o consumo do Xavier.</p>
+                    <p className="text-gray-600 dark:text-slate-400">Gerencie provedores e monitore o consumo do {aiName}.</p>
                 </div>
                 <button className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg">
                     Adicionar Provedor

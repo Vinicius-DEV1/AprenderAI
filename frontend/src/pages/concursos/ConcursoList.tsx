@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
+import { useConfigStore } from '../../stores/configStore';
 
 const getConcursos = async (params: any) => {
     const { data } = await api.get('/api/v1/concursos', { params });
@@ -10,6 +11,7 @@ const getConcursos = async (params: any) => {
 const UF_LIST = ['AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO'];
 
 export default function ConcursoList() {
+    const { appName } = useConfigStore();
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Filtros atuais do searchParams
@@ -57,7 +59,7 @@ export default function ConcursoList() {
             <div>
                 <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">🏛️ Radar de Concursos</h1>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    Acompanhe os principais concursos e editais sem sair do AprenderAI.
+                    Acompanhe os principais concursos e editais sem sair do {appName}.
                 </p>
             </div>
 

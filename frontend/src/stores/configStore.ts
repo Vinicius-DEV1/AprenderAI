@@ -17,8 +17,10 @@ interface ConfigState {
 }
 
 export const useConfigStore = create<ConfigState>((set) => ({
-    appName: 'aprenderAI',
-    aiName: 'Xavier',
+    // Defaults are empty — the real values come from /api/v1/config (DB).
+    // Never hardcode brand names here; the API is the single source of truth.
+    appName: '',
+    aiName: '',
     appVersion: '1.0.0',
     googleLoginEnabled: false,
     features: {
@@ -30,17 +32,17 @@ export const useConfigStore = create<ConfigState>((set) => ({
     plans: [],
     isLoaded: false,
     setConfig: (data) => set({
-        appName: data.app_name,
-        aiName: data.ai_name,
-        appVersion: data.app_version,
-        googleLoginEnabled: data.google_login_enabled,
+        appName: data.app_name ?? '',
+        aiName: data.ai_name ?? '',
+        appVersion: data.app_version ?? '1.0.0',
+        googleLoginEnabled: !!data.google_login_enabled,
         features: {
-            essays: data.features.essays,
-            simulations: data.features.simulations,
-            studyPlan: data.features.study_plan,
-            questionBank: data.features.question_bank,
+            essays: !!data.features?.essays,
+            simulations: !!data.features?.simulations,
+            studyPlan: !!data.features?.study_plan,
+            questionBank: !!data.features?.question_bank,
         },
-        plans: data.plans,
+        plans: data.plans ?? [],
         isLoaded: true,
     }),
 }));
