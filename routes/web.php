@@ -13,6 +13,7 @@ Route::get('/', function () {
 
 Route::view('/privacidade', 'legal.privacy')->name('privacy');
 Route::view('/uso-justo', 'legal.fair-use')->name('fair-use');
+Route::get('/sitemap.xml', [\App\Http\Controllers\SitemapController::class, 'index'])->name('sitemap');
 
 Route::post('/webhooks/asaas', [\App\Http\Controllers\WebhookController::class, 'handleAsaas'])->name('webhooks.asaas');
 

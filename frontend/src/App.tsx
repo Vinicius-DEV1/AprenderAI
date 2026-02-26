@@ -14,6 +14,7 @@ import AppLayout from './layouts/AppLayout';
 import HomePage from './pages/HomePage';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
+import MetaTags from './components/MetaTags';
 
 import SimulationList from './pages/simulations/SimulationList';
 import SimulationCreate from './pages/simulations/SimulationCreate';
@@ -95,51 +96,50 @@ function App() {
         <BrowserRouter>
             <Routes>
                 {/* Public / Auth Routes */}
-                <Route path="/" element={<HomePage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                <Route path="/privacidade" element={<PrivacyPolicy />} />
-                <Route path="/uso-justo" element={<FairUsePolicy />} />
+                <Route path="/" element={<><MetaTags title="Início" description="Prepare-se para o ENEM e concursos com IA." /><HomePage /></>} />
+                <Route path="/login" element={<><MetaTags title="Login" /><LoginPage /></>} />
+                <Route path="/register" element={<><MetaTags title="Criar Conta" /><RegisterPage /></>} />
+                <Route path="/privacidade" element={<><MetaTags title="Política de Privacidade" /><PrivacyPolicy /></>} />
+                <Route path="/uso-justo" element={<><MetaTags title="Termos de Uso" /><FairUsePolicy /></>} />
 
                 {/* Protected App Routes */}
                 <Route element={<PrivateRoute />}>
                     <Route element={<AppLayout />}>
                         {/* Dashboard */}
-                        <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/dashboard" element={<><MetaTags title="Dashboard" /><Dashboard /></>} />
 
                         {/* Simulations */}
-                        <Route path="/simulations" element={<SimulationList />} />
-                        <Route path="/simulations/create" element={<SimulationCreate />} />
+                        <Route path="/simulations" element={<><MetaTags title="Minhas Provas" /><SimulationList /></>} />
+                        <Route path="/simulations/create" element={<><MetaTags title="Configurar Simulado" /><SimulationCreate /></>} />
                         <Route path="/simulations/:id" element={<SimulationView />} />
-                        <Route path="/simulations/:id/result" element={<SimulationResult />} />
-                        <Route path="/study-plan" element={<StudyPlanDashboard />} />
-                        <Route path="/concursos" element={<ConcursoList />} />
+                        <Route path="/simulations/:id/result" element={<><MetaTags title="Resultado do Simulado" /><SimulationResult /></>} />
+                        <Route path="/study-plan" element={<><MetaTags title="Plano de Estudos" /><StudyPlanDashboard /></>} />
+                        <Route path="/concursos" element={<><MetaTags title="Radar de Concursos" /><ConcursoList /></>} />
 
                         {/* Essays */}
-                        <Route path="/essays" element={<EssayList />} />
-                        <Route path="/essays/create" element={<EssayWrite />} />
-                        <Route path="/essays/:id" element={<EssayReview />} />
+                        <Route path="/essays" element={<><MetaTags title="Minhas Redações" /><EssayList /></>} />
+                        <Route path="/essays/create" element={<><MetaTags title="Escrever Redação" /><EssayWrite /></>} />
+                        <Route path="/essays/:id" element={<><MetaTags title="Correção de Redação" /><EssayReview /></>} />
 
                         {/* Question Bank */}
-                        <Route path="/questions" element={<QuestionBank />} />
+                        <Route path="/questions" element={<><MetaTags title="Banco de Questões" /><QuestionBank /></>} />
 
                         {/* Plans */}
-                        <Route path="/plans" element={<PlanList />} />
-                        <Route path="/plans/:planId/checkout" element={<PlanCheckout />} />
+                        <Route path="/plans" element={<><MetaTags title="Planos e Preços" /><PlanList /></>} />
+                        <Route path="/plans/:planId/checkout" element={<><MetaTags title="Checkout" /><PlanCheckout /></>} />
 
                         {/* Profile */}
-                        <Route path="/profile" element={<Profile />} />
+                        <Route path="/profile" element={<><MetaTags title="Meu Perfil" /><Profile /></>} />
                     </Route>
 
                     {/* Admin Portal */}
                     <Route path="/admin" element={<AdminLayout />}>
-                        <Route index element={<AdminDashboard />} />
-                        <Route path="dashboard" element={<AdminDashboard />} />
-                        <Route path="curadoria" element={<Curadoria />} />
-                        <Route path="questions" element={<AdminQuestions />} />
-                        <Route path="users" element={<AdminUsers />} />
-                        <Route path="api-keys" element={<AdminApiKeys />} />
-                        {/* Outras rotas administrativas serão adicionadas aqui */}
+                        <Route index element={<><MetaTags title="Admin: Dashboard" /><AdminDashboard /></>} />
+                        <Route path="dashboard" element={<><MetaTags title="Admin: Dashboard" /><AdminDashboard /></>} />
+                        <Route path="curadoria" element={<><MetaTags title="Admin: Curadoria" /><Curadoria /></>} />
+                        <Route path="questions" element={<><MetaTags title="Admin: Banco de Questões" /><AdminQuestions /></>} />
+                        <Route path="users" element={<><MetaTags title="Admin: Gestão de Usuários" /><AdminUsers /></>} />
+                        <Route path="api-keys" element={<><MetaTags title="Admin: Chaves de API" /><AdminApiKeys /></>} />
                     </Route>
                 </Route>
             </Routes>
