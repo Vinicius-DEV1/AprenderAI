@@ -28,17 +28,23 @@ class SimulationResource extends JsonResource
             'time_spent' => $this->time_spent, // in seconds
             'questions_count' => $this->questions_count ?? $this->answers()->count(),
             'created_at' => $this->created_at,
+            'started_at' => $this->started_at,
             'completed_at' => $this->completed_at,
+            'configuration' => $this->configuration,
             // Include related data conditionally if loaded
             'questions' => QuestionResource::collection($this->whenLoaded('questions')),
             'essay' => new EssayResource($this->whenLoaded('essay')),
             'answers' => $this->whenLoaded('answers', function () {
                 return $this->answers->map(function ($answer) {
                     return [
+                        'id' => $answer->id,
                         'question_id' => $answer->question_id,
                         'selected_alternative_id' => $answer->selected_alternative_id,
+                        'user_answer' => $answer->user_answer,
+                        'marked_for_review' => (bool) $answer->marked_for_review,
                         'is_correct' => $answer->is_correct,
                         'time_spent' => $answer->time_spent,
+                        'question' => $answer->relationLoaded('question') ? new QuestionResource($answer->question) : null,
                     ];
                 });
             }),
