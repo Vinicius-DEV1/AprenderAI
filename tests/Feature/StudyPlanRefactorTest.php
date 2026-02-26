@@ -10,7 +10,7 @@ use App\Models\Simulation;
 use App\Models\SimulationAnswer;
 use App\Services\Study\StudyPlanGenerator;
 use App\Services\Study\StudyStatsService;
-use App\Services\AIService;
+use App\Services\AI\AIService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
@@ -23,7 +23,7 @@ class StudyPlanRefactorTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-    // Seed or mock necessary data
+        // Seed or mock necessary data
     }
 
     protected function setupUserWithAccess()
@@ -88,7 +88,7 @@ class StudyPlanRefactorTest extends TestCase
             ->once()
             ->andReturn($plan);
 
-        $this->app->instance(StudyPlanGenerator::class , $mockGenerator);
+        $this->app->instance(StudyPlanGenerator::class, $mockGenerator);
 
         $response = $this->post(route('study-plan.store'), [
             'exam_type' => 'enem',

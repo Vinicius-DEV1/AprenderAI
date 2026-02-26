@@ -9,7 +9,7 @@ use App\Models\Question;
 use App\Models\SimulationAnswer;
 use App\Models\Plan;
 use App\Jobs\CorrectSimulationJob;
-use App\Services\AIService;
+use App\Services\AI\AIService;
 use App\Services\Study\StudyStatsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
@@ -55,27 +55,27 @@ class CorrectSimulationJobTest extends TestCase
         $mockAI->shouldReceive('correctSimulation')
             ->once()
             ->andReturn([
-            'provider' => 'openai',
-            'response' => [
-                'errors_explanation' => [
-                    ['question_id' => (string)$sim->answers->first()->question_id, 'explanation' => 'Test explanation']
-                ]
-            ],
-            'usage' => ['input_tokens' => 10, 'output_tokens' => 10]
-        ]);
+                'provider' => 'openai',
+                'response' => [
+                    'errors_explanation' => [
+                        ['question_id' => (string) $sim->answers->first()->question_id, 'explanation' => 'Test explanation']
+                    ]
+                ],
+                'usage' => ['input_tokens' => 10, 'output_tokens' => 10]
+            ]);
 
         // Mock StudyStatsService
         $mockStats = Mockery::mock(StudyStatsService::class);
         $mockStats->shouldReceive('updateUserStats')
             ->once()
             ->with(Mockery::on(function ($u) use ($user) {
-            return $u->id === $user->id;
-        }), Mockery::on(function ($s) use ($sim) {
-            return $s->id === $sim->id;
-        }));
+                return $u->id === $user->id;
+            }), Mockery::on(function ($s) use ($sim) {
+                return $s->id === $sim->id;
+            }));
 
         // Bind mocks
-        $this->app->instance(StudyStatsService::class , $mockStats);
+        $this->app->instance(StudyStatsService::class, $mockStats);
 
         $job = new CorrectSimulationJob($sim);
         $job->handle($mockAI);
@@ -83,7 +83,7 @@ class CorrectSimulationJobTest extends TestCase
         // Assertions
         $this->assertDatabaseHas('corrections', [
             'correctable_id' => $sim->id,
-            'correctable_type' => Simulation::class ,
+            'correctable_type' => Simulation::class,
             'ai_provider' => 'openai'
         ]);
     }

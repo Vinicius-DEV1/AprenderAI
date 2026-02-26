@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\Essay;
 use App\Models\Simulation;
 use App\Models\User;
-use App\Services\AIService;
+use App\Services\AI\AIService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -17,7 +17,7 @@ class SimulationEssayIntegrationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->mock(AIService::class);
+        $this->mock(\App\Services\AI\AIService::class);
         $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
     }
 

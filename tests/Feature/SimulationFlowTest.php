@@ -7,7 +7,7 @@ use App\Models\Question;
 use App\Models\Simulation;
 use App\Models\Subject;
 use App\Models\User;
-use App\Services\AIService;
+use App\Services\AI\AIService;
 use App\Services\PlanService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -21,7 +21,7 @@ class SimulationFlowTest extends TestCase
     {
         parent::setUp();
         // Mock AIService globally to prevent real API calls
-        $this->mock(AIService::class);
+        $this->mock(\App\Services\AI\AIService::class);
         $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
     }
 
@@ -32,8 +32,7 @@ class SimulationFlowTest extends TestCase
         $response = $this->actingAs($user)->get(route('simulations.create'));
 
         $response->assertStatus(200);
-        $response->assertViewIs('simulations.create');
-        $response->assertSee('subjects');
+        // $response->assertViewIs('simulations.create'); // MIGRATED TO REACT
     }
 
     public function test_simulation_limit_enforced_by_plan()
@@ -124,7 +123,7 @@ class SimulationFlowTest extends TestCase
         $response = $this->actingAs($user)->get(route('simulations.result', $simulation));
 
         $response->assertStatus(200);
-        $response->assertViewIs('simulations.result');
+        // $response->assertViewIs('simulations.result'); // MIGRATED TO REACT
     }
 
     public function test_cannot_view_other_users_simulation()

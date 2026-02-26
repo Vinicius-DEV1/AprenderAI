@@ -8,9 +8,8 @@ use App\Http\Controllers\PlanController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    $plans = \App\Models\Plan::where('is_active', true)->get();
-    return view('welcome', compact('plans'));
-})->name('home');
+    return redirect(env('FRONTEND_URL', 'http://localhost:5174'));
+});
 
 Route::view('/privacidade', 'legal.privacy')->name('privacy');
 Route::view('/uso-justo', 'legal.fair-use')->name('fair-use');
