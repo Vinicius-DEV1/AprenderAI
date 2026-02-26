@@ -1,12 +1,17 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createSimulation } from '../../api/simulations';
+import QuotaLimitModal from '../../components/QuotaLimitModal';
 
 export default function SimulationCreate() {
     const navigate = useNavigate();
     const [type, setType] = useState<'enem' | 'concurso'>('enem');
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Quota Modal State
+    const [isQuotaModalOpen, setIsQuotaModalOpen] = useState(false);
+    const [quotaData, setQuotaData] = useState({ limit: 0, used: 0 });
 
     // ENEM State
     const [selectedEnemMode, setSelectedEnemMode] = useState('mixed');
@@ -17,9 +22,9 @@ export default function SimulationCreate() {
     ];
 
     const getEnemDistribution = () => {
-        if (selectedEnemMode === 'math') return { Math: 90, Portuguese: 0 };
-        if (selectedEnemMode === 'portuguese') return { Math: 0, Portuguese: 90 };
-        return { 'Matemática': 45, 'Português': 45 };
+        if (selectedEnemMode === 'math') return { 'MATEMÁTICA': 90, 'PORTUGUÊS': 0 };
+        if (selectedEnemMode === 'portuguese') return { 'MATEMÁTICA': 0, 'PORTUGUÊS': 90 };
+        return { 'MATEMÁTICA': 45, 'PORTUGUÊS': 45 };
     };
 
     // Concurso State
@@ -90,7 +95,13 @@ export default function SimulationCreate() {
                 navigate('/simulations');
             }
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to create simulation');
+            if (err.response?.status === 403 && err.response?.data?.quota) {
+                setQuotaData(err.response.data.quota);
+                setIsQuotaModalOpen(true);
+                setError(null);
+            } else {
+                setError(err.response?.data?.message || 'Falha ao criar simulado. Tente novamente.');
+            }
             setSubmitting(false);
         }
     };
@@ -169,8 +180,8 @@ export default function SimulationCreate() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <label
                                 className={`relative flex items-center p-4 cursor-pointer rounded-xl border-2 transition-all duration-200 ${type === 'enem'
-                                        ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20'
-                                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                                    ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20'
+                                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                                     }`}
                                 onClick={() => setType('enem')}
                             >
@@ -187,8 +198,8 @@ export default function SimulationCreate() {
 
                             <label
                                 className={`relative flex items-center p-4 cursor-pointer rounded-xl border-2 transition-all duration-200 ${type === 'concurso'
-                                        ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20'
-                                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                                    ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20'
+                                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                                     }`}
                                 onClick={() => setType('concurso')}
                             >
@@ -220,8 +231,8 @@ export default function SimulationCreate() {
                                     {enemModes.map(mode => (
                                         <label key={mode.value} className="cursor-pointer" onClick={() => setSelectedEnemMode(mode.value)}>
                                             <div className={`px-4 py-3 rounded-lg border text-center transition-colors ${selectedEnemMode === mode.value
-                                                    ? 'bg-white dark:bg-slate-800 border-indigo-500 shadow-sm dark:shadow-none text-indigo-700 dark:text-indigo-300'
-                                                    : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800'
+                                                ? 'bg-white dark:bg-slate-800 border-indigo-500 shadow-sm dark:shadow-none text-indigo-700 dark:text-indigo-300'
+                                                : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800'
                                                 }`}>
                                                 <span className="block font-medium">{mode.label}</span>
                                                 <span className="text-xs opacity-75">{mode.desc}</span>
@@ -438,6 +449,15 @@ export default function SimulationCreate() {
                     </div>
                 </form>
             </div>
+
+            <QuotaLimitModal
+                isOpen={isQuotaModalOpen}
+                onClose={() => setIsQuotaModalOpen(false)}
+                resource="Provas"
+                used={quotaData.used}
+                limit={quotaData.limit}
+                upgradeRoute="/plans"
+            />
         </>
     );
 }

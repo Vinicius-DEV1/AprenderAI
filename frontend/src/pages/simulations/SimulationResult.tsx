@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axios';
 import { marked } from 'marked';
+import { useConfigStore } from '../../stores/configStore';
 import '../../styles/question-bank.css';
 
 const getSimulationResult = async (id: string) => {
@@ -12,7 +13,7 @@ const getSimulationResult = async (id: string) => {
 
 export default function SimulationResult() {
     const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
+    const { aiName } = useConfigStore();
 
     const { data: simulation, isLoading } = useQuery({
         queryKey: ['simulationResult', id],
@@ -38,6 +39,12 @@ export default function SimulationResult() {
         const m = Math.floor((seconds % 3600) / 60);
         const s = seconds % 60;
         return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    };
+
+    const formatAvgTime = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
 
     return (
@@ -87,7 +94,7 @@ export default function SimulationResult() {
                 <div className="stat-box">
                     <h3>Média por Questão</h3>
                     <div className="value" style={{ fontSize: '24px' }}>
-                        {totalQuestions > 0 ? formatTime(Math.round((simulation.time_spent || 0) / totalQuestions)) : '00:00:00'}
+                        {totalQuestions > 0 ? formatAvgTime(Math.round((simulation.time_spent || 0) / totalQuestions)) : '00:00'}
                     </div>
                 </div>
             </div>
@@ -95,7 +102,7 @@ export default function SimulationResult() {
             <div className="answers-section">
                 <h2>Análise Detalhada</h2>
                 {answers.map((ans: any, idx: number) => (
-                    <AnswerCard key={ans.question_id} answer={ans} index={idx} simulationId={simulation.id} />
+                    <AnswerCard key={ans.question_id} answer={ans} index={idx} simulationId={simulation.id} aiName={aiName} />
                 ))}
             </div>
 
@@ -112,7 +119,7 @@ export default function SimulationResult() {
     );
 }
 
-function AnswerCard({ answer, index, simulationId }: { answer: any, index: number, simulationId: number }) {
+function AnswerCard({ answer, index, simulationId, aiName }: { answer: any, index: number, simulationId: number, aiName: string }) {
     const q = answer.question;
     const [showChat, setShowChat] = useState(false);
 
@@ -142,6 +149,7 @@ function AnswerCard({ answer, index, simulationId }: { answer: any, index: numbe
                 </span>
                 <div className="flex gap-2 items-center">
                     {q.source === 'ai_generated' && <span className="qb-badge" style={{ background: '#E9D5FF', color: '#6B21A8' }}>✨ INÉDITA</span>}
+                    {q.organization && <span className="qb-badge" style={{ background: '#E2E8F0', color: '#475569' }}>{q.organization}</span>}
                     {diff && (
                         <span className="qb-badge group relative" style={{ background: diff.bg, color: diff.text }} title={q.difficulty_reasoning}>
                             {diff.label}
@@ -162,47 +170,61 @@ function AnswerCard({ answer, index, simulationId }: { answer: any, index: numbe
             <div className="question-statement mb-4 dark:text-slate-200" dangerouslySetInnerHTML={renderMd(q.statement_html || q.statement)} />
 
             <div className="space-y-2 mb-4">
-                {q.alternatives?.map((alt: any) => (
-                    <div key={alt.label} className={`flex items-start gap-3 p-3 rounded-lg border ${answer.user_answer === alt.label ? 'bg-blue-50 border-blue-300 dark:bg-blue-900/20' : 'bg-slate-50 border-slate-100 dark:bg-slate-800/40 dark:border-slate-700'} ${alt.is_correct ? 'ring-2 ring-green-500' : ''}`}>
+                {q.alternatives?.sort((a: any, b: any) => a.label.localeCompare(b.label)).map((alt: any) => (
+                    <div key={alt.label} className={`flex items-start gap-3 p-3 rounded-lg border ${answer.user_answer === alt.label ? 'bg-blue-50 border-blue-300 dark:bg-blue-900/20' : 'bg-slate-50 border-slate-100 dark:bg-slate-800/40 dark:border-slate-700'} ${alt.is_correct ? 'ring-2 ring-green-500 ring-offset-1' : ''}`}>
                         <span className={`flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${answer.user_answer === alt.label ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'}`}>
                             {alt.label}
                         </span>
-                        <div className="text-sm dark:text-slate-300">{alt.content}</div>
+                        <div className="flex flex-col gap-2 flex-grow overflow-hidden">
+                            {alt.content && <div className="text-sm dark:text-slate-300 word-break-all">{alt.content}</div>}
+                            {alt.image_path && <img src={`/storage/${alt.image_path}`} alt={`Alternativa ${alt.label}`} className="max-w-full h-auto rounded object-contain mt-2" />}
+                        </div>
                         {alt.is_correct && <span className="ml-auto text-green-600 font-bold">✓</span>}
                     </div>
                 ))}
             </div>
 
             <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-lg border border-slate-200 dark:border-slate-700 mt-4">
-                <h4 className="text-xs font-bold text-indigo-600 mb-2 flex items-center gap-2">💡 Resolução Comentada</h4>
+                <h4 className="text-sm font-bold text-gray-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.364-6.364l-.707-.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M12 11a3 3 0 110-6 3 3 0 010 6z" />
+                    </svg>
+                    Resolução Comentada
+                </h4>
                 <div className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed" dangerouslySetInnerHTML={renderMd(q.explanation || 'Resolução sendo processada...')} />
             </div>
 
-            {/* Contextual Chat Button */}
-            <button onClick={() => setShowChat(!showChat)} className="mt-4 text-xs text-indigo-600 font-bold hover:underline flex items-center gap-1">
-                {showChat ? 'Ocultar Chat' : '💬 Tirar Dúvida com Xavier'}
-            </button>
+            <div className="mt-2 border-t border-gray-100 dark:border-slate-700 pt-2">
+                <button onClick={() => setShowChat(!showChat)} className="text-xs text-indigo-600 font-medium hover:text-indigo-800 flex items-center gap-1.5 transition-colors">
+                    <span>{showChat ? 'Ocultar Chat' : `💬 Tirar Dúvida com ${aiName}`}</span>
+                </button>
 
-            {showChat && (
-                <div className="mt-4 animate-xavier-pop">
-                    <ChatInterface simulationId={simulationId} questionId={q.id} />
-                </div>
-            )}
+                {showChat && (
+                    <div className="mt-3 animate-xavier-pop">
+                        <ChatInterface questionId={q.id} aiName={aiName} />
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
 
-function ChatInterface({ simulationId, questionId }: { simulationId: number, questionId: number }) {
+function ChatInterface({ questionId, aiName }: { questionId: number, aiName: string }) {
     const [messages, setMessages] = useState<any[]>([]);
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
+    const renderMd = (text: string) => {
+        if (!text) return { __html: '' };
+        return { __html: marked.parse(text) as string };
+    };
+
     const loadHistory = async () => {
         try {
             const res = await api.get(`/api/v1/questions/${questionId}/chat`);
             if (res.data.length === 0) {
-                setMessages([{ role: 'assistant', message: 'Olá! Sou o Xavier. Qual sua dúvida sobre esta questão?' }]);
+                setMessages([{ role: 'assistant', message: `Olá! Sou o ${aiName}. Qual sua dúvida sobre esta questão?` }]);
             } else {
                 setMessages(res.data);
             }
@@ -210,7 +232,7 @@ function ChatInterface({ simulationId, questionId }: { simulationId: number, que
     };
 
     useEffect(() => { loadHistory(); }, []);
-    useEffect(() => { scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight); }, [messages]);
+    useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }, [messages, isTyping]);
 
     const sendMessage = async () => {
         if (!input.trim()) return;
@@ -220,8 +242,12 @@ function ChatInterface({ simulationId, questionId }: { simulationId: number, que
         setIsTyping(true);
 
         try {
-            await api.post(`/api/v1/questions/${questionId}/chat`, { message: userMsg });
-            // Polling for response (simplified for result view)
+            const res = await api.post(`/api/v1/questions/${questionId}/chat`, { message: userMsg });
+            if (res.data.status === 'quota_exceeded') {
+                setMessages(prev => [...prev, { role: 'system', message: res.data.message, upgrade_url: res.data.upgrade_url }]);
+                setIsTyping(false);
+                return;
+            }
             pollAnswer();
         } catch (e) {
             setIsTyping(false);
@@ -241,26 +267,54 @@ function ChatInterface({ simulationId, questionId }: { simulationId: number, que
                     clearInterval(poller);
                 }
             } catch (e) { }
-            if (attempts > 20) { clearInterval(poller); setIsTyping(false); }
+            if (attempts > 30) { clearInterval(poller); setIsTyping(false); }
         }, 2000);
     };
 
     return (
-        <div className="qb-chat-container">
-            <div className="qb-chat-history p-2" ref={scrollRef}>
+        <div className="qb-chat-container bg-slate-50 dark:bg-slate-900/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+            <div className="qb-chat-history space-y-3 mb-3 max-h-[400px] overflow-y-auto p-1" ref={scrollRef}>
                 {messages.map((m, i) => (
-                    <div key={i} className={`flex flex-col mb-3 ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
-                        <div className={`px-3 py-2 rounded-lg text-xs max-w-[85%] ${m.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-700 border dark:border-slate-600'}`}>
-                            {m.message}
-                        </div>
-                        <span className="text-[10px] text-slate-400 mt-1">{m.role === 'user' ? 'Você' : 'Xavier'}</span>
+                    <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : (m.role === 'system' ? 'items-center' : 'items-start')}`}>
+                        {m.role === 'system' ? (
+                            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-center w-full my-2 shadow-sm">
+                                <p className="text-xs text-red-800 dark:text-red-300 font-bold mb-2">{m.message}</p>
+                                <Link to={m.upgrade_url || '/plans'} className="inline-block bg-red-600 text-white text-[10px] font-bold py-1.5 px-4 rounded-full hover:bg-red-700 transition-colors uppercase">
+                                    🚀 Turbinar Plano
+                                </Link>
+                            </div>
+                        ) : (
+                            <>
+                                <div className={`px-3 py-2 rounded-lg text-[11px] max-w-[85%] shadow-sm ${m.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 border dark:border-slate-700 text-slate-800 dark:text-slate-200'}`}>
+                                    {m.role === 'assistant' ? <div className="markdown-body text-[11px]" dangerouslySetInnerHTML={renderMd(m.message)} /> : m.message}
+                                </div>
+                                <span className="text-[9px] text-slate-400 mt-1 uppercase tracking-tighter">{m.role === 'user' ? 'Você' : aiName}</span>
+                            </>
+                        )}
                     </div>
                 ))}
-                {isTyping && <div className="text-[10px] text-slate-400 italic">Xavier está digitando...</div>}
+                {isTyping && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg w-fit border dark:border-slate-700 shadow-sm animate-pulse">
+                        <span className="text-[10px] text-slate-500 font-medium">{aiName} está digitando</span>
+                        <div className="flex gap-0.5">
+                            <span className="w-1 h-1 bg-slate-400 rounded-full"></span>
+                            <span className="w-1 h-1 bg-slate-400 rounded-full"></span>
+                            <span className="w-1 h-1 bg-slate-400 rounded-full"></span>
+                        </div>
+                    </div>
+                )}
             </div>
             <div className="flex gap-2 p-2 border-t dark:border-slate-700">
-                <input type="text" value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} placeholder="Sua dúvida..." className="flex-1 bg-transparent text-xs outline-none" />
-                <button onClick={sendMessage} className="text-indigo-600 font-bold text-xs">Enviar</button>
+                <input
+                    type="text"
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                    placeholder={`Dúvida com ${aiName}...`}
+                    className="flex-1 bg-transparent text-xs outline-none dark:text-slate-200"
+                    disabled={isTyping}
+                />
+                <button onClick={sendMessage} className="text-indigo-600 font-bold text-xs disabled:opacity-50" disabled={isTyping || !input.trim()}>Enviar</button>
             </div>
         </div>
     );
