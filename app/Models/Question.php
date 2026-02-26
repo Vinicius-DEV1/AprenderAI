@@ -167,6 +167,14 @@ class Question extends Model
         });
     }
 
+    public function isIncomplete(): bool
+    {
+        return empty(trim($this->difficulty_reasoning ?? ''))
+            || empty(trim($this->explanation ?? ''))
+            || $this->subjects()->doesntExist()
+            || $this->topics()->doesntExist();
+    }
+
     /**
      * Scope: questões 100% completas (para Banco Geral).
      */
