@@ -5,8 +5,11 @@ echo "🚀 Iniciando ambiente de DESENVOLVIMENTO..."
 
 # Ajusta permissões iniciais (usando uid 1000 que é o padrão no Dockerfile.local)
 # Ajusta permissões iniciais (Adicionado || true para não travar no Windows)
-chown -R 1000:www-data storage bootstrap/cache || true
-chmod -R 775 storage bootstrap/cache || true
+# Ajusta permissões iniciais (apenas nos diretórios base para evitar lentidão com milhares de arquivos no Windows)
+chown 1000:www-data storage bootstrap/cache || true
+chmod 775 storage bootstrap/cache || true
+find storage -maxdepth 2 -not -path '*/.*' -exec chown 1000:www-data {} + || true
+find storage -maxdepth 2 -not -path '*/.*' -exec chmod 775 {} + || true
 
 if [ -f .env ] || [ -f .env.example ]; then
     # Se não houver .env, copia do .env.example
