@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSimulations } from '../../hooks/useSimulations';
+import QuotaLimitModal from '../../components/QuotaLimitModal';
 
 export default function SimulationList() {
     const [page, setPage] = useState(1);
+    const [isQuotaModalOpen, setIsQuotaModalOpen] = useState(false);
     const { data, isLoading } = useSimulations(page);
 
     if (isLoading) {
@@ -210,6 +212,48 @@ export default function SimulationList() {
             background: rgba(209, 250, 229, 0.1);
             color: #6ee7b7;
         }
+        .usage-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .usage-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #374151;
+        }
+
+        .usage-subtitle {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .usage-link {
+            font-size: 13px;
+            color: #2563eb;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        :root.dark .usage-card {
+            background: #1e293b;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        :root.dark .usage-title {
+            color: #f3f4f6;
+        }
+
+        :root.dark .usage-subtitle {
+            color: #9ca3af;
+        }
       `}</style>
 
             <div className="simulations-header">
@@ -219,26 +263,22 @@ export default function SimulationList() {
                     <Link to="/simulations/create" className="btn-new">+ Nova Prova</Link>
                 ) : (
                     <button type="button"
-                        onClick={() => alert('Limite Atingido Modal')}
+                        onClick={() => setIsQuotaModalOpen(true)}
                         className="btn-new" style={{ background: '#64748b', cursor: 'not-allowed' }}>
                         Limite Atingido
                     </button>
                 )}
             </div>
 
-            <div style={{
-                background: 'white', borderRadius: '12px', padding: '16px 24px', marginBottom: '16px',
-                boxShadow: '0 1px 3px rgba(0,0,0,.1)', display: 'flex', alignItems: 'center',
-                justifyContent: 'space-between'
-            }} className="dark:bg-[#1e293b]">
+            <div className="usage-card">
                 <div>
-                    <p style={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px' }} className="text-gray-700 dark:text-gray-200">Uso Mensal de Provas</p>
-                    <p style={{ fontSize: '13px' }} className="text-gray-500 dark:text-gray-400">
+                    <p className="usage-title">Uso Mensal de Provas</p>
+                    <p className="usage-subtitle">
                         Você criou <strong>{used}</strong> de <strong>{limit === 0 ? 'ilimitadas' : limit}</strong> provas disponíveis neste ciclo.
                     </p>
                 </div>
                 {!canCreate && (
-                    <Link to="/plans" style={{ fontSize: '13px', color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}>
+                    <Link to="/plans" className="usage-link">
                         Ver Planos &rarr;
                     </Link>
                 )}
@@ -291,7 +331,7 @@ export default function SimulationList() {
                         {canCreate ? (
                             <Link to="/simulations/create" className="btn-new" style={{ marginTop: '16px' }}>Criar Primeira Prova</Link>
                         ) : (
-                            <button type="button" onClick={() => alert('Limite Atingido Modal')} className="btn-new" style={{ marginTop: '16px', background: '#64748b', cursor: 'not-allowed' }}>
+                            <button type="button" onClick={() => setIsQuotaModalOpen(true)} className="btn-new" style={{ marginTop: '16px', background: '#64748b', cursor: 'not-allowed' }}>
                                 Ver Planos
                             </button>
                         )}
@@ -318,6 +358,15 @@ export default function SimulationList() {
                     </div>
                 )}
             </div>
+
+            <QuotaLimitModal
+                isOpen={isQuotaModalOpen}
+                onClose={() => setIsQuotaModalOpen(false)}
+                resource="Provas"
+                used={used}
+                limit={limit}
+                upgradeRoute="/plans"
+            />
         </>
     );
 }

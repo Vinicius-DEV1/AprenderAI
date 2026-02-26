@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
+import { useUIStore } from '../../stores/uiStore';
+
 // Local API calls just for this view's specific needs (polling/answering)
 const checkSimulationStatus = async (id: string) => {
     const { data } = await api.get(`/api/v1/simulations/${id}/status`);
@@ -27,6 +29,7 @@ export default function SimulationView() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const { toggleSidebar } = useUIStore();
 
     const [currentQuestion, setCurrentQuestion] = useState(0);
     const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
@@ -68,7 +71,18 @@ export default function SimulationView() {
     useEffect(() => {
         if (simulation && timeRemaining === null) {
             const limit = simulation.configuration?.time_limit || 10800; // default 3 hours
-            setTimeRemaining(limit);
+
+            // Calculate elapsed time from the server's started_at
+            if (simulation.started_at) {
+                const startTime = new Date(simulation.started_at).getTime();
+                const now = Date.now();
+                // We add elapsed seconds here
+                const elapsedSeconds = Math.floor((now - startTime) / 1000);
+                const remaining = Math.max(0, limit - elapsedSeconds);
+                setTimeRemaining(remaining);
+            } else {
+                setTimeRemaining(limit);
+            }
         }
     }, [simulation, timeRemaining]);
 
@@ -268,6 +282,16 @@ export default function SimulationView() {
       `}</style>
 
             <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center' }}>
+                <button
+                    onClick={() => toggleSidebar()}
+                    className="mr-4 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2 transition-colors"
+                    title="Menu Painel"
+                >
+                    <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Menu Painel</span>
+                </button>
                 <h2 className="text-xl font-bold text-gray-800 dark:text-slate-200">Simulado em Progresso</h2>
             </div>
 
@@ -325,8 +349,8 @@ export default function SimulationView() {
                         <div className="question-content animate-fade-in">
                             <div className="question-header">
                                 <span className="question-number">Questão {currentQuestion + 1} de {totalQuestions}</span>
-                                <span style={{ fontSize: '14px', color: '#64748b', background: '#f1f5f9', padding: '4px 12px', borderRadius: '12px' }} className="dark:bg-slate-800 dark:text-slate-300">
-                                    {question.topic ? question.topic.name : 'Geral'}
+                                <span style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', background: '#f1f5f9', padding: '4px 12px', borderRadius: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }} className="dark:bg-slate-800 dark:text-slate-300">
+                                    {question.subjects?.map((s: any) => s.name).join(', ') || 'Geral'}
                                 </span>
                             </div>
 
@@ -346,9 +370,9 @@ export default function SimulationView() {
                                         />
                                         <label htmlFor={`q${question.id}_${alt.label}`}>
                                             <span className="alternative-letter">{alt.label})</span>
-                                            <div className="flex flex-col gap-2">
-                                                {alt.content && <span>{alt.content}</span>}
-                                                {alt.image_path && <img src={alt.image_path} alt={`Alternativa ${alt.label}`} className="max-w-full h-auto rounded object-contain" />}
+                                            <div className="flex flex-col gap-2 flex-grow overflow-hidden">
+                                                {alt.content && <span className="word-break-all">{alt.content}</span>}
+                                                {alt.image_path && <img src={`/storage/${alt.image_path}`} alt={`Alternativa ${alt.label}`} className="max-w-full h-auto rounded object-contain mt-2" />}
                                             </div>
                                         </label>
                                     </li>
