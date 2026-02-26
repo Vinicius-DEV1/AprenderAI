@@ -5,20 +5,50 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Simulation;
 use App\Http\Resources\SimulationResource;
+use App\Services\PlanService;
+use App\Services\SimulationCreationService;
 use Illuminate\Http\Request;
 
 class SimulationController extends Controller
 {
+    protected PlanService $planService;
+    protected SimulationCreationService $simulationService;
+
+    public function __construct(PlanService $planService, SimulationCreationService $simulationService)
+    {
+        $this->planService = $planService;
+        $this->simulationService = $simulationService;
+    }
+
     public function index(Request $request)
     {
-        $simulations = $request->user()->simulations()->latest()->paginate(10);
-        return SimulationResource::collection($simulations);
+        $user = $request->user();
+        $user->loadMissing('plan');
+
+        $check = $this->planService->checkSimulationLimit($user);
+
+        $simulations = $user->simulations()->latest()->paginate(10);
+
+        return SimulationResource::collection($simulations)->additional([
+            'simulationLimit' => [
+                'can_create' => $check['can_create'],
+                'remaining' => isset($check['limit']) ? max(0, $check['limit'] - ($check['used'] ?? 0)) : 999999,
+                'total' => $check['limit'] ?? 0,
+                'used' => $check['used'] ?? 0,
+            ]
+        ]);
     }
 
     public function show(Request $request, Simulation $simulation)
     {
         if ($simulation->user_id !== $request->user()->id) {
             abort(403);
+        }
+
+        // Fix backend bug: Start simulation if it was just generated
+        if ($simulation->status === 'pending' && $simulation->answers()->count() > 0) {
+            $simulation->startSimulation();
+            $simulation->refresh();
         }
 
         $simulation->load(['answers.question.alternatives', 'answers.question.subjects']);
@@ -28,6 +58,21 @@ class SimulationController extends Controller
 
     public function store(Request $request)
     {
+        $user = $request->user();
+        $check = $this->planService->checkSimulationLimit($user);
+
+        // Security check for limits
+        if (!$check['can_create']) {
+            return response()->json([
+                'message' => $check['message'],
+                'error' => $check['message'],
+                'quota' => [
+                    'limit' => $check['limit'] ?? 0,
+                    'used' => $check['used'] ?? 0,
+                ],
+            ], 403);
+        }
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'subject_ids' => 'array',
@@ -35,21 +80,30 @@ class SimulationController extends Controller
             'questions_count' => 'integer|min:1|max:90',
             'type' => 'nullable|string|in:concurso,enem,vestibular,custom',
             'include_essay' => 'boolean',
+            'total_questions' => 'nullable|integer',
+            'subject_distribution' => 'nullable|array',
+            'organization' => 'nullable|array',
+            'institution' => 'nullable|array',
+            'role' => 'nullable|array',
         ]);
 
-        $simulation = $request->user()->simulations()->create([
-            'title' => $validated['title'],
-            'status' => 'generating',
-            'questions_count' => $validated['questions_count'] ?? 10,
-            'configuration' => [
-                'type' => $validated['type'] ?? 'custom',
-                'include_essay' => $validated['include_essay'] ?? false,
-                'subject_ids' => $validated['subject_ids'] ?? [],
-                'topic_ids' => $validated['topic_ids'] ?? [],
-            ]
-        ]);
+        // Guard essay inclusion for free users
+        if (!$user->hasEssayAccess()) {
+            $validated['include_essay'] = false;
+        }
 
-        // In a real scenario, this would dispatch a generation job
+        // Ensure total_questions mapping for the service
+        if (!isset($validated['questions_count']) && isset($validated['total_questions'])) {
+            $validated['questions_count'] = $validated['total_questions'];
+        }
+        if (!isset($validated['total_questions']) && isset($validated['questions_count'])) {
+            $validated['total_questions'] = $validated['questions_count'];
+        }
+
+        // 1. Create Simulation using the formal service (Sync — Status: generating)
+        $simulation = $this->simulationService->createPendingSimulation($user, $validated);
+
+        // 2. Dispatch background job
         \App\Jobs\GenerateSimulationQuestions::dispatch($simulation, $validated);
 
         return new SimulationResource($simulation);
