@@ -185,8 +185,24 @@ export default function Dashboard() {
         );
     }
 
-    const { stats, simulationLimit, recent_simulations } = data;
-    const userPlan = user.plan || { name: 'Grátis' };
+    // ── SAFE DEFAULTS: Even if backend sends partial data, the UI never crashes ──
+    const safeStats = {
+        total_simulations: 0,
+        total_essays: 0,
+        total_questions_answered: 0,
+        average_math_score: 0,
+        average_portuguese_score: 0,
+        ...(data?.stats || {}),
+    };
+    const safeSimulationLimit = {
+        can_create: true,
+        remaining: 999,
+        total: 0,
+        message: '',
+        ...(data?.simulationLimit || {}),
+    };
+    const recent_simulations = data?.recent_simulations || [];
+    const userPlan = user?.plan || { name: 'Grátis' };
     const isAdmin = user?.role === 'admin';
 
     return (
@@ -644,22 +660,22 @@ export default function Dashboard() {
                 <div className="stats">
                     <div className="stat">
                         <div className="k">Provas realizadas</div>
-                        <div className="v">{stats.total_simulations}</div>
+                        <div className="v">{safeStats.total_simulations}</div>
                         <div className="l">no total</div>
                     </div>
                     <div className="stat">
                         <div className="k">Média em Matemática</div>
-                        <div className="v">{stats.average_math_score.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}%</div>
+                        <div className="v">{Number(safeStats.average_math_score).toLocaleString('pt-BR', { minimumFractionDigits: 1 })}%</div>
                         <div className="l">de acertos</div>
                     </div>
                     <div className="stat">
                         <div className="k">Média em Português</div>
-                        <div className="v">{stats.average_portuguese_score.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}%</div>
+                        <div className="v">{Number(safeStats.average_portuguese_score).toLocaleString('pt-BR', { minimumFractionDigits: 1 })}%</div>
                         <div className="l">de acertos</div>
                     </div>
                     <div className="stat">
                         <div className="k">Redações enviadas</div>
-                        <div className="v">{stats.total_essays}</div>
+                        <div className="v">{safeStats.total_essays}</div>
                         <div className="l">no total</div>
                     </div>
                 </div>
@@ -696,17 +712,17 @@ export default function Dashboard() {
                     </div>
 
                     <p style={{ margin: 0, fontSize: '13px', fontWeight: 500, color: 'var(--muted)', lineHeight: 1.55 }}>
-                        {simulationLimit.can_create ? (
+                        {safeSimulationLimit.can_create ? (
                             <>
-                                Você pode criar mais <span style={{ fontWeight: 800 }}>{simulationLimit.remaining}</span>{' '}
-                                {simulationLimit.remaining === 1 ? 'prova' : 'provas'} este mês.
+                                Você pode criar mais <span style={{ fontWeight: 800 }}>{safeSimulationLimit.remaining}</span>{' '}
+                                {safeSimulationLimit.remaining === 1 ? 'prova' : 'provas'} este mês.
                             </>
                         ) : (
-                            simulationLimit.message
+                            safeSimulationLimit.message || 'Limite de provas atingido.'
                         )}
                     </p>
 
-                    {!simulationLimit?.can_create && (
+                    {!safeSimulationLimit.can_create && (
                         <Link to="/plans" className="btn" style={{ marginTop: '12px' }}>Fazer Upgrade</Link>
                     )}
                 </div>
