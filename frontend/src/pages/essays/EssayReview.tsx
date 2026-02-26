@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getEssay } from '../../api/essays';
+import { useConfigStore } from '../../stores/configStore';
 
 export default function EssayReview() {
     const { id } = useParams<{ id: string }>();
     const [tab, setTab] = useState<'general' | 'points' | 'corrections' | 'improved'>('general');
     const [competenciesOpen, setCompetenciesOpen] = useState(false);
+    const { aiName } = useConfigStore();
 
     const { data: response, isLoading, isError } = useQuery({
         queryKey: ['essay', id],
@@ -175,7 +177,7 @@ export default function EssayReview() {
                         {/* Score Card */}
                         <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
                             <div className="p-6 text-gray-900 dark:text-gray-100 text-center">
-                                <h3 className="text-sm uppercase tracking-widest text-gray-500 font-bold mb-2">Nota Xavier</h3>
+                                <h3 className="text-sm uppercase tracking-widest text-gray-500 font-bold mb-2">Nota {aiName}</h3>
                                 <div className="text-6xl font-extrabold text-blue-600 dark:text-blue-400">
                                     {essay.score || 0}
                                     <span className="text-2xl text-gray-400 font-normal">
@@ -280,7 +282,7 @@ export default function EssayReview() {
                                 {/* Improved Version */}
                                 {tab === 'improved' && (
                                     <div>
-                                        <h3 className="text-xl font-bold mb-4">Versão Sugerida por Xavier</h3>
+                                        <h3 className="text-xl font-bold mb-4">Versão Sugerida por {aiName}</h3>
                                         <div className="prose dark:prose-invert max-w-none bg-gray-50 dark:bg-gray-900 p-6 rounded-lg border border-gray-200 dark:border-gray-700 whitespace-pre-line">
                                             {feedback.improved_version || 'Versão melhorada indisponível.'}
                                         </div>
