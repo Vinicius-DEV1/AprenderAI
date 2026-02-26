@@ -40,13 +40,26 @@ export default function AdminDashboard() {
     if (isLoading) return <div className="p-8">Carregando painel analítico...</div>;
     if (!data) return <div className="p-8 text-red-500">Erro ao carregar dados.</div>;
 
-    const { kpis, charts, activity_feed } = data;
+    // ── SAFE DEFAULTS: protect against partial or malformed API responses ──
+    const kpis = {
+        active_subscriptions: 0,
+        revenue: 0,
+        new_users_this_week: 0,
+        ...(data?.kpis || {}),
+    };
+    const charts = {
+        labels: [],
+        subscriptions: [],
+        user_distribution: [0, 0],
+        ...(data?.charts || {}),
+    };
+    const activity_feed = data?.activity_feed || [];
 
     const lineData = {
-        labels: charts.labels,
+        labels: charts.labels || [],
         datasets: [{
             label: 'Novas Assinaturas',
-            data: charts.subscriptions,
+            data: charts.subscriptions || [],
             borderColor: '#3B82F6',
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
             fill: true,
@@ -57,7 +70,7 @@ export default function AdminDashboard() {
     const doughnutData = {
         labels: ['Pagantes', 'Gratuitos'],
         datasets: [{
-            data: charts.user_distribution,
+            data: charts.user_distribution || [0, 0],
             backgroundColor: ['#10B981', '#E5E7EB'],
             borderWidth: 0
         }]
@@ -78,19 +91,19 @@ export default function AdminDashboard() {
             {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                 <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
-                    <p className="text-blue-100 text-xs font-bold uppercase">Assinaturas Ativas</p>
-                    <h3 className="text-4xl font-bold mt-2">{kpis.active_subscriptions}</h3>
+                    <p className="text-blue-100 text-xs font-bold uppercase tracking-wider">Assinaturas Ativas</p>
+                    <h3 className="text-4xl font-bold mt-2">{kpis.active_subscriptions || 0}</h3>
                 </div>
                 <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg">
-                    <p className="text-green-100 text-xs font-bold uppercase">Receita Mensal (Est.)</p>
-                    <h3 className="text-4xl font-bold mt-2">R$ {kpis.revenue.toLocaleString('pt-BR')}</h3>
+                    <p className="text-green-100 text-xs font-bold uppercase tracking-wider">Receita Mensal (Est.)</p>
+                    <h3 className="text-4xl font-bold mt-2">R$ {(kpis.revenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h3>
                 </div>
                 <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg">
-                    <p className="text-purple-100 text-xs font-bold uppercase">Novos Usuários (Semana)</p>
-                    <h3 className="text-4xl font-bold mt-2">{kpis.new_users_this_week}</h3>
+                    <p className="text-purple-100 text-xs font-bold uppercase tracking-wider">Novos Usuários (Semana)</p>
+                    <h3 className="text-4xl font-bold mt-2">{kpis.new_users_this_week || 0}</h3>
                 </div>
                 <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg">
-                    <p className="text-amber-100 text-xs font-bold uppercase">Status do Sistema</p>
+                    <p className="text-amber-100 text-xs font-bold uppercase tracking-wider">Status do Sistema</p>
                     <h3 className="text-2xl font-bold mt-2">Operacional</h3>
                 </div>
             </div>
