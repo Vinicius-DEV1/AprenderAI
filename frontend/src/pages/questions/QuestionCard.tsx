@@ -335,7 +335,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                         {chatTyping && (
                             <div className="flex items-start">
                                 <div className="bg-gray-100 dark:bg-slate-700 rounded-lg px-3 py-2 text-xs text-gray-500 flex items-center gap-2 border border-gray-200">
-                                    <span className="font-medium">Xavier digitando</span>
+                                    <span className="font-medium">{aiName} digitando</span>
                                     <span className="flex gap-1">
                                         <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></span>
                                         <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></span>
