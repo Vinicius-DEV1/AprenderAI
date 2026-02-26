@@ -6,7 +6,7 @@ use App\Models\Question;
 use App\Models\QuestionInteraction;
 use App\Models\Simulation;
 use App\Models\User;
-use App\Services\AIService;
+use App\Services\AI\AIService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Mockery\MockInterface;

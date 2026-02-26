@@ -9,7 +9,7 @@ use App\Models\Plan;
 use App\Models\Simulation;
 use App\Services\Study\StudyPlanGenerator;
 use App\Services\Study\StudyStatsService;
-use App\Services\AIService;
+use App\Services\AI\AIService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 
@@ -31,7 +31,7 @@ class StudyPlanGeneratorTest extends TestCase
         $this->generator = new StudyPlanGenerator(
             $this->aiServiceMock,
             $this->statsServiceMock
-            );
+        );
     }
 
     protected function setupUserWithAccess()
@@ -96,7 +96,7 @@ class StudyPlanGeneratorTest extends TestCase
 
         $plan = $this->generator->createPlaceholder($user, $input);
 
-        $this->assertInstanceOf(StudyPlan::class , $plan);
+        $this->assertInstanceOf(StudyPlan::class, $plan);
         $this->assertEquals('processing', $plan->status);
         $this->assertEquals(3, $plan->hours_per_day);
         $this->assertDatabaseHas('study_plans', ['id' => $plan->id]);

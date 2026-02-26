@@ -3,7 +3,7 @@
 namespace Tests\Unit\Services;
 
 use Tests\TestCase;
-use App\Services\AIService;
+use App\Services\AI\AIService;
 use App\Services\PromptService;
 use App\Services\AI\ResponseSanitizer;
 use App\Services\AI\AITelemetryService;
@@ -31,12 +31,10 @@ class AIServiceRefactorTest extends TestCase
         // Attempt to instantiate with NEW signature
         try {
             $service = new AIService($promptService, $sanitizer, $telemetry);
-            $this->assertInstanceOf(AIService::class , $service);
-        }
-        catch (\ArgumentCountError $e) {
+            $this->assertInstanceOf(AIService::class, $service);
+        } catch (\ArgumentCountError $e) {
             $this->fail('AIService constructor does not match new signature (ArgumentCountError).');
-        }
-        catch (\TypeError $e) {
+        } catch (\TypeError $e) {
             $this->fail('AIService constructor type mismatch: ' . $e->getMessage());
         }
     }

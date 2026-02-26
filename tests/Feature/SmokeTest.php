@@ -50,7 +50,7 @@ class SmokeTest extends TestCase
     public function test_full_simulation_flow()
     {
         // Mock AI Service to prevent failure due to missing API Key
-        $this->mock(\App\Services\AIService::class, function ($mock) {
+        $this->mock(\App\Services\AI\AIService::class, function ($mock) {
             $mock->shouldReceive('correctSimulation')->andReturn([
                 'provider' => 'mock',
                 'response' => ['score' => 800, 'comments' => 'Bom trabalho']
@@ -98,7 +98,7 @@ class SmokeTest extends TestCase
     public function test_full_essay_flow()
     {
         // Mock AI Service
-        $this->mock(\App\Services\AIService::class, function ($mock) {
+        $this->mock(\App\Services\AI\AIService::class, function ($mock) {
             $mock->shouldReceive('correctEssay')->andReturn([
                 'provider' => 'mock',
                 'response' => ['score' => 900, 'comments' => 'Excelente']
@@ -144,7 +144,7 @@ class SmokeTest extends TestCase
 
         try {
             // We can resolve AIService and call handle.
-            $aiService = app(\App\Services\AIService::class);
+            $aiService = app(\App\Services\AI\AIService::class);
             $job->handle($aiService);
             // If no exception, it handled gracefully (logged warning).
             $this->assertTrue(true);

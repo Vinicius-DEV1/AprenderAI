@@ -11,7 +11,7 @@ use App\Models\Question;
 use App\Models\SimulationAnswer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
-use App\Services\AIService;
+use App\Services\AI\AIService;
 use Mockery;
 
 class StudyPlanTest extends TestCase

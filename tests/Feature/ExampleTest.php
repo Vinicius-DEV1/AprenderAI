@@ -14,6 +14,7 @@ class ExampleTest extends TestCase
     {
         $response = $this->get('/');
 
+        // Root is now the SPA entry point (index.blade.php) or redirect
         $response->assertStatus(200);
     }
 }

@@ -82,7 +82,7 @@ class DashboardStatsTest extends TestCase
 
         // Assert
         $response->assertStatus(200);
-        $response->assertViewIs('dashboard.index');
+        // $response->assertViewIs('dashboard.index'); // MIGRATED TO REACT
 
         // Check View Data
         $response->assertViewHas('totalSimulations', 2);
@@ -90,8 +90,8 @@ class DashboardStatsTest extends TestCase
 
         // Math: 5/10 = 50%
         // Port: 8/10 = 80%
-        $response->assertViewHas('avgMath', 50.0);
-        $response->assertViewHas('avgPortuguese', 80.0);
+        $response->assertJsonPath('avg_math', 50.0);
+        $response->assertJsonPath('avg_portuguese', 80.0);
 
         // Check Recent Simulations
         $recent = $response->viewData('recentSimulations');
@@ -99,8 +99,7 @@ class DashboardStatsTest extends TestCase
         $this->assertEquals(80.0, $recent->first()->calculated_score); // Most recent is Sim 2 (Port)
 
         // Check Subject Performance
-        $perf = $response->viewData('subjectPerformance');
-        // Might be mixed order, so check collection content
+        $perf = collect($response->json('subject_performance'));
         $mathPerf = $perf->firstWhere('name', 'Matemática');
         $portPerf = $perf->firstWhere('name', 'Português');
 
