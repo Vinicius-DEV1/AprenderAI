@@ -16,6 +16,16 @@ class QuestionController extends Controller
     {
         $query = Question::published()->with(['subjects', 'topics', 'alternatives', 'images']);
 
+        // Base Type Blocks: Never return Redação in general endpoints
+        $query->where('tipo_questao', '!=', 'Redação');
+
+        // Optional Discursive Filter
+        if ($request->boolean('include_discursive')) {
+            $query->whereIn('tipo_questao', ['Objetiva', 'Discursiva']);
+        } else {
+            $query->where('tipo_questao', 'Objetiva');
+        }
+
         // Type filter (enem, concurso, etc)
         $query->filterByType($request->type);
 

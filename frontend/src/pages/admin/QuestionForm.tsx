@@ -22,6 +22,8 @@ export default function QuestionForm() {
     const [statement, setStatement] = useState('');
     const [correctAnswer, setCorrectAnswer] = useState('');
     const [explanation, setExplanation] = useState('');
+    const [tipoQuestao, setTipoQuestao] = useState('Objetiva');
+    const [discursiveAnswer, setDiscursiveAnswer] = useState('');
 
     // Multiple Choice Alternatives
     const [altA, setAltA] = useState('');
@@ -62,6 +64,8 @@ export default function QuestionForm() {
             setStatement(question.statement || '');
             setCorrectAnswer(question.correct_answer || '');
             setExplanation(question.explanation || '');
+            setTipoQuestao(question.tipo_questao || 'Objetiva');
+            setDiscursiveAnswer(typeof question.discursive_answer === 'object' && question.discursive_answer !== null ? JSON.stringify(question.discursive_answer, null, 2) : (question.discursive_answer || ''));
 
             if (question.format === 'multiple_choice' && question.alternatives) {
                 const alts = question.alternatives;
@@ -117,7 +121,8 @@ export default function QuestionForm() {
             difficulty_reasoning: difficultyReasoning,
             statement,
             correct_answer: correctAnswer,
-            explanation
+            explanation,
+            tipo_questao: tipoQuestao
         };
 
         if (type === 'concurso') {
@@ -137,6 +142,14 @@ export default function QuestionForm() {
                 'C': 'Certo',
                 'E': 'Errado'
             };
+        }
+
+        if (tipoQuestao !== 'Objetiva' && discursiveAnswer) {
+            try {
+                payload.discursive_answer = JSON.parse(discursiveAnswer);
+            } catch {
+                payload.discursive_answer = discursiveAnswer;
+            }
         }
 
         saveMutation.mutate(payload);
@@ -179,7 +192,7 @@ export default function QuestionForm() {
                             </div>
 
                             <div>
-                                <label htmlFor="type" className="block text-sm font-medium text-gray-700">Tipo de Prova</label>
+                                <label htmlFor="type" className="block text-sm font-medium text-gray-700">Tipo de Prova (Categoria)</label>
                                 <select
                                     id="type"
                                     value={type}
@@ -192,7 +205,21 @@ export default function QuestionForm() {
                             </div>
 
                             <div>
-                                <label htmlFor="format" className="block text-sm font-medium text-gray-700">Formato da Questão</label>
+                                <label htmlFor="tipo_questao" className="block text-sm font-medium text-gray-700">Tipo da Questão (Estrutura)</label>
+                                <select
+                                    id="tipo_questao"
+                                    value={tipoQuestao}
+                                    onChange={(e) => setTipoQuestao(e.target.value)}
+                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border-indigo-300 bg-indigo-50 font-bold">
+                                    <option value="Objetiva">Objetiva (A, B, C, D, E | Certo/Errado)</option>
+                                    <option value="Discursiva">Discursiva (Com subitens fatiados)</option>
+                                    <option value="Redação">Redação (Texto Único)</option>
+                                </select>
+                                {getError('tipo_questao') && <span className="text-red-500 text-xs">{getError('tipo_questao')}</span>}
+                            </div>
+
+                            <div>
+                                <label htmlFor="format" className="block text-sm font-medium text-gray-700">Formato da Questão (Usado para Objetivas)</label>
                                 <select
                                     id="format"
                                     value={format}
@@ -206,6 +233,7 @@ export default function QuestionForm() {
                                     <option value="multiple_choice">Múltipla Escolha (A, B, C, D, E)</option>
                                     <option value="true_false">Certo ou Errado (Somente C/E)</option>
                                 </select>
+                                <span className="text-[10px] text-gray-400">Na Discursiva, use 'Múltipla Escolha' para fatiar as linhas (a, b, c).</span>
                                 {getError('format') && <span className="text-red-500 text-xs">{getError('format')}</span>}
                             </div>
 
@@ -313,7 +341,7 @@ export default function QuestionForm() {
 
                         <div className="border-t pt-4">
                             <h3 className="text-lg font-medium text-gray-900 mb-4">
-                                {format === 'multiple_choice' ? 'Alternativas (Múltipla Escolha)' : 'Alternativas (Certo ou Errado)'}
+                                {tipoQuestao !== 'Objetiva' ? 'Subitens Discursivos (Tratado como Alternativas)' : (format === 'multiple_choice' ? 'Alternativas (Múltipla Escolha)' : 'Alternativas (Certo ou Errado)')}
                             </h3>
                             <div className="space-y-4">
                                 {/* Múltipla Escolha */}
@@ -329,23 +357,25 @@ export default function QuestionForm() {
                                             <div key={item.letter}>
                                                 <label htmlFor={`alt_${item.letter}`} className="block text-sm font-medium text-gray-700">Alternativa {item.letter}</label>
                                                 <div className="flex items-center gap-2 mt-1">
-                                                    <input
-                                                        type="radio"
-                                                        name="correct_answer"
-                                                        value={item.letter}
-                                                        checked={correctAnswer === item.letter}
-                                                        onChange={(e) => setCorrectAnswer(e.target.value)}
-                                                        className="text-indigo-600 focus:ring-indigo-500 w-4 h-4"
-                                                        required
-                                                    />
-                                                    <div className="flex-1 space-y-1">
+                                                    {tipoQuestao === 'Objetiva' && (
                                                         <input
-                                                            type="text"
+                                                            type="radio"
+                                                            name="correct_answer"
+                                                            value={item.letter}
+                                                            checked={correctAnswer === item.letter}
+                                                            onChange={(e) => setCorrectAnswer(e.target.value)}
+                                                            className="text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                                                            required
+                                                        />
+                                                    )}
+                                                    <div className="flex-1 space-y-1">
+                                                        <textarea
                                                             id={`alt_${item.letter}`}
                                                             value={item.val}
                                                             onChange={(e) => item.set(e.target.value)}
                                                             className="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                                            required
+                                                            rows={2}
+                                                            required={tipoQuestao === 'Objetiva' || item.val !== ''}
                                                         />
                                                         {getError(`alternatives.${item.letter}`) && <span className="text-red-500 text-xs">{getError(`alternatives.${item.letter}`)}</span>}
                                                     </div>
@@ -356,7 +386,7 @@ export default function QuestionForm() {
                                 )}
 
                                 {/* Certo ou Errado */}
-                                {format === 'true_false' && (
+                                {format === 'true_false' && tipoQuestao === 'Objetiva' && (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {[
                                             { letter: 'C', label: 'Certo' },
@@ -383,18 +413,38 @@ export default function QuestionForm() {
                             </div>
                         </div>
 
+                        {/* Espelho Discursiva/Redação */}
+                        {tipoQuestao !== 'Objetiva' && (
+                            <div className="border-t pt-4 bg-indigo-50 p-4 rounded-lg mt-6 border border-indigo-200">
+                                <label htmlFor="discursive_answer" className="block text-sm font-bold text-indigo-900 mb-2">🎓 Espelho de Correção (JSON ou Texto Livro)</label>
+                                <textarea
+                                    id="discursive_answer"
+                                    value={discursiveAnswer}
+                                    onChange={(e) => setDiscursiveAnswer(e.target.value)}
+                                    rows={8}
+                                    className="font-mono text-sm block w-full border-indigo-300 rounded-md shadow-sm placeholder-indigo-300 focus:border-indigo-500 focus:ring-indigo-500"
+                                    placeholder='Ex: 
+{
+  "a": "O tratamento para a gripe...",
+  "b": "O diagnóstico inclui..."
+}'></textarea>
+                                {getError('discursive_answer') && <span className="text-red-500 text-xs">{getError('discursive_answer')}</span>}
+                                <p className="text-xs text-indigo-600 mt-2 font-medium">Se você preencher em formato JSON, o frontend exibirá fatiado de forma elegante. Caso decida colar apenas o texto liso da banca, está ótimo também.</p>
+                            </div>
+                        )}
+
                         {/* Explicação */}
                         <div className="border-t pt-4 bg-yellow-50 p-4 rounded-lg mt-6">
-                            <label htmlFor="explanation" className="block text-sm font-medium text-gray-700">Explicação da Resposta (Crucial para o modo Offline)</label>
+                            <label htmlFor="explanation" className="block text-sm font-medium text-gray-700">Explicação Teórica (Crucial para Objetivas)</label>
                             <textarea
                                 id="explanation"
                                 value={explanation}
                                 onChange={(e) => setExplanation(e.target.value)}
                                 rows={4}
                                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm placeholder-gray-500 focus:border-indigo-500 focus:ring-indigo-500"
-                                placeholder="Explique por que a alternativa correta é a correta..."></textarea>
+                                placeholder="Explique os conceitos teóricos subjacentes da questão..."></textarea>
                             {getError('explanation') && <span className="text-red-500 text-xs">{getError('explanation')}</span>}
-                            <p className="text-sm text-gray-500 mt-1">Se deixado em branco, o aluno será forçado a solicitar ajuda ao tutor (gerando custo de API).</p>
+                            <p className="text-sm text-gray-500 mt-1">Se deixado em branco, o aluno solicitará ajuda ao tutor (gerando custo de API).</p>
                         </div>
 
                         <div className="flex items-center justify-end mt-8 border-t pt-4">
