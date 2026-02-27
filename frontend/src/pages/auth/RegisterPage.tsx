@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
 import { register as apiRegister, getUser } from '../../api/auth';
+import { toast } from 'sonner';
 
 export default function RegisterPage() {
     const navigate = useNavigate();
@@ -31,6 +32,10 @@ export default function RegisterPage() {
 
             const response = await getUser();
             setUser(response.data.user);
+
+            toast.success('Conta criada com sucesso! Verifique seu e-mail para validar sua conta e liberar todos os recursos.', {
+                duration: 8000,
+            });
 
             navigate('/dashboard');
         } catch (err: any) {

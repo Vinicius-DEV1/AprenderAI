@@ -42,12 +42,23 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('api.login');
     Route::post('/register', [AuthController::class, 'register'])->name('api.register');
 
+    // Verificacao via URL enviada por Email
+    Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
 
+    // Proxy para forgot-password que testa confirmacao
+    Route::post('/forgot-password', [AuthController::class, 'forgotPasswordProxy'])->name('api.forgot-password');
 
     // Autenticado
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/user', [AuthController::class, 'user'])->name('api.user');
         Route::post('/logout', [AuthController::class, 'logout'])->name('api.logout');
+
+        // Email Verification
+        Route::post('/email/verification-notification', [AuthController::class, 'sendVerificationEmail'])
+            ->middleware('throttle:6,1')
+            ->name('verification.send');
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('api.dashboard');
 
         // Resources
@@ -121,6 +132,11 @@ Route::prefix('v1')->name('api.')->group(function () {
             // Essays Admin
             Route::get('essays', [AdminEssayController::class, 'index']);
             Route::post('essays/{essay}/retry', [AdminEssayController::class, 'retry']);
+
+            // API Pricing
+            Route::get('/api-pricing', [AdminApiPricingController::class, 'index']);
+            Route::put('/api-pricing/{apiPricing}', [AdminApiPricingController::class, 'update']);
+            Route::get('/api-pricing/{apiPricing}/logs', [AdminApiPricingController::class, 'logs']);
 
             // Settings & Cache
             Route::get('/settings', [AdminSettingController::class, 'index']);

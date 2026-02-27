@@ -32,3 +32,8 @@ export const resetPassword = async (data: any) => {
     await getCsrfCookie();
     return api.post('/api/v1/reset-password', data);
 };
+
+export const sendVerificationEmail = async () => {
+    await getCsrfCookie();
+    return api.post('/api/v1/email/verification-notification');
+};

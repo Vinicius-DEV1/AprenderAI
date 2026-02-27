@@ -11,6 +11,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 
+use Illuminate\Support\Facades\Password;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
+use Illuminate\Auth\Events\Verified;
+
 class AuthController extends Controller
 {
     protected $planService;
@@ -90,5 +94,63 @@ class AuthController extends Controller
         return response()->json([
             'user' => $request->user()
         ]);
+    }
+
+    // =========================================================================
+    // VERIFICAÇÃO DE EMAIL E RECUPERAÇÃO DE SENHA
+    // =========================================================================
+
+    public function verifyEmail($id, $hash, Request $request)
+    {
+        $user = User::findOrFail($id);
+
+        if (!hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
+            return response()->json(['message' => 'Link inválido ou expirado.'], 403);
+        }
+
+        if ($user->hasVerifiedEmail()) {
+            return redirect(env('FRONTEND_URL', 'http://localhost:5174') . '/dashboard?verified=1');
+        }
+
+        if ($user->markEmailAsVerified()) {
+            event(new Verified($user));
+        }
+
+        return redirect(env('FRONTEND_URL', 'http://localhost:5174') . '/dashboard?verified=1');
+    }
+
+    public function sendVerificationEmail(Request $request)
+    {
+        if ($request->user()->hasVerifiedEmail()) {
+            return response()->json(['message' => 'Seu e-mail já está verificado.'], 400);
+        }
+
+        $request->user()->sendEmailVerificationNotification();
+
+        return response()->json(['status' => 'Um novo link de verificação foi enviado para o seu e-mail.']);
+    }
+
+    public function forgotPasswordProxy(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $user = User::where('email', $request->email)->first();
+
+        // Regra de Negócio: Impede recuperação se o usuário existe, mas o e-mail não está configurado.
+        if ($user && is_null($user->email_verified_at)) {
+            return response()->json([
+                'message' => 'E-mail não confirmado.',
+                'errors' => ['email' => ['Você não confirmou o seu e-mail no momento do cadastro. Por segurança, a redefinição de senha está indisponível para esta conta.']]
+            ], 403);
+        }
+
+        // Se o email passou pela checagem (ou não existe no BD, enviando e-mail falso), repassamos para a regra padrão.
+        $status = Password::sendResetLink(
+            $request->only('email')
+        );
+
+        return $status === Password::RESET_LINK_SENT
+            ? response()->json(['status' => __($status)])
+            : response()->json(['errors' => ['email' => [__($status)]]], 422);
     }
 }

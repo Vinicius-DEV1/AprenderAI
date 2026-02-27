@@ -35,11 +35,12 @@ class UserSeeder extends Seeder
 
         $this->command->info("Plans found: Free({$free->id}), Basic({$basic->id}), Plus({$plus->id})");
 
-        // Admin User
-        User::updateOrCreate(['email' => 'admin@aprovaai.com'], [
+        // Admin User (email_verified_at = now())
+        User::updateOrCreate(['email' => 'admin@aprenderai.com'], [
             'name' => 'Administrador',
             'password' => $password,
             'role' => 'admin',
+            'email_verified_at' => now(),
             'plan_id' => $plus->id,
             'plan_started_at' => now(),
             'plan_expires_at' => now()->addYear(),
@@ -48,11 +49,12 @@ class UserSeeder extends Seeder
             'usage_reset_at' => now()->addMonth(),
         ]);
 
-        // Free User
-        User::updateOrCreate(['email' => 'free@aprovaai.test'], [
-            'name' => 'Usuário Free',
+        // Gratuito User (email_verified_at = null)
+        User::updateOrCreate(['email' => 'gratuito@aprenderai.com'], [
+            'name' => 'Usuário Gratuito',
             'password' => $password,
             'role' => 'user',
+            'email_verified_at' => null,
             'plan_id' => $free->id,
             'plan_started_at' => now(),
             'plan_expires_at' => null,
@@ -61,37 +63,12 @@ class UserSeeder extends Seeder
             'usage_reset_at' => now()->addMonth(),
         ]);
 
-        // Basic User
-        $uBasic = User::updateOrCreate(['email' => 'basic@aprovaai.test'], [
-            'name' => 'Usuário Basic',
-            'password' => $password,
-            'role' => 'user',
-            'plan_id' => $basic->id,
-            'plan_started_at' => now(),
-            'plan_expires_at' => now()->addMonth(),
-            'simulations_used_this_month' => 0,
-            'essays_used_this_month' => 0,
-            'usage_reset_at' => now()->addMonth(),
-        ]);
-
-        // Basic Subscription
-        Subscription::updateOrCreate(
-            ['user_id' => $uBasic->id],
-            [
-                'plan_id' => $basic->id,
-                'status' => 'active',
-                'gateway' => 'manual',
-                'gateway_id' => 'manual_basic_' . $uBasic->id,
-                'current_period_start' => now(),
-                'current_period_end' => now()->addMonth()
-            ]
-        );
-
-        // Plus User
-        $uPlus = User::updateOrCreate(['email' => 'plus@aprovaai.test'], [
+        // Plus User (email_verified_at = null)
+        $uPlus = User::updateOrCreate(['email' => 'plus@aprenderai.com'], [
             'name' => 'Usuário Plus',
             'password' => $password,
             'role' => 'user',
+            'email_verified_at' => null,
             'plan_id' => $plus->id,
             'plan_started_at' => now(),
             'plan_expires_at' => now()->addMonth(),
