@@ -351,7 +351,11 @@ export default function AdminQuestions() {
                                                 <span className="text-[10px] font-black text-gray-300 uppercase">•</span>
                                                 <span className="text-[10px] font-black text-gray-400 uppercase">{q.organization || 'AprenderAI'} {q.year && `/ ${q.year}`}</span>
                                                 <span className="text-[10px] font-black text-gray-300 uppercase">•</span>
-                                                {q.format === 'true_false' ? (
+                                                {q.tipo_questao === 'Redação' ? (
+                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-100 text-orange-700 uppercase tracking-tighter">✍️ Redação</span>
+                                                ) : q.tipo_questao === 'Discursiva' ? (
+                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-700 uppercase tracking-tighter">🎓 Discursiva</span>
+                                                ) : q.format === 'true_false' ? (
                                                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700 uppercase tracking-tighter">⚖️ Certo/Errado</span>
                                                 ) : (
                                                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-gray-100 text-gray-600 uppercase tracking-tighter">📝 Múltipla Escolha</span>
