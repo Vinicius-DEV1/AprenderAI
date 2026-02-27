@@ -1,5 +1,5 @@
 export default function FairUse() {
-    const siteName = import.meta.env.VITE_APP_NAME || 'AprovadoAI';
+    const siteName = import.meta.env.VITE_APP_NAME || 'AprenderAI';
 
     return (
         <div className="font-sans antialiased text-slate-900 bg-white min-h-screen">

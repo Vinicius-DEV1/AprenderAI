@@ -349,7 +349,7 @@ export default function AdminQuestions() {
                                             <div className="flex gap-2 mt-1 items-center">
                                                 <span className="text-[10px] font-black text-indigo-400 uppercase">{q.subjects?.[0]?.name || 'Sem Matéria'}</span>
                                                 <span className="text-[10px] font-black text-gray-300 uppercase">•</span>
-                                                <span className="text-[10px] font-black text-gray-400 uppercase">{q.organization || 'AprovadoAI'} {q.year && `/ ${q.year}`}</span>
+                                                <span className="text-[10px] font-black text-gray-400 uppercase">{q.organization || 'AprenderAI'} {q.year && `/ ${q.year}`}</span>
                                                 <span className="text-[10px] font-black text-gray-300 uppercase">•</span>
                                                 {q.format === 'true_false' ? (
                                                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700 uppercase tracking-tighter">⚖️ Certo/Errado</span>
