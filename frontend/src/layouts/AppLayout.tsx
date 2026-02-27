@@ -4,6 +4,7 @@ import { useConfigStore } from '../stores/configStore';
 import { useAuthStore } from '../stores/authStore';
 import { logout as apiLogout } from '../api/auth';
 import { useUIStore } from '../stores/uiStore';
+import EmailVerificationBanner from '../components/EmailVerificationBanner';
 
 export default function AppLayout() {
     const config = useConfigStore();
@@ -256,9 +257,12 @@ export default function AppLayout() {
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
-                    <div className="max-w-7xl mx-auto">
-                        <Outlet />
+                <main className="flex-1 overflow-y-auto">
+                    <EmailVerificationBanner />
+                    <div className="p-4 lg:p-8">
+                        <div className="max-w-7xl mx-auto">
+                            <Outlet />
+                        </div>
                     </div>
                 </main>
             </div>

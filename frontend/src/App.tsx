@@ -10,6 +10,7 @@ import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
+import VerifyEmail from './pages/auth/VerifyEmail';
 import NotFound from './pages/errors/NotFound';
 import ServerError from './pages/errors/ServerError';
 import PrivateRoute from './components/PrivateRoute';
@@ -62,6 +63,7 @@ import AdminAnalytics from './pages/admin/Analytics';
 import AdminMonitor from './pages/admin/Monitor';
 import AdminIntegrations from './pages/admin/Integrations';
 import AdminChatLogs from './pages/admin/AdminChatLogs';
+import AdminApiPricing from './pages/admin/ApiPricing';
 
 function App() {
     const { isLoading: configLoading, error: configError } = useConfig();
@@ -122,6 +124,7 @@ function App() {
                 <Route path="/register" element={<><MetaTags title="Criar Conta" /><RegisterPage /></>} />
                 <Route path="/forgot-password" element={<><MetaTags title="Recuperar Senha" /><ForgotPassword /></>} />
                 <Route path="/reset-password" element={<><MetaTags title="Redefinir Senha" /><ResetPassword /></>} />
+                <Route path="/verify-email" element={<><MetaTags title="Verificação de E-mail" /><VerifyEmail /></>} />
                 <Route path="/privacidade" element={<><MetaTags title="Política de Privacidade" /><PrivacyPolicy /></>} />
                 <Route path="/uso-justo" element={<><MetaTags title="Termos de Uso" /><FairUsePolicy /></>} />
 
@@ -194,6 +197,7 @@ function App() {
                         <Route path="monitor" element={<><MetaTags title="Admin: Monitoramento" /><AdminMonitor /></>} />
                         <Route path="integrations" element={<><MetaTags title="Admin: Integrações" /><AdminIntegrations /></>} />
                         <Route path="chat-logs/:id" element={<><MetaTags title="Admin: Auditoria IA" /><AdminChatLogs /></>} />
+                        <Route path="api-pricing" element={<><MetaTags title="Admin: Custos de API" /><AdminApiPricing /></>} />
                     </Route>
                 </Route>
             </Routes>
