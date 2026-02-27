@@ -19,16 +19,11 @@ class QuestionController extends Controller
         // Base Type Blocks: Never return Redação in student endpoints
         $query->where('tipo_questao', '!=', 'Redação');
 
-        // Optional Discursive Filter (Defaults to true now)
-        if ($request->has('include_discursive')) {
-            if ($request->boolean('include_discursive')) {
-                $query->whereIn('tipo_questao', ['Objetiva', 'Discursiva']);
-            } else {
-                $query->where('tipo_questao', 'Objetiva');
-            }
-        } else {
-            // Default: show both
+        // Optional Discursive Filter
+        if ($request->boolean('include_discursive')) {
             $query->whereIn('tipo_questao', ['Objetiva', 'Discursiva']);
+        } else {
+            $query->where('tipo_questao', 'Objetiva');
         }
 
         // Type filter (enem, concurso, etc)

@@ -17,6 +17,7 @@ interface FilterOptions {
     organization: string;
     institution: string;
     role: string;
+    status: string;
     include_discursive: boolean;
 }
 
@@ -91,7 +92,7 @@ export default function QuestionBank() {
         organization: '',
         institution: '',
         role: '',
-        include_discursive: true
+        include_discursive: false
     });
     const [moreFilters, setMoreFilters] = useState(false);
     const [statsOpen, setStatsOpen] = useState(false);
@@ -218,7 +219,7 @@ export default function QuestionBank() {
     const clearFilters = () => {
         setFilters({
             type: '', subject: '', topic: '', keyword: '', year: '',
-            difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: true
+            difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false
         });
         setMoreFilters(false);
         setPage(1);
