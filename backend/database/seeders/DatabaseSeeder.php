@@ -15,12 +15,14 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            SettingSeeder::class ,
-            SubjectSeeder::class ,
-            PlanSeeder::class ,
-            UserSeeder::class ,
-            QuestionSeeder::class ,
-            SystemPromptSeeder::class ,
+            SettingSeeder::class,
+            SubjectSeeder::class,
+            PlanSeeder::class,
+            UserSeeder::class,
+            QuestionSeeder::class,
+            DiscursiveAndEssayMockSeeder::class,
+            SystemPromptSeeder::class,
+            XavierPromptsSeeder::class,
         ]);
     }
 }
