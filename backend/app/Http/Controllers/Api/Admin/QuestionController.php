@@ -119,6 +119,8 @@ class QuestionController extends Controller
             'subject' => 'nullable|string',
             'topic' => 'nullable|string',
             'alternatives' => 'nullable|array',
+            'tipo_questao' => 'nullable|string',
+            'discursive_answer' => 'nullable',
         ]);
 
         \DB::beginTransaction();
@@ -176,6 +178,8 @@ class QuestionController extends Controller
             'subject' => 'nullable|string',
             'topic' => 'nullable|string',
             'alternatives' => 'nullable|array',
+            'tipo_questao' => 'nullable|string',
+            'discursive_answer' => 'nullable',
         ]);
 
         \DB::beginTransaction();
