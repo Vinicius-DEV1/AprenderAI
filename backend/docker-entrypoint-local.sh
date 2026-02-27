@@ -7,12 +7,11 @@ echo "🚀 Iniciando ambiente de DESENVOLVIMENTO..."
 git config --global --add safe.directory /var/www
 
 # Ajusta permissões iniciais (usando uid 1000 que é o padrão no Dockerfile.local)
-chown 1000:www-data storage bootstrap/cache || true
-chmod 775 storage bootstrap/cache || true
+# CRÍTICO: criar ANTES do composer install (package:discover precisa de bootstrap/cache)
+mkdir -p bootstrap/cache storage/framework/sessions storage/framework/views storage/framework/cache storage/logs
+chown -R 1000:www-data bootstrap/cache storage || true
+chmod -R 775 bootstrap/cache storage || true
 
-# Garante que as subpastas do framework existam no volume interno
-mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache storage/logs
-chown -R 1000:www-data storage/framework storage/logs
 
 if [ -f .env ] || [ -f .env.example ]; then
     # Se não houver .env, copia do .env.example

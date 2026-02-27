@@ -67,17 +67,18 @@ services:
     ports:
       - "33061:3306"
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE:-aprender_ai}
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-secret}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
-      MYSQL_USER: ${DB_USERNAME:-root}
+      MYSQL_DATABASE: aprenderai
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_PASSWORD: secret
+      MYSQL_USER: admin
     volumes:
       - local-db-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p$${DB_PASSWORD:-secret}"]
+      # Usa root para evitar race condition de criação do MYSQL_USER
+      test: [ "CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-psecret" ]
       interval: 5s
       timeout: 5s
-      retries: 20
+      retries: 30
     networks:
       - local-network
 
@@ -89,7 +90,21 @@ services:
     restart: unless-stopped
     volumes:
       - ./backend:/var/www
-    env_file: ./backend/.env
+      - /var/www/vendor # volume anônimo: evita bind-mount apagar o vendor
+    environment:
+      - APP_NAME=aprenderAI
+      - APP_ENV=local
+      - APP_KEY=base64:cwLoa7etFk8s4DQ8goS72l6OyFF41/Qwy84zfacp5xs=
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=aprenderai
+      - DB_USERNAME=admin
+      - DB_PASSWORD=secret
+      - REDIS_HOST=redis
+      - SESSION_DRIVER=redis
+      - CACHE_STORE=redis
+      - QUEUE_CONNECTION=database
     command: php artisan queue:work --sleep=3 --tries=3 --timeout=90
     depends_on:
       app:
@@ -106,13 +121,20 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.local
     container_name: aprender-ai-frontend
+    restart: on-failure
     ports:
       - "5174:5174"
     volumes:
       - ./frontend:/app
+      - /app/node_modules # volume anônimo: protege node_modules do bind-mount
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      # Fix para WSL2/Windows: Vite EIO crash no file-watching via bind mount
+      - CHOKIDAR_USEPOLLING=1
+      - WATCHPACK_POLLING=true
     networks:
       - local-network
-    command: bash -c "npm install && npm run dev -- --host"
+    command: npm run dev -- --host
     depends_on:
       - app
 
