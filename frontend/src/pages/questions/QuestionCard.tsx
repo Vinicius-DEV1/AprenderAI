@@ -22,6 +22,8 @@ interface Question {
     difficulty: 'easy' | 'medium' | 'hard';
     statement_html: string;
     statement: string;
+    tipo_questao?: 'Objetiva' | 'Discursiva' | 'Redação';
+    discursive_answer?: any;
     alternatives: Alternative[];
     already_answered?: boolean;
     was_correct?: boolean;
@@ -31,7 +33,13 @@ export default function QuestionCard({ question: q }: { question: Question }) {
     const { aiName } = useConfigStore();
     const { user } = useAuthStore();
 
+    const isDiscursive = q.tipo_questao === 'Discursiva';
+    const isRedacao = q.tipo_questao === 'Redação';
+
     const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+    const [discursiveAnswers, setDiscursiveAnswers] = useState<Record<string, string>>({});
+    const [redacaoText, setRedacaoText] = useState<string>('');
+
     const [answered, setAnswered] = useState(false);
     const [isCorrect, setIsCorrect] = useState<boolean | null>(q.was_correct ?? null);
     const [correctAnswer, setCorrectAnswer] = useState<string | null>(null);
@@ -78,18 +86,35 @@ export default function QuestionCard({ question: q }: { question: Question }) {
     };
 
     const selectAnswer = (letter: string) => {
-        if (!answered) setSelectedAnswer(letter);
+        if (!answered && !isDiscursive) setSelectedAnswer(letter);
+    };
+
+    const handleDiscursiveChange = (label: string, text: string) => {
+        if (!answered) {
+            setDiscursiveAnswers(prev => ({ ...prev, [label]: text }));
+        }
     };
 
     const submitAnswer = async () => {
-        if (!selectedAnswer || answered || submitting) return;
+        if (submitting || answered) return;
+        if (!isDiscursive && !isRedacao && !selectedAnswer) return;
+        if (isDiscursive && Object.keys(discursiveAnswers).length === 0) return;
+        if (isRedacao && !redacaoText.trim()) return;
+
         setSubmitting(true);
         try {
-            const res = await api.post(`/api/v1/questions/${q.id}/answer`, { selected_answer: selectedAnswer });
+            let payload: any = { selected_answer: selectedAnswer };
+            if (isDiscursive) {
+                payload = { respostas_discursivas: discursiveAnswers };
+            } else if (isRedacao) {
+                payload = { redacao_texto: redacaoText };
+            }
+
+            const res = await api.post(`/api/v1/questions/${q.id}/answer`, payload);
             const data = res.data;
             setAnswered(true);
-            setIsCorrect(data.correct);
-            setCorrectAnswer(data.correct_answer);
+            setIsCorrect(data.correct ?? null);
+            setCorrectAnswer(data.correct_answer ?? null);
             setExplanation(data.explanation || '');
             setDifficultyReasoning(data.difficulty_reasoning || '');
         } catch (e) {
@@ -102,6 +127,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
     const resetCard = () => {
         setAnswered(false);
         setSelectedAnswer(null);
+        setDiscursiveAnswers({});
         setIsCorrect(null);
         setCorrectAnswer(null);
         setExplanation(null);
@@ -230,33 +256,77 @@ export default function QuestionCard({ question: q }: { question: Question }) {
 
             <div className="qb-statement" dangerouslySetInnerHTML={{ __html: q.statement_html }} />
 
-            <div className="qb-alternatives-list">
-                {q.alternatives.sort((a, b) => a.label.localeCompare(b.label)).map(alt => (
-                    <div
-                        key={alt.id}
-                        className={`qb-alt ${selectedAnswer === alt.label && !answered ? 'selected' : ''
-                            } ${answered && alt.label === (correctAnswer || (alt.is_correct ? alt.label : null)) ? 'correct-reveal' : ''
-                            } ${answered && selectedAnswer === alt.label && alt.label !== (correctAnswer || (alt.is_correct ? alt.label : null)) ? 'incorrect-reveal' : ''
-                            } ${answered ? 'disabled' : ''}`}
-                        onClick={() => selectAnswer(alt.label)}
-                    >
-                        <div className="qb-alt-letter">{alt.label}</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexGrow: 1, overflow: 'hidden' }}>
-                            {alt.content && (
-                                <div className="qb-alt-text" style={{ wordBreak: 'break-word' }}>{alt.content}</div>
-                            )}
-                            {alt.image_path && (
-                                <img src={`/storage/${alt.image_path}`} alt={`Alternativa ${alt.label}`} style={{ maxWidth: '100%', height: 'auto', borderRadius: '4px', objectFit: 'contain' }} />
-                                // Note: In production use actual storage URL helper logic
-                            )}
-                        </div>
+            {/* Redação Rendering */}
+            {isRedacao && (
+                <div className="qb-redacao-box mt-4 space-y-4">
+                    <h3 className="font-bold text-slate-800 dark:text-slate-200">Área de Produção Textual</h3>
+                    <textarea
+                        className="w-full p-4 border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 text-sm leading-relaxed whitespace-pre-wrap font-mono"
+                        rows={30}
+                        placeholder="Transcreva sua redação final aqui. Respeite os limites mínimos e máximos da banca..."
+                        value={redacaoText}
+                        onChange={(e) => setRedacaoText(e.target.value)}
+                        disabled={answered}
+                        style={{ backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #e2e8f0 31px, #e2e8f0 32px)', lineHeight: '32px', paddingTop: '8px' }}
+                    />
+                    <div className="flex justify-between items-center text-xs text-slate-500">
+                        <span>Min: 20 linhas (aprox)</span>
+                        <span>Max: 30 linhas</span>
                     </div>
-                ))}
-            </div>
+                </div>
+            )}
 
-            <div className="qb-card-actions">
+            {/* Discursiva Rendering */}
+            {!isRedacao && isDiscursive && (
+                <div className="qb-discursive-list space-y-6 mt-4">
+                    {q.alternatives.sort((a, b) => a.label.localeCompare(b.label)).map(alt => (
+                        <div key={alt.id} className="qb-discursive-item">
+                            <div className="font-bold text-slate-800 dark:text-slate-200 mb-2 whitespace-pre-wrap">
+                                {alt.label.toLowerCase()}) {alt.content}
+                            </div>
+                            <textarea
+                                className="w-full p-3 border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 text-sm"
+                                rows={4}
+                                placeholder="Sua resposta fundamentada..."
+                                value={discursiveAnswers[alt.label] || ''}
+                                onChange={(e) => handleDiscursiveChange(alt.label, e.target.value)}
+                                disabled={answered}
+                            />
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {!isRedacao && !isDiscursive && (
+                /* Objetiva Rendering */
+                <div className="qb-alternatives-list">
+                    {q.alternatives.sort((a, b) => a.label.localeCompare(b.label)).map(alt => (
+                        <div
+                            key={alt.id}
+                            className={`qb-alt ${selectedAnswer === alt.label && !answered ? 'selected' : ''
+                                } ${answered && alt.label === (correctAnswer || (alt.is_correct ? alt.label : null)) ? 'correct-reveal' : ''
+                                } ${answered && selectedAnswer === alt.label && alt.label !== (correctAnswer || (alt.is_correct ? alt.label : null)) ? 'incorrect-reveal' : ''
+                                } ${answered ? 'disabled' : ''}`}
+                            onClick={() => selectAnswer(alt.label)}
+                        >
+                            <div className="qb-alt-letter">{alt.label}</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexGrow: 1, overflow: 'hidden' }}>
+                                {alt.content && (
+                                    <div className="qb-alt-text" style={{ wordBreak: 'break-word' }}>{alt.content}</div>
+                                )}
+                                {alt.image_path && (
+                                    <img src={`/storage/${alt.image_path}`} alt={`Alternativa ${alt.label}`} style={{ maxWidth: '100%', height: 'auto', borderRadius: '4px', objectFit: 'contain' }} />
+                                    // Note: In production use actual storage URL helper logic
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div className="qb-card-actions mt-6">
                 {!answered && (
-                    <button className="qb-action-btn primary" onClick={submitAnswer} disabled={!selectedAnswer || submitting}>
+                    <button className="qb-action-btn primary" onClick={submitAnswer} disabled={(!isDiscursive && !isRedacao && !selectedAnswer) || (isDiscursive && Object.keys(discursiveAnswers).length === 0) || (isRedacao && !redacaoText.trim()) || submitting}>
                         {!submitting ? '📝 Responder' : '⏳ Enviando...'}
                     </button>
                 )}
@@ -273,7 +343,35 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                 )}
             </div>
 
-            {answered && (
+            {answered && isDiscursive && (
+                <div className="qb-feedback border-l-4 border-indigo-500 bg-indigo-50 p-4 mt-6 rounded-r-lg">
+                    <div className="flex justify-between items-center mb-4">
+                        <h4 className="font-bold text-indigo-900 flex items-center gap-2">
+                            <span className="text-xl">📋</span> Espelho de Correção Oficial
+                        </h4>
+                        <button className="text-sm bg-white text-indigo-600 px-3 py-1.5 rounded-md border border-indigo-200 hover:bg-indigo-100 font-semibold shadow-sm transition">
+                            ✨ Pedir correção para {aiName}
+                        </button>
+                    </div>
+
+                    <div className="space-y-4">
+                        {typeof q.discursive_answer === 'object' && q.discursive_answer !== null ? (
+                            Object.entries(q.discursive_answer).map(([key, value]) => (
+                                <div key={key} className="bg-white p-3 rounded-md shadow-sm border border-indigo-100">
+                                    <strong className="text-indigo-800">Padrão Esperado ({key}):</strong>
+                                    <div className="text-slate-700 mt-1 text-sm whitespace-pre-wrap">{String(value)}</div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="bg-white p-3 rounded-md shadow-sm border border-indigo-100 text-slate-700 whitespace-pre-wrap">
+                                {q.discursive_answer ? String(q.discursive_answer) : "Espelho não encontrado."}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {answered && !isDiscursive && !isRedacao && (
                 <div className={`qb-feedback ${isCorrect ? 'correct' : 'incorrect'}`}>
                     <div className="qb-feedback-title">
                         <span>{isCorrect ? '✅ Resposta Correta!' : '❌ Resposta Incorreta'}</span>

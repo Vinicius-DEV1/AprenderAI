@@ -14,10 +14,10 @@ interface FilterOptions {
     keyword: string;
     year: string;
     difficulty: string;
-    status: string;
     organization: string;
     institution: string;
     role: string;
+    include_discursive: boolean;
 }
 
 // ── Typewriter placeholders (mirrored from Blade original) ──
@@ -90,7 +90,8 @@ export default function QuestionBank() {
         status: '',
         organization: '',
         institution: '',
-        role: ''
+        role: '',
+        include_discursive: false
     });
     const [moreFilters, setMoreFilters] = useState(false);
     const [statsOpen, setStatsOpen] = useState(false);
@@ -217,7 +218,7 @@ export default function QuestionBank() {
     const clearFilters = () => {
         setFilters({
             type: '', subject: '', topic: '', keyword: '', year: '',
-            difficulty: '', status: '', organization: '', institution: '', role: ''
+            difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false
         });
         setMoreFilters(false);
         setPage(1);
@@ -496,6 +497,23 @@ export default function QuestionBank() {
                                     </div>
                                 </>
                             )}
+
+                            {/* Discursive Toggle */}
+                            <div className="qb-filter-item w-full sm:w-auto flex items-center pt-6 ml-4">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        name="include_discursive"
+                                        checked={filters.include_discursive}
+                                        onChange={(e) => {
+                                            setFilters(prev => ({ ...prev, include_discursive: e.target.checked }));
+                                            setPage(1);
+                                        }}
+                                        className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                                    />
+                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Mostrar Discursivas</span>
+                                </label>
+                            </div>
                         </div>
                     )}
 

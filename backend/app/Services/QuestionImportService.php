@@ -60,10 +60,10 @@ class QuestionImportService
 
         // Registro de auditoria inicial
         $import = QuestionImport::create([
-            'batch_name'        => $uploader->name . ' — ' . now()->format('d/m/Y H:i'),
+            'batch_name' => $uploader->name . ' — ' . now()->format('d/m/Y H:i'),
             'original_filename' => $zipFile->getClientOriginalName(),
-            'uploaded_by'       => $uploader->id,
-            'status'            => 'processing',
+            'uploaded_by' => $uploader->id,
+            'status' => 'processing',
         ]);
 
         try {
@@ -85,15 +85,15 @@ class QuestionImportService
             // Finalização bem-sucedida
             $import->update([
                 'total_questions' => $stats['total'],
-                'pending_count'   => $stats['pending'],
-                'approved_count'  => $stats['approved'],
-                'status'          => 'completed',
+                'pending_count' => $stats['pending'],
+                'approved_count' => $stats['approved'],
+                'status' => 'completed',
             ]);
 
         } catch (\Throwable $e) {
             // Registro de falha para auditoria
             $import->update([
-                'status'        => 'failed',
+                'status' => 'failed',
                 'error_message' => $e->getMessage(),
             ]);
             Log::error("[QuestionImportService] Falha na importação do lote #{$import->id}: " . $e->getMessage());
@@ -144,16 +144,16 @@ class QuestionImportService
             $stats = $this->importFromDatabase($dbPath, $imageMap, $import, $uploader);
 
             $import->update([
-                'total_questions'     => $stats['total'],
-                'pending_count'       => $stats['pending'],
-                'approved_count'      => $stats['approved'],
+                'total_questions' => $stats['total'],
+                'pending_count' => $stats['pending'],
+                'approved_count' => $stats['approved'],
                 'processed_questions' => $stats['total'],
-                'status'              => 'completed',
+                'status' => 'completed',
             ]);
 
         } catch (\Throwable $e) {
             $import->update([
-                'status'        => 'failed',
+                'status' => 'failed',
                 'error_message' => $e->getMessage(),
             ]);
             Log::error("[QuestionImportService - Job] Falha no lote #{$import->id}: " . $e->getMessage());
@@ -284,25 +284,25 @@ class QuestionImportService
         foreach ($questions as $qData) {
             DB::transaction(function () use ($qData, $imageMap, $import, $uploader, &$stats) {
                 // Gera uma chave única robusta baseada no conteúdo da questão
-                $uniqueString = trim($qData['organization'] ?? '') . '|' . 
-                                trim($qData['year'] ?? '') . '|' . 
-                                trim($qData['institution'] ?? '') . '|' . 
-                                trim($qData['role'] ?? '') . '|' . 
-                                trim($qData['statement'] ?? '');
-                
+                $uniqueString = trim($qData['organization'] ?? '') . '|' .
+                    trim($qData['year'] ?? '') . '|' .
+                    trim($qData['institution'] ?? '') . '|' .
+                    trim($qData['role'] ?? '') . '|' .
+                    trim($qData['statement'] ?? '');
+
                 $externalId = md5($uniqueString);
 
                 // Criação ou Atualização da questão base (Upsert)
                 $question = Question::updateOrCreate(
                     ['external_id' => $externalId],
                     [
-                        'type'           => 'concurso',
-                        'institution'    => $qData['institution'] ?? null,
-                        'organization'   => $qData['organization'] ?? null,
-                        'role'           => $qData['role'] ?? null,
-                        'year'           => $qData['year'] ?? null,
-                        'statement'      => $qData['statement'] ?? '',
-                        'difficulty'     => 'medium',
+                        'type' => 'concurso',
+                        'institution' => $qData['institution'] ?? null,
+                        'organization' => $qData['organization'] ?? null,
+                        'role' => $qData['role'] ?? null,
+                        'year' => $qData['year'] ?? null,
+                        'statement' => $qData['statement'] ?? '',
+                        'difficulty' => 'medium',
                     ]
                 );
 
@@ -310,13 +310,29 @@ class QuestionImportService
                 if ($question->wasRecentlyCreated) {
                     $hasImages = !empty($qData['image_path']);
                     $status = $qData['review_status'] ?? 'pending';
-                    
+
                     if ($hasImages) {
                         $status = 'review';
                     }
 
+                    // Preenche os novos campos na criação
+                    $tipoQuestao = $qData['tipo_questao'] ?? 'Objetiva';
+
+                    // Parse da Resposta Discursiva (Pode ser string ou JSON)
+                    $discursiveAnswer = null;
+                    if (!empty($qData['discursive_answer'])) {
+                        $parsedAnswer = json_decode($qData['discursive_answer'], true);
+                        $discursiveAnswer = (json_last_error() === JSON_ERROR_NONE)
+                            ? $parsedAnswer
+                            : $qData['discursive_answer'];
+                    }
+
                     $question->update([
                         'review_status' => $status,
+                        'tipo_questao' => $tipoQuestao,
+                        'number' => $qData['number'] ?? null,
+                        'arquivo_origem' => $qData['arquivo_origem'] ?? null,
+                        'discursive_answer' => $discursiveAnswer,
                     ]);
 
                     // Insere instâncias de imagem iterativamente para a relação 1:N
@@ -335,7 +351,7 @@ class QuestionImportService
 
                 // Registro de auditoria vinculando item ao lote
                 QuestionImportItem::firstOrCreate([
-                    'import_id'   => $import->id,
+                    'import_id' => $import->id,
                     'question_id' => $question->id,
                 ]);
 
@@ -373,15 +389,25 @@ class QuestionImportService
                 if (!empty($qData['alternatives'])) {
                     $alternatives = json_decode($qData['alternatives'], true);
                     if (is_array($alternatives)) {
+                        $tipoQuestao = $qData['tipo_questao'] ?? 'Objetiva';
+
                         foreach ($alternatives as $label => $content) {
+                            $isCorrect = false;
+
+                            // Na objetiva, verificamos o correct_answer real
+                            if ($tipoQuestao === 'Objetiva') {
+                                $isCorrect = (strtoupper($label) === strtoupper($qData['correct_answer'] ?? ''));
+                            }
+                            // Nas discursivas, is_correct é sempre false pois as "alternatives" são os subitens
+
                             QuestionAlternative::updateOrCreate(
                                 [
                                     'question_id' => $question->id,
-                                    'label'       => strtoupper($label),
+                                    'label' => strtoupper($label),
                                 ],
                                 [
-                                    'content'     => $content,
-                                    'is_correct'  => (strtoupper($label) === strtoupper($qData['correct_answer'] ?? '')),
+                                    'content' => $content,
+                                    'is_correct' => $isCorrect,
                                 ]
                             );
                         }
@@ -455,8 +481,8 @@ class QuestionImportService
 
         $srcImage = match ($extension) {
             'jpg', 'jpeg' => imagecreatefromjpeg($originalAbsPath),
-            'png'         => imagecreatefrompng($originalAbsPath),
-            default       => throw new \RuntimeException("Formato '{$extension}' não suportado via GD."),
+            'png' => imagecreatefrompng($originalAbsPath),
+            default => throw new \RuntimeException("Formato '{$extension}' não suportado via GD."),
         };
 
         if (!$srcImage) {
@@ -477,7 +503,7 @@ class QuestionImportService
         // ETAPA 3: Serialização (Output em memória como JPEG)
         // ------------------------------------------------------------------
         ob_start();
-        imagejpeg($cropped, null, 90); 
+        imagejpeg($cropped, null, 90);
         $imageData = ob_get_clean();
         imagedestroy($cropped);
 
@@ -490,8 +516,8 @@ class QuestionImportService
             // Lógica de ENUNCIADO: Sobrescreve in-place para eficiência de storage
             if (in_array($extension, ['png'])) {
                 $originalBasename = pathinfo($image->path, PATHINFO_FILENAME);
-                $storageDir       = dirname($image->path);
-                $cropStoragePath  = $storageDir . '/' . $originalBasename . '_crop.jpg';
+                $storageDir = dirname($image->path);
+                $cropStoragePath = $storageDir . '/' . $originalBasename . '_crop.jpg';
             } else {
                 $cropStoragePath = $image->path;
             }
@@ -504,24 +530,24 @@ class QuestionImportService
             }
         } else {
             // Lógica de ALTERNATIVA: Novo arquivo com sufixo da letra (A, B, C...)
-            $label            = strtoupper($target);
+            $label = strtoupper($target);
             $originalBasename = pathinfo($image->path, PATHINFO_FILENAME);
-            $storageDir       = dirname($image->path);
-            $cropStoragePath  = $storageDir . '/' . $originalBasename . '_' . $label . '.jpg';
+            $storageDir = dirname($image->path);
+            $cropStoragePath = $storageDir . '/' . $originalBasename . '_' . $label . '.jpg';
 
             Storage::disk(self::IMPORT_STORAGE_DISK)->put($cropStoragePath, $imageData);
 
             $alternative = $question->alternatives()->where('label', $label)->first();
-            $publicUrl   = Storage::url($cropStoragePath);
+            $publicUrl = Storage::url($cropStoragePath);
 
             if ($alternative) {
                 $alternative->update(['content' => $publicUrl]);
             } else {
                 $question->alternatives()->create([
                     'question_id' => $question->id,
-                    'label'       => $label,
-                    'content'     => $publicUrl,
-                    'is_correct'  => false,
+                    'label' => $label,
+                    'content' => $publicUrl,
+                    'is_correct' => false,
                 ]);
             }
         }
@@ -545,7 +571,8 @@ class QuestionImportService
      */
     private function cleanupTmpDir(string $dir): void
     {
-        if (!is_dir($dir)) return;
+        if (!is_dir($dir))
+            return;
 
         $files = array_diff(scandir($dir), ['.', '..']);
         foreach ($files as $file) {

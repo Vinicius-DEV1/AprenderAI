@@ -25,10 +25,15 @@ class Question extends Model
         'external_id',
         'review_status',
         'image_path',
+        'tipo_questao',
+        'number',
+        'arquivo_origem',
+        'discursive_answer',
     ];
 
     protected $casts = [
         'format' => 'string',
+        'discursive_answer' => 'array',
     ];
 
     public function alternatives()
@@ -102,6 +107,11 @@ class Question extends Model
         return $this->hasMany(UserQuestionAnswer::class);
     }
 
+    public function discursiveResponses()
+    {
+        return $this->hasMany(DiscursiveResponse::class);
+    }
+
     public function isCorrect(string $answer): bool
     {
         return $this->alternatives()
@@ -158,12 +168,12 @@ class Question extends Model
                         ->orWhereRaw("TRIM(difficulty_reasoning) = ''");
                 }
             )->orWhere(
-                function ($sub) {
-                    $sub->whereNull('explanation')
-                        ->orWhereRaw("TRIM(explanation) = ''");
-                }
-            )->orWhereDoesntHave('subjects')
-             ->orWhereDoesntHave('topics');
+                    function ($sub) {
+                        $sub->whereNull('explanation')
+                            ->orWhereRaw("TRIM(explanation) = ''");
+                    }
+                )->orWhereDoesntHave('subjects')
+                ->orWhereDoesntHave('topics');
         });
     }
 
@@ -195,7 +205,7 @@ class Question extends Model
     {
         return $query->where(function ($q) {
             $q->whereNull('review_status')       // Questões manuais (pré-importador)
-              ->orWhere('review_status', 'approved'); // Questões importadas e aprovadas
+                ->orWhere('review_status', 'approved'); // Questões importadas e aprovadas
         });
     }
 
@@ -261,7 +271,9 @@ class Question extends Model
      */
     public function scopeFilterBySubject($query, $subjectId)
     {
-        return $query->when($subjectId, fn($q) => 
+        return $query->when(
+            $subjectId,
+            fn($q) =>
             $q->whereHas('subjects', fn($s) => $s->where('subjects.id', $subjectId))
         );
     }
@@ -274,8 +286,8 @@ class Question extends Model
      */
     public function scopeFilterByTopic($query, $topicId)
     {
-        return $query->when($topicId, function($q) use ($topicId) {
-            $q->whereHas('topics', function($subQ) use ($topicId) {
+        return $query->when($topicId, function ($q) use ($topicId) {
+            $q->whereHas('topics', function ($subQ) use ($topicId) {
                 $subQ->where('topics.id', $topicId);
             });
         });
