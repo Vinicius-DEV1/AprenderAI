@@ -12,6 +12,9 @@ use App\Models\Question;
 use App\Models\QuestionAlternative;
 use App\Models\Subject;
 use App\Models\Topic;
+use Illuminate\Support\Facades\Bus;
+use App\Jobs\ProcessEnemExamJob;
+use App\Services\EnemApiService;
 
 class EnemImportController extends Controller
 {
@@ -20,7 +23,19 @@ class EnemImportController extends Controller
      */
     public function index()
     {
-        $logs = EnemImportLog::latest()->paginate(10);
+        $logs = EnemImportLog::select([
+            'id',
+            'year',
+            'inserted_count',
+            'ignored_count',
+            'error_count',
+            'status',
+            'progress',
+            'total',
+            'finished',
+            'created_at',
+            'updated_at'
+        ])->latest()->paginate(10);
 
         // Mocking active batch for now as the full background processing 
         // would require more infra setup (Horizon/Redis jobs).
@@ -36,33 +51,65 @@ class EnemImportController extends Controller
     /**
      * Start a new import batch.
      */
-    public function store(Request $request)
+    public function store(Request $request, EnemApiService $apiService)
     {
         $year = $request->input('year');
 
-        // This is a simplified version of the logic 
-        // In the legacy Blade version, this might trigger a background Job.
-        // For now, we return a mock success and log the request.
+        try {
+            $yearsToImport = [];
 
-        $log = EnemImportLog::create([
-            'year' => $year ?? 0, // 0 means all years
-            'status' => 'processing',
-            'inserted_count' => 0,
-            'ignored_count' => 0,
-            'error_count' => 0,
-            'processed' => 0,
-            'total' => 1,
-            'progress' => 0,
-        ]);
+            if ($request->filled('year')) {
+                $yearsToImport[] = (int) $request->input('year');
+            } else {
+                // Fetch all years
+                $exams = $apiService->getExams();
+                foreach ($exams['data'] ?? $exams as $exam) {
+                    if (isset($exam['year'])) {
+                        $yearsToImport[] = (int) $exam['year'];
+                    }
+                }
+            }
 
-        // Dispatch background job here if implemented...
-        // For now, we'll mark it as completed almost immediately for the UI to move on
-        // Or better, let's keep it 'processing' and mock the status.
+            if (empty($yearsToImport)) {
+                return response()->json(['error' => 'Nenhum ano encontrado para importar.'], 400);
+            }
 
-        return response()->json([
-            'message' => 'Importação iniciada!',
-            'activeBatch' => $log
-        ]);
+            // Converter para log
+            $log = EnemImportLog::create([
+                'year' => $year ?? 0, // 0 means all years
+                'status' => 'processing',
+                'inserted_count' => 0,
+                'ignored_count' => 0,
+                'error_count' => 0,
+                'processed' => 0,
+                'total' => count($yearsToImport),
+                'progress' => 0,
+            ]);
+
+            $jobs = [];
+            foreach ($yearsToImport as $y) {
+                $jobs[] = new ProcessEnemExamJob($y, $log->id);
+            }
+
+            $batch = Bus::batch($jobs)
+                ->then(function (\Illuminate\Bus\Batch $batch) use ($log) {
+                    $log->update(['status' => 'completed', 'finished' => true, 'progress' => 100]);
+                })
+                ->catch(function (\Illuminate\Bus\Batch $batch, \Throwable $e) use ($log) {
+                    $log->update(['status' => 'failed']);
+                })
+                ->name('API ENEM Batch ' . ($year ?? 'Todos'))
+                ->dispatch();
+
+            return response()->json([
+                'message' => 'Importação iniciada!',
+                'log' => $log,
+                'batch_id' => $batch->id
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Erro ao iniciar importação: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -71,22 +118,37 @@ class EnemImportController extends Controller
     public function status(Request $request)
     {
         $batchId = $request->query('batch_id');
-        $log = EnemImportLog::find($batchId);
+        $logId = $request->query('log_id');
 
-        if (!$log) {
-            return response()->json(['error' => 'Batch not found'], 404);
+        $log = null;
+        if ($logId) {
+            $log = EnemImportLog::find($logId);
         }
 
-        // Mocking progress increment for demonstration if it's still processing
-        if ($log->status === 'processing') {
-            $log->progress = min(100, $log->progress + 20);
-            if ($log->progress >= 100) {
-                $log->status = 'completed';
-                $log->finished = true;
+        if ($batchId) {
+            $batch = Bus::findBatch($batchId);
+            if ($batch) {
+                if ($log) {
+                    return response()->json(array_merge($log->toArray(), [
+                        'progress' => $batch->progress(),
+                        'finished' => $batch->finished() || $batch->cancelled(),
+                        'processed' => $batch->processedJobs(),
+                        'total' => $batch->totalJobs
+                    ]));
+                }
+                return response()->json([
+                    'progress' => $batch->progress(),
+                    'finished' => $batch->finished() || $batch->cancelled(),
+                    'processed' => $batch->processedJobs(),
+                    'total' => $batch->totalJobs
+                ]);
             }
-            $log->save();
         }
 
-        return response()->json($log);
+        if ($log) {
+            return response()->json($log);
+        }
+
+        return response()->json(['error' => 'Status não encontrado'], 404);
     }
 }
