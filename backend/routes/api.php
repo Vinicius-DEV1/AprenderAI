@@ -145,6 +145,14 @@ Route::prefix('v1')->name('api.')->group(function () {
             Route::post('/enem', [AdminEnemImportController::class, 'store']);
             Route::get('/enem/status', [AdminEnemImportController::class, 'status']);
 
+            // Módulo de Importação de Questões (.zip)
+            Route::prefix('import')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Admin\QuestionImportController::class, 'index']); // For data listing
+                Route::post('/', [\App\Http\Controllers\Admin\QuestionImportController::class, 'store']);
+                Route::get('/active-job', [\App\Http\Controllers\Admin\QuestionImportController::class, 'activeJob']);
+                Route::get('/{import}/progress', [\App\Http\Controllers\Admin\QuestionImportController::class, 'progress']);
+            });
+
             // Import Review
             Route::prefix('import/review')->group(function () {
                 Route::get('/{id}', [\App\Http\Controllers\Api\Admin\AdminImportReviewController::class, 'show']);
