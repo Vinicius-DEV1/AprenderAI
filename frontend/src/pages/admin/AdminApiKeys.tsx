@@ -108,6 +108,10 @@ export default function AdminApiKeys() {
                 alert(res.data.error || 'Falha na descoberta de modelos.');
             }
         },
+        onError: (err: any) => {
+            const msg = err.response?.data?.error || err.message || 'Erro desconhecido na API.';
+            alert('Erro Crítico: ' + msg);
+        },
         onSettled: () => setDiscoveryLoading(false)
     });
 
