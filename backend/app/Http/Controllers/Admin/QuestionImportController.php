@@ -21,24 +21,35 @@ class QuestionImportController extends Controller
     {
     }
 
-    public function index(): \Illuminate\View\View
+    public function index(Request $request)
     {
+        Log::debug('[QuestionImportController] index called. Ajax: ' . ($request->ajax() ? 'yes' : 'no') . ', WantsJson: ' . ($request->wantsJson() ? 'yes' : 'no'));
         $imports = QuestionImport::with('uploader')
             ->latest()
             ->take(10)
             ->get();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'imports' => $imports,
+                'stats' => [
+                    'pending_import' => Question::where('review_status', 'review')->count()
+                ]
+            ]);
+        }
 
         return view('admin.import.index', compact('imports'));
     }
 
     public function store(Request $request)
     {
+        Log::debug('[QuestionImportController] store called.');
         $request->validate([
-            'zip_file' => ['required', 'file', 'mimes:zip', 'max:204800'], 
+            'zip_file' => ['required', 'file', 'mimes:zip', 'max:204800'],
         ], [
             'zip_file.required' => 'Selecione um arquivo .zip para realizar a importação.',
-            'zip_file.mimes'    => 'O formato do arquivo deve ser obrigatoriamente .zip.',
-            'zip_file.max'      => 'O limite máximo para o arquivo de importação é de 200MB.',
+            'zip_file.mimes' => 'O formato do arquivo deve ser obrigatoriamente .zip.',
+            'zip_file.max' => 'O limite máximo para o arquivo de importação é de 200MB.',
         ]);
 
         try {
@@ -46,20 +57,20 @@ class QuestionImportController extends Controller
             $zipPath = $request->file('zip_file')->store('imports_tmp', 'local');
 
             $import = QuestionImport::create([
-                'batch_name'        => Auth::user()->name . ' — ' . now()->format('d/m/Y H:i'),
+                'batch_name' => Auth::user()->name . ' — ' . now()->format('d/m/Y H:i'),
                 'original_filename' => $request->file('zip_file')->getClientOriginalName(),
-                'uploaded_by'       => Auth::user()->id,
-                'status'            => 'pending',
-                'total_questions'   => 0,
+                'uploaded_by' => Auth::user()->id,
+                'status' => 'pending',
+                'total_questions' => 0,
             ]);
 
             \App\Jobs\ProcessQuestionImportJob::dispatch($import, $zipPath);
 
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
-                    'success'   => true,
+                    'success' => true,
                     'import_id' => $import->id,
-                    'message'   => 'Importação enviada para fila de processamento.',
+                    'message' => 'Importação enviada para fila de processamento.',
                 ]);
             }
 
@@ -69,7 +80,7 @@ class QuestionImportController extends Controller
 
         } catch (\Throwable $e) {
             Log::error('[QuestionImportController] Falha ao enfileirar upload: ' . $e->getMessage());
-            
+
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['error' => 'Erro interno ao processar o arquivo. Tente novamente.'], 500);
             }
@@ -85,13 +96,14 @@ class QuestionImportController extends Controller
      */
     public function progress($id): \Illuminate\Http\JsonResponse
     {
+        Log::debug("[QuestionImportController] progress called for ID: {$id}");
         $import = QuestionImport::findOrFail($id);
 
         return response()->json([
-            'status'    => $import->status,
-            'total'     => $import->total_questions,
+            'status' => $import->status,
+            'total' => $import->total_questions,
             'processed' => $import->processed_questions,
-            'error'     => $import->error_message
+            'error' => $import->error_message
         ]);
     }
 
@@ -101,6 +113,7 @@ class QuestionImportController extends Controller
      */
     public function activeJob(): \Illuminate\Http\JsonResponse
     {
+        Log::debug('[QuestionImportController] activeJob called.');
         $activeImport = QuestionImport::where('uploaded_by', Auth::id())
             ->whereIn('status', ['pending', 'processing'])
             ->latest()
@@ -111,10 +124,10 @@ class QuestionImportController extends Controller
         }
 
         return response()->json([
-            'active'    => true,
+            'active' => true,
             'import_id' => $activeImport->id,
-            'status'    => $activeImport->status,
-            'total'     => $activeImport->total_questions,
+            'status' => $activeImport->status,
+            'total' => $activeImport->total_questions,
             'processed' => $activeImport->processed_questions,
         ]);
     }
@@ -150,7 +163,7 @@ class QuestionImportController extends Controller
 
         // Auditoria
         $recentActions = QuestionImportItem::with(['question', 'import', 'approver'])
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->whereNotNull('approved_at')->orWhereNotNull('reverted_at');
             })
             ->latest('updated_at')
@@ -159,10 +172,10 @@ class QuestionImportController extends Controller
 
         return view('admin.import.review.index', [
             'pendingQuestions' => $pendingQuestions,
-            'imports'          => $imports,
-            'organizations'    => $organizations,
-            'recentActions'    => $recentActions,
-            'selectedImport'   => $request->import_id
+            'imports' => $imports,
+            'organizations' => $organizations,
+            'recentActions' => $recentActions,
+            'selectedImport' => $request->import_id
         ]);
     }
 
@@ -177,9 +190,9 @@ class QuestionImportController extends Controller
     {
         $validated = $request->validate([
             'target' => ['required', 'string', 'regex:/^(statement|[A-Ea-e])$/'],
-            'x'      => ['required', 'integer'],
-            'y'      => ['required', 'integer'],
-            'width'  => ['required', 'integer'],
+            'x' => ['required', 'integer'],
+            'y' => ['required', 'integer'],
+            'width' => ['required', 'integer'],
             'height' => ['required', 'integer'],
         ]);
 
