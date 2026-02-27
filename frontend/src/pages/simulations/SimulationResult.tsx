@@ -122,7 +122,7 @@ export default function SimulationResult() {
                 {filteredAnswers.length === 0 ? (
                     <div className="text-center py-10 text-slate-500">Nenhuma questão encontrada com este filtro.</div>
                 ) : (
-                    filteredAnswers.map((ans: any, idx: number) => (
+                    filteredAnswers.map((ans: any) => (
                         <AnswerCard key={ans.question_id} answer={ans} index={answers.indexOf(ans)} aiName={aiName} />
                     ))
                 )}

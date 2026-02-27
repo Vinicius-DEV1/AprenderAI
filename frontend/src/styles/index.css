@@ -170,3 +170,38 @@ input:focus {
 .error li:last-child {
     margin-bottom: 0;
 }
+
+/* Essay Writing - Lined Paper Style */
+.lined-paper {
+    font-size: 18px !important;
+    line-height: 32px !important;
+    padding: 32px 24px !important;
+    background-image: repeating-linear-gradient(transparent, transparent 31px, #cbd5e1 31px, #cbd5e1 32px) !important;
+    background-attachment: local !important;
+    /* Ensure text aligns with lines */
+    background-position: 0 32px !important;
+}
+
+.dark .lined-paper {
+    background-image: repeating-linear-gradient(transparent, transparent 31px, #334155 31px, #334155 32px) !important;
+}
+
+.lined-paper:focus {
+    outline: none !important;
+    ring: 0 !important;
+}
+
+/* ApexCharts Overrides */
+.apexcharts-canvas {
+    font-family: 'Inter', sans-serif !important;
+}
+
+.apexcharts-tooltip {
+    @apply shadow-xl;
+    border: none !important;
+}
+
+.dark .apexcharts-tooltip {
+    @apply bg-slate-800 border-slate-700 text-white;
+    border-color: #334155 !important;
+}

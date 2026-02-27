@@ -18,6 +18,11 @@ class Essay extends Model
         'theme', // Deprecated but preserved
         'topic_description',
         'content',
+        'input_type',
+        'image_path',
+        'extracted_text',
+        'ocr_status',
+        'ocr_error',
         'status',
         'score',
         'competencies',
