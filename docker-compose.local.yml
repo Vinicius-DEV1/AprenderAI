@@ -11,7 +11,6 @@ services:
     volumes:
       - ./backend:/var/www
       - /var/www/vendor
-      - /var/www/storage
       - /var/www/node_modules
     env_file: ./backend/.env
     # environment:
@@ -105,7 +104,7 @@ services:
       - SESSION_DRIVER=redis
       - CACHE_STORE=redis
       - QUEUE_CONNECTION=database
-    command: php artisan queue:work --sleep=3 --tries=3 --timeout=90
+    command: php artisan queue:work --queue=default,import --sleep=3 --tries=3 --timeout=90
     depends_on:
       app:
         condition: service_started

@@ -256,7 +256,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
             {/* Discursiva Rendering */}
             {isDiscursive && (
                 <div className="qb-discursive-list space-y-6 mt-4">
-                    {q.alternatives.sort((a, b) => a.label.localeCompare(b.label)).map(alt => (
+                    {[...(q.alternatives || [])].sort((a, b) => a.label.localeCompare(b.label)).map(alt => (
                         <div key={alt.id} className="qb-discursive-item">
                             <div className="font-bold text-slate-800 dark:text-slate-200 mb-2 whitespace-pre-wrap">
                                 {alt.label.toLowerCase()}) {alt.content}
@@ -277,7 +277,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
             {!isDiscursive && (
                 /* Objetiva Rendering */
                 <div className="qb-alternatives-list">
-                    {q.alternatives.sort((a, b) => a.label.localeCompare(b.label)).map(alt => (
+                    {[...(q.alternatives || [])].sort((a, b) => a.label.localeCompare(b.label)).map(alt => (
                         <div
                             key={alt.id}
                             className={`qb-alt ${selectedAnswer === alt.label && !answered ? 'selected' : ''
