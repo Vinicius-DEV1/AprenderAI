@@ -22,3 +22,13 @@ export const logout = async () => {
 export const getUser = async () => {
     return api.get('/api/v1/user');
 };
+
+export const forgotPassword = async (data: any) => {
+    await getCsrfCookie();
+    return api.post('/api/v1/forgot-password', data);
+};
+
+export const resetPassword = async (data: any) => {
+    await getCsrfCookie();
+    return api.post('/api/v1/reset-password', data);
+};

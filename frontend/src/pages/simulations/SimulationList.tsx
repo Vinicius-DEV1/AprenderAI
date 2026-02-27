@@ -314,7 +314,7 @@ export default function SimulationList() {
                             <div>
                                 {simulation.status === 'in_progress' ? (
                                     <Link to={`/simulations/${simulation.id}`} className="btn-view w-full md:w-auto text-center block md:inline-block">Continuar</Link>
-                                ) : ['corrected', 'finished'].includes(simulation.status) ? (
+                                ) : (simulation.status === 'corrected' || simulation.status === 'finished') ? (
                                     <Link to={`/simulations/${simulation.id}/result`} className="btn-view w-full md:w-auto text-center block md:inline-block">Ver Resultado</Link>
                                 ) : (
                                     <Link to={`/simulations/${simulation.id}`} className="btn-view w-full md:w-auto text-center block md:inline-block">Ver</Link>

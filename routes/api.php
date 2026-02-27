@@ -1,115 +1,128 @@
 <?php
 
-use App\Http\Controllers\Api\ConfigController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\ConfigController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\SimulationController;
+use App\Http\Controllers\Api\StudyPlanController;
+use App\Http\Controllers\Api\ConcursoController;
+use App\Http\Controllers\Api\EssayController;
+use App\Http\Controllers\Api\SubscriptionController;
+use App\Http\Controllers\Api\QuestionController;
+use App\Http\Controllers\AiSearchController;
+use App\Http\Controllers\QuestionChatController;
+use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\Admin\CuradoriaController;
+use App\Http\Controllers\Api\Admin\QuestionController as AdminQuestionController;
+use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Api\Admin\PlanController as AdminPlanController;
+use App\Http\Controllers\Api\Admin\CouponController as AdminCouponController;
+use App\Http\Controllers\Api\Admin\SystemPromptController as AdminSystemPromptController;
+use App\Http\Controllers\Api\Admin\SettingController as AdminSettingController;
+use App\Http\Controllers\Api\Admin\ApiKeyController as AdminApiKeyController;
+use App\Http\Controllers\Api\Admin\AIBatchTriageController as AdminAIBatchTriageController;
 
 /*
 |--------------------------------------------------------------------------
 | API Routes — Prefixo: /api/v1
 |--------------------------------------------------------------------------
-|
-| Rotas da API REST consumida pelo Frontend React SPA.
-| Autenticação via Laravel Sanctum (cookie-based SPA).
-|
 */
 
-Route::prefix('v1')->group(function () {
+Route::prefix('v1')->name('api.')->group(function () {
 
-    // ---------------------------------------------------------------
-    // Público — Não requer autenticação
-    // ---------------------------------------------------------------
-
-    // Bootstrap: configurações iniciais do sistema (branding, planos, features)
+    // Público
     Route::get('/config', [ConfigController::class, 'index'])->name('api.config');
+    Route::post('/login', [AuthController::class, 'login'])->name('api.login');
+    Route::post('/register', [AuthController::class, 'register'])->name('api.register');
 
-    // Autenticação Pública
-    Route::post('/login', [\App\Http\Controllers\Api\AuthController::class, 'login'])->name('api.login');
-    Route::post('/register', [\App\Http\Controllers\Api\AuthController::class, 'register'])->name('api.register');
-
-    // ---------------------------------------------------------------
-    // Autenticado — Rotas protegidas por Sanctum SPA
-    // ---------------------------------------------------------------
+    // Autenticado
     Route::middleware('auth:sanctum')->group(function () {
-        // Auth
-        Route::get('/user', [\App\Http\Controllers\Api\AuthController::class, 'user'])->name('api.user');
-        Route::post('/logout', [\App\Http\Controllers\Api\AuthController::class, 'logout'])->name('api.logout');
+        Route::get('/user', [AuthController::class, 'user'])->name('api.user');
+        Route::post('/logout', [AuthController::class, 'logout'])->name('api.logout');
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('api.dashboard');
 
-        // Dashboard
-        Route::get('/dashboard', [\App\Http\Controllers\Api\DashboardController::class, 'index'])->name('api.dashboard');
+        // Resources
+        Route::apiResource('simulations', SimulationController::class)->only(['index', 'show', 'store']);
+        Route::get('simulations/{simulation}/status', [SimulationController::class, 'status']);
+        Route::post('simulations/{simulation}/answer', [SimulationController::class, 'answer']);
+        Route::post('simulations/{simulation}/finish', [SimulationController::class, 'finish']);
+        Route::post('simulations/{simulation}/submit', [SimulationController::class, 'submit']);
 
-        // Simulations
-        Route::apiResource('simulations', \App\Http\Controllers\Api\SimulationController::class)->only(['index', 'show', 'store']);
-        Route::get('simulations/{simulation}/status', [\App\Http\Controllers\Api\SimulationController::class, 'status'])->name('api.simulations.status');
-        Route::post('simulations/{simulation}/answer', [\App\Http\Controllers\Api\SimulationController::class, 'answer'])->name('api.simulations.answer');
-        Route::post('simulations/{simulation}/finish', [\App\Http\Controllers\Api\SimulationController::class, 'finish'])->name('api.simulations.finish');
-        Route::post('simulations/{simulation}/submit', [\App\Http\Controllers\Api\SimulationController::class, 'submit'])->name('api.simulations.submit');
+        Route::get('study-plan', [StudyPlanController::class, 'index']);
+        Route::post('study-plan', [StudyPlanController::class, 'store']);
+        Route::get('study-plan/status', [StudyPlanController::class, 'status']);
+        Route::post('study-plan/update', [StudyPlanController::class, 'update']);
 
-        // Study Plans
-        Route::get('study-plan', [\App\Http\Controllers\Api\StudyPlanController::class, 'index'])->name('api.study-plan.index');
-        Route::post('study-plan', [\App\Http\Controllers\Api\StudyPlanController::class, 'store'])->name('api.study-plan.store');
-        Route::get('study-plan/status', [\App\Http\Controllers\Api\StudyPlanController::class, 'status'])->name('api.study-plan.status');
-        Route::post('study-plan/update', [\App\Http\Controllers\Api\StudyPlanController::class, 'update'])->name('api.study-plan.update');
+        Route::get('concursos', [ConcursoController::class, 'index']);
+        Route::apiResource('essays', EssayController::class)->only(['index', 'show', 'store']);
 
-        // Concursos
-        Route::get('concursos', [\App\Http\Controllers\Api\ConcursoController::class, 'index'])->name('api.concursos.index');
-
-        // Essays
-        Route::apiResource('essays', \App\Http\Controllers\Api\EssayController::class)->only(['index', 'show', 'store']);
-
-        // Subscriptions & Checkout
+        // Plans & Subscriptions
         Route::prefix('plans')->group(function () {
-            Route::post('/{plan}/validate-coupon', [\App\Http\Controllers\Api\SubscriptionController::class, 'validateCoupon'])->name('api.plans.validate-coupon');
-            Route::post('/{plan}/checkout', [\App\Http\Controllers\Api\SubscriptionController::class, 'store'])->name('api.plans.checkout');
-            Route::get('/check-status', [\App\Http\Controllers\Api\SubscriptionController::class, 'checkStatus'])->name('api.plans.check-status');
+            Route::post('/{plan}/validate-coupon', [SubscriptionController::class, 'validateCoupon']);
+            Route::post('/{plan}/checkout', [SubscriptionController::class, 'store']);
+            Route::get('/check-status', [SubscriptionController::class, 'checkStatus']);
         });
 
         // Question Bank
         Route::prefix('questions')->group(function () {
-            Route::get('/subjects', [\App\Http\Controllers\Api\QuestionController::class, 'subjects'])->name('api.questions.subjects');
-            Route::get('/topics', [\App\Http\Controllers\Api\QuestionController::class, 'topics'])->name('api.questions.topics');
-            Route::get('/stats', [\App\Http\Controllers\Api\QuestionController::class, 'stats'])->name('api.questions.stats');
-            Route::get('/{question}/history', [\App\Http\Controllers\Api\QuestionController::class, 'history'])->name('api.questions.history');
-            Route::post('/{question}/answer', [\App\Http\Controllers\Api\QuestionController::class, 'answer'])->name('api.questions.answer');
-
-            // Xavier AI Search
-            Route::post('/ai-search', [\App\Http\Controllers\AiSearchController::class, 'search'])->name('api.ai-search');
-            Route::get('/ai-search/{searchRequest}/status', [\App\Http\Controllers\AiSearchController::class, 'status'])->name('api.ai-search.status');
-
-            // Chat Standalone (Tirar Dúvida)
-            Route::post('/{question}/chat', [\App\Http\Controllers\QuestionChatController::class, 'storeStandalone'])->name('api.chat.store');
-            Route::post('/{question}/chat/stream', [\App\Http\Controllers\QuestionChatController::class, 'streamStandalone'])->name('api.chat.stream');
-            Route::get('/{question}/chat', [\App\Http\Controllers\QuestionChatController::class, 'indexStandalone'])->name('api.chat.index');
+            Route::get('/', [QuestionController::class, 'index']);
+            Route::get('/subjects', [QuestionController::class, 'subjects']);
+            Route::get('/topics', [QuestionController::class, 'topics']);
+            Route::get('/stats', [QuestionController::class, 'stats']);
+            Route::get('/{question}/history', [QuestionController::class, 'history']);
+            Route::post('/{question}/answer', [QuestionController::class, 'answer']);
+            Route::post('/ai-search', [AiSearchController::class, 'search']);
+            Route::get('/ai-search/{searchRequest}/status', [AiSearchController::class, 'status']);
+            Route::post('/{question}/chat', [QuestionChatController::class, 'storeStandalone']);
+            Route::post('/{question}/chat/stream', [QuestionChatController::class, 'streamStandalone']);
+            Route::get('/{question}/chat', [QuestionChatController::class, 'indexStandalone']);
         });
+
         // Profile
         Route::prefix('user')->group(function () {
-            Route::put('/profile', [\App\Http\Controllers\Api\ProfileController::class, 'update'])->name('api.profile.update');
-            Route::put('/password', [\App\Http\Controllers\Api\ProfileController::class, 'updatePassword'])->name('api.profile.password.update');
+            Route::put('/profile', [ProfileController::class, 'update']);
+            Route::put('/password', [ProfileController::class, 'updatePassword']);
         });
 
-        // Admin (Protected by Sanctum + Role Check in Controller or Middleware)
+        // Admin
         Route::prefix('admin')->group(function () {
-            Route::get('/dashboard', [\App\Http\Controllers\Api\AdminController::class, 'dashboard'])->name('api.admin.dashboard');
-            Route::get('/curadoria', [\App\Http\Controllers\Api\Admin\CuradoriaController::class, 'index'])->name('api.admin.curadoria.index');
+            Route::get('/dashboard', [AdminController::class, 'dashboard']);
+            Route::get('/curadoria', [CuradoriaController::class, 'index']);
 
             // Administrative CRUDs
-            Route::post('questions/{question}/evaluate-difficulty', [\App\Http\Controllers\Api\Admin\QuestionController::class, 'evaluateDifficulty'])->name('api.admin.questions.evaluate-difficulty');
-            Route::post('questions/{question}/generate-explanation', [\App\Http\Controllers\Api\Admin\QuestionController::class, 'generateExplanation'])->name('api.admin.questions.generate-explanation');
-            Route::post('questions/{question}/complete', [\App\Http\Controllers\Api\Admin\QuestionController::class, 'completeQuestion'])->name('api.admin.questions.complete');
-            Route::post('questions/{question}/classify', [\App\Http\Controllers\Api\Admin\QuestionController::class, 'classifyQuestion'])->name('api.admin.questions.classify');
-            Route::apiResource('questions', \App\Http\Controllers\Api\Admin\QuestionController::class)->names('api.admin.questions');
-            Route::apiResource('users', \App\Http\Controllers\Api\Admin\UserController::class)->names('api.admin.users');
+            Route::get('questions/support-data', [AdminQuestionController::class, 'supportData']);
+            Route::apiResource('questions', AdminQuestionController::class);
+            Route::post('questions/{question}/evaluate-difficulty', [AdminQuestionController::class, 'evaluateDifficulty']);
+            Route::post('questions/{question}/generate-explanation', [AdminQuestionController::class, 'generateExplanation']);
+            Route::post('questions/{question}/complete', [AdminQuestionController::class, 'completeQuestion']);
+            Route::post('questions/{question}/classify', [AdminQuestionController::class, 'classifyQuestion']);
+
+            Route::apiResource('users', AdminUserController::class);
+            Route::apiResource('plans', AdminPlanController::class);
+            Route::apiResource('coupons', AdminCouponController::class);
+            Route::apiResource('prompts', AdminSystemPromptController::class);
+
+            // Settings & Cache
+            Route::get('/settings', [AdminSettingController::class, 'index']);
+            Route::post('/settings', [AdminSettingController::class, 'update']);
+            Route::post('/settings/clear-cache', [AdminSettingController::class, 'clearCache']);
 
             // Infrastructure & AI Monitoring
-            Route::get('/api-keys', [\App\Http\Controllers\Api\Admin\ApiKeyController::class, 'index'])->name('api.admin.api-keys.index');
-            Route::post('/api-keys/vault', [\App\Http\Controllers\Api\Admin\ApiKeyController::class, 'storeVault'])->name('api.admin.api-keys.vault.store');
-            Route::post('/api-keys/{apiKey}/toggle', [\App\Http\Controllers\Api\Admin\ApiKeyController::class, 'toggle'])->name('api.admin.api-keys.toggle');
+            Route::get('/api-keys', [AdminApiKeyController::class, 'index']);
+            Route::post('/api-keys/vault', [AdminApiKeyController::class, 'storeVault']);
+            Route::post('/api-keys/{apiKey}/toggle', [AdminApiKeyController::class, 'toggle']);
+            Route::post('/api-keys/priority', [AdminApiKeyController::class, 'updatePriority']);
+            Route::post('/api-keys/discover', [AdminApiKeyController::class, 'discoverModels']);
+            Route::post('/api-keys/{apiKey}/retest', [AdminApiKeyController::class, 'retest']);
 
             // AI Batch Triage
             Route::prefix('triage')->group(function () {
-                Route::post('/preview', [\App\Http\Controllers\Api\Admin\AIBatchTriageController::class, 'preview'])->name('api.admin.triage.preview');
-                Route::post('/start', [\App\Http\Controllers\Api\Admin\AIBatchTriageController::class, 'start'])->name('api.admin.triage.start');
-                Route::get('/{batchId}/status', [\App\Http\Controllers\Api\Admin\AIBatchTriageController::class, 'status'])->name('api.admin.triage.status');
-                Route::post('/{batchId}/cancel', [\App\Http\Controllers\Api\Admin\AIBatchTriageController::class, 'cancel'])->name('api.admin.triage.cancel');
+                Route::post('/preview', [AdminAIBatchTriageController::class, 'preview']);
+                Route::post('/start', [AdminAIBatchTriageController::class, 'start']);
+                Route::get('/{batchId}/status', [AdminAIBatchTriageController::class, 'status']);
+                Route::post('/{batchId}/cancel', [AdminAIBatchTriageController::class, 'cancel']);
             });
         });
     });

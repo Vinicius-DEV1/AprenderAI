@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
 import AdminBatchModal from './components/AdminBatchModal';
+import { AdminPageSkeleton } from './components/AdminSkeletons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
 export default function AdminQuestions() {
     const queryClient = useQueryClient();
-    
+
     // Filters State
     const [triageFilters, setTriageFilters] = useState({
         triage_search: '',
@@ -15,7 +16,7 @@ export default function AdminQuestions() {
         triage_subject: '',
         triage_organization: ''
     });
-    
+
     const [filters, setFilters] = useState({
         search: '',
         subject: '',
@@ -53,21 +54,20 @@ export default function AdminQuestions() {
         }
     });
 
-    if (isLoading || !data) return <div className="p-8 text-center font-black animate-pulse text-indigo-600">CARREGANDO BANCO DE QUESTÕES...</div>;
+    if (isLoading) return <AdminPageSkeleton />;
+    if (!data) return <div className="p-8 text-center text-red-500">Erro ao carregar banco de questões.</div>;
 
-    const { 
-        questions, 
-        pendingQuestions, 
-        meta,
-        counts,
-        availableSubjects,
-        availableOrganizations 
-    } = data;
+    const questions = data.questions || { data: [], total: 0 };
+    const pendingQuestions = data.pendingQuestions || { data: [] };
+    const meta = data.meta || { total_questions: 0, ai_questions: 0 };
+    const counts = data.counts || { pending_total: 0, missing_difficulty: 0, missing_explanation: 0, missing_classification: 0, both_missing: 0 };
+    const availableSubjects = data.availableSubjects || [];
+    const availableOrganizations = data.availableOrganizations || [];
 
     const stats = [
         { label: 'Total Geral', value: meta.total_questions, color: 'indigo' },
         { label: 'Inéditas IA', value: meta.ai_questions, color: 'purple' },
-        ...(meta.questions_by_organization || []).slice(0, 2).map((org: any) => ({
+        ...(meta.questions_by_organization || []).map((org: any) => ({
             label: org.organization,
             value: org.total,
             color: 'blue'
@@ -113,26 +113,22 @@ export default function AdminQuestions() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-white/60 p-4 rounded-2xl border border-white/80">
-                                    <span className="text-[10px] font-black text-gray-400 uppercase">Sem Dificuldade</span>
-                                    <p className="text-xl font-black text-indigo-900">{counts.missing_difficulty}</p>
-                                </div>
-                                <div className="bg-white/60 p-4 rounded-2xl border border-white/80">
-                                    <span className="text-[10px] font-black text-gray-400 uppercase">Sem Explicação</span>
-                                    <p className="text-xl font-black text-indigo-900">{counts.missing_explanation}</p>
-                                </div>
-                                <div className="bg-white/60 p-4 rounded-2xl border border-white/80">
-                                    <span className="text-[10px] font-black text-gray-400 uppercase">Sem Taxonomia</span>
-                                    <p className="text-xl font-black text-indigo-900">{counts.missing_classification}</p>
-                                </div>
-                                <div className="bg-white/60 p-4 rounded-2xl border border-white/80">
-                                    <span className="text-[10px] font-black text-gray-400 uppercase">Critico</span>
-                                    <p className="text-xl font-black text-indigo-900">{counts.both_missing}</p>
-                                </div>
+                            <div className="flex flex-wrap gap-3 mb-4">
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                                    🟠 {counts.missing_difficulty} sem dificuldade
+                                </span>
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                    🔵 {counts.missing_explanation} sem explicação
+                                </span>
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                                    🏷️ {counts.missing_classification} sem taxonomia
+                                </span>
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                    🔴 {counts.both_missing} incompletas (múltiplos)
+                                </span>
                             </div>
 
-                            <button 
+                            <button
                                 onClick={() => setIsBatchModalOpen(true)}
                                 className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-indigo-700 transition shadow-xl shadow-indigo-200"
                             >
@@ -143,13 +139,13 @@ export default function AdminQuestions() {
                         <div className="w-full lg:w-2/3 bg-white rounded-3xl border border-white shadow-xl flex flex-col overflow-hidden">
                             {/* Triage Filters */}
                             <div className="p-4 border-b border-gray-50 flex flex-wrap gap-2 bg-gray-50/30">
-                                <input 
-                                    placeholder="Buscar na triagem..." 
+                                <input
+                                    placeholder="Buscar na triagem..."
                                     className="flex-grow px-4 py-2 bg-white rounded-xl text-sm font-bold border border-gray-100 focus:ring-2 focus:ring-indigo-500"
                                     value={triageFilters.triage_search}
                                     onChange={e => setTriageFilters(prev => ({ ...prev, triage_search: e.target.value }))}
                                 />
-                                <select 
+                                <select
                                     className="px-4 py-2 bg-white rounded-xl text-sm font-bold border border-gray-100 focus:ring-2 focus:ring-indigo-500"
                                     value={triageFilters.triage_status}
                                     onChange={e => setTriageFilters(prev => ({ ...prev, triage_status: e.target.value }))}
@@ -160,7 +156,7 @@ export default function AdminQuestions() {
                                     <option value="missing_classification">Sem Classificação</option>
                                     <option value="both_missing">Crítico (Ambos)</option>
                                 </select>
-                                <select 
+                                <select
                                     className="px-4 py-2 bg-white rounded-xl text-sm font-bold border border-gray-100 focus:ring-2 focus:ring-indigo-500"
                                     value={triageFilters.triage_subject}
                                     onChange={e => setTriageFilters(prev => ({ ...prev, triage_subject: e.target.value }))}
@@ -176,77 +172,105 @@ export default function AdminQuestions() {
                                         <tr>
                                             <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase">Questão</th>
                                             <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase">Contexto</th>
+                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase">Status</th>
                                             <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase text-right">Ações IA</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
                                         <AnimatePresence>
-                                            {pendingQuestions.data.map((q: any) => (
-                                                <motion.tr 
-                                                    key={q.id}
-                                                    initial={{ opacity: 1, x: 0 }}
-                                                    exit={{ opacity: 0, x: 100, backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
-                                                    className={`hover:bg-gray-50/50 transition-colors ${removingIds.includes(q.id) ? 'pointer-events-none' : ''}`}
-                                                >
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-xs font-black text-gray-300 font-mono">#{q.id}</span>
-                                                            <span className="text-sm font-bold text-gray-700 line-clamp-1">{q.statement}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex gap-2">
-                                                            <span className="text-[10px] font-black bg-blue-50 text-blue-600 px-2 py-0.5 rounded uppercase">{q.subject}</span>
-                                                            <span className="text-[10px] font-black bg-gray-50 text-gray-400 px-2 py-0.5 rounded uppercase">{q.organization || 'Inédita'}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-right">
-                                                        <div className="flex justify-end gap-1">
-                                                            <TriageAction 
-                                                                icon="⚡" 
-                                                                label="Dificuldade" 
-                                                                onClick={() => adminActions.mutate({ id: q.id, action: 'evaluate-difficulty' })} 
-                                                                pending={adminActions.isPending && adminActions.variables?.id === q.id && adminActions.variables?.action === 'evaluate-difficulty'}
-                                                            />
-                                                            <TriageAction 
-                                                                icon="📝" 
-                                                                label="Explicação" 
-                                                                onClick={() => adminActions.mutate({ id: q.id, action: 'generate-explanation' })} 
-                                                                pending={adminActions.isPending && adminActions.variables?.id === q.id && adminActions.variables?.action === 'generate-explanation'}
-                                                            />
-                                                            <TriageAction 
-                                                                icon="🏷️" 
-                                                                label="Classificar" 
-                                                                onClick={() => adminActions.mutate({ id: q.id, action: 'classify' })} 
-                                                                pending={adminActions.isPending && adminActions.variables?.id === q.id && adminActions.variables?.action === 'classify'}
-                                                            />
-                                                            <TriageAction 
-                                                                icon="🚀" 
-                                                                label="IA Full" 
-                                                                variant="primary"
-                                                                onClick={() => adminActions.mutate({ id: q.id, action: 'complete' })} 
-                                                                pending={adminActions.isPending && adminActions.variables?.id === q.id && adminActions.variables?.action === 'complete'}
-                                                            />
-                                                            <button className="w-9 h-9 flex items-center justify-center rounded-xl transition shadow-sm bg-white border border-gray-100 text-gray-700 hover:border-indigo-200 hover:scale-110" title="Ver">👁️</button>
-                                                        </div>
-                                                    </td>
-                                                </motion.tr>
-                                            ))}
+                                            {pendingQuestions.data.map((q: any) => {
+                                                const missingDiff = !q.difficulty_reasoning?.trim();
+                                                const missingExpl = !q.explanation?.trim();
+                                                const missingClass = !q.subjects?.length || !q.topics?.length;
+                                                return (
+                                                    <motion.tr
+                                                        key={q.id}
+                                                        initial={{ opacity: 1, x: 0 }}
+                                                        exit={{ opacity: 0, x: 100, backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
+                                                        className={`hover:bg-gray-50/50 transition-colors ${removingIds.includes(q.id) ? 'pointer-events-none' : ''}`}
+                                                    >
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-xs font-black text-gray-300 font-mono">#{q.id}</span>
+                                                                <div className="text-sm font-bold text-gray-700 line-clamp-3 w-64" dangerouslySetInnerHTML={{ __html: q.statement }}></div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col gap-1">
+                                                                <span className="text-[10px] font-black bg-blue-50 text-blue-600 px-2 py-0.5 rounded uppercase w-max">{q.subjects?.[0]?.name || 'N/A'}</span>
+                                                                <span className="text-[10px] font-black bg-gray-50 text-gray-500 px-2 py-0.5 rounded uppercase w-max w-24 truncate" title={q.organization}>{q.organization || 'Inédita'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col items-start gap-1">
+                                                                {missingDiff && missingExpl && missingClass ? (
+                                                                    <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded-full font-medium border border-red-200">🔴 Incompleta</span>
+                                                                ) : (
+                                                                    <>
+                                                                        {missingDiff && <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-[10px] rounded-full font-medium border border-orange-200">Dificuldade</span>}
+                                                                        {missingExpl && <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded-full font-medium border border-blue-200">Explicação</span>}
+                                                                        {missingClass && <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] rounded-full font-medium border border-yellow-200">Taxonomia</span>}
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <div className="flex justify-end gap-1.5 flex-wrap w-48 ml-auto">
+                                                                {missingDiff && (
+                                                                    <TriageAction
+                                                                        icon="⚡ Dificul"
+                                                                        onClick={() => adminActions.mutate({ id: q.id, action: 'evaluate-difficulty' })}
+                                                                        pending={adminActions.isPending && adminActions.variables?.id === q.id && adminActions.variables?.action === 'evaluate-difficulty'}
+                                                                        variant="blade-orange"
+                                                                    />
+                                                                )}
+                                                                {missingExpl && (
+                                                                    <TriageAction
+                                                                        icon="📝 Explic"
+                                                                        onClick={() => adminActions.mutate({ id: q.id, action: 'generate-explanation' })}
+                                                                        pending={adminActions.isPending && adminActions.variables?.id === q.id && adminActions.variables?.action === 'generate-explanation'}
+                                                                        variant="blade-blue"
+                                                                    />
+                                                                )}
+                                                                {missingClass && (
+                                                                    <TriageAction
+                                                                        icon="🏷️ Classif"
+                                                                        onClick={() => adminActions.mutate({ id: q.id, action: 'classify' })}
+                                                                        pending={adminActions.isPending && adminActions.variables?.id === q.id && adminActions.variables?.action === 'classify'}
+                                                                        variant="blade-yellow"
+                                                                    />
+                                                                )}
+                                                                <TriageAction
+                                                                    icon="👁️ Ver"
+                                                                    onClick={() => { }}
+                                                                    variant="blade-indigo"
+                                                                />
+                                                                <TriageAction
+                                                                    icon="🚀 Full"
+                                                                    onClick={() => adminActions.mutate({ id: q.id, action: 'complete' })}
+                                                                    pending={adminActions.isPending && adminActions.variables?.id === q.id && adminActions.variables?.action === 'complete'}
+                                                                    variant="blade-green"
+                                                                />
+                                                            </div>
+                                                        </td>
+                                                    </motion.tr>
+                                                )
+                                            })}
                                         </AnimatePresence>
                                     </tbody>
                                 </table>
                             </div>
-                            
+
                             {/* Triage Pagination */}
                             <div className="p-4 bg-gray-50/50 flex justify-center border-t border-gray-50">
                                 <div className="flex gap-2">
-                                    <button 
+                                    <button
                                         onClick={() => setTriagePage(p => Math.max(1, p - 1))}
                                         disabled={triagePage === 1}
                                         className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-xs font-bold disabled:opacity-50 hover:bg-gray-50 transition"
                                     >←</button>
                                     <span className="text-xs font-black self-center text-gray-400 px-4">PÁGINA {triagePage}</span>
-                                    <button 
+                                    <button
                                         onClick={() => setTriagePage(p => p + 1)}
                                         disabled={pendingQuestions.data.length < 10}
                                         className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-xs font-bold disabled:opacity-50 hover:bg-gray-50 transition"
@@ -267,14 +291,14 @@ export default function AdminQuestions() {
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                        <input 
+                        <input
                             name="search"
-                            placeholder="Pesquisar..." 
+                            placeholder="Pesquisar..."
                             className="px-4 py-2 bg-white rounded-xl text-sm font-bold border border-gray-200 focus:ring-2 focus:ring-indigo-500 min-w-[200px]"
                             value={filters.search}
                             onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))}
                         />
-                        <select 
+                        <select
                             name="subject"
                             className="px-4 py-2 bg-white rounded-xl text-sm font-bold border border-gray-200 focus:ring-2 focus:ring-indigo-500"
                             value={filters.subject}
@@ -283,7 +307,17 @@ export default function AdminQuestions() {
                             <option value="">Todas as Matérias</option>
                             {availableSubjects.map((s: string) => <option key={s} value={s}>{s}</option>)}
                         </select>
-                        <select 
+                        <select
+                            name="source"
+                            className="px-4 py-2 bg-white rounded-xl text-sm font-bold border border-gray-200 focus:ring-2 focus:ring-indigo-500"
+                            value={filters.source}
+                            onChange={e => setFilters(prev => ({ ...prev, source: e.target.value }))}
+                        >
+                            <option value="">Todas as Origens</option>
+                            <option value="manual">Manual (ENEM)</option>
+                            <option value="ai_generated">IA Gerada</option>
+                        </select>
+                        <select
                             name="organization"
                             className="px-4 py-2 bg-white rounded-xl text-sm font-bold border border-gray-200 focus:ring-2 focus:ring-indigo-500"
                             value={filters.organization}
@@ -311,11 +345,17 @@ export default function AdminQuestions() {
                                     <td className="px-6 py-4 text-sm font-black text-gray-300 font-mono">#{q.id}</td>
                                     <td className="px-6 py-4">
                                         <div className="flex flex-col">
-                                            <span className="text-sm font-bold text-gray-700 line-clamp-1">{q.statement}</span>
-                                            <div className="flex gap-2 mt-1">
-                                                <span className="text-[10px] font-black text-indigo-400 uppercase">{q.subject}</span>
+                                            <div dangerouslySetInnerHTML={{ __html: q.statement }} className="text-sm font-bold text-gray-700 line-clamp-1 w-[400px]" />
+                                            <div className="flex gap-2 mt-1 items-center">
+                                                <span className="text-[10px] font-black text-indigo-400 uppercase">{q.subjects?.[0]?.name || 'Sem Matéria'}</span>
                                                 <span className="text-[10px] font-black text-gray-300 uppercase">•</span>
                                                 <span className="text-[10px] font-black text-gray-400 uppercase">{q.organization || 'AprovadoAI'} {q.year && `/ ${q.year}`}</span>
+                                                <span className="text-[10px] font-black text-gray-300 uppercase">•</span>
+                                                {q.format === 'true_false' ? (
+                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700 uppercase tracking-tighter">⚖️ Certo/Errado</span>
+                                                ) : (
+                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-gray-100 text-gray-600 uppercase tracking-tighter">📝 Múltipla Escolha</span>
+                                                )}
                                             </div>
                                         </div>
                                     </td>
@@ -323,10 +363,10 @@ export default function AdminQuestions() {
                                         <DifficultyBadge level={q.difficulty} />
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <button className="p-2 hover:bg-gray-100 rounded-lg transition" title="Ver">👁️</button>
-                                            <Link to={`/admin/questions/${q.id}/edit`} className="p-2 hover:bg-gray-100 rounded-lg transition" title="Editar">✏️</Link>
-                                            <button className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition" title="Excluir">🗑️</button>
+                                        <div className="flex justify-end gap-2 items-center">
+                                            <button className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] rounded hover:bg-indigo-200 font-medium flex items-center gap-1" title="Ver">👁️ Ver</button>
+                                            <Link to={`/admin/questions/${q.id}/edit`} className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded hover:bg-blue-200 font-medium flex items-center gap-1">✏️ Editar</Link>
+                                            <button onClick={() => adminActions.mutate({ id: q.id, action: 'evaluate-difficulty' })} className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] rounded hover:bg-purple-200 font-medium flex items-center gap-1" title="Reavaliar IA">⚡ IA</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -339,12 +379,12 @@ export default function AdminQuestions() {
                 <div className="p-6 bg-gray-50/30 border-t border-gray-100 flex items-center justify-between">
                     <span className="text-xs font-black text-gray-400 uppercase">Total: {questions.total} questões</span>
                     <div className="flex gap-2">
-                        <button 
+                        <button
                             onClick={() => setPage(p => Math.max(1, p - 1))}
                             disabled={page === 1}
                             className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-gray-50 transition"
                         >Anterior</button>
-                        <button 
+                        <button
                             onClick={() => setPage(p => p + 1)}
                             disabled={!questions.next_page_url}
                             className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-gray-50 transition"
@@ -353,9 +393,9 @@ export default function AdminQuestions() {
                 </div>
             </div>
 
-            <AdminBatchModal 
-                isOpen={isBatchModalOpen} 
-                onClose={() => setIsBatchModalOpen(false)} 
+            <AdminBatchModal
+                isOpen={isBatchModalOpen}
+                onClose={() => setIsBatchModalOpen(false)}
                 pendingCount={counts.pending_total}
                 onBatchStarted={(bid) => {
                     console.log('Batch started:', bid);
@@ -366,19 +406,22 @@ export default function AdminQuestions() {
     );
 }
 
-function TriageAction({ icon, label, onClick, pending, variant = 'default' }: any) {
+function TriageAction({ icon, onClick, pending, variant = 'default' }: any) {
+    const variants: any = {
+        'blade-orange': 'bg-orange-100 text-orange-700 hover:bg-orange-200',
+        'blade-blue': 'bg-blue-100 text-blue-700 hover:bg-blue-200',
+        'blade-yellow': 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200',
+        'blade-indigo': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200',
+        'blade-green': 'bg-green-100 text-green-700 hover:bg-green-200',
+        'primary': 'bg-indigo-600 text-white shadow-indigo-100 hover:bg-indigo-700',
+        'default': 'bg-white border border-gray-100 text-gray-700 hover:border-indigo-200'
+    };
+
     return (
-        <button 
+        <button
             onClick={onClick}
             disabled={pending}
-            title={label}
-            className={`w-9 h-9 flex items-center justify-center rounded-xl transition shadow-sm ${
-                pending ? 'scale-90 opacity-50 cursor-wait' : 'hover:scale-110'
-            } ${
-                variant === 'primary' 
-                ? 'bg-indigo-600 text-white shadow-indigo-100 hover:bg-indigo-700' 
-                : 'bg-white border border-gray-100 text-gray-700 hover:border-indigo-200'
-            }`}
+            className={`px-2 py-0.5 text-[10px] rounded font-medium transition shadow-sm flex items-center gap-1 ${pending ? 'opacity-50 cursor-wait bg-gray-100 border-none' : ''} ${variants[variant]}`}
         >
             {pending ? <span className="animate-spin text-xs">⏳</span> : icon}
         </button>

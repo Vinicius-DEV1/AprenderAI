@@ -8,14 +8,14 @@ export default function PaymentStatus() {
     const status = searchParams.get('status') || 'pending'; // success, failure, pending
 
     // States for 'pending' status resolving PIX
-    const [pixPayload, setPixPayload] = useState<string | null>(searchParams.get('pix_payload'));
-    const [pixImage, setPixImage] = useState<string | null>(searchParams.get('pix_image'));
+    const [pixPayload] = useState<string | null>(searchParams.get('pix_payload'));
+    const [pixImage] = useState<string | null>(searchParams.get('pix_image'));
     const [isChecking, setIsChecking] = useState(false);
     const [copyFeedback, setCopyFeedback] = useState(false);
 
     // Simulated check for pending status
     useEffect(() => {
-        let interval: NodeJS.Timeout;
+        let interval: ReturnType<typeof setInterval>;
         if (status === 'pending') {
             interval = setInterval(async () => {
                 if (isChecking) return;

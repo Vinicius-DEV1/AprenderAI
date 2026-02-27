@@ -306,3 +306,8 @@ Route::get('auth/google', [\App\Http\Controllers\Auth\GoogleAuthController::clas
 Route::get('auth/google/callback', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'callback'])->name('auth.google.callback');
 
 require __DIR__ . '/auth.php';
+
+// SPA Catch-all: Qualquer rota não tratada pelo Laravel acima deve ser entregue ao Frontend (React)
+Route::fallback(function () {
+    return redirect(env('FRONTEND_URL', 'http://localhost:5174') . request()->getRequestUri());
+});

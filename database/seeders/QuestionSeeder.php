@@ -14,14 +14,14 @@ class QuestionSeeder extends Seeder
     {
         // Documentação Viva: Seed enxuto para fins de testes rápidos e exemplos de estrutura relacional N:N.
         // Carrega as questões muito mais rápido (não gera centenas pseudo-aleatórias)
-        
+
         // Garante a existência das Matérias padronizadas (Upper Case + slug)
         // Isso evita "Matemática" vs "MATEMÁTICA", unificando entidades.
         $portSubject = Subject::firstOrCreate(
             ['name' => trim(strtoupper('PORTUGUÊS'))],
             ['slug' => Str::slug('PORTUGUÊS'), 'type' => 'geral']
         );
-        
+
         $mathSubject = Subject::firstOrCreate(
             ['name' => trim(strtoupper('MATEMÁTICA'))],
             ['slug' => Str::slug('MATEMÁTICA'), 'type' => 'geral']
@@ -116,8 +116,23 @@ class QuestionSeeder extends Seeder
             explanation: 'A imperatividade é, de fato, o atributo que permite a imposição do ato administrativo a terceiros sem necessidade de anuência prévia.',
             theme: null
         );
-        
-        $this->command->info('QuestionSeeder: Documentação Viva gerada com sucesso (Incluindo formato Certo/Errado).');
+
+        // --- QUESTÃO 4: PENDENTE DE TRIAGEM (TESTE) ---
+        $incompleteQuestion = Question::create([
+            'type' => 'enem',
+            'format' => 'multiple_choice',
+            'statement' => 'QUESTÃO DE TESTE: Esta questão deve aparecer na triagem porque não tem explicação nem dificuldade.',
+            'year' => 2024,
+            'source' => 'ai_generated',
+            'organization' => 'TESTE IA',
+            'external_id' => 'incomplete_test_001',
+            'review_status' => 'pending',
+            'difficulty' => 'medium',
+            'difficulty_reasoning' => null,
+            'explanation' => null,
+        ]);
+
+        $this->command->info('QuestionSeeder: Documentação Viva gerada com sucesso (Incluindo questão incompleta para Triagem).');
     }
 
     /**
@@ -156,7 +171,7 @@ class QuestionSeeder extends Seeder
 
         // 4. Inserção de Alternativas (HasMany)
         $question->alternatives()->delete();
-        
+
         $altsToInsert = [];
         foreach ($alternatives as $label => $content) {
             $altsToInsert[] = [
@@ -165,7 +180,7 @@ class QuestionSeeder extends Seeder
                 'is_correct' => ($label === $correctLetter),
             ];
         }
-        
+
         $question->alternatives()->createMany($altsToInsert);
     }
 }

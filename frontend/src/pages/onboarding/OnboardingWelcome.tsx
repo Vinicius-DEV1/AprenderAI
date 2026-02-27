@@ -4,10 +4,6 @@ import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 
 // Interfaces based on expected data
-interface PlanFeature {
-    id: number;
-    name: string;
-}
 
 interface Plan {
     id: number;

@@ -49,7 +49,7 @@
 
         <a href="{{ route('essays.show', $essay->id) }}" class="btn">Ver Correção Completa</a>
 
-        <p><small>Equipe AprovaAI</small></p>
+        <p><small>Equipe {{ config('app.name', 'AprovadoAI') }}</small></p>
     </div>
 </body>
 

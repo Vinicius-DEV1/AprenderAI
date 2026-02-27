@@ -14,6 +14,7 @@ const getSimulationResult = async (id: string) => {
 export default function SimulationResult() {
     const { id } = useParams<{ id: string }>();
     const { aiName } = useConfigStore();
+    const [filter, setFilter] = useState<'all' | 'correct' | 'incorrect'>('all');
 
     const { data: simulation, isLoading } = useQuery({
         queryKey: ['simulationResult', id],
@@ -47,6 +48,12 @@ export default function SimulationResult() {
         return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
 
+    const filteredAnswers = answers.filter((ans: any) => {
+        if (filter === 'correct') return ans.is_correct;
+        if (filter === 'incorrect') return !ans.is_correct;
+        return true;
+    });
+
     return (
         <div className="simulation-page p-4 lg:p-8 max-w-[1200px] mx-auto">
             <style>{`
@@ -71,6 +78,10 @@ export default function SimulationResult() {
                 .dark .answer-item.incorrect { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); }
                 .btn-back { display: inline-block; padding: 12px 24px; background: #2563EB; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: all 0.2s; }
                 .btn-back:hover { background: #1d4ed8; transform: translateY(-1px); }
+                .filter-tab { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: 1px solid #e2e8f0; }
+                .filter-tab.active { background: #2563EB; color: white; border-color: #2563EB; }
+                .dark .filter-tab { border-color: rgba(255,255,255,0.1); color: #94a3b8; }
+                .dark .filter-tab.active { background: #4f46e5; color: white; }
             `}</style>
 
             <div className="result-header">
@@ -100,10 +111,21 @@ export default function SimulationResult() {
             </div>
 
             <div className="answers-section">
-                <h2>Análise Detalhada</h2>
-                {answers.map((ans: any, idx: number) => (
-                    <AnswerCard key={ans.question_id} answer={ans} index={idx} simulationId={simulation.id} aiName={aiName} />
-                ))}
+                <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                    <h2 className="mb-0">Análise Detalhada</h2>
+                    <div className="flex gap-2">
+                        <button onClick={() => setFilter('all')} className={`filter-tab ${filter === 'all' ? 'active' : ''}`}>Todas</button>
+                        <button onClick={() => setFilter('correct')} className={`filter-tab ${filter === 'correct' ? 'active' : ''}`}>✅ Acertos</button>
+                        <button onClick={() => setFilter('incorrect')} className={`filter-tab ${filter === 'incorrect' ? 'active' : ''}`}>❌ Erros</button>
+                    </div>
+                </div>
+                {filteredAnswers.length === 0 ? (
+                    <div className="text-center py-10 text-slate-500">Nenhuma questão encontrada com este filtro.</div>
+                ) : (
+                    filteredAnswers.map((ans: any, idx: number) => (
+                        <AnswerCard key={ans.question_id} answer={ans} index={answers.indexOf(ans)} aiName={aiName} />
+                    ))
+                )}
             </div>
 
             <div className="text-center mt-8 gap-4 flex flex-wrap justify-center">
@@ -119,11 +141,10 @@ export default function SimulationResult() {
     );
 }
 
-function AnswerCard({ answer, index, simulationId, aiName }: { answer: any, index: number, simulationId: number, aiName: string }) {
+function AnswerCard({ answer, index, aiName }: { answer: any, index: number, aiName: string }) {
     const q = answer.question;
     const [showChat, setShowChat] = useState(false);
 
-    // Simple marked helper
     const renderMd = (text: string) => {
         if (!text) return { __html: '' };
         try { return { __html: marked.parse(text) as string }; }
@@ -235,40 +256,86 @@ function ChatInterface({ questionId, aiName }: { questionId: number, aiName: str
     useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }, [messages, isTyping]);
 
     const sendMessage = async () => {
-        if (!input.trim()) return;
+        if (!input.trim() || isTyping) return;
+
         const userMsg = input;
         setInput('');
-        setMessages(prev => [...prev, { role: 'user', message: userMsg }]);
+
+        const newMessages = [...messages, { role: 'user', message: userMsg }];
+        setMessages(newMessages);
         setIsTyping(true);
 
+        const currentMsgIndex = newMessages.length;
+        setMessages(prev => [...prev, { role: 'assistant', message: '' }]);
+
         try {
-            const res = await api.post(`/api/v1/questions/${questionId}/chat`, { message: userMsg });
-            if (res.data.status === 'quota_exceeded') {
-                setMessages(prev => [...prev, { role: 'system', message: res.data.message, upgrade_url: res.data.upgrade_url }]);
+            const response = await fetch(`${api.defaults.baseURL}/api/v1/questions/${questionId}/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Accept': 'text/event-stream'
+                },
+                body: JSON.stringify({ message: userMsg, stream: true })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                if (errorData.status === 'quota_exceeded') {
+                    setMessages(prev => {
+                        const updated = [...prev];
+                        updated[currentMsgIndex] = { role: 'system', message: errorData.message, upgrade_url: errorData.upgrade_url };
+                        return updated;
+                    });
+                } else {
+                    throw new Error('Chat error');
+                }
                 setIsTyping(false);
                 return;
             }
-            pollAnswer();
+
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let accumulatedMessage = '';
+
+            if (reader) {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const dataStr = line.substring(6);
+                            if (dataStr === '[DONE]') continue;
+
+                            try {
+                                const data = JSON.parse(dataStr);
+                                if (data.text) {
+                                    accumulatedMessage += data.text;
+                                    setMessages(prev => {
+                                        const updated = [...prev];
+                                        updated[currentMsgIndex] = { role: 'assistant', message: accumulatedMessage };
+                                        return updated;
+                                    });
+                                }
+                            } catch (e) { }
+                        }
+                    }
+                }
+            }
+
         } catch (e) {
+            setMessages(prev => {
+                const updated = [...prev];
+                updated[currentMsgIndex] = { role: 'assistant', message: 'Desculpe, ocorreu um erro ao processar sua dúvida.' };
+                return updated;
+            });
+        } finally {
             setIsTyping(false);
         }
-    };
-
-    const pollAnswer = () => {
-        let attempts = 0;
-        const poller = setInterval(async () => {
-            attempts++;
-            try {
-                const res = await api.get(`/api/v1/questions/${questionId}/chat`);
-                const last = res.data[res.data.length - 1];
-                if (last && last.role === 'assistant') {
-                    setMessages(res.data);
-                    setIsTyping(false);
-                    clearInterval(poller);
-                }
-            } catch (e) { }
-            if (attempts > 30) { clearInterval(poller); setIsTyping(false); }
-        }, 2000);
     };
 
     return (
@@ -293,7 +360,7 @@ function ChatInterface({ questionId, aiName }: { questionId: number, aiName: str
                         )}
                     </div>
                 ))}
-                {isTyping && (
+                {isTyping && !messages[messages.length - 1]?.message && (
                     <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg w-fit border dark:border-slate-700 shadow-sm animate-pulse">
                         <span className="text-[10px] text-slate-500 font-medium">{aiName} está digitando</span>
                         <div className="flex gap-0.5">
