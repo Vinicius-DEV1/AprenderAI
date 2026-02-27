@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useConfigStore } from '../../stores/configStore';
 import { validateCoupon, processCheckout } from '../../api/subscriptions';
+import { IMaskInput } from 'react-imask';
 
 export default function PlanCheckout() {
     const { planId } = useParams();
@@ -26,8 +27,15 @@ export default function PlanCheckout() {
         card_expiry_month: '',
         card_expiry_year: '',
         card_ccv: '',
-        cpf: ''
+        cpf: '',
+        postal_code: '',
+        address_number: '',
+        phone: ''
     });
+
+    const handleMaskChange = (value: string, name: string) => {
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
 
     useEffect(() => {
         if (plan) {
@@ -214,9 +222,10 @@ export default function PlanCheckout() {
 
                                     <div>
                                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Número do Cartão</label>
-                                        <input
+                                        <IMaskInput
+                                            mask="0000 0000 0000 0000" unmask={true}
                                             type="text" name="card_number" required
-                                            value={formData.card_number} onChange={handleInputChange}
+                                            value={formData.card_number} onAccept={(val) => handleMaskChange(val, 'card_number')}
                                             placeholder="0000 0000 0000 0000"
                                             className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 font-medium font-mono"
                                         />
@@ -226,15 +235,17 @@ export default function PlanCheckout() {
                                         <div className="col-span-2">
                                             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Validade (MM/AA)</label>
                                             <div className="flex gap-3">
-                                                <input
-                                                    type="text" name="card_expiry_month" required maxLength={2}
-                                                    value={formData.card_expiry_month} onChange={handleInputChange}
+                                                <IMaskInput
+                                                    mask="00" unmask={true}
+                                                    type="text" name="card_expiry_month" required
+                                                    value={formData.card_expiry_month} onAccept={(val) => handleMaskChange(val, 'card_expiry_month')}
                                                     placeholder="MM"
                                                     className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 text-center font-bold"
                                                 />
-                                                <input
-                                                    type="text" name="card_expiry_year" required maxLength={2}
-                                                    value={formData.card_expiry_year} onChange={handleInputChange}
+                                                <IMaskInput
+                                                    mask="00" unmask={true}
+                                                    type="text" name="card_expiry_year" required
+                                                    value={formData.card_expiry_year} onAccept={(val) => handleMaskChange(val, 'card_expiry_year')}
                                                     placeholder="AA"
                                                     className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 text-center font-bold"
                                                 />
@@ -242,9 +253,10 @@ export default function PlanCheckout() {
                                         </div>
                                         <div className="col-span-2 sm:col-span-1">
                                             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Cód. Segurança</label>
-                                            <input
-                                                type="text" name="card_ccv" required maxLength={4}
-                                                value={formData.card_ccv} onChange={handleInputChange}
+                                            <IMaskInput
+                                                mask="0000" unmask={true}
+                                                type="text" name="card_ccv" required
+                                                value={formData.card_ccv} onAccept={(val) => handleMaskChange(val, 'card_ccv')}
                                                 placeholder="CVV"
                                                 className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 text-center font-bold"
                                             />
@@ -268,18 +280,57 @@ export default function PlanCheckout() {
                                 </div>
                             )}
 
-                            {/* Shared Info (CPF) */}
-                            <div className="mt-10 space-y-4 border-t border-slate-100 dark:border-slate-800 pt-8">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">CPF / CNPJ do Titular</label>
-                                    <input
-                                        type="text" name="cpf" required
-                                        value={formData.cpf} onChange={handleInputChange}
-                                        placeholder="000.000.000-00"
-                                        className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
-                                    />
-                                    <p className="mt-2 text-[10px] text-slate-400 font-medium">Necessário para processamento seguro via gateway certificado.</p>
+                            {/* Shared Info (Anti-Fraud) */}
+                            <div className="mt-10 space-y-6 border-t border-slate-100 dark:border-slate-800 pt-8">
+                                <h3 className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-2">
+                                    🛡️ Dados de Cobrança / Anti-Fraude
+                                </h3>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">CPF / CNPJ</label>
+                                        <IMaskInput
+                                            mask={[{ mask: '000.000.000-00' }, { mask: '00.000.000/0000-00' }]} unmask={true}
+                                            type="text" name="cpf" required
+                                            value={formData.cpf} onAccept={(val) => handleMaskChange(val, 'cpf')}
+                                            placeholder="000.000.000-00"
+                                            className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Telefone Celular</label>
+                                        <IMaskInput
+                                            mask="(00) 00000-0000" unmask={true}
+                                            type="text" name="phone" required
+                                            value={formData.phone} onAccept={(val) => handleMaskChange(val, 'phone')}
+                                            placeholder="(11) 99999-9999"
+                                            className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">CEP</label>
+                                        <IMaskInput
+                                            mask="00000-000" unmask={true}
+                                            type="text" name="postal_code" required
+                                            value={formData.postal_code} onAccept={(val) => handleMaskChange(val, 'postal_code')}
+                                            placeholder="00000-000"
+                                            className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Número (Endereço)</label>
+                                        <input
+                                            type="text" name="address_number" required
+                                            value={formData.address_number} onChange={handleInputChange}
+                                            placeholder="123"
+                                            className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                        />
+                                    </div>
                                 </div>
+                                <p className="mt-2 text-[11px] text-slate-400 font-medium">Os dados acima são obrigatórios pela instituição financeira para prevenir recusas por suspeita de fraude.</p>
                             </div>
 
                             <div className="mt-10">

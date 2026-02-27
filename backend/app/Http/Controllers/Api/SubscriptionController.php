@@ -65,6 +65,9 @@ class SubscriptionController extends Controller
             'card_expiry_month' => 'required_if:payment_method,credit_card',
             'card_expiry_year' => 'required_if:payment_method,credit_card',
             'card_ccv' => 'required_if:payment_method,credit_card',
+            'postal_code' => 'required_if:payment_method,credit_card',
+            'address_number' => 'required_if:payment_method,credit_card',
+            'phone' => 'required_if:payment_method,credit_card',
         ]);
 
         $user = Auth::user();
@@ -96,6 +99,9 @@ class SubscriptionController extends Controller
                     'expiry_month' => $request->card_expiry_month,
                     'expiry_year' => $request->card_expiry_year,
                     'ccv' => $request->card_ccv,
+                    'postal_code' => $request->postal_code,
+                    'address_number' => $request->address_number,
+                    'phone' => $request->phone,
                 ]);
             }
 
