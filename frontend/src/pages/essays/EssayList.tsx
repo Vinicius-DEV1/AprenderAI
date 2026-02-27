@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import Chart from 'react-apexcharts';
 import { useEssays } from '../../hooks/useEssays';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -18,6 +19,7 @@ export default function EssayList() {
 
     const essays = data?.data || [];
     const meta = data?.meta || {};
+    const chartData = meta.charts || {};
     const canCreate = data?.essayLimit?.can_create ?? true;
     const limit = data?.essayLimit?.total ?? 0;
     const used = data?.essayLimit?.remaining !== undefined && data?.essayLimit?.total !== undefined
@@ -41,6 +43,54 @@ export default function EssayList() {
         return map[status] || { label: status, classes: 'bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-slate-300' };
     };
 
+    const isDarkMode = document.documentElement.classList.contains('dark');
+
+    const getChartOptions = (color: string) => ({
+        chart: {
+            id: 'essay-evolution',
+            type: 'area' as const,
+            toolbar: { show: false },
+            zoom: { enabled: false },
+            fontFamily: 'inherit',
+            parentHeightOffset: 0,
+            sparkline: { enabled: false }
+        },
+        colors: [color],
+        fill: {
+            type: 'gradient',
+            gradient: {
+                shadeIntensity: 1,
+                opacityFrom: 0.4,
+                opacityTo: 0.05,
+                stops: [0, 90, 100]
+            }
+        },
+        dataLabels: { enabled: false },
+        stroke: { curve: 'smooth' as const, width: 3 },
+        xaxis: {
+            axisBorder: { show: false },
+            axisTicks: { show: false },
+            labels: {
+                style: { colors: '#9ca3af', fontSize: '12px' }
+            },
+            tooltip: { enabled: false }
+        },
+        yaxis: {
+            labels: {
+                style: { colors: '#9ca3af', fontSize: '12px' },
+                formatter: (value: number) => String(Math.round(value))
+            }
+        },
+        grid: {
+            borderColor: isDarkMode ? '#334155' : '#f3f4f6',
+            strokeDashArray: 4,
+            padding: { top: 0, right: 0, bottom: 0, left: 10 }
+        },
+        tooltip: {
+            theme: isDarkMode ? 'dark' : 'light',
+            y: { formatter: (val: number) => String(val) }
+        }
+    });
 
     const planName = user?.plan?.name || '';
     const isPlus = planName.toLowerCase().includes('plus');
@@ -49,6 +99,65 @@ export default function EssayList() {
     return (
         <div className="py-12">
             <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+
+                {/* Evolution Charts */}
+                {(chartData.hasEnem || chartData.hasConcursos) && (
+                    <div className={`mb-8 grid grid-cols-1 ${chartData.hasEnem && chartData.hasConcursos ? 'md:grid-cols-2' : ''} gap-6`}>
+                        {chartData.hasEnem && (
+                            <div className="bg-white dark:bg-slate-900 shadow-sm dark:shadow-none sm:rounded-lg p-6 dark:border dark:border-slate-700">
+                                <h3 className="font-bold text-lg text-gray-800 dark:text-gray-200 mb-4">Evolução ENEM</h3>
+                                <div className="relative h-64">
+                                    {chartData.enemSeries && chartData.enemSeries.length > 0 ? (
+                                        <Chart
+                                            options={{
+                                                ...getChartOptions('#3B82F6'),
+                                                xaxis: {
+                                                    ...getChartOptions('#3B82F6').xaxis,
+                                                    categories: chartData.enemSeries.map((d: any) => d.date)
+                                                }
+                                            }}
+                                            series={[{
+                                                name: 'Nota ENEM',
+                                                data: chartData.enemSeries.map((d: any) => d.value)
+                                            }]}
+                                            type="area"
+                                            height="100%"
+                                        />
+                                    ) : (
+                                        <EmptyChart />
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {chartData.hasConcursos && (
+                            <div className="bg-white dark:bg-slate-900 shadow-sm dark:shadow-none sm:rounded-lg p-6 dark:border dark:border-slate-700">
+                                <h3 className="font-bold text-lg text-gray-800 dark:text-gray-200 mb-4">Evolução Concursos</h3>
+                                <div className="relative h-64">
+                                    {chartData.concursosSeries && chartData.concursosSeries.length > 0 ? (
+                                        <Chart
+                                            options={{
+                                                ...getChartOptions('#10B981'),
+                                                xaxis: {
+                                                    ...getChartOptions('#10B981').xaxis,
+                                                    categories: chartData.concursosSeries.map((d: any) => d.date)
+                                                }
+                                            }}
+                                            series={[{
+                                                name: 'Nota Concurso',
+                                                data: chartData.concursosSeries.map((d: any) => d.value)
+                                            }]}
+                                            type="area"
+                                            height="100%"
+                                        />
+                                    ) : (
+                                        <EmptyChart />
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Limit Card */}
                 <div className="mb-6 bg-white dark:bg-slate-900 overflow-hidden shadow-sm dark:shadow-none dark:border dark:border-slate-700 sm:rounded-lg">
@@ -120,10 +229,10 @@ export default function EssayList() {
                                                 return (
                                                     <tr key={essay.id} className="hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
-                                                            {essay.created_at || essay.formatted_date}
+                                                            {essay.submitted_at ? new Date(essay.submitted_at).toLocaleDateString() : '-'}
                                                         </td>
                                                         <td className="px-6 py-4 text-sm text-gray-900 dark:text-slate-200">
-                                                            {String(essay.title).length > 40 ? String(essay.title).substring(0, 40) + '...' : essay.title}
+                                                            {String(essay.theme).length > 40 ? String(essay.theme).substring(0, 40) + '...' : essay.theme}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
                                                             <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
@@ -176,3 +285,16 @@ export default function EssayList() {
         </div>
     );
 }
+
+function EmptyChart() {
+    return (
+        <div className="flex-grow flex flex-col items-center justify-center text-center text-gray-500 dark:text-gray-400 border-2 border-dashed border-gray-100 dark:border-slate-700 rounded-xl mt-4 min-h-[250px] p-6">
+            <svg className="w-10 h-10 mb-3 text-gray-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+            <p className="text-sm font-medium">Sem dados suficientes ainda.</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Conclua redações para ver sua evolução.</p>
+        </div>
+    );
+}
+

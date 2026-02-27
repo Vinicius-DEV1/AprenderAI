@@ -24,3 +24,7 @@ yarn-error.log
 /storage/framework/testing/*
 /storage/framework/views/*
 /storage/logs/*
+
+# Frontend
+/frontend/node_modules
+/frontend/dist

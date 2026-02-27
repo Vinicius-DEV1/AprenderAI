@@ -82,6 +82,7 @@ class StudyDashboardService
                 'correct' => $correct,
                 'status' => $accuracy !== null ? $this->resolveAccuracyStatus($accuracy, $attempts) : 'observacao',
                 'gap' => round($accuracy - $target, 1),
+                'insight' => $this->resolveSubjectInsight($attempts, $correct),
             ];
         }
 
@@ -481,5 +482,19 @@ class StudyDashboardService
         if ($accuracy < 75)
             return 'estavel';
         return 'bom';
+    }
+
+    protected function resolveSubjectInsight(int $attempts, int $correct): string
+    {
+        if ($attempts < 20) {
+            return "Responda mais questões para aumentar a confiabilidade do diagnóstico.";
+        }
+        if ($correct == 0) {
+            return "🚨 Você errou todas as {$attempts} questões. Recomendamos exercícios guiados e revisão de fundamentos.";
+        }
+        if ($correct == 1) {
+            return "✅ Você acertou 1 questão de {$attempts}.";
+        }
+        return "✅ Você acertou {$correct} questões de {$attempts}.";
     }
 }

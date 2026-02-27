@@ -9,12 +9,14 @@ export default function HomePage() {
     const [periodo, setPeriodo] = useState<'mensal' | 'anual'>('mensal');
 
     const faqs = [
-        { q: 'A plataforma é totalmente online?', a: `Sim. O ${appName} funciona 100% online. Você pode acessar de qualquer lugar, pelo computador ou celular, sem necessidade de instalação.` },
-        { q: `O ${appName} serve para ENEM e concursos?`, a: 'Sim. A plataforma foi desenvolvida tanto para preparação para o ENEM quanto para concursos públicos, com simulados, questões e plano de estudos personalizados.' },
+        { q: 'A plataforma é totalmente online?', a: 'Sim. O AprenderAI funciona 100% online. Você pode acessar de qualquer lugar, pelo computador ou celular, sem necessidade de instalação.' },
+        { q: 'O AprenderAI serve para ENEM e concursos?', a: 'Sim. A plataforma foi desenvolvida tanto para preparação para o ENEM quanto para concursos públicos, com simulados, questões e plano de estudos personalizados.' },
         { q: 'Como funciona a correção por IA?', a: 'Nossa inteligência analisa suas respostas e redações, identifica padrões de erro e fornece explicações detalhadas para acelerar sua evolução.' },
         { q: 'Posso testar gratuitamente antes de assinar?', a: 'Sim. O plano gratuito permite que você conheça a plataforma e resolva provas antes de optar por um plano pago.' },
         { q: 'Os simulados seguem o padrão oficial das provas?', a: 'Sim. Os simulados são estruturados para replicar o formato real do ENEM e de concursos, incluindo controle de tempo.' },
-        { q: 'Como funciona o plano anual com desconto?', a: 'Ao optar pelo plano anual, você recebe 20% de desconto em relação ao valor mensal, mantendo todos os benefícios do plano escolhido.' }
+        { q: 'Como funciona o plano anual com desconto?', a: 'Ao optar pelo plano anual, você recebe 20% de desconto em relação ao valor mensal, mantendo todos os benefícios do plano escolhido.' },
+        { q: 'A plataforma acompanha meu desempenho?', a: 'Sim. Você pode acompanhar sua evolução por disciplina, identificar pontos fracos e visualizar seu progresso ao longo do tempo.' },
+        { q: 'Posso cancelar quando quiser?', a: 'Sim. Você pode gerenciar sua assinatura conforme as regras do plano contratado.' }
     ];
 
     const toggleFaq = (index: number) => {
@@ -61,41 +63,7 @@ export default function HomePage() {
                     </div>
 
                     <div className="lp-hero-illus">
-                        <div className="lp-dash-card">
-                            <div className="lp-dash-header">
-                                <h2>Painel Inteligente</h2>
-                                <p>Sua evolução acompanhada com estratégia.</p>
-                            </div>
-
-                            <div className="lp-dash-grid">
-                                <div className="lp-dash-metric">
-                                    <span className="lp-dash-num">35%</span>
-                                    <span className="lp-dash-lbl">Evolução média</span>
-                                </div>
-                                <div className="lp-dash-metric">
-                                    <span className="lp-dash-num">1.200+</span>
-                                    <span className="lp-dash-lbl">Redações analisadas</span>
-                                </div>
-                                <div className="lp-dash-metric">
-                                    <span className="lp-dash-num">100 MIL</span>
-                                    <span className="lp-dash-lbl">Questões resolvidas</span>
-                                </div>
-                                <div className="lp-dash-metric">
-                                    <span className="lp-dash-num">24/7</span>
-                                    <span className="lp-dash-lbl">Correção automática</span>
-                                </div>
-                            </div>
-
-                            <div className="lp-dash-progress">
-                                <div className="lp-dash-progress-header">
-                                    <span className="lp-dash-progress-label">Progresso do Plano</span>
-                                    <span className="lp-dash-progress-pct">75%</span>
-                                </div>
-                                <div className="lp-dash-bar-track">
-                                    <div className="lp-dash-bar-fill"></div>
-                                </div>
-                            </div>
-                        </div>
+                        <img src="/hero.png" alt="Painel Inteligente" className="w-full h-auto rounded-3xl shadow-2xl" />
                     </div>
                 </div>
             </section>
@@ -104,16 +72,16 @@ export default function HomePage() {
             <section className="lp-metrics">
                 <div className="lp-metrics-inner">
                     <div className="lp-metrics-divider">
-                        <div className="lp-metric-num">35%</div>
-                        <div className="lp-metric-label">MAIS ACERTOS EM <strong>30 DIAS</strong></div>
+                        <div className="lp-metric-num">200k+</div>
+                        <div className="lp-metric-label">QUESTÕES <strong>PARA PRATICAR</strong></div>
                     </div>
                     <div className="lp-metrics-divider">
                         <div className="lp-metric-num">1.200+</div>
                         <div className="lp-metric-label">REDAÇÕES <strong>NOTA 900+</strong></div>
                     </div>
                     <div>
-                        <div className="lp-metric-num">100 MIL</div>
-                        <div className="lp-metric-label"><strong>ALUNOS IMPACTADOS</strong></div>
+                        <div className="lp-metric-num">35%</div>
+                        <div className="lp-metric-label">MAIS ACERTOS EM <strong>30 DIAS</strong></div>
                     </div>
                 </div>
             </section>
@@ -186,12 +154,13 @@ export default function HomePage() {
 
                     <div className="lp-plans-grid">
                         <div className="lp-plan-free">
-                            <div className="text-blue-900 font-bold text-2xl mb-2">Gratuito</div>
+                            <div className="text-blue-900 font-bold text-2xl mb-1">Gratuito</div>
+                            <div className="lp-plan-tagline-free mb-4">Para começar e testar a plataforma.</div>
                             <div className="mb-4">
                                 <span className="lp-plan-price-free">R$ 0</span>
                                 <span className="text-slate-500 text-sm">/mês</span>
                             </div>
-                            <p className="text-slate-400 text-xs mb-6">Sempre gratuito, sem cartão de crédito.</p>
+                            <p className="text-slate-400 text-[11px] mb-6">Sempre gratuito, sem cartão de crédito.</p>
                             <ul className="lp-plan-list-free space-y-3 mb-8">
                                 <li className="flex items-center gap-2 text-sm"><span className="text-green-500">✓</span> 5 provas/mês</li>
                                 <li className="flex items-center gap-2 text-sm"><span className="text-green-500">✓</span> Correção básica</li>
@@ -201,12 +170,13 @@ export default function HomePage() {
                         </div>
 
                         <div className="lp-plan-basic">
-                            <div className="text-white font-bold text-2xl mb-2">Básico</div>
+                            <div className="text-white font-bold text-2xl mb-1">Básico</div>
+                            <div className="lp-plan-tagline-paid mb-4">Plano ideal para quem busca aprovação completa e redação guiada.</div>
                             <div className="mb-2">
                                 <span className="lp-plan-price-paid">R$ {periodo === 'anual' ? '20,00' : '25,00'}</span>
                                 <span className="text-blue-200 text-sm">/mês</span>
                             </div>
-                            <p className="text-blue-100 text-xs mb-6">
+                            <p className="text-blue-100 text-[11px] mb-6">
                                 {periodo === 'anual' ? 'R$ 240,00/ano — economize R$ 60,00' : 'Ou R$ 240,00 no plano anual (20% OFF)'}
                             </p>
                             <ul className="space-y-3 mb-8">
@@ -220,12 +190,13 @@ export default function HomePage() {
 
                         <div className="lp-plan-plus">
                             <div className="bg-yellow-500 text-blue-900 text-[10px] font-black uppercase px-3 py-1 rounded-full inline-block mb-4">⭐ Mais Popular</div>
-                            <div className="text-white font-bold text-2xl mb-2">Plus</div>
+                            <div className="text-white font-bold text-2xl mb-1">Plus</div>
+                            <div className="lp-plan-tagline-paid mb-4">Para acelerar no máximo com estratégia e simulados ilimitados.</div>
                             <div className="mb-2">
                                 <span className="lp-plan-price-paid">R$ {periodo === 'anual' ? '40,00' : '49,90'}</span>
                                 <span className="text-blue-200 text-sm">/mês</span>
                             </div>
-                            <p className="text-blue-100 text-xs mb-6">
+                            <p className="text-blue-100 text-[11px] mb-6">
                                 {periodo === 'anual' ? 'R$ 480,00/ano — economize R$ 118,80' : 'Ou R$ 480,00 no plano anual (20% OFF)'}
                             </p>
                             <ul className="space-y-3 mb-8">
@@ -244,7 +215,7 @@ export default function HomePage() {
             {/* TESTIMONIALS */}
             <section className="lp-testimonials" id="depoimentos">
                 <div className="max-w-[1100px] mx-auto text-center">
-                    <h2 className="text-3xl font-black mb-2">Histórias de Sucesso</h2>
+                    <h2 className="text-3xl font-black mb-2 text-white">Histórias de Sucesso</h2>
                     <p className="text-blue-300 mb-12">Quem estudou com a gente, passou <strong>de verdade.</strong></p>
                     <div className="lp-test-grid">
                         <div className="lp-test-card text-left">
@@ -252,41 +223,72 @@ export default function HomePage() {
                                 <img src="https://i.pravatar.cc/96?img=12" alt="Lucas" />
                                 <div>
                                     <div className="font-bold text-white text-sm">Lucas Andrade</div>
+                                    <div className="text-slate-400 text-[10px] uppercase font-bold">ENEM</div>
                                     <div className="text-yellow-500 text-xs">★★★★★</div>
                                 </div>
                             </div>
-                            <p className="text-blue-100 text-xs italic leading-relaxed">"As análises da plataforma mudaram meu jogo. Consegui entender meus erros e evoluir rápido."</p>
+                            <p className="text-blue-100 text-xs italic leading-relaxed">"Eu sempre estudava muito, mas não sabia exatamente onde estava errando. Quando comecei a usar as análises da plataforma, consegui organizar melhor minha revisão e minha nota subiu de forma consistente."</p>
                         </div>
                         <div className="lp-test-card text-left">
                             <div className="lp-test-avatar">
                                 <img src="https://i.pravatar.cc/96?img=32" alt="Mary" />
                                 <div>
                                     <div className="font-bold text-white text-sm">Mary S.</div>
+                                    <div className="text-slate-400 text-[10px] uppercase font-bold">Concurso Administrativo</div>
                                     <div className="text-yellow-500 text-xs">★★★★★</div>
                                 </div>
                             </div>
-                            <p className="text-blue-100 text-xs italic leading-relaxed">"Saber onde eu precisava melhorar por disciplina foi o segredo da minha aprovação."</p>
+                            <p className="text-blue-100 text-xs italic leading-relaxed">"O que mais me ajudou foi conseguir visualizar meu desempenho por disciplina. Antes eu estudava no escuro, agora sei exatamente onde preciso melhorar."</p>
                         </div>
                         <div className="lp-test-card text-left">
                             <div className="lp-test-avatar">
                                 <img src="https://i.pravatar.cc/96?img=45" alt="Feeh" />
                                 <div>
                                     <div className="font-bold text-white text-sm">Feeh Costa</div>
+                                    <div className="text-slate-400 text-[10px] uppercase font-bold">Redação</div>
                                     <div className="text-yellow-500 text-xs">★★★★★</div>
                                 </div>
                             </div>
-                            <p className="text-blue-100 text-xs italic leading-relaxed">"O feedback por competência na redação é sensacional. Evoluí muito mais rápido."</p>
+                            <p className="text-blue-100 text-xs italic leading-relaxed">"Eu travava muito na redação. Depois que comecei a receber o feedback por competência, consegui entender meus erros estruturais e evoluir muito mais rápido."</p>
                         </div>
                         <div className="lp-test-card text-left">
                             <div className="lp-test-avatar">
                                 <img src="https://i.pravatar.cc/96?img=8" alt="Rafael" />
                                 <div>
                                     <div className="font-bold text-white text-sm">Rafael Mendes</div>
+                                    <div className="text-slate-400 text-[10px] uppercase font-bold">Polícia Militar</div>
                                     <div className="text-yellow-500 text-xs">★★★★★</div>
                                 </div>
                             </div>
-                            <p className="text-blue-100 text-xs italic leading-relaxed">"Os simulados reais me deram o tempo de prova que eu precisava. Passei na PM!"</p>
+                            <p className="text-blue-100 text-xs italic leading-relaxed">"O cronômetro e os simulados completos mudaram minha preparação. Hoje consigo administrar o tempo muito melhor na hora da prova."</p>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* VANTAGEM COMPETITIVA (Restored) */}
+            <section className="lp-vantagem bg-white dark:bg-slate-950 py-24 px-6 md:px-12 border-y border-slate-100 dark:border-slate-900">
+                <div className="max-w-[1100px] mx-auto">
+                    <h2 className="text-center text-3xl md:text-4xl font-black text-blue-900 dark:text-white mb-3">Mais do que estudar. É criar vantagem competitiva.</h2>
+                    <p className="text-center text-slate-500 dark:text-slate-400 italic mb-12">Quem estuda com método evolui. Quem estuda com estratégia passa.</p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {[
+                            { icon: '⚙️', title: 'Clareza Estratégica', desc: 'Não é sobre estudar mais. É sobre estudar certo. Descubra exatamente onde você perde pontos e transforme erros em progresso real.' },
+                            { icon: '▶️', title: 'Segurança no Dia da Prova', desc: 'Simule sob pressão, cronometre seu desempenho e chegue no dia decisivo com confiança construída na prática.' },
+                            { icon: '⏫', title: 'Evolução Baseada em Dados', desc: 'Nada de achismo. Acompanhe métricas claras, histórico de desempenho e crescimento contínuo em cada disciplina.' },
+                            { icon: '✨', title: 'Inteligência que Trabalha por Você', desc: 'A IA analisa seus padrões, identifica fragilidades e ajusta sua preparação automaticamente.' },
+                            { icon: '🎯', title: 'Alto Retorno Sobre o Seu Tempo', desc: 'Cada hora de estudo passa a ter direção. Menos desperdício. Mais resultado.' },
+                            { icon: '☀️', title: 'Acesso Real, Sem Barreiras', desc: 'Preparação estruturada, acessível e disponível 24/7 — para quem decide levar a aprovação a sério.' }
+                        ].map((item, id) => (
+                            <div key={id} className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-100/50 dark:shadow-none hover:-translate-y-2 transition-transform group">
+                                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-900 flex items-center justify-center text-xl text-white shadow-lg shadow-blue-500/30 mb-6 group-hover:scale-110 transition-transform">
+                                    {item.icon}
+                                </div>
+                                <h3 className="text-lg font-black text-blue-900 dark:text-white mb-2 leading-tight">{item.title}</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{item.desc}</p>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </section>

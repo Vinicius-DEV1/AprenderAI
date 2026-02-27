@@ -57,6 +57,9 @@ Route::prefix('v1')->name('api.')->group(function () {
 
         Route::get('concursos', [ConcursoController::class, 'index']);
         Route::apiResource('essays', EssayController::class)->only(['index', 'show', 'store']);
+        Route::post('essays/{essay}/start-topic', [EssayController::class, 'startTopicGeneration']);
+        Route::get('essays/{essay}/topic-status', [EssayController::class, 'getTopicStatus']);
+        Route::post('essays/{essay}/submit', [EssayController::class, 'submit']);
 
         // Plans & Subscriptions
         Route::prefix('plans')->group(function () {
