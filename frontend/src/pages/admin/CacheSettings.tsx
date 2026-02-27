@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import api from '../../api/axios';
@@ -27,10 +28,10 @@ export default function CacheSettings() {
             return res.data;
         },
         onSuccess: () => {
-            alert('Configurações salvas com sucesso!');
+            toast.success('Configurações salvas com sucesso!');
         },
         onError: () => {
-            alert('Erro ao salvar as configurações.');
+            toast.error('Erro ao salvar as configurações.');
         }
     });
 
@@ -40,10 +41,10 @@ export default function CacheSettings() {
             return res.data;
         },
         onSuccess: (data) => {
-            alert(data.message || 'Cache limpo com sucesso!');
+            toast.info(data.message || 'Cache limpo com sucesso!');
         },
         onError: () => {
-            alert('Erro ao tentar limpar o cache do servidor.');
+            toast.error('Erro ao tentar limpar o cache do servidor.');
         }
     });
 

@@ -9,9 +9,7 @@ export function useConfig() {
     const query = useQuery({
         queryKey: ['systemConfig'],
         queryFn: async () => {
-            console.log('Fetching system config...');
             const response = await api.get('/api/v1/config');
-            console.log('Config response:', response.data);
             return response.data.data;
         },
         staleTime: 1000 * 60 * 60, // 1 hour
@@ -22,7 +20,6 @@ export function useConfig() {
             console.error('Config fetch error:', query.error);
         }
         if (query.data) {
-            console.log('Setting config in store:', query.data);
             setConfig(query.data);
         }
     }, [query.data, query.error, setConfig]);

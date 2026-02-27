@@ -1,0 +1,6 @@
+requests
+PyMuPDF
+Pillow
+beautifulsoup4
+google-generativeai
+colorama

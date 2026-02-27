@@ -77,12 +77,12 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password'          => 'hashed',
-            'plan_started_at'   => 'datetime',
-            'plan_expires_at'   => 'datetime',
-            'is_banned'         => 'boolean',
-            'usage_reset_at'    => 'datetime',
-            'last_reset_at'     => 'datetime',
+            'password' => 'hashed',
+            'plan_started_at' => 'datetime',
+            'plan_expires_at' => 'datetime',
+            'is_banned' => 'boolean',
+            'usage_reset_at' => 'datetime',
+            'last_reset_at' => 'datetime',
         ];
     }
 
@@ -128,6 +128,11 @@ class User extends Authenticatable
     public function questionAnswers()
     {
         return $this->hasMany(UserQuestionAnswer::class);
+    }
+
+    public function promptLogs()
+    {
+        return $this->hasMany(AiRequestLog::class);
     }
 
     // =========================================================================
@@ -304,8 +309,8 @@ class User extends Authenticatable
         }
 
         // --- PATH B: No override, use plan + credits ---
-        $planLimit     = $this->plan->essays_limit ?? 0;
-        $totalCredits  = $this->essay_credits ?? 0;
+        $planLimit = $this->plan->essays_limit ?? 0;
+        $totalCredits = $this->essay_credits ?? 0;
         $effectiveLimit = $planLimit + $totalCredits;
 
         // plan essays_limit = 0 means the plan doesn't include essays
@@ -392,9 +397,9 @@ class User extends Authenticatable
         if (!$this->usage_reset_at || $this->usage_reset_at->isPast()) {
             $this->update([
                 'simulations_used_this_month' => 0,
-                'essays_used_this_month'      => 0,
-                'essay_credits'               => 0,
-                'usage_reset_at'              => now()->addMonth(),
+                'essays_used_this_month' => 0,
+                'essay_credits' => 0,
+                'usage_reset_at' => now()->addMonth(),
             ]);
         }
     }

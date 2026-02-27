@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Chart from 'react-apexcharts';
@@ -171,7 +172,7 @@ export default function EssayList() {
                         {canCreate ? (
                             <Link
                                 to="/essays/create"
-                                className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-500 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 transition ease-in-out duration-150"
+                                className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-500 active:bg-blue-700 transition ease-in-out duration-150"
                             >
                                 Nova Redação
                             </Link>
@@ -179,14 +180,14 @@ export default function EssayList() {
                             (isPlus || isBasic) ? (
                                 <Link
                                     to="/recharge"
-                                    className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-500 active:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 transition ease-in-out duration-150 mr-2"
+                                    className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-500 active:bg-green-700 transition ease-in-out duration-150 mr-2"
                                 >
-                                    Recarregar (+{isPlus ? 15 : 2}) - R$ {isPlus ? '20,00' : '5,00'}
+                                    {isPlus ? 'Recarregar (+15) - R$ 20,00' : 'Recarregar (+2) - R$ 5,00'}
                                 </Link>
                             ) : (
                                 <button
                                     type="button"
-                                    onClick={() => alert('Modal Limite Atingido')}
+                                    onClick={() => toast.info('Funcionalidade em manutenção')}
                                     className="inline-flex items-center px-4 py-2 bg-gray-400 dark:bg-slate-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest transition ease-in-out duration-150"
                                 >
                                     Limite Atingido

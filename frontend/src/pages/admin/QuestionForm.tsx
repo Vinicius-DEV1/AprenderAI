@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -97,7 +98,7 @@ export default function QuestionForm() {
             if (error.response?.data?.errors) {
                 setValidationErrors(error.response.data.errors);
             } else {
-                alert('Erro ao salvar a questão.');
+                toast.error('Erro ao salvar a questão.');
             }
         }
     });

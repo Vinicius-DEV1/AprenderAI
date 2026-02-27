@@ -50,6 +50,11 @@ class EssayController extends Controller
                     'concursosSeries' => $concursosSeries,
                     'hasEnem' => $hasEnem,
                     'hasConcursos' => $hasConcursos
+                ],
+                'essayLimit' => [
+                    'can_create' => $user->canCreateEssay(),
+                    'total' => $user->essayQuotaLimit(),
+                    'remaining' => max(0, $user->essayQuotaLimit() - $user->monthlyEssayUsed()),
                 ]
             ]
         ]);
@@ -178,11 +183,31 @@ class EssayController extends Controller
             }
         } else {
             $essay->input_type = 'text';
-            $essay->content = $request->content;
+            $essay->content = $request->input('content');
             $essay->status = 'evaluating';
             $essay->submitted_at = now();
             $essay->save();
         }
+
+        \App\Jobs\EvaluateEssayJob::dispatch($essay);
+
+    }
+
+    public function retryEvaluation(Request $request, Essay $essay)
+    {
+        if ($essay->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        if ($essay->status !== 'error') {
+            return response()->json(['message' => 'Esta redação não está em estado de erro.'], 400);
+        }
+
+        $essay->update([
+            'status' => 'evaluating',
+            'ocr_status' => $essay->input_type === 'image' ? 'processing' : 'completed',
+            'ocr_error' => null
+        ]);
 
         \App\Jobs\EvaluateEssayJob::dispatch($essay);
 

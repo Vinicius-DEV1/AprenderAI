@@ -20,6 +20,9 @@ class EssayResource extends JsonResource
             'status' => $this->status, // 'draft', 'submitted', 'corrected'
             'score' => $this->score,
             'content' => $this->content,
+            'image_url' => $this->image_path ? asset('storage/' . $this->image_path) : null,
+            'ocr_status' => $this->ocr_status,
+            'ocr_error' => $this->ocr_error,
             'feedback' => $this->feedback, // JSON structure with competencies
             'created_at' => $this->created_at,
             'submitted_at' => $this->submitted_at,

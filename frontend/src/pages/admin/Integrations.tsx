@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
@@ -50,10 +51,10 @@ export default function Integrations() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-integrations'] });
-            alert('Configurações atualizadas com sucesso!');
+            toast.success('Configurações atualizadas com sucesso!');
         },
         onError: () => {
-            alert('Erro ao atualizar integrações.');
+            toast.error('Erro ao atualizar integrações.');
         }
     });
 

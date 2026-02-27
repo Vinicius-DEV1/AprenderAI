@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useParams, useNavigate, Link } from 'react-router-dom';
@@ -58,7 +59,7 @@ export default function CouponForm() {
             if (error.response?.data?.errors) {
                 setValidationErrors(error.response.data.errors);
             } else {
-                alert('Erro ao salvar o cupom.');
+                toast.error('Erro ao salvar o cupom.');
             }
         }
     });

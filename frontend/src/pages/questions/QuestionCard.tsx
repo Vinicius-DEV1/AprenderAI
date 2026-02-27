@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { useState, useRef, useEffect } from 'react';
 import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -31,7 +32,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
     const { user } = useAuthStore();
 
     const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-    const [answered, setAnswered] = useState(q.already_answered || false);
+    const [answered, setAnswered] = useState(false);
     const [isCorrect, setIsCorrect] = useState<boolean | null>(q.was_correct ?? null);
     const [correctAnswer, setCorrectAnswer] = useState<string | null>(null);
     const [explanation, setExplanation] = useState<string | null>(null);
@@ -92,7 +93,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
             setExplanation(data.explanation || '');
             setDifficultyReasoning(data.difficulty_reasoning || '');
         } catch (e) {
-            alert('Erro ao enviar resposta.');
+            toast.error('Erro ao enviar resposta.');
         } finally {
             setSubmitting(false);
         }
@@ -218,9 +219,12 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                 <span className="qb-badge qb-badge-origin">{q.subjects.map(s => s.name).join(', ')}</span>
                 <span className={`qb-badge ${dc.class}`}>{dc.label}</span>
                 {q.already_answered && !answered && (
-                    <span className={`qb-badge ${q.was_correct ? 'qb-badge-correct' : 'qb-badge-incorrect'}`}>
-                        {q.was_correct ? '✓ Já Resolvida' : '✗ Já Resolvida'}
-                    </span>
+                    <div className="flex items-center gap-2 mb-2">
+                        <span className={`qb-badge ${q.was_correct ? 'qb-badge-correct' : 'qb-badge-incorrect'}`}>
+                            {q.was_correct ? '✓ Você já acertou esta questão' : '✗ Você já tentou esta questão'}
+                        </span>
+                        <span className="text-[10px] text-gray-400 font-medium">Você pode responder novamente abaixo.</span>
+                    </div>
                 )}
             </div>
 

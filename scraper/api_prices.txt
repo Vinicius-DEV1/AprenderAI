@@ -1,0 +1,25 @@
+# Arquivo de Preços de API (U$ por 1 Milhão de Tokens)
+# Formato: nome_do_modelo,preco_input,preco_output
+
+# -------- OPENAI API (GPT-5 & Realtime) --------
+gpt-5.2,1.750,14.000
+gpt-5.2-pro,21.000,168.000
+gpt-5-mini,0.250,2.000
+gpt-4.1,3.000,12.000
+gpt-4.1-mini,0.800,3.200
+gpt-4.1-nano,0.200,0.800
+gpt-realtime,4.000,16.000
+gpt-realtime-mini,0.600,2.400
+
+# -------- GOOGLE GEMINI API --------
+gemini-3-pro-preview<=200k,2.000,12.000
+gemini-3-pro-preview>200k,4.000,18.000
+gemini-3-flash-preview,0.500,3.000
+gemini-2.5-pro<=200k,1.250,10.000
+gemini-2.5-pro>200k,2.500,15.000
+gemini-2.5-flash-preview,0.300,2.500
+gemini-2.5-flash-lite,0.100,0.400
+gemini-2.0-flash,0.100,0.400
+gemini-2.0-flash-lite,0.075,0.300
+gemini-1.5-flash-8b,0.0375,0.150
+gemini-1.5-flash,0.075,0.300

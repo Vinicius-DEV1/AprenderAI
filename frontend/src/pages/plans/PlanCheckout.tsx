@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useConfigStore } from '../../stores/configStore';
@@ -87,7 +88,7 @@ export default function PlanCheckout() {
                 }
             }
         } catch (err: any) {
-            alert(err.response?.data?.message || 'Erro ao processar checkout. Verifique os dados.');
+            toast.info(err.response?.data?.message || 'Erro ao processar checkout. Verifique os dados.');
         } finally {
             setIsLoading(false);
         }

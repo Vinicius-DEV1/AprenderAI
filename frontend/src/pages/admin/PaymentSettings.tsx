@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import api from '../../api/axios';
@@ -41,13 +42,13 @@ export default function PaymentSettings() {
             return res.data;
         },
         onSuccess: () => {
-            alert('Configurações salvas com sucesso!');
+            toast.success('Configurações salvas com sucesso!');
         },
         onError: (error: any) => {
             if (error.response?.data?.errors) {
                 setValidationErrors(error.response.data.errors);
             } else {
-                alert('Erro ao salvar as configurações.');
+                toast.error('Erro ao salvar as configurações.');
             }
         }
     });

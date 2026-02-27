@@ -1,0 +1,28 @@
+Arquivo de Preços de API (U$ por 1 Milhão de Tokens)
+
+Formato: nome_do_modelo,preco_input,preco_output
+
+——– GOOGLE GEMINI API (ATUALIZADO 2026) ——–
+
+deep-research-pro-preview-12-2025,2.000,12.000
+gemini-2.0-flash,0.100,0.400 gemini-2.0-flash-001,0.100,0.400
+gemini-2.0-flash-exp-image-generation,0.100,0.400
+gemini-2.0-flash-lite,0.075,0.300 gemini-2.0-flash-lite-001,0.075,0.300
+gemini-2.5-flash,0.300,2.500 gemini-2.5-flash-lite,0.100,0.400
+gemini-2.5-flash-lite-preview-09-2025,0.100,0.400
+gemini-2.5-flash-preview-tts,0.300,2.500
+gemini-2.5-pro<=200k,1.250,10.000 gemini-2.5-pro>200k,2.500,15.000
+gemini-2.5-pro-preview-tts,1.250,20.000
+gemini-3-flash-preview,0.500,3.000
+gemini-3-pro-image-preview,2.000,12.000
+gemini-3-pro-preview,2.000,12.000 gemini-3.1-pro-preview,2.000,12.000
+gemini-3.1-pro-preview-customtools,2.000,12.000
+gemini-flash-latest,0.500,3.000 gemini-flash-lite-latest,0.100,0.400
+gemini-pro-latest,2.000,12.000
+
+——– MODELOS SEM PREÇO PÚBLICO POR TOKEN ——–
+
+gemini-robotics-er-1.5-preview,0.000,0.000 gemma-3-12b-it,0.000,0.000
+gemma-3-1b-it,0.000,0.000 gemma-3-27b-it,0.000,0.000
+gemma-3-4b-it,0.000,0.000 gemma-3n-e2b-it,0.000,0.000
+gemma-3n-e4b-it,0.000,0.000 nano-banana-pro-preview,2.000,12.000
