@@ -131,6 +131,28 @@ Ao rodar `php artisan db:seed`, os seguintes usuários são criados automaticame
 
 ---
 
+## 🔒 Documentação de Auditoria e Correções Asaas (27/02/2026)
+
+Esta seção serve como registro das auditorias, correções críticas e débitos técnicos mapeados no ecossistema de pagamentos Asaas da aplicação.
+
+### 🕒 Modificações Realizadas
+
+**Correção de Idempotência e Cálculo Baseado no Payload no WebhookController**
+- **Local:** `backend/app/Http/Controllers/WebhookController.php` (Bloco `PAYMENT_CONFIRMED` / `PAYMENT_RECEIVED`)
+- **Justificativa do Problema:** Anteriormente, quando o Asaas confirmava um pagamento, o sistema usava a função `now()` do servidor para estipular o início e o fim do ciclo (`current_period_end`). Isso gerava dois problemas graves:
+  1. Se houvesse atraso no disparo do webhook por instabilidade, o ciclo do assinante "ganhava" dias não faturados.
+  2. Mais grave: se o webhook sofresse retentativas e fosse recebido duas vezes para o *mesmo* pagamento, o ciclo se expandia (somava +1 mês extra) indevidamente, burlando o faturamento da plataforma (Race Condition).
+- **A Solução Implementada:** 
+  1. Adicionado uma verificação no Model `PaymentLog`. Se aquele `gateway_payment_id` específico já tiver sido logado como `success` num desses eventos, a função garante a idempotência abortando a execução.
+  2. A data estressora dos meses mudou de passiva (`now()`) para ativa (procura a chave `paymentDate` ou `dueDate` do payload do Asaas). O renewal passa a ser ancorado rigorosamente na string exata agendada pelo Asaas.
+
+### 🚦 Alertas Identificados (Backlog Crítico Futuro)
+- **Risco PCI-DSS no Checkout React:** O Componente de Pagamento (`PlanCheckout.tsx`) está capturando os dígitos do cartão e transportando por requisição HTTP para o backend.
+  - *Mitigação Futura:* Migrar o front para usar a arquitetura de **Tokenização (Asaas.js)**. Os dados do cartão devem ser trocados por um token via Asaas no navegador, e somente este token descartável viaja ao backend.
+- **Nota de Score Antifraude Asaas:** O Backend está hardcodando `postalCode='00000000'` e telefone vazio. Isso enfraquece a credibilidade da transação anti-fraude. Recomenda-se a futura captura do endereço.
+
+---
+
 <p align="center">
   Desenvolvido com ❤️ para transformar a educação brasileira.
 </p>

@@ -73,18 +73,42 @@
                                 <div>
                                     <label
                                         class="block text-sm font-medium text-gray-700 dark:text-slate-300">CCV</label>
-                                    <input type="text" name="card_ccv" maxlength="4"
+                                    <input type="text" name="card_ccv" maxlength="4" id="card_ccv"
                                         class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                                 </div>
                             </div>
-                            <!-- (CPF field moved down) -->
+
+                            <div class="grid grid-cols-2 gap-4 mt-4">
+                                <div>
+                                    <label
+                                        class="block text-sm font-medium text-gray-700 dark:text-slate-300">CEP</label>
+                                    <input type="text" name="postal_code" id="postal_code" placeholder="00000-000"
+                                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-sm font-medium text-gray-700 dark:text-slate-300">Número</label>
+                                    <input type="text" name="address_number"
+                                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">Telefone
+                                    (Celular)</label>
+                                <input type="text" name="phone" id="phone" placeholder="(11) 99999-9999"
+                                    class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                <p class="mt-1 text-xs text-gray-500 dark:text-slate-500">Obrigatório para prevenção a
+                                    fraude no cartão.</p>
+                            </div>
                         </div>
                         <!-- Shared Fields -->
                         <div class="mb-6 border-t dark:border-slate-700 pt-4">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">CPF / CNPJ</label>
-                            <input type="text" name="cpf" required placeholder="000.000.000-00"
+                            <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">CPF /
+                                CNPJ</label>
+                            <input type="text" name="cpf" id="cpf" required placeholder="000.000.000-00"
                                 class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                            <p class="mt-1 text-xs text-gray-500 dark:text-slate-500">Obrigatório para processamento via Asaas.</p>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-slate-500">Obrigatório para processamento via
+                                Asaas (mesmo no Pix).</p>
                         </div>
                         <div class="flex items-center justify-end">
                             <a href="{{ route('essays.index') }}"
@@ -101,6 +125,7 @@
     </div>
 
     <!-- Toggle Card Fields -->
+    <script src="https://unpkg.com/imask"></script>
     <script>
         document.querySelectorAll('input[name="payment_method"]').forEach(elem => {
             elem.addEventListener('change', function () {
@@ -111,6 +136,40 @@
                 } else {
                     cardFields.style.display = 'none';
                 }
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (document.getElementById('cpf')) IMask(document.getElementById('cpf'), { mask: [{ mask: '000.000.000-00' }, { mask: '00.000.000/0000-00' }] });
+            if (document.getElementById('postal_code')) IMask(document.getElementById('postal_code'), { mask: '00000-000' });
+            if (document.getElementById('phone')) IMask(document.getElementById('phone'), { mask: '(00) 00000-0000' });
+
+            const cardInput = document.querySelector('input[name="card_number"]');
+            if (cardInput) IMask(cardInput, { mask: '0000 0000 0000 0000' });
+
+            const monthInput = document.querySelector('input[name="card_expiry_month"]');
+            if (monthInput) IMask(monthInput, { mask: '00' });
+
+            const yearInput = document.querySelector('input[name="card_expiry_year"]');
+            if (yearInput) IMask(yearInput, { mask: '00' });
+
+            const cvvInput = document.getElementById('card_ccv');
+            if (cvvInput) IMask(cvvInput, { mask: '0000' });
+
+            // On form submit, we must remove tracking characters like whitespace from the card number and dashes from zip, to allow validate cleanly.
+            const form = document.querySelector('form');
+            form.addEventListener('submit', (e) => {
+                const rawCard = cardInput.value.replace(/\s/g, '');
+                if (rawCard) cardInput.value = rawCard;
+
+                const rawZip = document.getElementById('postal_code').value.replace(/\D/g, '');
+                if (rawZip) document.getElementById('postal_code').value = rawZip;
+
+                const rawPhone = document.getElementById('phone').value.replace(/\D/g, '');
+                if (rawPhone) document.getElementById('phone').value = rawPhone;
+
+                const rawCpf = document.getElementById('cpf').value.replace(/\D/g, '');
+                if (rawCpf) document.getElementById('cpf').value = rawCpf;
             });
         });
     </script>

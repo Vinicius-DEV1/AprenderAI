@@ -27,7 +27,7 @@ class WebhookController extends Controller
             $receivedToken = $request->header('asaas-access-token', '');
             if (!hash_equals($configuredToken, $receivedToken)) {
                 Log::warning('[Webhook] Token inválido recebido', [
-                    'ip'             => $request->ip(),
+                    'ip' => $request->ip(),
                     'received_token' => substr($receivedToken, 0, 8) . '...', // Não logar o token completo
                 ]);
                 return response()->json(['status' => 'unauthorized'], 403);
@@ -35,8 +35,8 @@ class WebhookController extends Controller
         }
 
         // ---- 2. Extrair dados do payload ------------------------------------
-        $data    = $request->all();
-        $event   = $data['event'] ?? null;
+        $data = $request->all();
+        $event = $data['event'] ?? null;
         $payment = $data['payment'] ?? [];
 
         Log::info('[Webhook] Asaas evento recebido', ['event' => $event, 'payment_id' => $payment['id'] ?? null]);
@@ -46,7 +46,7 @@ class WebhookController extends Controller
         }
 
         $subscriptionId = $payment['subscription'] ?? null;
-        $paymentId      = $payment['id'] ?? null;
+        $paymentId = $payment['id'] ?? null;
 
         // ---- 3. Localizar a assinatura --------------------------------------
         $subscription = null;
@@ -72,11 +72,11 @@ class WebhookController extends Controller
 
         // ---- 4. Salvar Audit Log (sempre, mesmo para eventos não encontrados) -
         $auditData = [
-            'gateway'                 => 'asaas',
-            'gateway_payment_id'      => $paymentId,
+            'gateway' => 'asaas',
+            'gateway_payment_id' => $paymentId,
             'gateway_subscription_id' => $subscriptionId,
-            'event'                   => $event,
-            'raw_response'            => PaymentLog::sanitize($data),
+            'event' => $event,
+            'raw_response' => PaymentLog::sanitize($data),
         ];
 
         if ($subscription) {
@@ -87,8 +87,8 @@ class WebhookController extends Controller
         if (!$subscription) {
             Log::warning('[Webhook] Subscription não encontrada', [
                 'subscription_id' => $subscriptionId,
-                'external_ref'    => $externalRef,
-                'event'           => $event,
+                'external_ref' => $externalRef,
+                'event' => $event,
             ]);
             PaymentLog::create(array_merge($auditData, ['status' => 'ignored_not_found']));
             return response()->json(['status' => 'not_found']);
@@ -100,28 +100,44 @@ class WebhookController extends Controller
         switch ($event) {
             case 'PAYMENT_CONFIRMED':
             case 'PAYMENT_RECEIVED':
-                // Calcula o fim do período baseado no plano
+                // 1. Idempotência: Checa se já processamos com sucesso este exato pagamento antes.
+                $alreadyProcessed = PaymentLog::where('gateway_payment_id', $paymentId)
+                    ->whereIn('event', ['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'])
+                    ->where('status', 'success')
+                    ->exists();
+
+                if ($alreadyProcessed) {
+                    Log::info('[Webhook] Pagamento já processado (Idempotência). Ignorando duplo trigger.', ['payment_id' => $paymentId]);
+                    return response()->json(['status' => 'ignored_idempotent']);
+                }
+
+                // 2. Cálculo exato do período ancorado na data do Asaas (não depende do atraso do webhook)
+                $paymentDateStr = $payment['paymentDate'] ?? ($payment['dueDate'] ?? now()->toDateString());
+                $baseDateAt = \Carbon\Carbon::parse($paymentDateStr);
+
                 $periodEnd = $plan->interval === 'yearly'
-                    ? now()->addYear()
-                    : now()->addMonth();
+                    ? $baseDateAt->copy()->addYear()
+                    : $baseDateAt->copy()->addMonth();
 
                 $subscription->update([
-                    'status'               => 'active',
-                    'current_period_start' => now(),
-                    'current_period_end'   => $periodEnd,
+                    'status' => 'active',
+                    'current_period_start' => $baseDateAt,
+                    'current_period_end' => $periodEnd,
                 ]);
 
                 // Ativa o plano do usuário
                 $user->update([
-                    'plan_id'         => $plan->id,
-                    'plan_started_at' => now(),
+                    'plan_id' => $plan->id,
+                    'plan_started_at' => now(), // A data que o acesso real começou
                     'plan_expires_at' => $periodEnd,
                 ]);
 
-                Log::info('[Webhook] Plano ativado', [
+                Log::info('[Webhook] Plano ativado/renovado', [
                     'user_id' => $user->id,
                     'plan_id' => $plan->id,
-                    'event'   => $event,
+                    'vencimento_base' => $baseDateAt->toDateString(),
+                    'nova_expiracao' => $periodEnd->toDateString(),
+                    'event' => $event,
                 ]);
 
                 PaymentLog::create(array_merge($auditData, ['status' => 'success']));

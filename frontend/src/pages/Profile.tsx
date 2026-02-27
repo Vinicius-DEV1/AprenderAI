@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import api from '../api/axios';
+import { sendVerificationEmail } from '../api/auth';
+import { toast } from 'sonner';
 
 export default function Profile() {
     const { user, setUser } = useAuthStore();
@@ -44,6 +46,22 @@ export default function Profile() {
             setPwdData({ current_password: '', password: '', password_confirmation: '' });
         } catch (err: any) {
             setMessage({ type: 'error', text: err.response?.data?.message || 'Erro ao atualizar senha.' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResendVerification = async () => {
+        setLoading(true);
+        try {
+            await sendVerificationEmail();
+            toast.success('Um novo link de confirmação foi enviado para o seu e-mail!');
+        } catch (error: any) {
+            if (error.response?.status === 429) {
+                toast.error('Aguarde um momento antes de pedir um novo link.');
+            } else {
+                toast.error(error.response?.data?.message || 'Erro ao reenviar link. Tente novamente mais tarde.');
+            }
         } finally {
             setLoading(false);
         }
@@ -172,7 +190,27 @@ export default function Profile() {
                                 </div>
                                 <div className="info-item">
                                     <h4>E-mail</h4>
-                                    <p>{user.email}</p>
+                                    <p className="flex items-center gap-2">
+                                        {user.email}
+                                        {user.email_verified_at ? (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                                Confirmado
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                                                Pendente
+                                            </span>
+                                        )}
+                                    </p>
+                                    {!user.email_verified_at && (
+                                        <button
+                                            onClick={handleResendVerification}
+                                            disabled={loading}
+                                            className="mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium disabled:opacity-50"
+                                        >
+                                            Reenviar E-mail de Confirmação
+                                        </button>
+                                    )}
                                 </div>
                                 <div className="info-item">
                                     <h4>Telefone</h4>

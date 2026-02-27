@@ -99,6 +99,9 @@ class EssayRechargeController extends Controller
                 'card_expiry_month' => 'required_if:payment_method,credit_card',
                 'card_expiry_year' => 'required_if:payment_method,credit_card',
                 'card_ccv' => 'required_if:payment_method,credit_card',
+                'postal_code' => 'required_if:payment_method,credit_card',
+                'address_number' => 'required_if:payment_method,credit_card',
+                'phone' => 'required_if:payment_method,credit_card',
                 'cpf' => 'required|string',
             ]);
 
@@ -110,6 +113,9 @@ class EssayRechargeController extends Controller
                     'expiry_month' => $request->card_expiry_month,
                     'expiry_year' => $request->card_expiry_year,
                     'ccv' => $request->card_ccv,
+                    'postal_code' => $request->postal_code,
+                    'address_number' => $request->address_number,
+                    'phone' => $request->phone,
                 ]);
             }
 
@@ -163,7 +169,7 @@ class EssayRechargeController extends Controller
     public function checkStatus(Request $request)
     {
         $user = $request->user();
-        
+
         // Return current credits to detect the change on frontend
         return response()->json([
             'credits' => $user->essay_credits,
