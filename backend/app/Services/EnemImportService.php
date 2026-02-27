@@ -40,7 +40,7 @@ class EnemImportService
                 'external_id' => $externalId,
                 'index' => $index,
                 'title' => \Illuminate\Support\Str::limit($context, 100),
-                'full_data' => $apiQuestion
+                'full_data' => [] // Don't store full data for duplicates to save space
             ];
         }
 
@@ -71,61 +71,61 @@ class EnemImportService
                 // If the API declares files at question-level or alternative-level, the question
                 // requires human review to verify image rendering and context correctness.
                 $hasQuestionImages = !empty($apiQuestion['files']);
-                $hasAlternativeImages = collect($apiQuestion['alternatives'] ?? [])->contains(function ($alt) {
+                $hasAlternativeImages = collect($apiQuestion['alternatives'] ?? [])->contains(
+                    function ($alt) {
                         return !empty($alt['file']);
                     }
-                    );
-                    $hasImage = $hasQuestionImages || $hasAlternativeImages;
+                );
+                $hasImage = $hasQuestionImages || $hasAlternativeImages;
 
-                    // review_status semantics:
-                    //   'review'  → "Has images, requires manual human validation"
-                    //   'pending' → "No images, can proceed through automated pipeline"
-                    $initialStatus = $hasImage ? 'review' : 'pending';
+                // review_status semantics:
+                //   'review'  → "Has images, requires manual human validation"
+                //   'approved' → "No images, can proceed to public question bank"
+                $initialStatus = $hasImage ? 'review' : 'approved';
 
-                    $question = \App\Models\Question::create([
-                        'external_id' => $externalId,
-                        'type' => 'enem',
-                        'format' => 'multiple_choice',
-                        'difficulty' => 'medium',
-                        'year' => $year,
-                        'statement' => $statement,
-                        'source' => 'api',
-                        'theme' => $theme,
-                        'organization' => $organization,
-                        'institution' => $institution,
-                        'role' => $role,
-                        'review_status' => $initialStatus,
+                $question = \App\Models\Question::create([
+                    'external_id' => $externalId,
+                    'type' => 'enem',
+                    'format' => 'multiple_choice',
+                    'difficulty' => 'medium',
+                    'year' => $year,
+                    'statement' => $statement,
+                    'source' => 'api',
+                    'theme' => $theme,
+                    'organization' => $organization,
+                    'institution' => $institution,
+                    'role' => $role,
+                    'review_status' => $initialStatus,
+                ]);
+
+                if ($subjectId) {
+                    $question->subjects()->attach($subjectId);
+                }
+
+                foreach ($apiQuestion['alternatives'] as $altData) {
+                    $imagePath = null;
+                    if (!empty($altData['file'])) {
+                        $imagePath = $this->downloadImage($altData['file'], $year);
+                    }
+
+                    \App\Models\QuestionAlternative::create([
+                        'question_id' => $question->id,
+                        'label' => $altData['letter'] ?? '?',
+                        'content' => $altData['text'] ?? '',
+                        'image_path' => $imagePath,
+                        'is_correct' => $altData['isCorrect'] ?? false,
                     ]);
+                }
 
-                    if ($subjectId) {
-                        $question->subjects()->attach($subjectId);
-                    }
-
-                    foreach ($apiQuestion['alternatives'] as $altData) {
-                        $imagePath = null;
-                        if (!empty($altData['file'])) {
-                            $imagePath = $this->downloadImage($altData['file'], $year);
-                        }
-
-                        \App\Models\QuestionAlternative::create([
-                            'question_id' => $question->id,
-                            'label' => $altData['letter'] ?? '?',
-                            'content' => $altData['text'] ?? '',
-                            'image_path' => $imagePath,
-                            'is_correct' => $altData['isCorrect'] ?? false,
-                        ]);
-                    }
-
-                    return $question;
-                });
+                return $question;
+            });
 
             return [
                 'status' => 'success',
                 'question' => $question
             ];
 
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             return [
                 'status' => 'error',
                 'reason' => $e->getMessage(),
@@ -203,8 +203,7 @@ class EnemImportService
                 // Retornar a URL final pronta para uso no Markdown/Banco
                 return \Illuminate\Support\Facades\Storage::url($path);
             }
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::warning("Falha ao baixar imagem ENEM Dev: {$url} - " . $e->getMessage());
         }
 
@@ -226,8 +225,8 @@ class EnemImportService
         $subjectName = $map[strtolower($discipline)] ?? ucfirst($discipline);
 
         $subject = \App\Models\Subject::firstOrCreate(
-        ['name' => $subjectName],
-        ['slug' => \Illuminate\Support\Str::slug($subjectName), 'type' => 'enem']
+            ['name' => $subjectName],
+            ['slug' => \Illuminate\Support\Str::slug($subjectName), 'type' => 'enem']
         );
 
         return $subject->id;

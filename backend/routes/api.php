@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\AuthController;
@@ -25,7 +26,8 @@ use App\Http\Controllers\Api\Admin\ApiKeyController as AdminApiKeyController;
 use App\Http\Controllers\Api\Admin\AIBatchTriageController as AdminAIBatchTriageController;
 use App\Http\Controllers\Api\Admin\EnemImportController as AdminEnemImportController;
 use App\Http\Controllers\Api\Admin\AdminEssayController;
-use App\Http\Controllers\Api\Admin\ApiPricingController as AdminApiPricingController;
+use App\Http\Controllers\Api\Admin\AdminQuestionImportController;
+use App\Http\Controllers\Api\Admin\AdminImportReviewController;
 
 /*
 |--------------------------------------------------------------------------
@@ -107,7 +109,7 @@ Route::prefix('v1')->name('api.')->group(function () {
         });
 
         // Admin
-        Route::prefix('admin')->group(function () {
+        Route::prefix('admin')->middleware(['is.admin'])->group(function () {
             Route::get('/dashboard', [AdminController::class, 'dashboard']);
             Route::get('/curadoria', [CuradoriaController::class, 'index']);
 
@@ -163,6 +165,12 @@ Route::prefix('v1')->name('api.')->group(function () {
             Route::get('/enem', [AdminEnemImportController::class, 'index']);
             Route::post('/enem', [AdminEnemImportController::class, 'store']);
             Route::get('/enem/status', [AdminEnemImportController::class, 'status']);
+
+            // Módulo de Importação de Questões (.zip)
+            Route::get('import', [AdminQuestionImportController::class, 'index']);
+            Route::post('import', [AdminQuestionImportController::class, 'store']);
+            Route::get('import/active-job', [AdminQuestionImportController::class, 'activeJob']);
+            Route::get('import/{import}/progress', [AdminQuestionImportController::class, 'progress']);
 
             // Import Review
             Route::prefix('import/review')->group(function () {
