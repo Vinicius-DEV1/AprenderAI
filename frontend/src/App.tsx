@@ -56,6 +56,7 @@ import AdminPromptEditor from './pages/admin/PromptEditor';
 import AdminSettings from './pages/admin/CacheSettings';
 import AdminPaymentSettings from './pages/admin/PaymentSettings';
 import AdminImport from './pages/admin/ImportIndex';
+import AdminImportReviewIndex from './pages/admin/ImportReviewIndex';
 import AdminImportReview from './pages/admin/ImportReview';
 import EnemImport from './pages/admin/EnemImport';
 import AdminAnalytics from './pages/admin/Analytics';
@@ -188,7 +189,8 @@ function App() {
 
                         <Route path="enem-import" element={<><MetaTags title="Admin: Importação ENEM" /><EnemImport /></>} />
                         <Route path="import" element={<><MetaTags title="Admin: Importação" /><AdminImport /></>} />
-                        <Route path="import/review" element={<><MetaTags title="Admin: Revisão de Importação" /><AdminImportReview /></>} />
+                        <Route path="import/review" element={<><MetaTags title="Admin: Revisão - Lista" /><AdminImportReviewIndex /></>} />
+                        <Route path="import/review/:id" element={<><MetaTags title="Admin: Inspeção de Questão" /><AdminImportReview /></>} />
 
                         <Route path="analytics" element={<><MetaTags title="Admin: Analytics" /><AdminAnalytics /></>} />
                         <Route path="monitor" element={<><MetaTags title="Admin: Monitoramento" /><AdminMonitor /></>} />

@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../../api/axios';
+import { toast } from 'sonner';
+import Cropper from 'react-cropper';
+import 'cropperjs/dist/cropper.css';
 
 // Cropper integration will need a specialized react-cropper component or similar in real app,
 // Here we'll map the UI visually 1:1
@@ -11,6 +14,8 @@ export default function ImportReview() {
     const navigate = useNavigate();
     const [activeTarget, setActiveTarget] = useState<string>('statement');
     const [saving, setSaving] = useState(false);
+    const [cropper, setCropper] = useState<any>();
+    const queryClient = useQueryClient();
 
     const { data, isLoading } = useQuery({
         queryKey: ['admin-import-review', id],
@@ -39,10 +44,46 @@ export default function ImportReview() {
             return await api.delete(`/api/v1/admin/import/review/${imageId}/image`);
         },
         onSuccess: () => {
-            // Refetch or window.location.reload() in a real scenario
-            window.location.reload();
+            toast.success('Imagem removida.');
+            queryClient.invalidateQueries({ queryKey: ['admin-import-review', id] });
         }
     });
+
+    const handleSaveCrop = async () => {
+        if (!cropper) return;
+
+        const imageData = cropper.getData(true); // get rounded data
+        const currentImage = question.images?.[0] || { id: null };
+
+        if (!currentImage.id) {
+            toast.error('Nenhuma imagem encontrada para recortar.');
+            return;
+        }
+
+        setSaving(true);
+        try {
+            await api.post(`/api/v1/admin/import/review/${currentImage.id}/crop`, {
+                target: activeTarget,
+                x: imageData.x,
+                y: imageData.y,
+                width: imageData.width,
+                height: imageData.height
+            });
+            toast.success('Recorte salvo com sucesso!');
+
+            // If it was an alternative, move to next
+            if (activeTarget !== 'statement') {
+                const nextMap: any = { 'A': 'B', 'B': 'C', 'C': 'D', 'D': 'E', 'E': 'E' };
+                setActiveTarget(nextMap[activeTarget] || 'A');
+            }
+
+            queryClient.invalidateQueries({ queryKey: ['admin-import-review', id] });
+        } catch (error) {
+            toast.error('Erro ao salvar recorte.');
+        } finally {
+            setSaving(false);
+        }
+    };
 
     if (isLoading) return <div className="p-8">Carregando revisão...</div>;
     if (!data?.question) return <div className="p-8 text-red-500">Questão não encontrada.</div>;
@@ -219,9 +260,17 @@ export default function ImportReview() {
                                             </button>
                                         </div>
 
-                                        <div className="p-4 bg-gray-900 flex justify-center max-h-[500px] overflow-hidden">
-                                            <img src={img.url || img.path} alt={`Imagem ${img.id}`} className="max-w-full object-contain" style={{ maxHeight: '460px' }} />
-                                            {/* (Cropper.js overlay goes here natively via React-Cropper) */}
+                                        <div className="p-0 bg-gray-900 flex justify-center overflow-hidden">
+                                            <Cropper
+                                                src={img.url || (img.path?.startsWith('http') ? img.path : `/storage/${img.path}`)}
+                                                style={{ height: 'auto', width: '100%', maxHeight: '600px' }}
+                                                initialAspectRatio={undefined}
+                                                guides={true}
+                                                viewMode={1}
+                                                dragMode="move"
+                                                autoCropArea={0.5}
+                                                onInitialized={(instance: any) => setCropper(instance)}
+                                            />
                                         </div>
 
                                         <div className="p-5 border-t border-gray-100 space-y-4">
@@ -233,10 +282,10 @@ export default function ImportReview() {
                                                         <p className="text-xs text-gray-500 mt-0.5">A imagem recortada substitui a imagem do enunciado.</p>
                                                     </div>
                                                     <button
-                                                        onClick={() => { setActiveTarget('statement'); setSaving(true); setTimeout(() => setSaving(false), 1000); }}
+                                                        onClick={() => { setActiveTarget('statement'); handleSaveCrop(); }}
                                                         disabled={saving}
                                                         className="flex-shrink-0 px-4 py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-sm flex items-center gap-2 disabled:opacity-60 transition-colors">
-                                                        {saving && activeTarget === 'statement' ? '...' : '✂️ Confirmar no Enunciado'}
+                                                        {saving && activeTarget === 'statement' ? 'Salvando...' : '✂️ Confirmar no Enunciado'}
                                                     </button>
                                                 </div>
                                             </div>
@@ -257,7 +306,7 @@ export default function ImportReview() {
                                                         ))}
                                                     </div>
                                                     <button
-                                                        onClick={() => { if (activeTarget === 'statement') setActiveTarget('A'); setSaving(true); setTimeout(() => setSaving(false), 1000); }}
+                                                        onClick={() => handleSaveCrop()}
                                                         disabled={saving || activeTarget === 'statement'}
                                                         className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-60 transition-colors">
                                                         {saving && activeTarget !== 'statement' ? 'Salvando...' : `Salvar como Alt. ${activeTarget === 'statement' ? 'A' : activeTarget}`}

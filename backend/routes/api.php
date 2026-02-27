@@ -42,6 +42,8 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('api.login');
     Route::post('/register', [AuthController::class, 'register'])->name('api.register');
 
+
+
     // Autenticado
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/user', [AuthController::class, 'user'])->name('api.user');
@@ -148,18 +150,22 @@ Route::prefix('v1')->name('api.')->group(function () {
             Route::post('/enem', [AdminEnemImportController::class, 'store']);
             Route::get('/enem/status', [AdminEnemImportController::class, 'status']);
 
-            // Módulo de Importação de Questões (.zip)
-            Route::get('import', [AdminQuestionImportController::class, 'index']);
-            Route::post('import', [AdminQuestionImportController::class, 'store']);
-            Route::get('import/active-job', [AdminQuestionImportController::class, 'activeJob']);
-            Route::get('import/{import}/progress', [AdminQuestionImportController::class, 'progress']);
-
             // Import Review
             Route::prefix('import/review')->group(function () {
-                Route::get('/{id}', [\App\Http\Controllers\Api\Admin\AdminImportReviewController::class, 'show']);
-                Route::post('/{id}/approve', [\App\Http\Controllers\Api\Admin\AdminImportReviewController::class, 'approve']);
-                Route::post('/{id}/revert', [\App\Http\Controllers\Api\Admin\AdminImportReviewController::class, 'revert']);
-                Route::delete('/{imageId}/image', [\App\Http\Controllers\Api\Admin\AdminImportReviewController::class, 'deleteImage']);
+                Route::get('/', [AdminImportReviewController::class, 'index']);
+                Route::get('/{id}', [AdminImportReviewController::class, 'show']);
+                Route::post('/{id}/approve', [AdminImportReviewController::class, 'approve']);
+                Route::post('/{id}/revert', [AdminImportReviewController::class, 'revert']);
+                Route::post('/{imageId}/crop', [AdminImportReviewController::class, 'crop']);
+                Route::delete('/{imageId}/image', [AdminImportReviewController::class, 'deleteImage']);
+            });
+
+            // Admin Question Import
+            Route::prefix('import')->group(function () {
+                Route::get('/', [AdminQuestionImportController::class, 'index']);
+                Route::post('/', [AdminQuestionImportController::class, 'store']);
+                Route::get('/active-job', [AdminQuestionImportController::class, 'activeJob']);
+                Route::get('/{id}/progress', [AdminQuestionImportController::class, 'progress']);
             });
         });
     });
