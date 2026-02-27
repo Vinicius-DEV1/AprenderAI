@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { getEssay } from '../../api/essays';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getEssay, retryEssayEvaluation } from '../../api/essays';
 import { useConfigStore } from '../../stores/configStore';
 
 export default function EssayReview() {
     const { id } = useParams<{ id: string }>();
+    const queryClient = useQueryClient();
     const [tab, setTab] = useState<'general' | 'points' | 'corrections' | 'improved'>('general');
     const [competenciesOpen, setCompetenciesOpen] = useState(false);
     const { aiName } = useConfigStore();
@@ -18,6 +19,13 @@ export default function EssayReview() {
             return status === 'evaluating' ? 5000 : false;
         },
         enabled: !!id
+    });
+
+    const retryMutation = useMutation({
+        mutationFn: () => retryEssayEvaluation(id!),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['essay', id] });
+        }
     });
 
     if (isLoading) {
@@ -162,9 +170,40 @@ export default function EssayReview() {
             <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
                 {/* Status Alert */}
-                <div className={`mb-6 p-4 rounded-lg text-center font-bold text-lg border ${statusClasses}`}>
-                    {statusMessage}
+                <div className={`mb-6 p-4 rounded-lg text-center font-bold text-lg border ${statusClasses} flex flex-col items-center gap-4`}>
+                    <span>{statusMessage}</span>
+                    {essay.status === 'error' && (
+                        <button
+                            onClick={() => retryMutation.mutate()}
+                            disabled={retryMutation.isPending}
+                            className="px-6 py-2 bg-red-600 text-white text-sm rounded-full hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+                        >
+                            {retryMutation.isPending ? 'Tentando novamente...' : 'Tentar Novamente'}
+                        </button>
+                    )}
                 </div>
+
+                {/* OCR Error Detail */}
+                {(essay.ocr_status === 'failed' || essay.ocr_error) && (
+                    <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400">
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xl">⚠️</span>
+                            <h3 className="font-bold">Falha no Processamento de Imagem (OCR)</h3>
+                        </div>
+                        <p className="text-sm font-medium">{essay.ocr_error || 'Não foi possível extrair o texto da sua imagem. Por favor, tente enviar uma foto mais nítida.'}</p>
+                    </div>
+                )}
+
+                {/* Original Image View */}
+                {essay.input_type === 'image' && essay.image_url && (
+                    <div className="mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest italic">Imagem Original Enviada</h3>
+                            <a href={essay.image_url} target="_blank" rel="noreferrer" className="text-[10px] text-blue-500 hover:underline font-bold uppercase">Ver em tamanho real</a>
+                        </div>
+                        <img src={essay.image_url} alt="Original Essay" className="max-w-md mx-auto rounded border dark:border-gray-600 shadow-sm" />
+                    </div>
+                )}
 
                 <div className="mb-4 text-center">
                     <Link to="/essays" className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">

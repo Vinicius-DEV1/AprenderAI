@@ -367,6 +367,7 @@ export default function AdminQuestions() {
                                             <button className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] rounded hover:bg-indigo-200 font-medium flex items-center gap-1" title="Ver">👁️ Ver</button>
                                             <Link to={`/admin/questions/${q.id}/edit`} className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded hover:bg-blue-200 font-medium flex items-center gap-1">✏️ Editar</Link>
                                             <button onClick={() => adminActions.mutate({ id: q.id, action: 'evaluate-difficulty' })} className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] rounded hover:bg-purple-200 font-medium flex items-center gap-1" title="Reavaliar IA">⚡ IA</button>
+                                            <button onClick={() => adminActions.mutate({ id: q.id, action: 'retry-evaluation' })} className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded hover:bg-red-200 font-medium flex items-center gap-1" title="Reprocessar">🔄 Reprocessar</button>
                                         </div>
                                     </td>
                                 </tr>

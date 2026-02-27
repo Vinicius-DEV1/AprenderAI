@@ -26,7 +26,7 @@ export default function AdminLayout() {
         return location.pathname.startsWith(pattern);
     };
 
-    const getNavLinkClass = (pattern: string, activeColorClass = 'bg-blue-50 text-blue-600') => {
+    const getNavLinkClass = (pattern: string, activeColorClass = 'bg-purple-50 text-purple-700 shadow-sm') => {
         const active = isRouteActive(pattern);
         return `flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition-all ${active ? activeColorClass : 'text-gray-600 hover:bg-gray-100'
             }`;
@@ -45,8 +45,8 @@ export default function AdminLayout() {
                                 </svg>
                             </div>
                             <div>
-                                <h3 className="font-bold text-gray-800">Admin</h3>
-                                <p className="text-xs text-gray-500">{config.appName || 'Sistema'}</p>
+                                <h3 className="font-bold text-gray-800">Painel Admin</h3>
+                                <p className="text-xs text-gray-500">{config.appName || 'AprenderAI'}</p>
                             </div>
                         </div>
 
@@ -60,7 +60,7 @@ export default function AdminLayout() {
                                         Dashboard
                                     </NavLink>
 
-                                    <NavLink to="/admin/curadoria" className={getNavLinkClass('/admin/curadoria', 'bg-indigo-50 text-indigo-700')}>
+                                    <NavLink to="/admin/curadoria" className={getNavLinkClass('/admin/curadoria')}>
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                                         </svg>
@@ -77,9 +77,14 @@ export default function AdminLayout() {
                                         Usuários
                                     </NavLink>
 
-                                    <NavLink to="/concursos" className={getNavLinkClass('/concursos')}>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                                        Concursos
+                                    <NavLink to="/admin/enem-import" className={getNavLinkClass('/admin/enem-import')}>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" /></svg>
+                                        Importação ENEM
+                                    </NavLink>
+
+                                    <NavLink to="/admin/ia-management" className={getNavLinkClass('/admin/ia-management')}>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                        Gerenciamento IA (Mock)
                                     </NavLink>
                                 </div>
                             </div>

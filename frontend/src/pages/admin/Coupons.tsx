@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -22,7 +23,7 @@ export default function Coupons() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-coupons'] });
-            alert('Cupom removido!');
+            toast.info('Cupom removido!');
         }
     });
 

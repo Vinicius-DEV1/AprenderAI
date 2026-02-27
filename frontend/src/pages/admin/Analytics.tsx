@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
+import Chart from 'react-apexcharts';
 
 export default function Analytics() {
     const { data, isLoading } = useQuery({
@@ -33,9 +34,6 @@ export default function Analytics() {
 
     const usersPct = yesterdayData.active_users > 0 ? ((todayData.active_users - yesterdayData.active_users) / yesterdayData.active_users) * 100 : 0;
     const sessionsPct = yesterdayData.sessions > 0 ? ((todayData.sessions - yesterdayData.sessions) / yesterdayData.sessions) * 100 : 0;
-
-    const maxSessions = Math.max(...dailyMetrics.map((d: any) => d.sessions || 0), 1);
-    const maxHourly = Math.max(...hourlyData.map((d: any) => d.avg_sessions || 0), 1);
 
     return (
         <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
@@ -180,48 +178,51 @@ export default function Analytics() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <h3 className="font-bold text-gray-800 mb-6">Tendência de Sessões (Últimos Dias)</h3>
-                    <div className="relative h-64 w-full">
-                        <div className="flex items-end justify-between h-48 w-full gap-1 border-b border-l border-gray-200 pl-2 pb-2">
-                            {dailyMetrics.map((day: any, i: number) => {
-                                const height = maxSessions > 0 ? (day.sessions / maxSessions) * 100 : 0;
-                                return (
-                                    <div key={i} className="w-full bg-blue-500 hover:bg-blue-600 transition-all rounded-t-sm group relative flex flex-col justify-end" style={{ height: `${height}%` }}>
-                                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-10">
-                                            {day.date ? new Date(day.date).toLocaleDateString() : ''}: {day.sessions}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                        <div className="flex justify-between text-[10px] text-gray-400 mt-2 pl-2">
-                            <span>{dailyMetrics.length > 0 ? new Date(dailyMetrics[0].date).toLocaleDateString() : ''}</span>
-                            <span>Hoje</span>
-                        </div>
+                    <div className="relative h-72 w-full">
+                        <Chart
+                            options={{
+                                chart: { type: 'bar', toolbar: { show: false } },
+                                plotOptions: { bar: { borderRadius: 4, dataLabels: { position: 'top' } } },
+                                colors: ['#3b82f6'],
+                                xaxis: {
+                                    categories: dailyMetrics.map((d: any) => d.date ? new Date(d.date).toLocaleDateString() : ''),
+                                    labels: { show: false } // Hide labels if too crowded
+                                },
+                                dataLabels: { enabled: false },
+                                tooltip: { y: { formatter: (val) => formatNumber(val) + " sessões" } }
+                            }}
+                            series={[{ name: "Sessões", data: dailyMetrics.map((d: any) => d.sessions || 0) }]}
+                            type="bar"
+                            height="100%"
+                        />
                     </div>
                 </div>
 
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <h3 className="font-bold text-gray-800 mb-6">Horários de Pico (Média Global)</h3>
-                    <div className="relative h-64 w-full">
-                        <div className="flex items-end justify-between h-48 w-full gap-1 border-b border-l border-gray-200 pl-2 pb-2">
-                            {Array.from({ length: 24 }).map((_, hour) => {
-                                const item = hourlyData.find((d: any) => d.hour === hour);
-                                const avg = item ? item.avg_sessions : 0;
-                                const height = maxHourly > 0 ? (avg / maxHourly) * 100 : 0;
-                                return (
-                                    <div key={hour} className="w-full bg-indigo-500 hover:bg-indigo-600 transition-all rounded-t-sm group relative flex flex-col justify-end" style={{ height: `${height}%` }}>
-                                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-10">
-                                            {hour.toString().padStart(2, '0')}:00 - {formatNumber(avg)}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                        <div className="flex justify-between text-[10px] text-gray-400 mt-2 pl-2">
-                            <span>00:00</span>
-                            <span>12:00</span>
-                            <span>23:00</span>
-                        </div>
+                    <div className="relative h-72 w-full">
+                        <Chart
+                            options={{
+                                chart: { type: 'area', toolbar: { show: false } },
+                                colors: ['#6366f1'],
+                                fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.9, stops: [0, 90, 100] } },
+                                dataLabels: { enabled: false },
+                                stroke: { curve: 'smooth', width: 2 },
+                                xaxis: {
+                                    categories: Array.from({ length: 24 }).map((_, h) => `${h.toString().padStart(2, '0')}:00`),
+                                },
+                                tooltip: { y: { formatter: (val) => formatNumber(val) + " média" } }
+                            }}
+                            series={[{
+                                name: "Sessões Médias",
+                                data: Array.from({ length: 24 }).map((_, hour) => {
+                                    const item = hourlyData.find((d: any) => d.hour === hour);
+                                    return item ? item.avg_sessions : 0;
+                                })
+                            }]}
+                            type="area"
+                            height="100%"
+                        />
                     </div>
                 </div>
             </div>

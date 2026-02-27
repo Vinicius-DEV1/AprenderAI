@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
@@ -18,10 +19,10 @@ export default function PromptsIndex() {
             await api.post(`/api/v1/admin/prompts/${slug}/clear-cache`);
         },
         onSuccess: () => {
-            alert('Cache limpo com sucesso!');
+            toast.success('Cache limpo com sucesso!');
         },
         onError: () => {
-            alert('Erro ao limpar cache.');
+            toast.error('Erro ao limpar cache.');
         }
     });
 

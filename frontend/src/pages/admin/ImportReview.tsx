@@ -97,6 +97,12 @@ export default function ImportReview() {
                                 {importItem && (
                                     <div className="flex gap-2"><dt className="text-gray-500 w-20 flex-shrink-0">Lote</dt><dd className="text-gray-600 text-xs">{importItem.import?.batch_name ?? '—'}</dd></div>
                                 )}
+                                {importItem?.import?.error_message && (
+                                    <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded text-red-700 text-xs">
+                                        <p className="font-bold mb-1">Log do Lote:</p>
+                                        <p>{importItem.import.error_message}</p>
+                                    </div>
+                                )}
                             </dl>
                         </div>
 
@@ -110,14 +116,14 @@ export default function ImportReview() {
                                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">🖼️ Imagens do Enunciado</p>
                                     <div className="space-y-3">
                                         {question.images.map((img: any) => (
-                                            <img key={img.id} src={img.url || img.path} alt="Imagem do Enunciado" className="max-w-full h-auto rounded border border-gray-200" />
+                                            <img key={img.id} src={img.url || (img.path?.startsWith('http') ? img.path : `/storage/${img.path}`)} alt="Imagem do Enunciado" className="max-w-full h-auto rounded border border-gray-200" />
                                         ))}
                                     </div>
                                 </div>
                             ) : question.image_path ? (
                                 <div className="mt-4 pt-4 border-t border-gray-100">
                                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">🖼️ Imagem do Enunciado</p>
-                                    <img src={question.image_path} alt="Imagem do Enunciado" className="max-w-full h-auto rounded border border-gray-200" />
+                                    <img src={question.image_path.startsWith('http') ? question.image_path : `/storage/${question.image_path.replace('storage/', '')}`} alt="Imagem do Enunciado" className="max-w-full h-auto rounded border border-gray-200" />
                                 </div>
                             ) : null}
                         </div>
@@ -133,8 +139,8 @@ export default function ImportReview() {
                                                 {alt.label})
                                             </span>
                                             <div className="flex-1 min-w-0">
-                                                {(alt.content?.startsWith('/storage') || alt.content?.startsWith('http')) ? (
-                                                    <img src={alt.content} alt={`Alternativa ${alt.label}`} className="max-w-full h-auto rounded border border-gray-200" />
+                                                {(alt.content?.startsWith('questions_images/') || alt.content?.startsWith('storage/')) ? (
+                                                    <img src={alt.content.startsWith('http') ? alt.content : `/storage/${alt.content.replace('storage/', '')}`} alt={`Alternativa ${alt.label}`} className="max-w-full h-auto rounded border border-gray-200" />
                                                 ) : (
                                                     <p className="text-sm text-gray-700">{alt.content}</p>
                                                 )}

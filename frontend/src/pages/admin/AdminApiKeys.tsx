@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
@@ -105,12 +106,12 @@ export default function AdminApiKeys() {
                 setDiscoveredModels(res.data.models);
                 setShowModelModal(true);
             } else {
-                alert(res.data.error || 'Falha na descoberta de modelos.');
+                toast.info(res.data.error || 'Falha na descoberta de modelos.');
             }
         },
         onError: (err: any) => {
             const msg = err.response?.data?.error || err.message || 'Erro desconhecido na API.';
-            alert('Erro Crítico: ' + msg);
+            toast.error('Erro Crítico: ' + msg);
         },
         onSettled: () => setDiscoveryLoading(false)
     });
@@ -120,7 +121,7 @@ export default function AdminApiKeys() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-api-keys'] });
             setRoutingForm({ vault_id: '', preferred_model: '', capabilities: [] });
-            alert('Roteamento ativado com sucesso!');
+            toast.success('Roteamento ativado com sucesso!');
         }
     });
 

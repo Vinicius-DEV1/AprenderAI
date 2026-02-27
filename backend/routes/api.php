@@ -23,6 +23,8 @@ use App\Http\Controllers\Api\Admin\SystemPromptController as AdminSystemPromptCo
 use App\Http\Controllers\Api\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Api\Admin\ApiKeyController as AdminApiKeyController;
 use App\Http\Controllers\Api\Admin\AIBatchTriageController as AdminAIBatchTriageController;
+use App\Http\Controllers\Api\Admin\EnemImportController as AdminEnemImportController;
+use App\Http\Controllers\Api\Admin\AdminEssayController;
 
 /*
 |--------------------------------------------------------------------------
@@ -60,6 +62,7 @@ Route::prefix('v1')->name('api.')->group(function () {
         Route::post('essays/{essay}/start-topic', [EssayController::class, 'startTopicGeneration']);
         Route::get('essays/{essay}/topic-status', [EssayController::class, 'getTopicStatus']);
         Route::post('essays/{essay}/submit', [EssayController::class, 'submit']);
+        Route::post('essays/{essay}/retry', [EssayController::class, 'retryEvaluation']);
 
         // Plans & Subscriptions
         Route::prefix('plans')->group(function () {
@@ -101,11 +104,18 @@ Route::prefix('v1')->name('api.')->group(function () {
             Route::post('questions/{question}/generate-explanation', [AdminQuestionController::class, 'generateExplanation']);
             Route::post('questions/{question}/complete', [AdminQuestionController::class, 'completeQuestion']);
             Route::post('questions/{question}/classify', [AdminQuestionController::class, 'classifyQuestion']);
+            Route::post('questions/{question}/retry-evaluation', [AdminQuestionController::class, 'completeQuestion']); // Re-use completeQuestion for full retry
 
+            Route::patch('users/{user}/toggle-status', [AdminUserController::class, 'toggleStatus']);
+            Route::post('users/{user}/reset-password', [AdminUserController::class, 'resetPassword']);
             Route::apiResource('users', AdminUserController::class);
             Route::apiResource('plans', AdminPlanController::class);
             Route::apiResource('coupons', AdminCouponController::class);
             Route::apiResource('prompts', AdminSystemPromptController::class);
+
+            // Essays Admin
+            Route::get('essays', [AdminEssayController::class, 'index']);
+            Route::post('essays/{essay}/retry', [AdminEssayController::class, 'retry']);
 
             // Settings & Cache
             Route::get('/settings', [AdminSettingController::class, 'index']);
@@ -114,6 +124,7 @@ Route::prefix('v1')->name('api.')->group(function () {
 
             // Infrastructure & AI Monitoring
             Route::get('/api-keys', [AdminApiKeyController::class, 'index']);
+            Route::post('/api-keys', [AdminApiKeyController::class, 'store']);
             Route::post('/api-keys/vault', [AdminApiKeyController::class, 'storeVault']);
             Route::post('/api-keys/{apiKey}/toggle', [AdminApiKeyController::class, 'toggle']);
             Route::post('/api-keys/priority', [AdminApiKeyController::class, 'updatePriority']);
@@ -127,6 +138,19 @@ Route::prefix('v1')->name('api.')->group(function () {
                 Route::post('/start', [AdminAIBatchTriageController::class, 'start']);
                 Route::get('/{batchId}/status', [AdminAIBatchTriageController::class, 'status']);
                 Route::post('/{batchId}/cancel', [AdminAIBatchTriageController::class, 'cancel']);
+            });
+
+            // ENEM Import
+            Route::get('/enem', [AdminEnemImportController::class, 'index']);
+            Route::post('/enem', [AdminEnemImportController::class, 'store']);
+            Route::get('/enem/status', [AdminEnemImportController::class, 'status']);
+
+            // Import Review
+            Route::prefix('import/review')->group(function () {
+                Route::get('/{id}', [\App\Http\Controllers\Api\Admin\AdminImportReviewController::class, 'show']);
+                Route::post('/{id}/approve', [\App\Http\Controllers\Api\Admin\AdminImportReviewController::class, 'approve']);
+                Route::post('/{id}/revert', [\App\Http\Controllers\Api\Admin\AdminImportReviewController::class, 'revert']);
+                Route::delete('/{imageId}/image', [\App\Http\Controllers\Api\Admin\AdminImportReviewController::class, 'deleteImage']);
             });
         });
     });

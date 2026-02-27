@@ -42,3 +42,7 @@ export const submitEssay = async (id: number | string, data: any) => {
     });
     return response.data;
 };
+export const retryEssayEvaluation = async (id: number | string) => {
+    const response = await api.post(`/api/v1/essays/${id}/retry`);
+    return response.data;
+};

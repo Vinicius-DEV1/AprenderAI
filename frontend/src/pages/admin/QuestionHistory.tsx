@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -44,7 +45,7 @@ export default function QuestionHistory() {
             }
         },
         onError: () => {
-            alert('Erro ao processar a requisição.');
+            toast.error('Erro ao processar a requisição.');
         }
     });
 

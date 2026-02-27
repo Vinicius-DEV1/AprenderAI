@@ -43,27 +43,37 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
-        // Optimization: Use loadCount to fetch all totals in a single query
-        $user->loadCount(['simulations', 'essays', 'promptLogs']);
-        $user->load(['plan', 'subscriptions.plan']);
+        try {
+            $user->load(['plan', 'subscriptions.plan', 'logs' => fn($q) => $q->latest()->take(20)]);
+            $user->loadCount(['simulations', 'essays', 'promptLogs']);
 
-        $stats = [
-            'simulations' => $user->simulations_count,
-            'essays' => $user->essays_count,
-            'ai' => [
-                'request_count' => $user->prompt_logs_count,
-                'total_cost' => $user->promptLogs()->sum('estimated_cost'),
-                'success_rate' => $user->promptLogs()->where('status', 'success')->count() / max(1, $user->prompt_logs_count) * 100,
-                'peak_hour' => 'N/A',
-            ]
-        ];
+            $stats = [
+                'simulations' => $user->simulations_count,
+                'essays' => $user->essays_count,
+                'ai' => [
+                    'request_count' => $user->prompt_logs_count,
+                    'total_cost' => $user->promptLogs()->sum('estimated_cost') ?? 0,
+                    'success_rate' => $user->prompt_logs_count > 0
+                        ? ($user->promptLogs()->whereNotNull('response_text')->count() / $user->prompt_logs_count) * 100
+                        : 100,
+                    'peak_hour' => 'N/A',
+                ],
+                'investment' => $user->subscriptions()->where('status', 'active')->get()->sum(fn($s) => $s->plan?->price ?? 0)
+            ];
 
-        return response()->json([
-            'user' => $user,
-            'stats' => $stats,
-            'monthly_simulation_used' => $user->simulations()->whereMonth('created_at', now()->month)->count(),
-            'monthly_essay_used' => $user->essays()->whereMonth('created_at', now()->month)->count(),
-        ]);
+            return response()->json([
+                'user' => $user,
+                'stats' => $stats,
+                'promptHistory' => $user->promptLogs()->latest()->paginate(10),
+                'monthly_simulation_used' => $user->monthlySimulationUsed(),
+                'monthly_essay_used' => $user->monthlyEssayUsed(),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error("Error loading user detail (ID: {$user->id}): " . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Internal Server Error', 'message' => $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -95,15 +105,21 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'phone' => 'nullable|string',
             'role' => 'nullable|in:user,admin,editor',
-            'is_active' => 'boolean',
+            'ai_questions_count' => 'nullable|integer|min:0',
+            'max_ai_questions_override' => 'nullable|integer|min:0',
+            'max_simulations_override' => 'nullable|integer|min:0',
+            'max_essays_override' => 'nullable|integer|min:0',
         ]);
 
         $user->update($validated);
 
         return response()->json([
             'message' => 'Usuário atualizado com sucesso!',
-            'user' => $user
+            'user' => $user->load('plan')
         ]);
     }
 }

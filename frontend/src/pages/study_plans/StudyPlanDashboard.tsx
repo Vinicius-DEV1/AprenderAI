@@ -330,13 +330,7 @@ export default function StudyPlanDashboard() {
 
                     <div className="space-y-2 flex-grow">
                         {exam_strategy.suggested_order.map((s: any, i: number) => {
-                            const timePerSubject: Record<string, string> = {
-                                'Matemática': '54 min',
-                                'Natureza': '54 min',
-                                'Humanas': '45 min',
-                                'Português': '45 min',
-                                'Linguagens': '45 min',
-                            };
+                            const timeLabel = exam_strategy.times?.[s.label] || '45 min';
                             return (
                                 <div key={s.subject} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-700/50">
                                     <span className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-200 text-xs font-black flex items-center justify-center shadow-sm">{i + 1}</span>
@@ -344,7 +338,7 @@ export default function StudyPlanDashboard() {
                                         <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{s.label}</p>
                                         <p className="text-[10px] text-slate-400 font-medium">{s.accuracy}% acerto</p>
                                     </div>
-                                    <span className="text-[10px] font-black text-slate-400 uppercase">{timePerSubject[s.label] || '45 min'}</span>
+                                    <span className="text-[10px] font-black text-slate-400 uppercase">{timeLabel}</span>
                                 </div>
                             );
                         })}

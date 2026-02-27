@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -61,7 +62,7 @@ export default function ImportIndex() {
                             setStatusText('✅ Importação finalizada com sucesso!');
                             setShowBanner(false);
                             clearInterval(interval);
-                            alert('Lote importado e 100% processado! Clique no Painel de Revisão para gerenciar as novas imagens.');
+                            toast.success('Lote importado e 100% processado! Clique no Painel de Revisão para gerenciar as novas imagens.');
                             setTimeout(() => {
                                 setProgressMode(false);
                                 setImportId(null);
@@ -70,7 +71,7 @@ export default function ImportIndex() {
                         }
                     } else if (data?.status === 'failed') {
                         clearInterval(interval);
-                        alert('A importação falhou no Job em Background: ' + (data.error || 'Erro Desconhecido'));
+                        toast.error('A importação falhou no Job em Background: ' + (data.error || 'Erro Desconhecido'));
                         resetUpload();
                     }
                 } catch (e) {
@@ -93,7 +94,7 @@ export default function ImportIndex() {
     const submit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!file || uploading || importId) {
-            alert('Já existe uma operação em andamento ou falta arquivo.');
+            toast.info('Já existe uma operação em andamento ou falta arquivo.');
             return;
         }
 
@@ -116,11 +117,11 @@ export default function ImportIndex() {
                 setFile(null);
                 setFileName('');
             } else {
-                alert(res.data?.error || 'Falha ao processar arquivo.');
+                toast.info(res.data?.error || 'Falha ao processar arquivo.');
                 resetUpload();
             }
         } catch (e: any) {
-            alert('Erro crítico ao comunicar com o servidor.');
+            toast.error('Erro crítico ao comunicar com o servidor.');
             resetUpload();
         }
     };

@@ -68,12 +68,12 @@ class AdminController extends Controller
         $latestSubs = Subscription::with(['user', 'plan'])->latest()->take(5)->get()->map(function ($sub) {
             return [
                 'type' => 'subscription',
-                'message' => "{$sub->user->name} assinou o plano " . ($sub->plan->name ?? 'Grátis'),
+                'message' => ($sub->user->name ?? 'Usuário') . " assinou o plano " . ($sub->plan->name ?? 'Grátis'),
                 'created_at' => $sub->created_at->toIso8601String(),
                 'user' => [
-                    'id' => $sub->user->id,
-                    'name' => $sub->user->name,
-                    'avatar_url' => "https://ui-avatars.com/api/?name=" . urlencode($sub->user->name)
+                    'id' => $sub->user->id ?? 0,
+                    'name' => $sub->user->name ?? 'Desconhecido',
+                    'avatar_url' => "https://ui-avatars.com/api/?name=" . urlencode($sub->user->name ?? 'U')
                 ]
             ];
         });

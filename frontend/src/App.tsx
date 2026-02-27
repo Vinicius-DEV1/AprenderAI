@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useConfig } from './hooks/useConfig';
 import { useAuthStore } from './stores/authStore';
 import { getUser } from './api/auth';
+import { Toaster } from 'sonner';
 
 // Layouts & Auth
 import LoginPage from './pages/auth/LoginPage';
@@ -56,9 +57,11 @@ import AdminSettings from './pages/admin/CacheSettings';
 import AdminPaymentSettings from './pages/admin/PaymentSettings';
 import AdminImport from './pages/admin/ImportIndex';
 import AdminImportReview from './pages/admin/ImportReview';
+import EnemImport from './pages/admin/EnemImport';
 import AdminAnalytics from './pages/admin/Analytics';
 import AdminMonitor from './pages/admin/Monitor';
 import AdminIntegrations from './pages/admin/Integrations';
+import AdminChatLogs from './pages/admin/AdminChatLogs';
 
 function App() {
     const { isLoading: configLoading, error: configError } = useConfig();
@@ -67,10 +70,8 @@ function App() {
 
     useEffect(() => {
         const checkAuthStatus = async () => {
-            console.log('Checking auth status...');
             try {
                 const response = await getUser();
-                console.log('Auth check response:', response.data);
                 setUser(response.data.user);
             } catch (error) {
                 console.warn('Auth check failed:', error);
@@ -113,6 +114,7 @@ function App() {
 
     return (
         <BrowserRouter>
+            <Toaster position="top-right" richColors />
             <Routes>
                 {/* Public / Auth Routes */}
                 <Route path="/" element={<><MetaTags title="Início" description="Prepare-se para o ENEM e concursos com IA." /><HomePage /></>} />
@@ -184,12 +186,14 @@ function App() {
                         <Route path="payment-settings" element={<><MetaTags title="Admin: Pagamentos" /><AdminPaymentSettings /></>} />
                         <Route path="api-keys" element={<><MetaTags title="Admin: Chaves de API" /><AdminApiKeys /></>} />
 
+                        <Route path="enem-import" element={<><MetaTags title="Admin: Importação ENEM" /><EnemImport /></>} />
                         <Route path="import" element={<><MetaTags title="Admin: Importação" /><AdminImport /></>} />
                         <Route path="import/review" element={<><MetaTags title="Admin: Revisão de Importação" /><AdminImportReview /></>} />
 
                         <Route path="analytics" element={<><MetaTags title="Admin: Analytics" /><AdminAnalytics /></>} />
                         <Route path="monitor" element={<><MetaTags title="Admin: Monitoramento" /><AdminMonitor /></>} />
                         <Route path="integrations" element={<><MetaTags title="Admin: Integrações" /><AdminIntegrations /></>} />
+                        <Route path="chat-logs/:id" element={<><MetaTags title="Admin: Auditoria IA" /><AdminChatLogs /></>} />
                     </Route>
                 </Route>
             </Routes>
