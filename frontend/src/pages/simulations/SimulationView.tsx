@@ -349,7 +349,7 @@ export default function SimulationView() {
                         <div className="question-content animate-fade-in">
                             <div className="question-header">
                                 <span className="question-number">Questão {currentQuestion + 1} de {totalQuestions}</span>
-                                <span style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', background: '#f1f5f9', padding: '4px 12px', borderRadius: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }} className="dark:bg-slate-800 dark:text-slate-300">
+                                <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', background: '#f1f5f9', padding: '4px 12px', borderRadius: '12px' }} className="dark:bg-slate-800 dark:text-slate-300">
                                     {question.subjects?.map((s: any) => s.name).join(', ') || 'Geral'}
                                 </span>
                             </div>

@@ -73,7 +73,7 @@ class GoogleAuthController extends Controller
         // 2. If not found, try to find by email
         if (!$user) {
             $user = User::where('email', $googleUser->getEmail())->first();
-            
+
             if ($user) {
                 // Link Google ID to existing user
                 $user->update([
@@ -117,14 +117,16 @@ class GoogleAuthController extends Controller
         // Log in the user
         Auth::login($user);
 
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5174');
+
         // CRO: Redirecionamento de Conversão
         // Se o usuário for novo ou estiver no plano gratuito, enviamos para o Welcome/Onboarding
         // Usamos a sessão para garantir que ele veja isso apenas uma vez por login.
         if ((!$user->plan || $user->plan->slug === 'free') && !session('onboarding_shown')) {
             session(['onboarding_shown' => true]);
-            return redirect()->route('onboarding.welcome');
+            return redirect($frontendUrl . '/bem-vindo');
         }
 
-        return redirect()->intended(route('dashboard'));
+        return redirect($frontendUrl . '/dashboard');
     }
 }

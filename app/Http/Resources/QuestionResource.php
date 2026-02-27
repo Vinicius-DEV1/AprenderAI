@@ -14,21 +14,24 @@ class QuestionResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $isList = !$request->routeIs('*.show') && !$request->boolean('include_details');
+
         return [
             'id' => $this->id,
-            'subject' => $this->subjects->first() ? ['id' => $this->subjects->first()->id, 'name' => $this->subjects->first()->name] : null,
-            'topic' => $this->topics->first() ? ['id' => $this->topics->first()->id, 'name' => $this->topics->first()->name] : null,
-            'statement' => $this->statement,
-            'html_statement' => $this->statement_html, // Use the accessor from Question model
+            // Restore arrays for frontend compatibility (QuestionCard.tsx uses .map)
+            'subjects' => $this->subjects->map(fn($s) => ['id' => $s->id, 'name' => $s->name]),
+            'topics' => $this->topics->map(fn($t) => ['id' => $t->id, 'name' => $t->name]),
+            'statement' => $isList ? \Str::limit($this->statement, 150) : $this->statement,
+            'statement_html' => $this->statement_html, // Restored name and visibility
             'alternatives' => $this->whenLoaded('alternatives', function () {
                 return $this->alternatives->map(function ($alt) {
                     $item = [
                         'id' => $alt->id,
-                        'letter' => $alt->label, // Syncing with DB column 'label'
-                        'text' => $alt->content, // Syncing with DB column 'content'
+                        'label' => $alt->label, // Restored property name
+                        'content' => $alt->content,
                     ];
 
-                    if (request()->boolean('include_answers')) {
+                    if (request()->boolean('include_answers') || $alt->is_correct) {
                         $item['is_correct'] = $alt->is_correct;
                     }
                     return $item;
@@ -43,11 +46,11 @@ class QuestionResource extends JsonResource
             'explanation' => $this->when(request()->boolean('include_answers'), $this->explanation),
             'images' => $this->whenLoaded('images', function () {
                 return $this->images->map(function ($img) {
-                    return [
-                        'url' => $img->url,
-                        'caption' => $img->caption
-                    ];
+                    return ['url' => $img->url, 'caption' => $img->caption];
                 });
+            }),
+            'already_answered' => $this->when(auth()->check(), function () {
+                return $this->userAnswers()->where('user_id', auth()->id())->exists();
             }),
         ];
     }

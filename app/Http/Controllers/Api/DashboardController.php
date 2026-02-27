@@ -27,48 +27,34 @@ class DashboardController extends Controller
         $user = $request->user();
         $user->load(['plan']);
 
-        // 1. Finished Simulations & Stats
-        $finishedSimulations = Simulation::where('user_id', $user->id)
-            ->whereIn('status', ['finished', 'corrected'])
-            ->with(['answers.question.subjects'])
-            ->get();
-
-        $totalSimulations = $finishedSimulations->count();
+        // 1. Stats & Totals
+        $totalSimulations = Simulation::where('user_id', $user->id)->whereIn('status', ['finished', 'corrected'])->count();
         $totalEssays = \App\Models\Essay::where('user_id', $user->id)->count();
 
-        // 2. Metrics by Subject
-        $subjectStats = [];
-        foreach ($finishedSimulations as $sim) {
-            foreach ($sim->answers as $answer) {
-                if (!$answer->question)
-                    continue;
-                foreach ($answer->question->subjects as $subject) {
-                    $name = $subject->name;
-                    if (!isset($subjectStats[$name])) {
-                        $subjectStats[$name] = ['correct' => 0, 'total' => 0];
-                    }
-                    $subjectStats[$name]['total']++;
-                    if ($answer->is_correct) {
-                        $subjectStats[$name]['correct']++;
-                    }
-                }
-            }
-        }
+        // 2. Optimized Metrics by Subject - Doing it in SQL instead of PHP loops
+        $subjectStats = DB::table('simulations')
+            ->join('simulation_answers', 'simulations.id', '=', 'simulation_answers.simulation_id')
+            ->join('question_subject', 'simulation_answers.question_id', '=', 'question_subject.question_id')
+            ->join('subjects', 'question_subject.subject_id', '=', 'subjects.id')
+            ->where('simulations.user_id', $user->id)
+            ->whereIn('simulations.status', ['finished', 'corrected'])
+            ->select('subjects.name', DB::raw('count(*) as total'), DB::raw('sum(simulation_answers.is_correct) as correct'))
+            ->groupBy('subjects.name')
+            ->get();
 
-        $calcPct = fn($data) => $data['total'] > 0 ? ($data['correct'] / $data['total']) * 100 : 0;
+        $calcPct = fn($data) => $data->total > 0 ? ($data->correct / $data->total) * 100 : 0;
         $avgMath = 0.0;
         $avgPortuguese = 0.0;
 
-        foreach ($subjectStats as $name => $data) {
-            if (mb_stripos($name, 'matemática') !== false)
+        foreach ($subjectStats as $data) {
+            if (mb_stripos($data->name, 'matemática') !== false)
                 $avgMath = $calcPct($data);
-            if (mb_stripos($name, 'português') !== false)
+            if (mb_stripos($data->name, 'português') !== false)
                 $avgPortuguese = $calcPct($data);
         }
 
-        // 3. Recent Simulations (Enhanced for Dashboard)
+        // 3. Recent Simulations — includes ALL statuses so frontend can show "Pendente" / "Em Andamento"
         $recentSimulationsQuery = Simulation::where('user_id', $user->id)
-            ->whereIn('status', ['finished', 'corrected'])
             ->with(['answers'])
             ->orderBy('created_at', 'desc')
             ->limit(10)
@@ -77,27 +63,41 @@ class DashboardController extends Controller
         $recentSimulations = SimulationResource::collection($recentSimulationsQuery);
 
         // 4. Subject Performance Collection
-        $subjectPerformance = collect($subjectStats)->map(function ($data, $name) use ($calcPct) {
+        $subjectPerformance = $subjectStats->map(function ($data) use ($calcPct) {
             return [
-                'name' => $name,
+                'name' => $data->name,
                 'percentage' => round($calcPct($data), 1)
             ];
-        })->values();
+        })->values()->toArray();
 
-        // 5. Simulation Limits
+        // 5. Simulation Limits — guaranteed structure
         $simulationLimit = $this->planService->checkSimulationLimit($user);
 
+        // 6. Total questions answered (safe)
+        $totalQuestionsAnswered = 0;
+        try {
+            $totalQuestionsAnswered = $user->questionAnswers()->count();
+        } catch (\Throwable $e) {
+            // Graceful degradation: if the relationship doesn't exist, just return 0
+        }
+
+        // ── RESPONSE: Every field is guaranteed non-null ──
         return response()->json([
             'stats' => [
-                'total_simulations' => $totalSimulations,
-                'total_essays' => $totalEssays,
-                'total_questions_answered' => $user->questionAnswers()->count(),
-                'average_math_score' => round($avgMath, 1),
-                'average_portuguese_score' => round($avgPortuguese, 1),
+                'total_simulations' => (int) $totalSimulations,
+                'total_essays' => (int) $totalEssays,
+                'total_questions_answered' => (int) $totalQuestionsAnswered,
+                'average_math_score' => round((float) $avgMath, 1),
+                'average_portuguese_score' => round((float) $avgPortuguese, 1),
             ],
             'recent_simulations' => $recentSimulations,
             'subjectPerformance' => $subjectPerformance,
-            'simulationLimit' => $simulationLimit,
+            'simulationLimit' => $simulationLimit ?? [
+                'can_create' => true,
+                'remaining' => 999,
+                'total' => 0,
+                'message' => '',
+            ],
             'active_study_plan' => $user->studyPlans()->where('status', 'active')->first()
                 ? new \App\Http\Resources\StudyPlanResource($user->studyPlans()->where('status', 'active')->first())
                 : null,

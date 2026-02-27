@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../../api/axios';
@@ -11,8 +11,6 @@ export default function ImportReview() {
     const navigate = useNavigate();
     const [activeTarget, setActiveTarget] = useState<string>('statement');
     const [saving, setSaving] = useState(false);
-    const [savedTarget, setSavedTarget] = useState<string | null>(null);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     const { data, isLoading } = useQuery({
         queryKey: ['admin-import-review', id],

@@ -7,6 +7,10 @@ import { getUser } from './api/auth';
 // Layouts & Auth
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
+import NotFound from './pages/errors/NotFound';
+import ServerError from './pages/errors/ServerError';
 import PrivateRoute from './components/PrivateRoute';
 import AppLayout from './layouts/AppLayout';
 
@@ -38,8 +42,23 @@ import AdminLayout from './layouts/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import Curadoria from './pages/admin/Curadoria';
 import AdminQuestions from './pages/admin/AdminQuestions';
+import AdminQuestionForm from './pages/admin/QuestionForm';
 import AdminUsers from './pages/admin/AdminUsers';
+import AdminUserDetail from './pages/admin/UserDetail';
 import AdminApiKeys from './pages/admin/AdminApiKeys';
+import AdminPlans from './pages/admin/Plans';
+import AdminPlanForm from './pages/admin/PlanForm';
+import AdminCoupons from './pages/admin/Coupons';
+import AdminCouponForm from './pages/admin/CouponForm';
+import AdminPrompts from './pages/admin/PromptsIndex';
+import AdminPromptEditor from './pages/admin/PromptEditor';
+import AdminSettings from './pages/admin/CacheSettings';
+import AdminPaymentSettings from './pages/admin/PaymentSettings';
+import AdminImport from './pages/admin/ImportIndex';
+import AdminImportReview from './pages/admin/ImportReview';
+import AdminAnalytics from './pages/admin/Analytics';
+import AdminMonitor from './pages/admin/Monitor';
+import AdminIntegrations from './pages/admin/Integrations';
 
 function App() {
     const { isLoading: configLoading, error: configError } = useConfig();
@@ -99,8 +118,13 @@ function App() {
                 <Route path="/" element={<><MetaTags title="Início" description="Prepare-se para o ENEM e concursos com IA." /><HomePage /></>} />
                 <Route path="/login" element={<><MetaTags title="Login" /><LoginPage /></>} />
                 <Route path="/register" element={<><MetaTags title="Criar Conta" /><RegisterPage /></>} />
+                <Route path="/forgot-password" element={<><MetaTags title="Recuperar Senha" /><ForgotPassword /></>} />
+                <Route path="/reset-password" element={<><MetaTags title="Redefinir Senha" /><ResetPassword /></>} />
                 <Route path="/privacidade" element={<><MetaTags title="Política de Privacidade" /><PrivacyPolicy /></>} />
                 <Route path="/uso-justo" element={<><MetaTags title="Termos de Uso" /><FairUsePolicy /></>} />
+
+                <Route path="/500" element={<><MetaTags title="Erro no Servidor" /><ServerError /></>} />
+                <Route path="*" element={<><MetaTags title="Página Não Encontrada" /><NotFound /></>} />
 
                 {/* Protected App Routes */}
                 <Route element={<PrivateRoute />}>
@@ -137,9 +161,35 @@ function App() {
                         <Route index element={<><MetaTags title="Admin: Dashboard" /><AdminDashboard /></>} />
                         <Route path="dashboard" element={<><MetaTags title="Admin: Dashboard" /><AdminDashboard /></>} />
                         <Route path="curadoria" element={<><MetaTags title="Admin: Curadoria" /><Curadoria /></>} />
+
                         <Route path="questions" element={<><MetaTags title="Admin: Banco de Questões" /><AdminQuestions /></>} />
+                        <Route path="questions/create" element={<><MetaTags title="Admin: Nova Questão" /><AdminQuestionForm /></>} />
+                        <Route path="questions/:id/edit" element={<><MetaTags title="Admin: Editar Questão" /><AdminQuestionForm /></>} />
+
                         <Route path="users" element={<><MetaTags title="Admin: Gestão de Usuários" /><AdminUsers /></>} />
+                        <Route path="users/:id" element={<><MetaTags title="Admin: Detalhes do Usuário" /><AdminUserDetail /></>} />
+
+                        <Route path="plans" element={<><MetaTags title="Admin: Planos" /><AdminPlans /></>} />
+                        <Route path="plans/create" element={<><MetaTags title="Admin: Novo Plano" /><AdminPlanForm /></>} />
+                        <Route path="plans/:id/edit" element={<><MetaTags title="Admin: Editar Plano" /><AdminPlanForm /></>} />
+
+                        <Route path="coupons" element={<><MetaTags title="Admin: Cupons" /><AdminCoupons /></>} />
+                        <Route path="coupons/create" element={<><MetaTags title="Admin: Novo Cupom" /><AdminCouponForm /></>} />
+                        <Route path="coupons/:id/edit" element={<><MetaTags title="Admin: Editar Cupom" /><AdminCouponForm /></>} />
+
+                        <Route path="prompts" element={<><MetaTags title="Admin: Prompts" /><AdminPrompts /></>} />
+                        <Route path="prompts/:id/edit" element={<><MetaTags title="Admin: Editar Prompt" /><AdminPromptEditor /></>} />
+
+                        <Route path="settings" element={<><MetaTags title="Admin: Configurações" /><AdminSettings /></>} />
+                        <Route path="payment-settings" element={<><MetaTags title="Admin: Pagamentos" /><AdminPaymentSettings /></>} />
                         <Route path="api-keys" element={<><MetaTags title="Admin: Chaves de API" /><AdminApiKeys /></>} />
+
+                        <Route path="import" element={<><MetaTags title="Admin: Importação" /><AdminImport /></>} />
+                        <Route path="import/review" element={<><MetaTags title="Admin: Revisão de Importação" /><AdminImportReview /></>} />
+
+                        <Route path="analytics" element={<><MetaTags title="Admin: Analytics" /><AdminAnalytics /></>} />
+                        <Route path="monitor" element={<><MetaTags title="Admin: Monitoramento" /><AdminMonitor /></>} />
+                        <Route path="integrations" element={<><MetaTags title="Admin: Integrações" /><AdminIntegrations /></>} />
                     </Route>
                 </Route>
             </Routes>

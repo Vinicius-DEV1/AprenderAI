@@ -3,13 +3,16 @@ set -e
 
 echo "🚀 Iniciando ambiente de DESENVOLVIMENTO..."
 
+# Fix git ownership
+git config --global --add safe.directory /var/www
+
 # Ajusta permissões iniciais (usando uid 1000 que é o padrão no Dockerfile.local)
-# Ajusta permissões iniciais (Adicionado || true para não travar no Windows)
-# Ajusta permissões iniciais (apenas nos diretórios base para evitar lentidão com milhares de arquivos no Windows)
 chown 1000:www-data storage bootstrap/cache || true
 chmod 775 storage bootstrap/cache || true
-find storage -maxdepth 2 -not -path '*/.*' -exec chown 1000:www-data {} + || true
-find storage -maxdepth 2 -not -path '*/.*' -exec chmod 775 {} + || true
+
+# Garante que as subpastas do framework existam no volume interno
+mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache storage/logs
+chown -R 1000:www-data storage/framework storage/logs
 
 if [ -f .env ] || [ -f .env.example ]; then
     # Se não houver .env, copia do .env.example
@@ -18,15 +21,15 @@ if [ -f .env ] || [ -f .env.example ]; then
         cp .env.example .env
     fi
 
-    # Instala dependências do Composer se a pasta vendor não existir
-    if [ ! -d "vendor" ]; then
-        echo "📦 Pasta vendor não encontrada. Instalando dependências do Composer..."
-        composer install --no-interaction --prefer-dist
+    # Instala dependências do Composer se a pasta vendor/autoload.php não existir
+    if [ ! -f "vendor/autoload.php" ]; then
+        echo "📦 Autoload não encontrado. Instalando dependências do Composer no volume interno..."
+        composer install --no-interaction --prefer-dist --optimize-autoloader
     fi
 
-    # Instala dependências do Node se a pasta node_modules não existir
-    if [ ! -d "node_modules" ]; then
-        echo "🐌 Pasta node_modules não encontrada. Instalando dependências do Node..."
+    # Instala dependências do Node se a pasta node_modules não existir ou estiver vazia
+    if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
+        echo "🐌 Node modules não encontrados. Instalando dependências do Node no volume interno..."
         npm install
         echo "🏗️ Buildando assets iniciais..."
         npm run build
@@ -36,9 +39,12 @@ if [ -f .env ] || [ -f .env.example ]; then
     # Aguarda o MySQL estar PRONTO para aceitar conexões.
     # ----------------------------------------------------------------
     echo "⏳ Aguardando o banco de dados ficar disponível..."
-    MAX_TRIES=30
+    MAX_TRIES=100
     COUNT=0
-    until php artisan db:show > /dev/null 2>&1; do
+    # Debug env
+    echo "DB_HOST=$DB_HOST, DB_DATABASE=$DB_DATABASE, DB_USERNAME=$DB_USERNAME"
+    # Usando PHP puro para testar a conexão sem carregar o framework (mais rápido e robusto)
+    until php -r "try { new PDO('mysql:host=' . getenv('DB_HOST') . ';dbname=' . getenv('DB_DATABASE'), getenv('DB_USERNAME'), getenv('DB_PASSWORD')); exit(0); } catch (Exception \$e) { echo \$e->getMessage() . PHP_EOL; exit(1); }" ; do
         COUNT=$((COUNT + 1))
         if [ "$COUNT" -ge "$MAX_TRIES" ]; then
             echo "❌ ERRO: Banco de dados não ficou disponível após ${MAX_TRIES} tentativas. Abortando."
