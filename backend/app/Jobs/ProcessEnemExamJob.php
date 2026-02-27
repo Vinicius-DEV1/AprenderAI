@@ -54,14 +54,15 @@ class ProcessEnemExamJob implements ShouldQueue
 
             try {
                 $response = $apiService->getExamQuestions($this->year, $limit, $offset);
-                
+
+
                 $questions = $response['questions'] ?? [];
                 $metadata = $response['metadata'] ?? [];
 
                 foreach ($questions as $apiQuestion) {
                     try {
                         $result = $importService->processQuestion($apiQuestion);
-                        
+
                         if ($result['status'] === 'success') {
                             $inserted++;
                         } elseif ($result['status'] === 'ignored') {
@@ -99,7 +100,7 @@ class ProcessEnemExamJob implements ShouldQueue
             $log->increment('inserted_count', $inserted);
             $log->increment('ignored_count', $ignored);
             $log->increment('error_count', $errors);
-            
+
             // Persistir Detalhes de Ignorados (Novidade)
             if (!empty($ignoredItems)) {
                 $existingIgnored = $log->ignored_details ?? [];

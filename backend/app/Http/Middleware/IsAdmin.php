@@ -16,10 +16,16 @@ class IsAdmin
     public function handle(Request $request, Closure $next): Response
     {
         if (!$request->user()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
             return redirect()->route('login');
         }
 
         if (!$request->user()->isAdmin()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Acesso não autorizado.'], 403);
+            }
             return redirect()->route('home')->with('error', 'Acesso não autorizado.');
         }
 

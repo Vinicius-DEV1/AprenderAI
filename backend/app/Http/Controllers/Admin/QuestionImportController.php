@@ -23,6 +23,7 @@ class QuestionImportController extends Controller
 
     public function index(Request $request)
     {
+        Log::debug('[QuestionImportController] index called. Ajax: ' . ($request->ajax() ? 'yes' : 'no') . ', WantsJson: ' . ($request->wantsJson() ? 'yes' : 'no'));
         $imports = QuestionImport::with('uploader')
             ->latest()
             ->take(10)
@@ -42,6 +43,7 @@ class QuestionImportController extends Controller
 
     public function store(Request $request)
     {
+        Log::debug('[QuestionImportController] store called.');
         $request->validate([
             'zip_file' => ['required', 'file', 'mimes:zip', 'max:204800'],
         ], [
@@ -94,6 +96,7 @@ class QuestionImportController extends Controller
      */
     public function progress($id): \Illuminate\Http\JsonResponse
     {
+        Log::debug("[QuestionImportController] progress called for ID: {$id}");
         $import = QuestionImport::findOrFail($id);
 
         return response()->json([
@@ -110,6 +113,7 @@ class QuestionImportController extends Controller
      */
     public function activeJob(): \Illuminate\Http\JsonResponse
     {
+        Log::debug('[QuestionImportController] activeJob called.');
         $activeImport = QuestionImport::where('uploaded_by', Auth::id())
             ->whereIn('status', ['pending', 'processing'])
             ->latest()
