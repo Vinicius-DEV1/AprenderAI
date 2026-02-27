@@ -91,7 +91,7 @@ export default function QuestionBank() {
         organization: '',
         institution: '',
         role: '',
-        include_discursive: false
+        include_discursive: true
     });
     const [moreFilters, setMoreFilters] = useState(false);
     const [statsOpen, setStatsOpen] = useState(false);
@@ -218,7 +218,7 @@ export default function QuestionBank() {
     const clearFilters = () => {
         setFilters({
             type: '', subject: '', topic: '', keyword: '', year: '',
-            difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false
+            difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: true
         });
         setMoreFilters(false);
         setPage(1);
@@ -443,6 +443,21 @@ export default function QuestionBank() {
                             <label>Busca</label>
                             <input type="text" name="keyword" value={filters.keyword} onChange={onFilterChange} placeholder="Palavras-chave..." />
                         </div>
+                        <div className="qb-filter-item flex items-center pt-6 px-4">
+                            <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
+                                <input
+                                    type="checkbox"
+                                    name="include_discursive"
+                                    checked={filters.include_discursive}
+                                    onChange={(e) => {
+                                        setFilters(prev => ({ ...prev, include_discursive: e.target.checked }));
+                                        setPage(1);
+                                    }}
+                                    className="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500"
+                                />
+                                <span className="text-sm font-bold text-slate-600 select-none">Mostrar Discursivas</span>
+                            </label>
+                        </div>
                         <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '2px' }}>
                             <button type="button" className="qb-filter-toggle" onClick={() => setMoreFilters(!moreFilters)}>
                                 <svg className={`w-4 h-4 transition-transform ${moreFilters ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '14px', height: '14px' }}>
@@ -498,22 +513,7 @@ export default function QuestionBank() {
                                 </>
                             )}
 
-                            {/* Discursive Toggle */}
-                            <div className="qb-filter-item w-full sm:w-auto flex items-center pt-6 ml-4">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        name="include_discursive"
-                                        checked={filters.include_discursive}
-                                        onChange={(e) => {
-                                            setFilters(prev => ({ ...prev, include_discursive: e.target.checked }));
-                                            setPage(1);
-                                        }}
-                                        className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                                    />
-                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Mostrar Discursivas</span>
-                                </label>
-                            </div>
+
                         </div>
                     )}
 
