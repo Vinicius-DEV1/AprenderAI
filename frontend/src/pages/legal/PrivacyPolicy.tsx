@@ -2,7 +2,7 @@ import { useConfigStore } from '../../stores/configStore';
 
 export default function PrivacyPolicy() {
     const config = useConfigStore();
-    const siteName = config.appName || 'AprovadoAI';
+    const siteName = config.appName || 'AprenderAI';
     const lastUpdate = new Date().toLocaleDateString('pt-BR');
 
     return (

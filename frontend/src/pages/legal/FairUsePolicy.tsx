@@ -2,7 +2,7 @@ import { useConfigStore } from '../../stores/configStore';
 
 export default function FairUsePolicy() {
     const config = useConfigStore();
-    const siteName = config.appName || 'AprovadoAI';
+    const siteName = config.appName || 'AprenderAI';
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-16">

@@ -101,6 +101,21 @@ services:
     deploy:
       replicas: 1
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.local
+    container_name: aprender-ai-frontend
+    ports:
+      - "5174:5174"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - local-network
+    depends_on:
+      - app
+
 networks:
   local-network:
     driver: bridge

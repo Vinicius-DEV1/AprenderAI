@@ -1,4 +1,4 @@
-﻿# Monorepo Ignores
+# Monorepo Ignores
 **/node_modules
 **/vendor
 .env
