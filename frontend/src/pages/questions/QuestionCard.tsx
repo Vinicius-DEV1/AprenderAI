@@ -34,11 +34,9 @@ export default function QuestionCard({ question: q }: { question: Question }) {
     const { user } = useAuthStore();
 
     const isDiscursive = q.tipo_questao === 'Discursiva';
-    const isRedacao = q.tipo_questao === 'Redação';
 
     const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
     const [discursiveAnswers, setDiscursiveAnswers] = useState<Record<string, string>>({});
-    const [redacaoText, setRedacaoText] = useState<string>('');
 
     const [answered, setAnswered] = useState(false);
     const [isCorrect, setIsCorrect] = useState<boolean | null>(q.was_correct ?? null);
@@ -97,17 +95,14 @@ export default function QuestionCard({ question: q }: { question: Question }) {
 
     const submitAnswer = async () => {
         if (submitting || answered) return;
-        if (!isDiscursive && !isRedacao && !selectedAnswer) return;
+        if (!isDiscursive && !selectedAnswer) return;
         if (isDiscursive && Object.keys(discursiveAnswers).length === 0) return;
-        if (isRedacao && !redacaoText.trim()) return;
 
         setSubmitting(true);
         try {
             let payload: any = { selected_answer: selectedAnswer };
             if (isDiscursive) {
                 payload = { respostas_discursivas: discursiveAnswers };
-            } else if (isRedacao) {
-                payload = { redacao_texto: redacaoText };
             }
 
             const res = await api.post(`/api/v1/questions/${q.id}/answer`, payload);
@@ -256,28 +251,10 @@ export default function QuestionCard({ question: q }: { question: Question }) {
 
             <div className="qb-statement" dangerouslySetInnerHTML={{ __html: q.statement_html }} />
 
-            {/* Redação Rendering */}
-            {isRedacao && (
-                <div className="qb-redacao-box mt-4 space-y-4">
-                    <h3 className="font-bold text-slate-800 dark:text-slate-200">Área de Produção Textual</h3>
-                    <textarea
-                        className="w-full p-4 border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-800 dark:text-gray-100 text-sm leading-relaxed whitespace-pre-wrap font-mono"
-                        rows={30}
-                        placeholder="Transcreva sua redação final aqui. Respeite os limites mínimos e máximos da banca..."
-                        value={redacaoText}
-                        onChange={(e) => setRedacaoText(e.target.value)}
-                        disabled={answered}
-                        style={{ backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #e2e8f0 31px, #e2e8f0 32px)', lineHeight: '32px', paddingTop: '8px' }}
-                    />
-                    <div className="flex justify-between items-center text-xs text-slate-500">
-                        <span>Min: 20 linhas (aprox)</span>
-                        <span>Max: 30 linhas</span>
-                    </div>
-                </div>
-            )}
+
 
             {/* Discursiva Rendering */}
-            {!isRedacao && isDiscursive && (
+            {isDiscursive && (
                 <div className="qb-discursive-list space-y-6 mt-4">
                     {q.alternatives.sort((a, b) => a.label.localeCompare(b.label)).map(alt => (
                         <div key={alt.id} className="qb-discursive-item">
@@ -297,7 +274,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                 </div>
             )}
 
-            {!isRedacao && !isDiscursive && (
+            {!isDiscursive && (
                 /* Objetiva Rendering */
                 <div className="qb-alternatives-list">
                     {q.alternatives.sort((a, b) => a.label.localeCompare(b.label)).map(alt => (
@@ -326,7 +303,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
 
             <div className="qb-card-actions mt-6">
                 {!answered && (
-                    <button className="qb-action-btn primary" onClick={submitAnswer} disabled={(!isDiscursive && !isRedacao && !selectedAnswer) || (isDiscursive && Object.keys(discursiveAnswers).length === 0) || (isRedacao && !redacaoText.trim()) || submitting}>
+                    <button className="qb-action-btn primary" onClick={submitAnswer} disabled={(!isDiscursive && !selectedAnswer) || (isDiscursive && Object.keys(discursiveAnswers).length === 0) || submitting}>
                         {!submitting ? '📝 Responder' : '⏳ Enviando...'}
                     </button>
                 )}
@@ -371,7 +348,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                 </div>
             )}
 
-            {answered && !isDiscursive && !isRedacao && (
+            {answered && !isDiscursive && (
                 <div className={`qb-feedback ${isCorrect ? 'correct' : 'incorrect'}`}>
                     <div className="qb-feedback-title">
                         <span>{isCorrect ? '✅ Resposta Correta!' : '❌ Resposta Incorreta'}</span>
