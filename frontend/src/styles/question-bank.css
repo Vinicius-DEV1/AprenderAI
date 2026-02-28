@@ -11,6 +11,27 @@
     --qb-card-bg: #1e293b;
 }
 
+.qb-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.qb-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.qb-scrollbar::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
+}
+
+.dark .qb-scrollbar::-webkit-scrollbar-thumb {
+    background: #334155;
+}
+
+.qb-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
+}
+
 /* ── Header ── */
 .qb-header {
     background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);

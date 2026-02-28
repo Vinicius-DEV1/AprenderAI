@@ -162,4 +162,16 @@ class QuestionController extends Controller
 
         return response()->json($history);
     }
+
+    /**
+     * Unique options for filtering (Banca, Orgão, Cargo).
+     */
+    public function filterOptions(Request $request)
+    {
+        return response()->json([
+            'organizations' => Question::whereNotNull('organization')->distinct()->orderBy('organization')->pluck('organization'),
+            'institutions' => Question::whereNotNull('institution')->distinct()->orderBy('institution')->pluck('institution'),
+            'roles' => Question::whereNotNull('role')->distinct()->orderBy('role')->pluck('role'),
+        ]);
+    }
 }

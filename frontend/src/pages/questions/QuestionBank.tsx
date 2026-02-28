@@ -5,6 +5,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useConfigStore } from '../../stores/configStore';
 import QuestionCard from './QuestionCard';
 import StatsSlideOver from './StatsSlideOver';
+import SearchableSelect from '../../components/SearchableSelect';
 import '../../styles/question-bank.css';
 
 interface FilterOptions {
@@ -189,6 +190,14 @@ export default function QuestionBank() {
         enabled: statsOpen
     });
 
+    const { data: filterOptions, isLoading: loadingFilterOptions } = useQuery({
+        queryKey: ['filterOptions'],
+        queryFn: async () => {
+            const res = await api.get('/api/v1/questions/filter-options');
+            return res.data;
+        }
+    });
+
     const questions = questionsData?.data || [];
     const meta = questionsData?.meta || { total: 0, current_page: 1, last_page: 1 };
 
@@ -204,8 +213,7 @@ export default function QuestionBank() {
     }, [meta.last_page, meta.current_page]);
 
     // --- Handlers ---
-    const onFilterChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
-        const { name, value } = e.target;
+    const updateFilter = (name: string, value: any) => {
         setFilters((prev: FilterOptions) => ({
             ...prev,
             [name]: value,
@@ -214,6 +222,11 @@ export default function QuestionBank() {
             ...(name === 'subject' ? { topic: '' } : {})
         }));
         setPage(1);
+    };
+
+    const onFilterChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
+        const { name, value } = e.target;
+        updateFilter(name, value);
     };
 
     const clearFilters = () => {
@@ -420,26 +433,24 @@ export default function QuestionBank() {
                                 <option value="concurso">Concurso</option>
                             </select>
                         </div>
-                        <div className="qb-filter-item">
-                            <label>Matéria</label>
-                            <select name="subject" value={filters.subject} onChange={onFilterChange} disabled={loadingSubjects}>
-                                <option value="">{loadingSubjects ? 'Carregando...' : 'Todas'}</option>
-                                {subjectsData?.map((s: any) => (
-                                    <option key={s.id} value={s.id}>{s.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="qb-filter-item">
-                            <label>{filters.type === 'enem' ? 'Eixo Temático' : 'Assunto'}</label>
-                            <select name="topic" value={filters.topic} onChange={onFilterChange} disabled={!filters.subject || loadingTopics}>
-                                <option value="">
-                                    {loadingTopics ? 'Carregando...' : (!filters.subject ? 'Selecione uma matéria...' : 'Todos')}
-                                </option>
-                                {topicsData?.map((t: any) => (
-                                    <option key={t.id} value={t.id}>{t.name}</option>
-                                ))}
-                            </select>
-                        </div>
+                        <SearchableSelect
+                            label="Matéria"
+                            name="subject"
+                            value={filters.subject}
+                            options={subjectsData || []}
+                            loading={loadingSubjects}
+                            placeholder={loadingSubjects ? 'Carregando...' : 'Todas'}
+                            onChange={updateFilter}
+                        />
+                        <SearchableSelect
+                            label={filters.type === 'enem' ? 'Eixo Temático' : 'Assunto'}
+                            name="topic"
+                            value={filters.topic}
+                            options={topicsData || []}
+                            loading={loadingTopics}
+                            placeholder={loadingTopics ? 'Carregando...' : (!filters.subject ? 'Selecione uma matéria...' : 'Todos')}
+                            onChange={updateFilter}
+                        />
                         <div className="qb-filter-item flex-[2_1_250px]">
                             <label>Busca</label>
                             <input type="text" name="keyword" value={filters.keyword} onChange={onFilterChange} placeholder="Palavras-chave..." />
@@ -497,18 +508,33 @@ export default function QuestionBank() {
                         {/* Concurso-specific filters (hidden when type === 'enem') */}
                         {showConcursoFilters && (
                             <>
-                                <div className="qb-filter-item">
-                                    <label>Banca</label>
-                                    <input type="text" name="organization" value={filters.organization} onChange={onFilterChange} placeholder="Ex: CESPE, FCC..." />
-                                </div>
-                                <div className="qb-filter-item">
-                                    <label>Órgão</label>
-                                    <input type="text" name="institution" value={filters.institution} onChange={onFilterChange} placeholder="Ex: TRF, INSS..." />
-                                </div>
-                                <div className="qb-filter-item">
-                                    <label>Cargo</label>
-                                    <input type="text" name="role" value={filters.role} onChange={onFilterChange} placeholder="Ex: Analista..." />
-                                </div>
+                                <SearchableSelect
+                                    label="Banca"
+                                    name="organization"
+                                    value={filters.organization}
+                                    options={filterOptions?.organizations || []}
+                                    loading={loadingFilterOptions}
+                                    placeholder="Ex: CESPE, FCC..."
+                                    onChange={updateFilter}
+                                />
+                                <SearchableSelect
+                                    label="Órgão"
+                                    name="institution"
+                                    value={filters.institution}
+                                    options={filterOptions?.institutions || []}
+                                    loading={loadingFilterOptions}
+                                    placeholder="Ex: TRF, INSS..."
+                                    onChange={updateFilter}
+                                />
+                                <SearchableSelect
+                                    label="Cargo"
+                                    name="role"
+                                    value={filters.role}
+                                    options={filterOptions?.roles || []}
+                                    loading={loadingFilterOptions}
+                                    placeholder="Ex: Analista..."
+                                    onChange={updateFilter}
+                                />
                             </>
                         )}
 
