@@ -70,7 +70,7 @@ class KeyValidationService
             if ($response->failed()) {
                 $status = $response->status();
                 $errorData = $response->json();
-                
+
                 $error = 'Erro desconhecido';
                 if (isset($errorData['error']['message'])) {
                     $error = $errorData['error']['message'];
@@ -93,14 +93,22 @@ class KeyValidationService
             return [
                 'is_valid' => true,
                 'models' => collect($models)
-                    ->filter(fn($m) => str_contains($m['name'], 'gemini') || str_contains($m['name'], 'learnlm'))
+                    ->filter(
+                        fn($m) =>
+                        stripos($m['name'], 'gemini') !== false ||
+                        stripos($m['name'], 'learnlm') !== false ||
+                        stripos($m['name'], 'gemma') !== false ||
+                        stripos($m['displayName'] ?? '', 'gemma') !== false
+                    )
                     ->map(fn($m) => [
                         'id' => str_replace('models/', '', $m['name']),
                         'name' => $m['displayName'] ?? $m['name']
                     ])
+                    ->sortBy('name')
                     ->values()
                     ->toArray()
             ];
+
         } catch (\Exception $e) {
             return ['is_valid' => false, 'error' => "Gemini Exception: " . $e->getMessage()];
         }
