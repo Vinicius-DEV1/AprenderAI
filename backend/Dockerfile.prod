@@ -4,8 +4,7 @@ WORKDIR /app
 COPY frontend/package*.json ./
 RUN npm install
 COPY frontend/ ./
-RUN npm run build
-
+RUN npm run build:prod
 # --- STAGE 2: PHP Application ---
 FROM php:8.4-fpm
 
