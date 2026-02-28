@@ -1,18 +1,11 @@
 import { defineConfig } from 'vite';
-import laravel from 'laravel-vite-plugin';
-import tailwindcss from '@tailwindcss/vite';
 
-export default defineConfig({
-    plugins: [
-        laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js'],
-            refresh: true,
-        }),
-        tailwindcss(),
-    ],
-    server: {
-        watch: {
-            ignored: ['**/storage/framework/views/**'],
-        },
-    },
-});
+// The Laravel Blade layer has been fully removed.
+// This backend vite.config is no longer used for asset compilation.
+// The frontend assets are now managed exclusively by the React SPA
+// in the /frontend directory using its own vite.config.ts.
+//
+// This file is kept as a placeholder to avoid composer/npm errors.
+// It has no input entries.
+
+export default defineConfig({});

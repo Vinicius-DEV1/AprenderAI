@@ -45,7 +45,7 @@ class GoogleAuthController extends Controller
     public function redirect()
     {
         if (!Configuration::get('google_login_enabled', false)) {
-            return redirect()->route('login')->with('error', 'Google Login is disabled.');
+            return redirect(env('FRONTEND_URL', 'http://localhost:5174') . '/login?error=google_disabled');
         }
 
         $this->configureGoogle();
@@ -55,8 +55,10 @@ class GoogleAuthController extends Controller
 
     public function callback()
     {
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5174');
+
         if (!Configuration::get('google_login_enabled', false)) {
-            return redirect()->route('login')->with('error', 'Google Login is disabled.');
+            return redirect($frontendUrl . '/login?error=google_disabled');
         }
 
         $this->configureGoogle();
@@ -64,7 +66,7 @@ class GoogleAuthController extends Controller
         try {
             $googleUser = Socialite::driver('google')->user();
         } catch (\Exception $e) {
-            return redirect()->route('login')->with('error', 'Failed to authenticate with Google.');
+            return redirect($frontendUrl . '/login?error=google_failed');
         }
 
         // 1. Try to find user by google_id
@@ -90,7 +92,7 @@ class GoogleAuthController extends Controller
                 'email' => $googleUser->getEmail(),
                 'google_id' => $googleUser->getId(),
                 'avatar_url' => $googleUser->getAvatar(),
-                'password' => bcrypt(str()->random(16)), // Random password
+                'password' => bcrypt(str()->random(16)),
                 'email_verified_at' => now(),
             ]);
 
@@ -99,7 +101,6 @@ class GoogleAuthController extends Controller
                 $freePlan = $this->planService->getFreePlan();
                 $this->planService->assignPlanToUser($user, $freePlan);
             } catch (\Exception $e) {
-                // Log or handle if free plan is missing, but don't block login
                 logger()->error('Failed to assign free plan to new Google user: ' . $e->getMessage());
             }
         }
@@ -117,11 +118,7 @@ class GoogleAuthController extends Controller
         // Log in the user
         Auth::login($user);
 
-        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5174');
-
-        // CRO: Redirecionamento de Conversão
-        // Se o usuário for novo ou estiver no plano gratuito, enviamos para o Welcome/Onboarding
-        // Usamos a sessão para garantir que ele veja isso apenas uma vez por login.
+        // CRO: Redirect new or free users to onboarding (only once per login)
         if ((!$user->plan || $user->plan->slug === 'free') && !session('onboarding_shown')) {
             session(['onboarding_shown' => true]);
             return redirect($frontendUrl . '/bem-vindo');
