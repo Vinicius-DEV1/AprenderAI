@@ -146,6 +146,24 @@ Route::prefix('v1')->name('api.')->group(function () {
             Route::post('/settings', [AdminSettingController::class, 'update']);
             Route::post('/settings/clear-cache', [AdminSettingController::class, 'clearCache']);
 
+            // Analytics
+            Route::prefix('analytics')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'index']);
+                Route::get('/behavior', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'behavior']);
+                Route::get('/acquisition', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'acquisition']);
+                Route::get('/conversion', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'conversion']);
+                Route::get('/monetization', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'monetization']);
+                Route::get('/realtime', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'realtimeData']);
+            });
+
+            // Simulation Engine Models (Motor de Simulados)
+            Route::prefix('simulation-models')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Api\Admin\AdminSimulationModelsController::class, 'index']);
+                Route::get('/{simulationModel}', [\App\Http\Controllers\Api\Admin\AdminSimulationModelsController::class, 'show']);
+                Route::post('/{simulationModel}/rule', [\App\Http\Controllers\Api\Admin\AdminSimulationModelsController::class, 'updateRule']);
+                Route::post('/{simulationModel}/toggle', [\App\Http\Controllers\Api\Admin\AdminSimulationModelsController::class, 'toggle']);
+            });
+
             // Infrastructure & AI Monitoring
             Route::get('/api-keys', [AdminApiKeyController::class, 'index']);
             Route::post('/api-keys', [AdminApiKeyController::class, 'store']);
