@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\Admin\EnemImportController as AdminEnemImportContro
 use App\Http\Controllers\Api\Admin\AdminEssayController;
 use App\Http\Controllers\Api\Admin\AdminQuestionImportController;
 use App\Http\Controllers\Api\Admin\AdminImportReviewController;
+use App\Http\Controllers\Api\Admin\ApiPricingController as AdminApiPricingController;
 
 /*
 |--------------------------------------------------------------------------
