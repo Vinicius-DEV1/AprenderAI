@@ -7,7 +7,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # --- STAGE 2: PHP Application ---
-FROM php:8.3-fpm
+FROM php:8.4-fpm
 
 # Arguments for user and group
 ARG user=sail
@@ -54,7 +54,7 @@ COPY --from=frontend-builder /app/dist ./public
 
 # Install PHP dependencies
 ENV COMPOSER_MEMORY_LIMIT=-1
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-req=php+
 
 # Create system user
 RUN useradd -G www-data,root -u $uid -d /home/$user $user
