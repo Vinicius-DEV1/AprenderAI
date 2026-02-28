@@ -14,6 +14,8 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
     const [quantity, setQuantity] = useState(10);
     const [type, setType] = useState('complete');
     const [model, setModel] = useState('gpt-4o');
+    const [chunkSize, setChunkSize] = useState(5);
+    const [reprocess, setReprocess] = useState(false);
     const [previewQuestions, setPreviewQuestions] = useState<any[]>([]);
 
     const [batchId, setBatchId] = useState<string | null>(null);
@@ -72,6 +74,8 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                 quantity: previewQuestions.length,
                 type: type === 'complete' ? 'both' : type,
                 model,
+                chunk_size: chunkSize,
+                reprocess,
                 question_ids: previewQuestions.map(q => q.id)
             });
             return res.data;
@@ -178,6 +182,30 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                                 ))}
                                             </select>
                                         )}
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-black uppercase text-gray-400 mb-2">Tamanho do Lote (Chunk)</label>
+                                        <input
+                                            type="number"
+                                            value={chunkSize}
+                                            onChange={(e) => setChunkSize(parseInt(e.target.value) || 5)}
+                                            min={1}
+                                            max={50}
+                                            className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold"
+                                        />
+                                        <p className="text-[10px] text-gray-400 mt-1 font-bold italic">Questões processadas por requisição API.</p>
+                                    </div>
+                                    <div className="flex items-center gap-3 pt-6">
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={reprocess}
+                                                onChange={(e) => setReprocess(e.target.checked)}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                            <span className="ml-3 text-xs font-black uppercase text-gray-400">Forçar Sobrescrita</span>
+                                        </label>
                                     </div>
                                 </div>
 
