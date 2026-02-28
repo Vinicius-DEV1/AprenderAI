@@ -117,11 +117,12 @@ class ApiKeyController extends Controller
 
         DB::transaction(function () use ($validated, $vault) {
             // Encontrar ou criar a ApiKey para este par Vault/Modelo
-            $apiKey = ApiKey::firstOrCreate([
+            $apiKey = ApiKey::updateOrCreate([
                 'vault_id' => $vault->id,
                 'preferred_model' => $validated['preferred_model'],
             ], [
                 'provider' => $vault->provider,
+                'key' => 'VAULT_REFERENCE', // Valor fictício pois a chave real está no Vault
                 'status' => 'online',
                 'is_active' => true,
             ]);
@@ -137,6 +138,9 @@ class ApiKeyController extends Controller
                     'priority' => $maxPriority + 1
                 ]);
             }
+
+            // Limpar cache de roteamento
+            Cache::forget('active_api_keys');
         });
 
         return response()->json(['message' => 'Roteamento ativado com sucesso!']);

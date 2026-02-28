@@ -65,6 +65,7 @@ import AdminMonitor from './pages/admin/Monitor';
 import AdminIntegrations from './pages/admin/Integrations';
 import AdminChatLogs from './pages/admin/AdminChatLogs';
 import AdminApiPricing from './pages/admin/ApiPricing';
+import AdminSimulationBuilder from './pages/admin/SimulationBuilder';
 
 function App() {
     const { isLoading: configLoading, error: configError } = useConfig();
@@ -200,6 +201,7 @@ function App() {
                         <Route path="integrations" element={<><MetaTags title="Admin: Integrações" /><AdminIntegrations /></>} />
                         <Route path="chat-logs/:id" element={<><MetaTags title="Admin: Auditoria IA" /><AdminChatLogs /></>} />
                         <Route path="api-pricing" element={<><MetaTags title="Admin: Custos de API" /><AdminApiPricing /></>} />
+                        <Route path="simulations/builder" element={<><MetaTags title="Admin: Motor de Simulados" /><AdminSimulationBuilder /></>} />
                     </Route>
                 </Route>
             </Routes>

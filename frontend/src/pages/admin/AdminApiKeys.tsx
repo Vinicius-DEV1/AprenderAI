@@ -122,6 +122,10 @@ export default function AdminApiKeys() {
             queryClient.invalidateQueries({ queryKey: ['admin-api-keys'] });
             setRoutingForm({ vault_id: '', preferred_model: '', capabilities: [] });
             toast.success('Roteamento ativado com sucesso!');
+        },
+        onError: (err: any) => {
+            const msg = err.response?.data?.message || err.response?.data?.error || err.message || 'Erro desconhecido ao ativar roteamento.';
+            toast.error('Falha ao ativar roteamento: ' + msg);
         }
     });
 
@@ -349,9 +353,11 @@ export default function AdminApiKeys() {
                                 <div className="flex justify-end">
                                     <button
                                         onClick={() => activateRoutingMutation.mutate(routingForm)}
-                                        disabled={!routingForm.preferred_model || routingForm.capabilities.length === 0}
-                                        className="px-10 py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-xl shadow-indigo-100 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100">
-                                        Ativar Roteamento
+                                        disabled={!routingForm.preferred_model || routingForm.capabilities.length === 0 || activateRoutingMutation.isPending}
+                                        className="px-10 py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-xl shadow-indigo-100 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100 flex items-center gap-3">
+                                        {activateRoutingMutation.isPending ? (
+                                            <><svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>Ativando...</>
+                                        ) : 'Ativar Roteamento'}
                                     </button>
                                 </div>
                             </div>
@@ -399,7 +405,7 @@ export default function AdminApiKeys() {
                                                         <Reorder.Group axis="y" values={keys} onReorder={(newOrder) => handlePriorityReorder(cap, newOrder)} className="space-y-3">
                                                             {keys.map((key, index) => (
                                                                 <Reorder.Item
-                                                                    key={key.pivot.id}
+                                                                    key={key.pivot?.id || `key-${key.id}`}
                                                                     value={key}
                                                                     className={`p-3 bg-white border border-slate-100 rounded-xl shadow-sm flex items-center gap-3 cursor-grab active:cursor-grabbing hover:border-indigo-300 transition-all ${key.status === 'offline' ? 'bg-red-50/30 border-red-100' : 'bg-white'
                                                                         }`}>
@@ -422,7 +428,7 @@ export default function AdminApiKeys() {
                                                                         <span className={`w-2 h-2 rounded-full ${key.status === 'online' ? 'bg-emerald-500' : key.status === 'quota_exceeded' ? 'bg-amber-500' : 'bg-red-500'}`}></span>
                                                                         <div className="flex divide-x divide-slate-100 border border-slate-100 rounded-lg overflow-hidden bg-slate-50/50">
                                                                             <button onClick={() => retestMutation.mutate(key.id)} className="p-1.5 hover:bg-slate-100 text-amber-600">⚡</button>
-                                                                            <button onClick={() => deleteApiKeyMutation.mutate(key.pivot.id)} className="p-1.5 hover:bg-red-50 text-red-500">✕</button>
+                                                                            <button onClick={() => key.pivot?.id && deleteApiKeyMutation.mutate(key.pivot.id)} className="p-1.5 hover:bg-red-50 text-red-500">✕</button>
                                                                         </div>
                                                                     </div>
                                                                 </Reorder.Item>
@@ -473,8 +479,8 @@ export default function AdminApiKeys() {
                                                         <p className="text-[10px] text-slate-400 font-mono">{log.model}</p>
                                                     </td>
                                                     <td className="px-6 py-4 font-mono">{log.tokens_used_input} / {log.tokens_used_output}</td>
-                                                    <td className="px-6 py-4">{log.execution_time.toFixed(2)}s</td>
-                                                    <td className="px-6 py-4 font-bold text-slate-700">{log.estimated_cost.toFixed(4)}</td>
+                                                    <td className="px-6 py-4">{(log.execution_time ?? 0).toFixed(2)}s</td>
+                                                    <td className="px-6 py-4 font-bold text-slate-700">{(log.estimated_cost ?? 0).toFixed(4)}</td>
                                                     <td className="px-6 py-4 text-right">
                                                         <button
                                                             onClick={() => { setActiveLog(log); setShowLogModal(true); }}
@@ -583,8 +589,8 @@ export default function AdminApiKeys() {
                                 <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Usuário</p><p className="font-bold text-slate-800">{activeLog.user?.name || 'Sistema'}</p></div>
                                 <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Provedor / Modelo</p><p className="font-bold text-slate-800">{activeLog.provider} / {activeLog.model}</p></div>
                                 <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Tokens (I/O)</p><p className="font-bold text-slate-800">{activeLog.tokens_used_input} / {activeLog.tokens_used_output}</p></div>
-                                <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Tempo Execução</p><p className="font-bold text-slate-800">{activeLog.execution_time.toFixed(3)}s</p></div>
-                                <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Custo Est.</p><p className="font-bold text-indigo-600">R$ {activeLog.estimated_cost.toFixed(4)}</p></div>
+                                <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Tempo Execução</p><p className="font-bold text-slate-800">{(activeLog.execution_time ?? 0).toFixed(3)}s</p></div>
+                                <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Custo Est.</p><p className="font-bold text-indigo-600">R$ {(activeLog.estimated_cost ?? 0).toFixed(4)}</p></div>
                             </div>
                             <div className="space-y-6">
                                 <div className="space-y-2">

@@ -22,6 +22,7 @@ class Question extends Model
         'institution',
         'role',
         'theme',
+        'knowledge_area', // Grande área do conhecimento (adicionado para mapeamento correto da API ENEM)
         'external_id',
         'review_status',
         'image_path',
