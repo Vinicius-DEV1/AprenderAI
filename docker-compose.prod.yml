@@ -2,8 +2,8 @@ services:
   # PHP-FPM Application
   app:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.prod
+      context: .
+      dockerfile: backend/Dockerfile.prod
     image: aprender-ai-app
     restart: always
     working_dir: /var/www
@@ -56,8 +56,8 @@ services:
   # PHP Queue Worker
   worker:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.prod
+      context: .
+      dockerfile: backend/Dockerfile.prod
     image: aprender-ai-app
     restart: always
     working_dir: /var/www
@@ -81,8 +81,8 @@ services:
   # PHP Scheduler
   scheduler:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.prod
+      context: .
+      dockerfile: backend/Dockerfile.prod
     image: aprender-ai-app
     restart: always
     working_dir: /var/www
