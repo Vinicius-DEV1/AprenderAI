@@ -46,7 +46,7 @@ const PLACEHOLDERS = [
     "Questões de lógica e raciocínio matemático...",
     "Apenas questões que caíram no ENEM 2023...",
     "Questões desafiadoras de Eletromagnetismo! ⚡",
-    "Busque uma maratona de questões de Português! 🏃‍♂️",
+    "Busque uma maratona de questões de Língua Portuguesa! 🏃‍♂️",
     "Questões de atualidades sobre Geopolítica Mundial... 🌍",
     "Questões de Ecologia: Cadeia alimentar e ciclos... 🌱"
 ];

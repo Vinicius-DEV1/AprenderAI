@@ -66,7 +66,7 @@ class DashboardController extends Controller
             if (mb_stripos($name, 'matemática') !== false) {
                 $avgMath = $calcPct($data);
             }
-            if (mb_stripos($name, 'português') !== false) {
+            if (mb_stripos($name, 'Língua Portuguesa') !== false || mb_stripos($name, 'Português') !== false) {
                 $avgPortuguese = $calcPct($data);
             }
         }

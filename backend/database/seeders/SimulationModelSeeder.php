@@ -26,7 +26,7 @@ class SimulationModelSeeder extends Seeder
             diffMode: 'balanceado',
             distributions: [
                 ['disciplina' => 'MATEMÁTICA', 'percentual' => 50, 'ordem' => 1],
-                ['disciplina' => 'PORTUGUÊS', 'percentual' => 50, 'ordem' => 2],
+                ['disciplina' => 'LÍNGUA PORTUGUESA', 'percentual' => 50, 'ordem' => 2],
             ]
         );
 
@@ -54,7 +54,7 @@ class SimulationModelSeeder extends Seeder
             noRepeat: 10,
             diffMode: 'balanceado',
             distributions: [
-                ['disciplina' => 'PORTUGUÊS', 'percentual' => 100, 'ordem' => 1],
+                ['disciplina' => 'LÍNGUA PORTUGUESA', 'percentual' => 100, 'ordem' => 1],
             ]
         );
 

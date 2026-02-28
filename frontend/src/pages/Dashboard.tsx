@@ -659,7 +659,7 @@ export default function Dashboard() {
                         <div className="l">de acertos</div>
                     </div>
                     <div className="stat">
-                        <div className="k">Média em Português</div>
+                        <div className="k">Média em Língua Portuguesa</div>
                         <div className="v">{Number(safeStats.average_portuguese_score).toLocaleString('pt-BR', { minimumFractionDigits: 1 })}%</div>
                         <div className="l">de acertos</div>
                     </div>

@@ -18,20 +18,20 @@ export default function SimulationCreate() {
     const enemModes = [
         { value: 'mixed', label: 'Prova Completa', desc: '45 Mat + 45 Port' },
         { value: 'math', label: 'Só Matemática', desc: '90 Questões' },
-        { value: 'portuguese', label: 'Só Português', desc: '90 Questões' }
+        { value: 'portuguese', label: 'Só Língua Portuguesa', desc: '90 Questões' }
     ];
 
     const getEnemDistribution = () => {
-        if (selectedEnemMode === 'math') return { 'MATEMÁTICA': 90, 'PORTUGUÊS': 0 };
-        if (selectedEnemMode === 'portuguese') return { 'MATEMÁTICA': 0, 'PORTUGUÊS': 90 };
-        return { 'MATEMÁTICA': 45, 'PORTUGUÊS': 45 };
+        if (selectedEnemMode === 'math') return { 'MATEMÁTICA': 90, 'LÍNGUA PORTUGUESA': 0 };
+        if (selectedEnemMode === 'portuguese') return { 'MATEMÁTICA': 0, 'LÍNGUA PORTUGUESA': 90 };
+        return { 'MATEMÁTICA': 45, 'LÍNGUA PORTUGUESA': 45 };
     };
 
     // Concurso State
     const [totalQuestions, setTotalQuestions] = useState(60);
     const [subjects, setSubjects] = useState<{ name: string; qty: number }[]>([
         { name: 'Matemática', qty: 30 },
-        { name: 'Português', qty: 30 }
+        { name: 'Língua Portuguesa', qty: 30 }
     ]);
 
     // Filters State
@@ -106,7 +106,7 @@ export default function SimulationCreate() {
         }
     };
 
-    const availableSubjects = ['Matemática', 'Português', 'Física', 'Química', 'Biologia', 'História', 'Geografia'];
+    const availableSubjects = ['Matemática', 'Língua Portuguesa', 'Física', 'Química', 'Biologia', 'História', 'Geografia'];
 
     return (
         <>

@@ -11,7 +11,7 @@ class SubjectSeeder extends Seeder
     public function run(): void
     {
         $subjects = [
-            ['name' => 'Português', 'type' => 'shared'],
+            ['name' => 'Língua Portuguesa', 'type' => 'shared'],
             ['name' => 'Matemática', 'type' => 'shared'],
             ['name' => 'História', 'type' => 'shared'],
             ['name' => 'Geografia', 'type' => 'shared'],
@@ -27,11 +27,11 @@ class SubjectSeeder extends Seeder
             $normalizedName = trim(strtoupper($subject['name']));
 
             Subject::updateOrCreate(
-            ['name' => $normalizedName],
-            [
-                'slug' => Str::slug($normalizedName),
-                'type' => $subject['type']
-            ]
+                ['name' => $normalizedName],
+                [
+                    'slug' => Str::slug($normalizedName),
+                    'type' => $subject['type']
+                ]
             );
         }
     }
