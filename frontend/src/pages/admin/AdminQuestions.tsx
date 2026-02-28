@@ -180,11 +180,11 @@ export default function AdminQuestions() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-gray-50/80 sticky top-0 z-10">
-                                    <tr className="grid grid-cols-[1.5fr_1fr_0.8fr_0.5fr] items-center border-b border-gray-100">
-                                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-left border-r border-gray-100/50">Questão</th>
-                                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-left border-r border-gray-100/50">Contexto</th>
-                                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-left border-r border-gray-100/50">Status</th>
-                                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center italic">Opções</th>
+                                    <tr className="grid grid-cols-[1fr_140px_100px_60px] items-center border-b border-gray-100">
+                                        <th className="px-3 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-left border-r border-gray-100/50">Questão</th>
+                                        <th className="px-3 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-left border-r border-gray-100/50">Contexto</th>
+                                        <th className="px-3 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-left border-r border-gray-100/50">Status</th>
+                                        <th className="px-3 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center italic">Opções</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
@@ -198,15 +198,15 @@ export default function AdminQuestions() {
                                                     key={q.id}
                                                     initial={{ opacity: 1, x: 0 }}
                                                     exit={{ opacity: 0, x: 100, backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
-                                                    className={`grid grid-cols-[1.5fr_1fr_0.8fr_0.5fr] items-center hover:bg-indigo-50/30 transition-colors relative ${removingIds.includes(q.id) ? 'pointer-events-none' : ''}`}
+                                                    className={`grid grid-cols-[1fr_140px_100px_60px] items-center hover:bg-indigo-50/30 transition-colors relative ${removingIds.includes(q.id) ? 'pointer-events-none' : ''}`}
                                                 >
-                                                    <td className="px-4 py-3 h-full border-r border-gray-50/50">
+                                                    <td className="px-3 py-3 h-full border-r border-gray-50/50">
                                                         <div className="flex flex-col gap-1">
                                                             <span className="text-[9px] font-black text-indigo-300 font-mono tracking-tighter">#{q.id}</span>
                                                             <div className="text-[11px] font-bold text-gray-600 line-clamp-2 leading-snug" dangerouslySetInnerHTML={{ __html: q.statement }}></div>
                                                         </div>
                                                     </td>
-                                                    <td className="px-4 py-3 h-full border-r border-gray-50/50 flex flex-col justify-center">
+                                                    <td className="px-3 py-3 h-full border-r border-gray-50/50 flex flex-col justify-center">
                                                         <div className="flex flex-col gap-1 w-full">
                                                             <span className="text-[9px] font-black bg-blue-50 text-blue-600 px-2 py-0.5 rounded-lg uppercase tracking-tight border border-blue-100/50 truncate">
                                                                 {q.subjects?.[0]?.name || 'SEM MATÉRIA'}
@@ -216,7 +216,7 @@ export default function AdminQuestions() {
                                                             </span>
                                                         </div>
                                                     </td>
-                                                    <td className="px-4 py-3 h-full border-r border-gray-50/50 flex items-center">
+                                                    <td className="px-3 py-3 h-full border-r border-gray-50/50 flex items-center">
                                                         <div className="flex flex-wrap items-center gap-1">
                                                             {missingDiff && missingExpl && missingClass ? (
                                                                 <span className="px-1.5 py-0.5 bg-red-50 text-red-600 text-[8px] rounded font-black border border-red-100 uppercase tracking-tighter">🔴 Crítico</span>
@@ -229,7 +229,7 @@ export default function AdminQuestions() {
                                                             )}
                                                         </div>
                                                     </td>
-                                                    <td className="px-4 py-3 h-full flex items-center justify-center relative">
+                                                    <td className="px-3 py-3 h-full flex items-center justify-center relative">
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();

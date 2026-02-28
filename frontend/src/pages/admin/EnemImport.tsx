@@ -2,6 +2,9 @@ import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
+import AdminBatchModal from './components/AdminBatchModal';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AdminPageSkeleton } from './components/AdminSkeletons';
 
 export default function EnemImport() {
     const queryClient = useQueryClient();
@@ -102,7 +105,7 @@ export default function EnemImport() {
         return matches;
     };
 
-    if (isLoading) return <div className="p-8">Carregando painel API ENEM...</div>;
+    if (isLoading) return <AdminPageSkeleton />;
 
     const logs = data?.logs || { data: [], current_page: 1, last_page: 1 };
 
@@ -116,34 +119,90 @@ export default function EnemImport() {
             </div>
 
             {/* Seção do Progresso Ativo */}
-            {activeBatchId && (
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mb-8">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">Lote em Andamento</h2>
-                    <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
-                        <div className="bg-blue-600 h-4 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
-                    </div>
-                    <div className="flex justify-between text-sm text-gray-600">
-                        <span>Progresso: {progress}%</span>
-                        <span>Sub-tarefas (Anos): {processed} de {total}</span>
-                    </div>
+            <AnimatePresence>
+                {activeBatchId && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl shadow-indigo-100 dark:shadow-none border border-indigo-100 dark:border-slate-800 mb-8 overflow-hidden relative"
+                    >
+                        <div className="relative z-10">
+                            <div className="flex justify-between items-center mb-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-xl shadow-lg shadow-indigo-200 animate-pulse">
+                                        ⚡
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">Sincronização Ativa</h2>
+                                        <p className="text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                            <span className="w-2 h-2 bg-indigo-600 rounded-full animate-ping"></span>
+                                            Processando Lote ENEM API
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-4xl font-black text-indigo-600">{progress}%</span>
+                                </div>
+                            </div>
 
-                    {isFinished && (
-                        <div className="mt-4 p-3 bg-green-50 border-l-4 border-green-500 text-green-700">
-                            O processamento em lote foi concluído! Recarregando sistema...
+                            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-4 mb-4 p-1 overflow-hidden">
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${progress}%` }}
+                                    transition={{ duration: 0.5, ease: "easeOut" }}
+                                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 bg-[length:200%_100%] animate-[bg-move_3s_linear_infinite] relative"
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]"></div>
+                                </motion.div>
+                            </div>
+
+                            <div className="flex justify-between text-xs font-black uppercase tracking-wider text-slate-400">
+                                <div className="flex gap-6">
+                                    <div className="flex flex-col">
+                                        <span className="text-[9px] text-slate-400">STATUS</span>
+                                        <span className="text-slate-600 dark:text-slate-300">IMPORTANDO ANOS</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[9px] text-slate-400">PROCESSADO</span>
+                                        <span className="text-indigo-600">{processed} Anos de {total}</span>
+                                    </div>
+                                </div>
+                                <div className="text-right flex flex-col items-end">
+                                    <span className="text-[9px] text-slate-400">TEMPO ESTIMADO</span>
+                                    <span className="text-slate-600 dark:text-slate-300">~2-5 MINUTOS</span>
+                                </div>
+                            </div>
+
+                            {isFinished && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="mt-6 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-2xl flex items-center gap-3 text-emerald-700 dark:text-emerald-400"
+                                >
+                                    <span className="text-xl">✅</span>
+                                    <span className="text-xs font-bold uppercase tracking-wide">Importação concluído com sucesso! Atualizando tabelas...</span>
+                                </motion.div>
+                            )}
                         </div>
-                    )}
-                </div>
-            )}
+
+                        <style>{`
+                            @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+                            @keyframes bg-move { 0% { background-position: 0% 0%; } 100% { background-position: -200% 0%; } }
+                        `}</style>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Disparar Importação */}
                 <div className="lg:col-span-1">
-                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                        <h2 className="text-lg font-semibold text-gray-800 mb-4">Novo Acionamento</h2>
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800">
+                        <h2 className="text-lg font-black text-gray-800 dark:text-slate-100 mb-4 uppercase tracking-tight">Novo Acionamento</h2>
 
                         <form onSubmit={handleSubmit}>
                             <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Ano Opcional</label>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Ano Opcional</label>
                                 <input
                                     type="number"
                                     min="2009"
@@ -151,21 +210,30 @@ export default function EnemImport() {
                                     placeholder="Ex: 2022"
                                     value={yearInput}
                                     onChange={(e) => setYearInput(e.target.value)}
-                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                    className="w-full rounded-xl border-gray-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 shadow-sm focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-sm h-12"
                                     disabled={!!activeBatchId && !isFinished}
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Deixe em branco para importar TODOS os anos disponíveis (Atenção: muito demorado!).</p>
+                                <p className="text-[10px] text-gray-500 mt-2 font-medium">Deixe em branco para importar TODOS os anos disponíveis (Atenção: muito demorado!).</p>
                             </div>
 
                             <button type="submit"
-                                className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors ${!!activeBatchId && !isFinished ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-widest py-4 px-4 rounded-2xl transition-all shadow-lg shadow-indigo-100 dark:shadow-none flex items-center justify-center gap-3 ${!!activeBatchId && !isFinished ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
                                 disabled={!!activeBatchId && !isFinished}>
-                                INICIAR INTEGRAÇÃO
+                                {startImport.isPending ? (
+                                    <>
+                                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                        ACIONANDO...
+                                    </>
+                                ) : (
+                                    <>
+                                        🚀 INICIAR INTEGRAÇÃO
+                                    </>
+                                )}
                             </button>
 
-                            <div className="mt-4 p-3 bg-blue-50 border border-blue-100 text-blue-700 text-sm rounded-lg">
+                            <div className="mt-4 p-4 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 text-[10px] rounded-2xl font-bold">
                                 <strong>Transacional e Idempotente</strong>
-                                <p className="mt-1 text-xs">A importação atualizará apenas registros que não foram importados ainda no banco de dados. Múltiplos acionamentos são seguros.</p>
+                                <p className="mt-1 leading-relaxed opacity-80">A importação atualizará apenas registros que não foram importados ainda no banco de dados. Múltiplos acionamentos são seguros.</p>
                             </div>
                         </form>
                     </div>
@@ -173,54 +241,60 @@ export default function EnemImport() {
 
                 {/* Histórico e Logs */}
                 <div className="lg:col-span-2">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="p-6 border-b border-gray-100">
-                            <h2 className="text-lg font-semibold text-gray-800">Histórico de Importações</h2>
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
+                        <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center">
+                            <h2 className="text-lg font-black text-gray-800 dark:text-slate-100 uppercase tracking-tight">Histórico</h2>
                         </div>
 
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm text-gray-500">
-                                <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                <thead className="text-[10px] font-black text-gray-400 uppercase bg-gray-50 dark:bg-slate-800/50 tracking-widest">
                                     <tr>
-                                        <th className="px-6 py-3">Iniciado Em</th>
-                                        <th className="px-6 py-3">Alvo</th>
-                                        <th className="px-6 py-3">Inseridas</th>
-                                        <th className="px-6 py-3">Ignoradas</th>
-                                        <th className="px-6 py-3">Erros</th>
-                                        <th className="px-6 py-3">Status</th>
+                                        <th className="px-6 py-4">Iniciado Em</th>
+                                        <th className="px-6 py-4">Alvo</th>
+                                        <th className="px-6 py-4">Inseridas</th>
+                                        <th className="px-6 py-4">Ignoradas</th>
+                                        <th className="px-6 py-4">Erros</th>
+                                        <th className="px-6 py-4">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
                                     {logs.data?.length > 0 ? logs.data.map((log: any) => (
-                                        <tr key={log.id} className="border-b bg-white hover:bg-gray-50">
-                                            <td className="px-6 py-4">{new Date(log.created_at).toLocaleString('pt-BR')}</td>
-                                            <td className="px-6 py-4 font-medium">{log.year === 0 ? 'COMPLETO (TUDO)' : `Ano ${log.year}`}</td>
-                                            <td className="px-6 py-4 text-green-600">{log.inserted_count}</td>
-                                            <td className="px-6 py-4 text-gray-500">
-                                                {log.ignored_count}
-                                                {log.ignored_count > 0 && Array.isArray(log.ignored_details) && (
-                                                    <button onClick={() => { setCurrentIgnored(log.ignored_details); setShowIgnoredModal(true); }} className="ml-2 text-xs text-blue-500 hover:underline" title="Ver Detalhes">🔍</button>
-                                                )}
+                                        <tr key={log.id} className="bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
+                                            <td className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-slate-400">{new Date(log.created_at).toLocaleString('pt-BR')}</td>
+                                            <td className="px-6 py-4 font-black text-xs text-slate-800 dark:text-slate-200">{log.year === 0 ? 'COMPLETO' : `ANO ${log.year}`}</td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-emerald-600 font-black">+{log.inserted_count}</span>
                                             </td>
-                                            <td className="px-6 py-4 text-red-500">
-                                                {log.error_count}
-                                                {log.error_count > 0 && Array.isArray(log.errors) && (
-                                                    <button onClick={() => { setCurrentErrors(log.errors); setShowErrorModal(true); }} className="ml-2 text-xs text-blue-500 hover:underline">Ver Falhas</button>
-                                                )}
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold">{log.ignored_count}</span>
+                                                    {log.ignored_count > 0 && Array.isArray(log.ignored_details) && (
+                                                        <button onClick={() => { setCurrentIgnored(log.ignored_details); setShowIgnoredModal(true); }} className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-indigo-100 transition-colors" title="Ver Detalhes">🔍</button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-rose-500 font-bold">{log.error_count}</span>
+                                                    {log.error_count > 0 && Array.isArray(log.errors) && (
+                                                        <button onClick={() => { setCurrentErrors(log.errors); setShowErrorModal(true); }} className="p-1.5 bg-rose-50 dark:bg-rose-900/20 rounded-lg hover:bg-rose-100 transition-colors" title="Ver Falhas">❌</button>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 {log.status === 'completed' ? (
-                                                    <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">Concluído</span>
+                                                    <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400 text-[9px] font-black uppercase px-3 py-1 rounded-lg">CONCLUÍDO</span>
                                                 ) : log.status === 'failed' ? (
-                                                    <span className="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded">Falhou</span>
+                                                    <span className="bg-rose-100 text-rose-800 dark:bg-rose-900/20 dark:text-rose-400 text-[9px] font-black uppercase px-3 py-1 rounded-lg">FALHOU</span>
                                                 ) : (
-                                                    <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">Em Progresso</span>
+                                                    <span className="bg-indigo-100 text-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-400 text-[9px] font-black uppercase px-3 py-1 rounded-lg">EM ANDAMENTO</span>
                                                 )}
                                             </td>
                                         </tr>
                                     )) : (
                                         <tr>
-                                            <td colSpan={6} className="px-6 py-4 text-center text-gray-500">Nenhum evento de integração registrado no histórico.</td>
+                                            <td colSpan={6} className="px-6 py-8 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Nenhum evento registrado</td>
                                         </tr>
                                     )}
                                 </tbody>
@@ -228,8 +302,8 @@ export default function EnemImport() {
                         </div>
 
                         {logs.last_page > 1 && (
-                            <div className="p-4 border-t border-gray-100 flex justify-end">
-                                <span className="text-xs text-gray-500">Paginação via API em andamento... (Página {logs.current_page} de {logs.last_page})</span>
+                            <div className="p-4 border-t border-gray-100 dark:border-slate-800 flex justify-end">
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Página {logs.current_page} de {logs.last_page}</span>
                             </div>
                         )}
                     </div>
@@ -237,155 +311,109 @@ export default function EnemImport() {
             </div>
 
             {/* Modal de Erros */}
-            {showErrorModal && (
-                <div className="fixed inset-0 z-50 overflow-y-auto font-sans">
-                    <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 transition-opacity z-40" onClick={() => setShowErrorModal(false)}>
-                            <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-                        </div>
-                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-                        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full relative z-50">
-                            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Relatório de Diagnóstico</h3>
-                                <div className="mt-2 max-h-64 overflow-y-auto rounded bg-gray-100 p-2 text-sm font-mono text-red-600">
+            <AnimatePresence>
+                {showErrorModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+                            onClick={() => setShowErrorModal(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden relative z-10 border border-slate-200 dark:border-slate-800"
+                        >
+                            <div className="p-6">
+                                <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight mb-4">Relatório de Diagnóstico</h3>
+                                <div className="max-h-96 overflow-y-auto rounded-2xl bg-slate-50 dark:bg-slate-800/50 p-4 custom-scrollbar">
                                     {currentErrors.map((err, idx) => (
-                                        <div key={idx} className="mb-2 p-1 border-b border-gray-200">{err}</div>
+                                        <div key={idx} className="mb-3 p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 text-xs font-bold text-rose-500 leading-relaxed shadow-sm italic">
+                                            {err}
+                                        </div>
                                     ))}
                                 </div>
                             </div>
-                            <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                                <button type="button" className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm" onClick={() => setShowErrorModal(false)}>
+                            <div className="p-6 bg-slate-50 dark:bg-slate-800/30 flex justify-end">
+                                <button type="button" className="px-6 py-2 bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-900 transition-all shadow-lg shadow-slate-200" onClick={() => setShowErrorModal(false)}>
                                     Fechar
                                 </button>
                             </div>
-                        </div>
+                        </motion.div>
                     </div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
 
             {/* Modal de Itens Ignorados */}
-            {showIgnoredModal && (
-                <div className="fixed inset-0 z-50 overflow-y-auto font-sans">
-                    <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 transition-opacity z-40" onClick={() => setShowIgnoredModal(false)}>
-                            <div className="absolute inset-0 bg-gray-900 opacity-60 backdrop-blur-sm"></div>
-                        </div>
-                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-                        <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full relative z-50 border border-gray-100">
-                            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-4">
-                                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                    <span>🕵️‍♂️</span> Itens Ignorados na Importação
+            <AnimatePresence>
+                {showIgnoredModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-slate-900/80 backdrop-blur-md"
+                            onClick={() => setShowIgnoredModal(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 40 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 40 }}
+                            className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden relative z-10 border border-slate-200 dark:border-slate-800"
+                        >
+                            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 bg-[length:200%_100%] animate-[bg-move_4s_linear_infinite] px-8 py-6">
+                                <h3 className="text-xl font-black text-white flex items-center gap-4 uppercase tracking-tight">
+                                    <span className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">🕵️</span>
+                                    Questões Ignoradas (Duplicatas)
                                 </h3>
                             </div>
-                            <div className="bg-white px-6 py-6 font-sans">
-                                <div className="overflow-y-auto max-h-[75vh] pr-2 custom-scrollbar">
-                                    <div className="space-y-6">
-                                        {currentIgnored.map((item, idx) => (
-                                            <div key={idx} className="bg-white border-2 border-gray-100 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 group">
-                                                {/* Header: ID + Motivo */}
-                                                <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-b border-gray-100">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="bg-blue-600 text-white text-[11px] font-black px-4 py-1.5 rounded-xl uppercase tracking-widest shadow-lg shadow-blue-200">
-                                                            ID #{item.index}
-                                                        </div>
-                                                        <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-white rounded-lg border border-gray-200 shadow-sm">
-                                                            <span className="text-gray-400 text-[10px] font-bold uppercase">Prova:</span>
-                                                            <span className="text-gray-800 text-[10px] font-black uppercase">{item.full_data?.year}</span>
-                                                        </div>
-                                                    </div>
+                            <div className="p-8">
+                                <div className="overflow-y-auto max-h-[65vh] pr-4 custom-scrollbar space-y-6">
+                                    {currentIgnored.map((item, idx) => (
+                                        <div key={idx} className="bg-slate-50 dark:bg-slate-800/50 rounded-3xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm relative group overflow-hidden">
+                                            <div className="absolute top-0 right-0 p-4 opacity-10 font-black text-6xl select-none group-hover:opacity-20 transition-opacity">#{item.index}</div>
 
-                                                    {item.reason === 'duplicate' && (
-                                                        <span className="px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 font-black text-[10px] uppercase border-2 border-blue-100">DUPLICATA</span>
-                                                    )}
-                                                    {item.reason === 'invalid_data' && (
-                                                        <span className="px-4 py-1.5 rounded-full bg-orange-50 text-orange-700 font-black text-[10px] uppercase border-2 border-orange-100">DADOS INCOMPLETOS</span>
-                                                    )}
+                                            <div className="flex flex-wrap gap-4 items-center mb-6 relative z-10">
+                                                <div className="px-4 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-indigo-100">ID {item.index}</div>
+                                                <div className="px-4 py-1.5 bg-white dark:bg-slate-800 text-slate-400 text-[10px] font-black uppercase tracking-widest rounded-xl border border-slate-200 dark:border-slate-700">ANO {item.full_data?.year}</div>
+                                                <div className="px-4 py-1.5 bg-orange-100 text-orange-700 text-[10px] font-black uppercase tracking-widest rounded-xl">DUPLICATA</div>
+                                            </div>
+
+                                            <div className="space-y-4 relative z-10">
+                                                <div className="flex flex-wrap gap-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                    <div className="flex flex-col">
+                                                        <span>Matéria</span>
+                                                        <span className="text-slate-800 dark:text-slate-200">{item.full_data?.discipline}</span>
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span>Assunto</span>
+                                                        <span className="text-slate-800 dark:text-slate-200">{item.full_data?.topic || 'N/A'}</span>
+                                                    </div>
                                                 </div>
 
-                                                <div className="p-6">
-                                                    {/* Atributos */}
-                                                    <div className="flex flex-wrap gap-4 mb-6 pb-6 border-b border-gray-50">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">Disciplina</span>
-                                                            <span className="text-xs font-black text-gray-800">{item.full_data?.discipline}</span>
-                                                        </div>
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[9px] font-bold text-indigo-500 uppercase tracking-widest">Assunto</span>
-                                                            <span className="text-xs font-black text-gray-800">{item.full_data?.topic || 'Geral'}</span>
-                                                        </div>
-                                                        {item.full_data?.language && (
-                                                            <div className="flex flex-col">
-                                                                <span className="text-[9px] font-bold text-purple-500 uppercase tracking-widest">Língua</span>
-                                                                <span className="text-xs font-black text-gray-800">{item.full_data?.language}</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Enunciado e Imagens */}
-                                                    <div className="prose prose-sm max-w-none text-gray-800">
-                                                        {/* Imagens do Enunciado */}
-                                                        <div className="flex flex-wrap gap-4 mb-4">
-                                                            {extractImages(item.full_data?.context).map((img, i) => (
-                                                                <div key={i} className="relative group/img">
-                                                                    <img src={img} className="max-h-64 rounded-xl border-2 border-gray-100 shadow-sm hover:scale-105 transition-transform duration-300" alt="Enunciado" />
-                                                                    <div className="absolute top-2 right-2 bg-black/50 text-white text-[8px] font-bold px-2 py-1 rounded-md opacity-0 group-hover/img:opacity-100 transition-opacity">ENUNCIADO</div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-
-                                                        <div className="font-bold text-lg leading-relaxed mb-4">{item.full_data?.context?.replace(/!\[.*?\]\(.*?\)/g, '')}</div>
-
-                                                        {item.full_data?.alternativesIntroduction && (
-                                                            <div className="text-sm font-medium text-gray-600 bg-gray-50 p-3 rounded-xl border-l-4 border-gray-200 mb-6">
-                                                                {item.full_data?.alternativesIntroduction}
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Alternativas */}
-                                                    <div className="mt-8 space-y-3">
-                                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Alternativas</span>
-                                                        {item.full_data?.alternatives?.map((alt: any, i: number) => (
-                                                            <div key={i} className={`flex items-start gap-4 p-4 rounded-2xl border-2 transition-all duration-200 ${alt.isCorrect ? 'bg-green-50/50 border-green-200 shadow-sm' : 'bg-white border-gray-50 hover:border-gray-100'}`}>
-
-                                                                <div className={`flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm transition-colors ${alt.isCorrect ? 'bg-green-600 text-white shadow-lg shadow-green-200' : 'bg-gray-100 text-gray-500'}`}>
-                                                                    <span>{alt.letter}</span>
-                                                                </div>
-
-                                                                <div className="flex-1">
-                                                                    <div className="flex flex-col gap-3">
-                                                                        <p className="text-sm font-bold text-gray-800 pt-1">{alt.text}</p>
-
-                                                                        {alt.file && (
-                                                                            <img src={alt.file} className="max-h-48 w-fit rounded-lg border border-gray-100 shadow-sm mt-2" alt="Alternativa" />
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-
-                                                                {alt.isCorrect && (
-                                                                    <div className="flex-shrink-0 text-green-600">
-                                                                        <svg className="w-6 h-6 shadow-sm" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path></svg>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        ))}
-                                                    </div>
+                                                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700">
+                                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-relaxed italic line-clamp-3">
+                                                        {item.full_data?.context?.replace(/!\[.*?\]\(.*?\)/g, '')}
+                                                    </p>
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                            <div className="bg-gray-50 px-6 py-8 flex justify-center border-t border-gray-100">
-                                <button type="button" className="group flex items-center gap-4 px-12 py-4 bg-gray-900 border-2 border-gray-900 rounded-3xl shadow-xl shadow-gray-200 text-sm font-black text-white hover:bg-black hover:scale-105 transition-all duration-300 focus:outline-none" onClick={() => setShowIgnoredModal(false)}>
-                                    <span>FECHAR DOCUMENTO</span>
-                                    <kbd className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-bold bg-gray-700 text-gray-300 border border-gray-600 rounded-lg">ESC</kbd>
+                            <div className="p-8 bg-slate-50 dark:bg-slate-800/30 flex justify-center sticky bottom-0 border-t border-slate-100 dark:border-slate-800">
+                                <button type="button" className="px-12 py-4 bg-slate-900 text-white text-sm font-black uppercase tracking-[0.2em] rounded-2xl hover:scale-105 transition-all shadow-2xl shadow-slate-300" onClick={() => setShowIgnoredModal(false)}>
+                                    FECHAR DOCUMENTO
                                 </button>
                             </div>
-                        </div>
+                        </motion.div>
                     </div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
         </div>
     );
 }
+

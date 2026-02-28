@@ -51,7 +51,7 @@ class SimulationController extends Controller
             $simulation->refresh();
         }
 
-        $simulation->load(['answers.question.alternatives', 'answers.question.subjects']);
+        $simulation->load(['answers.question.alternatives', 'answers.question.subjects', 'essay']);
 
         return new SimulationResource($simulation);
     }

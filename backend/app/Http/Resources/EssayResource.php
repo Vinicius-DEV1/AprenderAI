@@ -26,7 +26,7 @@ class EssayResource extends JsonResource
             'feedback' => $this->feedback, // JSON structure with competencies
             'created_at' => $this->created_at,
             'submitted_at' => $this->submitted_at,
-            'corrected_at' => $this->corrected_at,
+            'evaluated_at' => $this->evaluated_at,
             'correction_details' => $this->whenLoaded('correction', function () {
                 return [
                     'competency_1' => $this->correction->competency_1 ?? 0,
