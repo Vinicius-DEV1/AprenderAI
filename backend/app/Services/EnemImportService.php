@@ -58,12 +58,15 @@ class EnemImportService
         // 3. Processar Enunciado e Imagens
         $statement = $this->formatStatement($context, $apiQuestion['alternativesIntroduction'] ?? '', $year);
 
-        // 4. Normalizar Disciplina
-        $subjectId = $this->resolveSubjectId($apiQuestion['discipline'] ?? 'Geral');
+        // 4. Resolver grande área do conhecimento (knowledge_area) e matéria (subject)
+        // Correção de mapeamento: 'discipline' = grande área -> knowledge_area
+        //                        'language'   = idioma específico -> subject (ex: 'Inglês')
+        $knowledgeArea = $apiQuestion['discipline'] ?? null;
+        $subjectId = $this->resolveSubjectId($apiQuestion['discipline'] ?? 'Geral', $apiQuestion['language'] ?? null);
 
         // 5. Iniciar transação
         try {
-            $question = \Illuminate\Support\Facades\DB::transaction(function () use ($apiQuestion, $externalId, $year, $statement, $subjectId, $organization, $institution, $role) {
+            $question = \Illuminate\Support\Facades\DB::transaction(function () use ($apiQuestion, $externalId, $year, $statement, $subjectId, $knowledgeArea, $organization, $institution, $role) {
 
                 $theme = ($apiQuestion['language'] ?? null) ? 'Língua Estrangeira: ' . ucfirst($apiQuestion['language']) : null;
 
@@ -92,6 +95,7 @@ class EnemImportService
                     'statement' => $statement,
                     'source' => 'api',
                     'theme' => $theme,
+                    'knowledge_area' => $knowledgeArea,  // CORRETO: Grande área (ex: linguagens)
                     'organization' => $organization,
                     'institution' => $institution,
                     'role' => $role,
@@ -211,18 +215,37 @@ class EnemImportService
     }
 
     /**
-     * Normaliza a disciplina da API para o nosso Subject.
+     * Normaliza a área do conhecimento e o idioma para o Subject correto.
+     *
+     * Mapeamento corrigido:
+     *   Se houver 'language' (ex: 'ingles'), o Subject será o idioma (ex: 'Inglês').
+     *   Senão, usa a grande área (ex: 'Linguagens', 'Matemática') como Subject fallback.
+     *
+     * A 'grande área' (discipline) agora é persistida na coluna 'knowledge_area' da questão.
      */
-    protected function resolveSubjectId(string $discipline): ?int
+    protected function resolveSubjectId(string $discipline, ?string $language = null): ?int
     {
-        $map = [
+        // Mapa da grande área -> nome legível (para uso como subject fallback)
+        $areaMap = [
             'ciencias-humanas' => 'Ciências Humanas',
             'ciencias-natureza' => 'Ciências da Natureza',
             'linguagens' => 'Linguagens',
             'matematica' => 'Matemática',
         ];
 
-        $subjectName = $map[strtolower($discipline)] ?? ucfirst($discipline);
+        // Mapa do idioma da API -> nome do Subject
+        $languageMap = [
+            'ingles' => 'Inglês',
+            'espanhol' => 'Espanhol',
+            'ingles_2' => 'Inglês',
+        ];
+
+        // Prioridade: se houver idioma, usar o idioma como Subject
+        if (!empty($language) && isset($languageMap[strtolower($language)])) {
+            $subjectName = $languageMap[strtolower($language)];
+        } else {
+            $subjectName = $areaMap[strtolower($discipline)] ?? ucfirst($discipline);
+        }
 
         $subject = \App\Models\Subject::firstOrCreate(
             ['name' => $subjectName],
