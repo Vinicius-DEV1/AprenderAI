@@ -201,53 +201,75 @@ class SimulationEngine
 
     /**
      * AI generation fallback for missing questions.
+     * Chunks requests into smaller batches (e.g. 5) to avoid LLM token limits/timeouts.
      */
-    private function generateAiQuestions(string $subject, int $count, string $tipo, array $config): Collection
+    private function generateAiQuestions(string $subject, int $totalTarget, string $tipo, array $config): Collection
     {
         $generated = collect();
+        $chunkSize = 5;
+        $remaining = $totalTarget;
 
         try {
             /** @var \App\Services\AI\AIService $aiService */
             $aiService = app(\App\Services\AI\AIService::class);
             $context = array_intersect_key($config, array_flip(['organization', 'institution', 'role']));
-            $newQs = $aiService->generateQuestions($subject, $count, $context);
 
-            foreach ($newQs as $nq) {
-                if (empty($nq['statement']))
-                    continue;
+            while ($remaining > 0) {
+                $batchSize = min($remaining, $chunkSize);
+                Log::info("SimulationEngine: Requesting chunk of $batchSize AI questions for $subject ($remaining left)");
 
-                $createdQ = Question::create([
-                    'type' => $tipo,
-                    'difficulty' => $nq['difficulty'] ?? 'medium',
-                    'year' => $nq['year'] ?? date('Y'),
-                    'statement' => $nq['statement'],
-                    'explanation' => $nq['explanation'] ?? null,
-                    'source' => 'ai_generated',
-                    'organization' => $config['organization'][0] ?? null,
-                    'institution' => $config['institution'][0] ?? null,
-                    'role' => $config['role'][0] ?? null,
-                ]);
+                $newQs = $aiService->generateQuestions($subject, $batchSize, $context);
 
-                if (!empty($nq['alternatives']) && is_array($nq['alternatives'])) {
-                    $correct = strtoupper($nq['correct_answer'] ?? 'A');
-                    foreach ($nq['alternatives'] as $label => $content) {
-                        $createdQ->alternatives()->create([
-                            'label' => strtoupper($label),
-                            'content' => $content,
-                            'is_correct' => strtoupper($label) === $correct,
-                        ]);
-                    }
+                if (empty($newQs)) {
+                    Log::warning("SimulationEngine: AI batch returned empty for $subject. Abortion.");
+                    break;
                 }
 
-                $subjectModel = Subject::firstOrCreate(
-                    ['name' => $subject],
-                    ['slug' => \Illuminate\Support\Str::slug($subject), 'type' => $tipo]
-                );
-                $createdQ->subjects()->attach($subjectModel->id);
-                $generated->push($createdQ);
+                foreach ($newQs as $nq) {
+                    if (empty($nq['statement']))
+                        continue;
+
+                    $createdQ = Question::create([
+                        'type' => $tipo,
+                        'difficulty' => $nq['difficulty'] ?? 'medium',
+                        'year' => $nq['year'] ?? date('Y'),
+                        'statement' => $nq['statement'],
+                        'explanation' => $nq['explanation'] ?? null,
+                        'source' => 'ai_generated',
+                        'external_id' => 'ai_' . bin2hex(random_bytes(8)),
+                        'organization' => $config['organization'][0] ?? null,
+                        'institution' => $config['institution'][0] ?? null,
+                        'role' => $config['role'][0] ?? null,
+                    ]);
+
+                    if (!empty($nq['alternatives']) && is_array($nq['alternatives'])) {
+                        $correct = strtoupper($nq['correct_answer'] ?? 'A');
+                        foreach ($nq['alternatives'] as $label => $content) {
+                            $createdQ->alternatives()->create([
+                                'label' => strtoupper($label),
+                                'content' => $content,
+                                'is_correct' => strtoupper($label) === $correct,
+                            ]);
+                        }
+                    }
+
+                    $subjectModel = Subject::firstOrCreate(
+                        ['name' => $subject],
+                        ['slug' => \Illuminate\Support\Str::slug($subject), 'type' => $tipo]
+                    );
+                    $createdQ->subjects()->attach($subjectModel->id);
+                    $generated->push($createdQ);
+                }
+
+                $remaining -= count($newQs);
+
+                // Safety break if AI keeps returning fewer than requested but not zero
+                if (count($newQs) < $batchSize && $remaining > 0) {
+                    Log::info("SimulationEngine: AI returned partial batch (" . count($newQs) . "/$batchSize). Continuing.");
+                }
             }
         } catch (\Exception $e) {
-            Log::warning("SimulationEngine AI generation failed [$subject/$count]: " . $e->getMessage());
+            Log::warning("SimulationEngine AI generation failed [$subject/$totalTarget]: " . $e->getMessage());
         }
 
         return $generated;
