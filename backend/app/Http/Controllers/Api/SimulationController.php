@@ -116,10 +116,18 @@ class SimulationController extends Controller
                     $config['questions'] = array_sum($validated['subject_distribution']);
                 }
 
+                // Validate question availability BEFORE creating the simulation record
+                $tipo = $resolved['model']->tipo;
+                try {
+                    $engine->validateQuestionAvailability($user, $config, $tipo);
+                } catch (\RuntimeException $ve) {
+                    return response()->json(['message' => $ve->getMessage()], 422);
+                }
+
                 /** @var \App\Models\Simulation $simulation */
                 $simulation = \App\Models\Simulation::create([
                     'user_id' => $user->id,
-                    'type' => $resolved['model']->tipo,
+                    'type' => $tipo,
                     'configuration' => $config,
                     'status' => 'pending',
                 ]);
@@ -139,6 +147,33 @@ class SimulationController extends Controller
         // ── Legacy direct path (backward-compatible) ──────────────────────
         if (!isset($validated['total_questions']) && isset($validated['subject_distribution'])) {
             $validated['total_questions'] = array_sum($validated['subject_distribution']);
+        }
+
+        // Validate question availability BEFORE creating the simulation record (legacy path)
+        $legacyType = $validated['type'] ?? 'enem';
+        $legacyDist = $validated['subject_distribution'] ?? [];
+        $legacyTotal = (int) ($validated['total_questions'] ?? 0);
+        $legacyAiRatio = 0.10;
+        $insufficientSubject = null;
+
+        if ($legacyType === 'enem' && !empty($legacyDist)) {
+            foreach ($legacyDist as $subject => $qty) {
+                $realNeeded = $qty - (int) ceil($qty * $legacyAiRatio);
+                $available = \App\Models\Question::where('type', 'enem')
+                    ->whereHas('subjects', fn($q) => $q->where('name', $subject))
+                    ->count();
+
+                if ($available < $realNeeded) {
+                    $insufficientSubject = "Matéria: $subject — disponíveis: $available, necessárias (banco real): $realNeeded";
+                    break;
+                }
+            }
+        }
+
+        if ($insufficientSubject) {
+            return response()->json([
+                'message' => "Quantidade insuficiente de questões disponíveis para este tipo de simulado. $insufficientSubject.",
+            ], 422);
         }
 
         $simulation = $this->simulationService->createPendingSimulation($user, $validated);

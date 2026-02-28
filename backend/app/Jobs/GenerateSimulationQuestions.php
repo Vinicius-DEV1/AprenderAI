@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Jobs\GenerateEssayTopicJob;
+use App\Models\Essay;
 use App\Models\Simulation;
 use App\Services\SimulationCreationService;
 use App\Services\SimulationEngine;
@@ -63,6 +65,28 @@ class GenerateSimulationQuestions implements ShouldQueue
             } else {
                 // ── Legacy path ───────────────────────────────────────
                 $legacyService->processSimulationQuestions($this->simulation, $this->data);
+            }
+
+            // ── Essay creation (applies to both paths) ────────────────────────
+            $includeEssay = $this->data['include_essay']
+                ?? ($this->simulation->configuration['include_essay'] ?? false);
+
+            if ($includeEssay) {
+                $simType = $this->simulation->type ?? 'enem';
+                $essay = Essay::create([
+                    'user_id' => $this->simulation->user_id,
+                    'simulation_id' => $this->simulation->id,
+                    'type' => in_array($simType, ['enem', 'concurso']) ? $simType : 'enem',
+                    'time_limit' => 90, // 90 min default for essay in simulations
+                    'title' => 'Gerando tema...',
+                    'content' => '',
+                    'status' => 'in_progress',
+                    'topic_regen_count' => 0,
+                    'started_at' => now(),
+                ]);
+
+                GenerateEssayTopicJob::dispatch($essay->id);
+                Log::info("GenerateSimulationQuestions: Essay {$essay->id} created and topic generation dispatched for Simulation {$this->simulation->id}");
             }
 
             $this->simulation->update(['status' => 'pending']);
