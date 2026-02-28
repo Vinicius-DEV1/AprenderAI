@@ -54,7 +54,7 @@ class QuestionImportController extends Controller
 
         try {
             // Salva o zip de forma local temporária para o Worker conseguir acessar
-            $zipPath = $request->file('zip_file')->store('imports_tmp', 'local');
+            $zipPath = \Illuminate\Support\Facades\Storage::disk('local')->putFileAs('imports_tmp', $request->file('zip_file'), $request->file('zip_file')->hashName());
 
             $import = QuestionImport::create([
                 'batch_name' => Auth::user()->name . ' — ' . now()->format('d/m/Y H:i'),

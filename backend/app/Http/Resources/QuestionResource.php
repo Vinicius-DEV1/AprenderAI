@@ -44,10 +44,7 @@ class QuestionResource extends JsonResource
             'year' => $this->year,
             'type' => $this->type,
             'tipo_questao' => $this->tipo_questao,
-            'discursive_answer' => $this->whenLoaded('subjects', function () {
-                // We show this if it's the specific question view or if the user is authorized
-                return $this->discursive_answer;
-            }),
+            'discursive_answer' => $this->when($request->routeIs('*.show') || $request->boolean('include_answers'), $this->discursive_answer),
             'explanation' => $this->when(request()->boolean('include_answers'), $this->explanation),
             'images' => $this->whenLoaded('images', function () {
                 return $this->images->map(function ($img) {
