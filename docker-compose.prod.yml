@@ -69,7 +69,7 @@ services:
     # Prioriza explicitamente a fila 'default' (Simulados/Chats) e depois a 'import'
     command: php artisan queue:work --queue=default,import --sleep=3 --tries=3 --max-time=3600
     deploy:
-      replicas: 5
+      replicas: 50
     depends_on:
       app:
         condition: service_started
