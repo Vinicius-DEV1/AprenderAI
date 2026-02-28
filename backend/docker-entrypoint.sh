@@ -3,9 +3,13 @@ set -e
 
 echo "Aguardando inicialização do ambiente..."
 
-# Ajusta permissões iniciais
-chown -R 1337:www-data storage bootstrap/cache
-chmod -R 775 storage bootstrap/cache
+# Ajusta permissões iniciais (Silencia erros se não for root)
+chown -R 1337:www-data storage bootstrap/cache 2>/dev/null || true
+chmod -R 775 storage bootstrap/cache 2>/dev/null || true
+
+# Garante que bootstrap/cache exista (importante para o Laravel 11+)
+mkdir -p bootstrap/cache
+chmod -R 777 bootstrap/cache 2>/dev/null || true
 
 if [ -f .env ]; then
     # ----------------------------------------------------------------
