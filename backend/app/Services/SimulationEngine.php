@@ -86,6 +86,48 @@ class SimulationEngine
     }
 
     /**
+     * Validate that enough questions exist in the DB before committing a simulation.
+     * Throws RuntimeException if ANY subject cannot be satisfied from the DB pool.
+     * AI-generated questions don't count here — validation is strict DB-only so that
+     * the simulation can either be created or rejected early.
+     *
+     * @throws \RuntimeException
+     */
+    public function validateQuestionAvailability(User $user, array $config, string $tipo): void
+    {
+        $distribution = $config['subject_distribution'] ?? [];
+        $aiRatio = ($config['percentual_ia'] ?? 10) / 100;
+        $noRepeatLast = $config['nao_repetir_ultimos'] ?? 10;
+        $excludedIds = $this->getRecentQuestionIds($user, $noRepeatLast);
+
+        foreach ($distribution as $subject => $subjectTotal) {
+            if ($subjectTotal <= 0)
+                continue;
+
+            // Count real questions available for this subject+type combination
+            $query = Question::whereHas('subjects', fn($q) => $q->where('name', $subject))
+                ->whereNotIn('id', $excludedIds);
+
+            // ENEM: strict type filter; concurso: no type restriction
+            if ($tipo === 'enem') {
+                $query->where('type', 'enem');
+            }
+
+            $available = $query->count();
+
+            // How many real questions we need (AI quota covers the rest)
+            $realNeeded = $subjectTotal - (int) ceil($subjectTotal * $aiRatio);
+
+            if ($available < $realNeeded) {
+                throw new \RuntimeException(
+                    "Quantidade insuficiente de questões disponíveis para este tipo de simulado. "
+                    . "Matéria: $subject — disponíveis: $available, necessárias (banco real): $realNeeded."
+                );
+            }
+        }
+    }
+
+    /**
      * Select and return questions following the engine rules.
      *
      * @param User   $user
@@ -120,6 +162,11 @@ class SimulationEngine
                 ->where('source', '!=', 'ai_generated')
                 ->whereNotIn('id', $avoidIds);
 
+            // ENEM: strict type filter. Concurso: no type restriction.
+            if ($tipo === 'enem') {
+                $realQuery->where('type', 'enem');
+            }
+
             $realQuery = $this->applyDifficultyFilter($realQuery, $diffMode, $alreadyPicked);
 
             if ($tipo === 'concurso') {
@@ -134,13 +181,16 @@ class SimulationEngine
             $realPool = $realQuery->inRandomOrder()->limit($countRealTarget)->get();
             $finalQuestions = $finalQuestions->merge($realPool);
 
-            // 2. Fetch AI questions from DB (pre-generated)
-            $aiPool = Question::whereHas('subjects', fn($q) => $q->where('name', $subject))
+            // 2. Fetch AI questions from DB (pre-generated) — filter by type too
+            $aiQuery = Question::whereHas('subjects', fn($q) => $q->where('name', $subject))
                 ->where('source', 'ai_generated')
-                ->whereNotIn('id', array_merge($avoidIds, $finalQuestions->pluck('id')->toArray()))
-                ->inRandomOrder()
-                ->limit($countAiTarget)
-                ->get();
+                ->whereNotIn('id', array_merge($avoidIds, $finalQuestions->pluck('id')->toArray()));
+
+            if ($tipo === 'enem') {
+                $aiQuery->where('type', 'enem');
+            }
+
+            $aiPool = $aiQuery->inRandomOrder()->limit($countAiTarget)->get();
             $finalQuestions = $finalQuestions->merge($aiPool);
 
             // 3. Generate missing via AI if needed
