@@ -1,3 +1,12 @@
+# --- STAGE 1: Frontend Build ---
+FROM node:20-alpine AS frontend-builder
+WORKDIR /app
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
+
+# --- STAGE 2: PHP Application ---
 FROM php:8.4.16-fpm
 
 # Arguments for user and group
@@ -17,17 +26,16 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     gnupg
 
-# Install Node.js (needed for Vite build)
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs
-
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip intl \
+# Install PHP extensions (Added opcache and redis)
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip intl opcache \
     && pecl install redis \
     && docker-php-ext-enable redis
+
+# Copy custom PHP configuration for production performance
+COPY backend/conf/php/custom.ini /usr/local/etc/php/conf.d/z-performance.ini
 
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -35,22 +43,23 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www
 
-# Copy project files
-COPY . .
+# Copy project backend files
+COPY backend/ .
+
+# Copy Frontend Build from Stage 1 into Backend Public folder
+# This ensures Nginx serves the React App through the same entrypoint
+COPY --from=frontend-builder /app/dist ./public
 
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader
 
-# Install Node dependencies and build assets
-RUN npm install && npm run build
-
-# Create system user to run Composer and Artisan Commands
+# Create system user
 RUN useradd -G www-data,root -u $uid -d /home/$user $user
 RUN mkdir -p /home/$user/.composer && \
     chown -R $user:$user /home/$user
 
 # Copy entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/
+COPY backend/docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Set ownership
