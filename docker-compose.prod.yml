@@ -106,11 +106,12 @@ services:
   db:
     image: mysql:8.0
     restart: always
+    # env_file injeta todas as variáveis do .env do Laravel no container.
+    # O bloco `environment` abaixo "traduz" os nomes do Laravel para os
+    # nomes que o MySQL espera (MYSQL_*). Ambos precisam estar presentes.
     env_file: ./backend/.env
     command: --default-authentication-plugin=mysql_native_password
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE}
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
       MYSQL_ROOT_HOST: '%'
     volumes:
       - production-db-data:/var/lib/mysql
@@ -120,7 +121,7 @@ services:
     # This is what `condition: service_healthy` waits for above.
     # ----------------------------------------------------------------
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${DB_PASSWORD}"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD"]
       interval: 5s
       timeout: 5s
       retries: 20
