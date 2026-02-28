@@ -61,6 +61,10 @@ import AdminImportReviewIndex from './pages/admin/ImportReviewIndex';
 import AdminImportReview from './pages/admin/ImportReview';
 import EnemImport from './pages/admin/EnemImport';
 import AdminAnalytics from './pages/admin/Analytics';
+import AdminAnalyticsBehavior from './pages/admin/analytics/Behavior';
+import AdminAnalyticsAcquisition from './pages/admin/analytics/Acquisition';
+import AdminAnalyticsConversion from './pages/admin/analytics/Conversion';
+import AdminAnalyticsMonetization from './pages/admin/analytics/Monetization';
 import AdminMonitor from './pages/admin/Monitor';
 import AdminIntegrations from './pages/admin/Integrations';
 import AdminChatLogs from './pages/admin/AdminChatLogs';
@@ -197,6 +201,10 @@ function App() {
                         <Route path="import/review/:id" element={<><MetaTags title="Admin: Inspeção de Questão" /><AdminImportReview /></>} />
 
                         <Route path="analytics" element={<><MetaTags title="Admin: Analytics" /><AdminAnalytics /></>} />
+                        <Route path="analytics/behavior" element={<><MetaTags title="Admin: Comportamento" /><AdminAnalyticsBehavior /></>} />
+                        <Route path="analytics/acquisition" element={<><MetaTags title="Admin: Aquisição" /><AdminAnalyticsAcquisition /></>} />
+                        <Route path="analytics/conversion" element={<><MetaTags title="Admin: Conversão" /><AdminAnalyticsConversion /></>} />
+                        <Route path="analytics/monetization" element={<><MetaTags title="Admin: Monetização" /><AdminAnalyticsMonetization /></>} />
                         <Route path="monitor" element={<><MetaTags title="Admin: Monitoramento" /><AdminMonitor /></>} />
                         <Route path="integrations" element={<><MetaTags title="Admin: Integrações" /><AdminIntegrations /></>} />
                         <Route path="chat-logs/:id" element={<><MetaTags title="Admin: Auditoria IA" /><AdminChatLogs /></>} />

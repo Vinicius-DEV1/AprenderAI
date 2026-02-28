@@ -4,12 +4,13 @@ namespace App\Jobs;
 
 use App\Models\Simulation;
 use App\Services\SimulationCreationService;
+use App\Services\SimulationEngine;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class GenerateSimulationQuestions implements ShouldQueue
@@ -19,36 +20,56 @@ class GenerateSimulationQuestions implements ShouldQueue
     protected $simulation;
     protected $data;
 
-    /**
-     * Create a new job instance.
-     */
     public function __construct(Simulation $simulation, array $data)
     {
         $this->simulation = $simulation;
         $this->data = $data;
     }
 
-    /**
-     * Execute the job.
-     */
-    public function handle(SimulationCreationService $service): void
+    public function handle(SimulationCreationService $legacyService, SimulationEngine $engine): void
     {
-        Log::info("DEBUG AGRESSIVO: Iniciando job para Simulação {$this->simulation->id}");
-        Log::info("DEBUG AGRESSIVO: Dados recebidos: " . json_encode($this->data));
-        Log::info("Job GenerateSimulationQuestions started for Simulation {$this->simulation->id}");
+        Log::info("GenerateSimulationQuestions started for Simulation {$this->simulation->id}");
 
         try {
-            // Process questions (select manual, generate AI)
-            $service->processSimulationQuestions($this->simulation, $this->data);
+            if (!empty($this->data['model_slug'])) {
+                // ── Engine-driven path ────────────────────────────────
+                $tipo = $this->data['tipo'] ?? 'enem';
+                $questions = $engine->selectQuestions(
+                    $this->simulation->user,
+                    $this->data,
+                    $tipo
+                );
 
-            // Update status to pending (ready for user)
+                if ($questions->isEmpty()) {
+                    throw new \Exception("Nenhuma questão encontrada para os critérios do modelo '{$this->data['model_slug']}'.");
+                }
+
+                DB::transaction(function () use ($questions) {
+                    $now = now();
+                    $rows = $questions->map(fn($q) => [
+                        'simulation_id' => $this->simulation->id,
+                        'question_id' => $q->id,
+                        'user_answer' => null,
+                        'is_correct' => false,
+                        'time_spent' => 0,
+                        'marked_for_review' => false,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ])->all();
+
+                    DB::table('simulation_answers')->insert($rows);
+                    $this->simulation->user->incrementSimulationUsage();
+                });
+            } else {
+                // ── Legacy path ───────────────────────────────────────
+                $legacyService->processSimulationQuestions($this->simulation, $this->data);
+            }
+
             $this->simulation->update(['status' => 'pending']);
+            Log::info("GenerateSimulationQuestions completed for Simulation {$this->simulation->id}");
 
-            Log::info("Job GenerateSimulationQuestions completed for Simulation {$this->simulation->id}");
-
-        }
-        catch (\Throwable $e) {
-            Log::error("Job GenerateSimulationQuestions failed for Simulation {$this->simulation->id}: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error("GenerateSimulationQuestions failed for Simulation {$this->simulation->id}: " . $e->getMessage());
             $this->simulation->update(['status' => 'error']);
             throw $e;
         }

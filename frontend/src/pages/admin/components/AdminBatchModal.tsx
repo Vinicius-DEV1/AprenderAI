@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import api from '../../../api/axios';
 
 interface BatchModalProps {
@@ -18,6 +18,39 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
 
     const [batchId, setBatchId] = useState<string | null>(null);
     const [progress, setProgress] = useState<any>(null);
+
+    // Fetch dynamically configured models from API Keys vault
+    const { data: availableModels = [] } = useQuery({
+        queryKey: ['admin-api-keys-models'],
+        queryFn: async () => {
+            const res = await api.get('/api/v1/admin/api-keys');
+            // Coleta modelos cadastrados das chaves ativas
+            const vault = res.data.vault || [];
+            const models = new Set<string>();
+            vault.forEach((k: any) => {
+                if (k.preferred_model) models.add(k.preferred_model);
+                if (k.model) models.add(k.model);
+            });
+            // Tenta também o capabilities_grid
+            const grid = res.data.capabilities_grid || {};
+            Object.values(grid).forEach((keys: any) => {
+                keys.forEach((k: any) => {
+                    if (k.preferred_model) models.add(k.preferred_model);
+                    if (k.model) models.add(k.model);
+                });
+            });
+            return Array.from(models);
+        }
+    });
+
+    const noModelsConfigured = availableModels.length === 0;
+
+    // Auto-select first model when available
+    useEffect(() => {
+        if (availableModels.length > 0 && !availableModels.includes(model)) {
+            setModel(availableModels[0]);
+        }
+    }, [availableModels]);
 
     const previewMutation = useMutation({
         mutationFn: async () => {
@@ -129,15 +162,22 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                     </div>
                                     <div>
                                         <label className="block text-xs font-black uppercase text-gray-400 mb-2">Modelo de IA</label>
-                                        <select
-                                            value={model}
-                                            onChange={(e) => setModel(e.target.value)}
-                                            className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold"
-                                        >
-                                            <option value="gpt-4o">OpenAI - GPT-4o</option>
-                                            <option value="gpt-4">OpenAI - GPT-4</option>
-                                            <option value="gpt-3.5-turbo">OpenAI - GPT-3.5</option>
-                                        </select>
+                                        {noModelsConfigured ? (
+                                            <div className="w-full px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-xs font-bold flex items-center gap-2">
+                                                ⚠️ Nenhum modelo configurado.{' '}
+                                                <a href="/admin/api-keys" className="underline hover:text-amber-900">Cadastre uma chave de API</a>
+                                            </div>
+                                        ) : (
+                                            <select
+                                                value={model}
+                                                onChange={(e) => setModel(e.target.value)}
+                                                className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold"
+                                            >
+                                                {availableModels.map((m) => (
+                                                    <option key={m} value={m}>{m}</option>
+                                                ))}
+                                            </select>
+                                        )}
                                     </div>
                                 </div>
 
