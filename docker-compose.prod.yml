@@ -9,6 +9,7 @@ services:
     working_dir: /var/www
     volumes:
       - ./backend/storage/app/public:/var/www/storage/app/public
+      - /proc:/host_proc:ro
     env_file: ./backend/.env
     # ----------------------------------------------------------------
     # app MUST wait for db to be HEALTHY (not just started).
@@ -65,6 +66,7 @@ services:
     working_dir: /var/www
     volumes:
       - ./backend/storage/app/public:/var/www/storage/app/public
+      - /proc:/host_proc:ro
     env_file: ./backend/.env
     # Prioriza explicitamente a fila 'default' (Simulados/Chats) e depois a 'import'
     command: php artisan queue:work --queue=default,import --sleep=3 --tries=3 --max-time=3600
@@ -90,6 +92,7 @@ services:
     working_dir: /var/www
     volumes:
       - ./backend/storage/app/public:/var/www/storage/app/public
+      - /proc:/host_proc:ro
     env_file: ./backend/.env
     command: php artisan schedule:work
     depends_on:

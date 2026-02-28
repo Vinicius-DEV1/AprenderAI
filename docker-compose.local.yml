@@ -12,6 +12,7 @@ services:
       - ./backend:/var/www
       - /var/www/vendor
       - /var/www/node_modules
+      - /proc:/host_proc:ro
     env_file: ./backend/.env
     # environment:
     #   - APP_NAME=aprenderAI
@@ -89,6 +90,7 @@ services:
     volumes:
       - ./backend:/var/www
       - /var/www/vendor # volume anônimo: evita bind-mount apagar o vendor
+      - /proc:/host_proc:ro
     environment:
       - APP_NAME=aprenderAI
       - APP_ENV=local
