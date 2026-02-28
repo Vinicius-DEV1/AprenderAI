@@ -118,32 +118,19 @@ class ImportEnemCommand extends Command
         $disciplineSlug = Str::slug($discipline);
         $languageSlug = $language ? Str::slug($language) : '';
 
-        // Lógica Matemática
-        if (str_contains($disciplineSlug, 'matematica')) {
-            $targetSubject = 'Matemática';
-        }
-        // Lógica Linguagens (Português)
-        elseif (str_contains($disciplineSlug, 'linguagens') || str_contains($disciplineSlug, 'portugues')) {
-
-            // Exclusão Explícita de Língua Estrangeira
-            $isForeign = false;
-
-            if (str_contains($languageSlug, 'ingles') || str_contains($languageSlug, 'espanhol')) {
-                $isForeign = true;
-            }
-            if (str_contains($disciplineSlug, 'ingles') || str_contains($disciplineSlug, 'espanhol')) {
-                $isForeign = true;
-            }
-
-            if (!$isForeign) {
-                $targetSubject = 'Português';
+        // Lógica de Identificação de Matéria (Subjects)
+        // Só vinculamos a um Subject se for um detalhe específico (ex: idioma).
+        // Se for apenas uma área geral (Matemática, Português sem idioma), targetSubject fica null.
+        if (str_contains($disciplineSlug, 'linguagens') || str_contains($disciplineSlug, 'portugues')) {
+            if (str_contains($languageSlug, 'ingles')) {
+                $targetSubject = 'Inglês';
+            } elseif (str_contains($languageSlug, 'espanhol')) {
+                $targetSubject = 'Espanhol';
             }
         }
 
-        if (!$targetSubject) {
-            $stats['skipped_filter']++;
-            return;
-        }
+        // Se não for um idioma específico, as áreas gerais NÃO vão para Subjects
+        // O valor original do targetSubject continua null se não caiu no bloco acima.
 
         // 2. PREPARA DADOS
         $context = $q['context'] ?? '';
@@ -180,59 +167,75 @@ class ImportEnemCommand extends Command
         }
         ksort($alternativesMap);
 
-        // 3. DEDUPLICAÇÃO (External ID > Statement Check)
-        $externalId = $q['id'] ?? null;
+        // 3. DEDUPLICAÇÃO (Deterministic External ID)
+        // Geramos um ID determinístico baseado nos metadados para garantir unicidade e evitar NULL.
+        $organization = 'ENEM';
+        $institution = 'INEP';
+        $role = 'Estudante';
+        $uniqueString = $organization . '|' . $year . '|' . $institution . '|' . $role . '|' . trim($statement);
+        $externalId = md5($uniqueString);
 
-        if ($externalId) {
-            $exists = Question::where('external_id', $externalId)->exists();
-        } else {
-            // Fallback para statement + year se não tiver ID (improvável na API nova)
-            $exists = Question::where('type', 'enem')
-                ->where('year', $year)
-                ->where('statement', $statement)
-                ->exists();
-        }
+        $exists = Question::where('external_id', $externalId)->exists();
 
         if ($exists) {
             $stats['skipped_duplicate']++;
             return;
         }
 
-        // 4. INSERÇÃO
-        // Mapeamento correto (alinhado com EnemImportService):
-        //   discipline (API) → knowledge_area (BD): grande área do conhecimento
-        //   language  (API) → subject (BD via N:N): idioma específico ou área como fallback
-        $question = Question::create([
-            'type' => 'enem',
-            'theme' => null,
-            'difficulty' => 'medium',
-            'year' => $year,
-            'statement' => $statement,
-            'alternatives' => $alternativesMap,
-            'correct_answer' => $correctLetter,
-            'explanation' => null,
-            'source' => 'enem_api',
-            'external_id' => $externalId,
-            'origin' => 'ENEM ' . $year,
-            'knowledge_area' => $discipline ?: null,  // discipline (API) → knowledge_area (BD)
-        ]);
+        // 4. INSERÇÃO (Transacional para Question + Alternatives + Subjects)
+        try {
+            DB::transaction(function () use ($q, $year, $statement, $externalId, $discipline, $targetSubject) {
+                $question = Question::create([
+                    'type' => 'enem',
+                    'theme' => null,
+                    'difficulty' => 'medium',
+                    'year' => $year,
+                    'statement' => $statement,
+                    'source' => 'enem_api',
+                    'external_id' => $externalId,
+                    'origin' => 'ENEM ' . $year,
+                    'knowledge_area' => $discipline ?: null,
+                ]);
 
-        // N:N Relationship: attach subject (matéria) via pivot table
-        $subjectModel = \App\Models\Subject::firstOrCreate(
-            ['name' => $targetSubject],
-            ['slug' => Str::slug($targetSubject), 'type' => 'enem']
-        );
-        $question->subjects()->attach($subjectModel->id);
+                // 4.1 Alternatives Relation
+                if (isset($q['alternatives']) && is_array($q['alternatives'])) {
+                    foreach ($q['alternatives'] as $altData) {
+                        $imagePath = null;
+                        if (!empty($altData['file'])) {
+                            $imagePath = $this->downloadImage($altData['file'], $year);
+                        }
 
-        $stats['imported']++;
-        $stats['by_year'][$year]++;
+                        \App\Models\QuestionAlternative::create([
+                            'question_id' => $question->id,
+                            'label' => $altData['letter'] ?? '?',
+                            'content' => $altData['text'] ?? '',
+                            'image_path' => $imagePath,
+                            'is_correct' => $altData['isCorrect'] ?? false,
+                        ]);
+                    }
+                }
 
-        // Track by normalized subject key
-        $subjectKey = strtolower($targetSubject);
-        if (!isset($stats['by_subject'][$subjectKey])) {
-            $stats['by_subject'][$subjectKey] = 0;
+                // 4.2 N:N Relationship: attach subject ONLY if specifically identified
+                if ($targetSubject) {
+                    $subjectModel = \App\Models\Subject::firstOrCreate(
+                        ['name' => $targetSubject],
+                        ['slug' => Str::slug($targetSubject), 'type' => 'enem']
+                    );
+                    $question->subjects()->attach($subjectModel->id);
+                }
+            });
+
+            $stats['imported']++;
+            $stats['by_year'][$year]++;
+
+            if ($targetSubject) {
+                $subjectKey = strtolower($targetSubject);
+                $stats['by_subject'][$subjectKey] = ($stats['by_subject'][$subjectKey] ?? 0) + 1;
+            }
+        } catch (\Exception $e) {
+            $this->error("Erro ao inserir questão id {$externalId}: " . $e->getMessage());
+            $stats['errors']++;
         }
-        $stats['by_subject'][$subjectKey]++;
     }
 
     /**

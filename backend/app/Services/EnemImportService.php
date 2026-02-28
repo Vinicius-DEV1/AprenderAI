@@ -225,14 +225,6 @@ class EnemImportService
      */
     protected function resolveSubjectId(string $discipline, ?string $language = null): ?int
     {
-        // Mapa da grande área -> nome legível (para uso como subject fallback)
-        $areaMap = [
-            'ciencias-humanas' => 'Ciências Humanas',
-            'ciencias-natureza' => 'Ciências da Natureza',
-            'linguagens' => 'Linguagens',
-            'matematica' => 'Matemática',
-        ];
-
         // Mapa do idioma da API -> nome do Subject
         $languageMap = [
             'ingles' => 'Inglês',
@@ -240,12 +232,14 @@ class EnemImportService
             'ingles_2' => 'Inglês',
         ];
 
-        // Prioridade: se houver idioma, usar o idioma como Subject
-        if (!empty($language) && isset($languageMap[strtolower($language)])) {
-            $subjectName = $languageMap[strtolower($language)];
-        } else {
-            $subjectName = $areaMap[strtolower($discipline)] ?? ucfirst($discipline);
+        // Se NÃO houver idioma específico no mapa, retornamos null.
+        // Isso garante que a questão NÃO terá um Subject (matéria) vinculado,
+        // ficando classificada apenas pela 'knowledge_area' (grande área).
+        if (empty($language) || !isset($languageMap[strtolower($language)])) {
+            return null;
         }
+
+        $subjectName = $languageMap[strtolower($language)];
 
         $subject = \App\Models\Subject::firstOrCreate(
             ['name' => $subjectName],
