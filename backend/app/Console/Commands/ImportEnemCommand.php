@@ -18,8 +18,8 @@ class ImportEnemCommand extends Command
 
     public function handle()
     {
-        $from = (int)$this->option('from');
-        $to = (int)$this->option('to');
+        $from = (int) $this->option('from');
+        $to = (int) $this->option('to');
 
         $this->info("Iniciando importação ENEM de {$from} a {$to}...");
         $this->info("Filtro Estrito: Apenas 'Linguagens' (PT) e 'Matemática'. Excluindo Inglês/Espanhol.");
@@ -97,8 +97,7 @@ class ImportEnemCommand extends Command
                 $this->info("Ano {$year} - Página {$page} processada (" . count($questions) . " itens).");
                 $page++;
 
-            }
-            catch (\Exception $e) {
+            } catch (\Exception $e) {
                 DB::rollBack();
                 $this->error("Exception Ano {$year} Pág {$page}: " . $e->getMessage());
                 $stats['errors']++;
@@ -117,11 +116,11 @@ class ImportEnemCommand extends Command
 
         // Normalização de acentos para busca
         $disciplineSlug = Str::slug($discipline);
-        $languageSlug = $language ?Str::slug($language) : '';
+        $languageSlug = $language ? Str::slug($language) : '';
 
         // Lógica Matemática
         if (str_contains($disciplineSlug, 'matematica')) {
-            $targetSubject = 'matemática';
+            $targetSubject = 'Matemática';
         }
         // Lógica Linguagens (Português)
         elseif (str_contains($disciplineSlug, 'linguagens') || str_contains($disciplineSlug, 'portugues')) {
@@ -137,7 +136,7 @@ class ImportEnemCommand extends Command
             }
 
             if (!$isForeign) {
-                $targetSubject = 'português';
+                $targetSubject = 'Português';
             }
         }
 
@@ -186,8 +185,7 @@ class ImportEnemCommand extends Command
 
         if ($externalId) {
             $exists = Question::where('external_id', $externalId)->exists();
-        }
-        else {
+        } else {
             // Fallback para statement + year se não tiver ID (improvável na API nova)
             $exists = Question::where('type', 'enem')
                 ->where('year', $year)
@@ -201,6 +199,9 @@ class ImportEnemCommand extends Command
         }
 
         // 4. INSERÇÃO
+        // Mapeamento correto (alinhado com EnemImportService):
+        //   discipline (API) → knowledge_area (BD): grande área do conhecimento
+        //   language  (API) → subject (BD via N:N): idioma específico ou área como fallback
         $question = Question::create([
             'type' => 'enem',
             'theme' => null,
@@ -212,21 +213,26 @@ class ImportEnemCommand extends Command
             'explanation' => null,
             'source' => 'enem_api',
             'external_id' => $externalId,
-            'origin' => 'ENEM ' . $year
+            'origin' => 'ENEM ' . $year,
+            'knowledge_area' => $discipline ?: null,  // discipline (API) → knowledge_area (BD)
         ]);
 
-        // N:N Relationship:
-        // Find or create the subject model and attach it to the question via the pivot table.
-        // This replaces the old single-column 'subject' logic.
+        // N:N Relationship: attach subject (matéria) via pivot table
         $subjectModel = \App\Models\Subject::firstOrCreate(
-        ['name' => $targetSubject],
-        ['slug' => \Illuminate\Support\Str::slug($targetSubject), 'type' => 'enem']
+            ['name' => $targetSubject],
+            ['slug' => Str::slug($targetSubject), 'type' => 'enem']
         );
         $question->subjects()->attach($subjectModel->id);
 
         $stats['imported']++;
         $stats['by_year'][$year]++;
-        $stats['by_subject'][$targetSubject]++;
+
+        // Track by normalized subject key
+        $subjectKey = strtolower($targetSubject);
+        if (!isset($stats['by_subject'][$subjectKey])) {
+            $stats['by_subject'][$subjectKey] = 0;
+        }
+        $stats['by_subject'][$subjectKey]++;
     }
 
     /**
@@ -261,14 +267,13 @@ class ImportEnemCommand extends Command
             }
 
             // 3. Efetuar o download do conteúdo
-            $contents = @file_get_contents($url); 
+            $contents = @file_get_contents($url);
             if ($contents) {
                 // 4. Salvar no diretório público
                 Storage::disk('public')->put($path, $contents);
                 return Storage::url($path);
             }
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             // Em caso de falha, retorna a URL original como fallback
         }
 
@@ -288,8 +293,9 @@ class ImportEnemCommand extends Command
         $this->info("Erros de Requisição: " . $stats['errors']);
 
         $this->info("\n--- Por Matéria ---");
-        $this->info("Português: " . $stats['by_subject']['português']);
-        $this->info("Matemática: " . $stats['by_subject']['matemática']);
+        foreach ($stats['by_subject'] as $subject => $count) {
+            $this->info(ucfirst($subject) . ": $count");
+        }
 
         $this->info("\n--- Por Ano ---");
         foreach ($stats['by_year'] as $y => $count) {
