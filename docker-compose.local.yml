@@ -85,7 +85,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.local
-    container_name: aprender-ai-worker
     restart: unless-stopped
     volumes:
       - ./backend:/var/www
@@ -113,7 +112,7 @@ services:
     networks:
       - local-network
     deploy:
-      replicas: 1
+      replicas: 50
 
   frontend:
     build:
