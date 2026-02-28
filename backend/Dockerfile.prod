@@ -69,8 +69,8 @@ RUN mkdir -p /home/$user/.composer && \
 COPY backend/docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Set ownership
-RUN chown -R $user:www-data /var/www
+# Set ownership (Ensures both root-created and copied files are owned by $user)
+RUN chown -R $user:www-data /var/www bootstrap/cache storage
 
 USER $user
 
