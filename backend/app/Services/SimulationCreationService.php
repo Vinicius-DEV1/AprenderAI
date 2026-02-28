@@ -24,7 +24,7 @@ class SimulationCreationService
     public function createPendingSimulation(User $user, array $data): Simulation
     {
         set_time_limit(300);
-        $total = (int)$data['total_questions'];
+        $total = (int) $data['total_questions'];
         $distribution = $data['subject_distribution'] ?? [];
         $type = $data['type'];
 
@@ -36,8 +36,8 @@ class SimulationCreationService
                 'subject_distribution' => $distribution,
                 'include_essay' => $data['include_essay'] ?? false,
                 'time_limit' => $type === 'enem'
-                ? (($data['include_essay'] ?? false) ? 19800 : 16200)
-                : (int)($data['custom_time'] ?? 10800),
+                    ? (($data['include_essay'] ?? false) ? 19800 : 16200)
+                    : (int) ($data['custom_time'] ?? 10800),
                 'organization' => $data['organization'] ?? [],
                 'institution' => $data['institution'] ?? [],
                 'role' => $data['role'] ?? [],
@@ -53,7 +53,7 @@ class SimulationCreationService
     public function processSimulationQuestions(Simulation $simulation, array $data): void
     {
         // 1. Select Questions (Outside Transaction - Heavy processing & AI calls)
-        $total = (int)$data['total_questions'];
+        $total = (int) $data['total_questions'];
         $distribution = $data['subject_distribution'] ?? [];
         $type = $data['type'];
 
@@ -74,14 +74,14 @@ class SimulationCreationService
         DB::transaction(function () use ($simulation, $questions) {
             $now = now();
             $rows = $questions->map(fn($q) => [
-            'simulation_id' => $simulation->id,
-            'question_id' => $q->id,
-            'user_answer' => null,
-            'is_correct' => false,
-            'time_spent' => 0,
-            'marked_for_review' => false,
-            'created_at' => $now,
-            'updated_at' => $now,
+                'simulation_id' => $simulation->id,
+                'question_id' => $q->id,
+                'user_answer' => null,
+                'is_correct' => false,
+                'time_spent' => 0,
+                'marked_for_review' => false,
+                'created_at' => $now,
+                'updated_at' => $now,
             ])->all();
 
             DB::table('simulation_answers')->insert($rows);
@@ -148,8 +148,8 @@ class SimulationCreationService
                 // via the 'question_subject' pivot table.
                 $query = Question::where('type', 'concurso')
                     ->whereHas('subjects', function ($q) use ($subject) {
-                    $q->where('name', $subject);
-                });
+                        $q->where('name', $subject);
+                    });
 
                 // Apply Filters
                 if (!empty($context['organization'])) {
@@ -211,15 +211,14 @@ class SimulationCreationService
                                 }
 
                                 $subjectModel = \App\Models\Subject::firstOrCreate(
-                                ['name' => $subject],
-                                ['slug' => \Illuminate\Support\Str::slug($subject), 'type' => 'concurso']
+                                    ['name' => $subject],
+                                    ['slug' => \Illuminate\Support\Str::slug($subject), 'type' => 'concurso']
                                 );
                                 $createdQ->subjects()->attach($subjectModel->id);
                                 $finalQuestions->push($createdQ);
                             }
                         }
-                    }
-                    catch (\Exception $e) {
+                    } catch (\Exception $e) {
                         \Illuminate\Support\Facades\Log::error("Concurso AI Failed: " . $e->getMessage());
                     }
                 }
@@ -227,8 +226,16 @@ class SimulationCreationService
                 continue; // Skip ENEM logic
             }
 
-            // 1. Calculate Quotas (STRICT 90/10 split)
-            $countGenTarget = (int)ceil($subjectTotal * 0.10);
+            // 1. Calculate Quotas (Dynamic based on Preset)
+            $preset = \App\Models\SimulationPreset::where('type', $type)->where('is_active', true)->first();
+            $aiRatio = 0.10; // Fallback
+
+            if ($preset) {
+                $rule = $preset->rules()->where('category', 'subject_distribution')->first();
+                $aiRatio = $rule->configuration['ai_ratio'] ?? 0.10;
+            }
+
+            $countGenTarget = (int) ceil($subjectTotal * $aiRatio);
             $countRealTarget = $subjectTotal - $countGenTarget;
 
             // 2. Fetch Pools from Availability Service
@@ -304,8 +311,8 @@ class SimulationCreationService
                                     }
 
                                     $subjectModel = \App\Models\Subject::firstOrCreate(
-                                    ['name' => $subject],
-                                    ['slug' => \Illuminate\Support\Str::slug($subject), 'type' => $type]
+                                        ['name' => $subject],
+                                        ['slug' => \Illuminate\Support\Str::slug($subject), 'type' => $type]
                                     );
                                     $createdQ->subjects()->attach($subjectModel->id);
 
@@ -316,8 +323,7 @@ class SimulationCreationService
                                 }
                             }
                         }
-                    }
-                    catch (\Exception $e) {
+                    } catch (\Exception $e) {
                         \Illuminate\Support\Facades\Log::warning("AI Generation failed for subject $subject: " . $e->getMessage());
                     }
                 }
@@ -331,10 +337,10 @@ class SimulationCreationService
                     $q->where('name', $subject);
                 })
                     ->where(function ($q) {
-                    $q->where('source', 'enem_real_2009_2023')
-                        ->orWhere('source', 'manual')
-                        ->orWhere('source', 'enem_api'); // Added enem_api just in case
-                })
+                        $q->where('source', 'enem_real_2009_2023')
+                            ->orWhere('source', 'manual')
+                            ->orWhere('source', 'enem_api'); // Added enem_api just in case
+                    })
                     ->whereNotIn('id', $subjectQuestions->pluck('id'))
                     ->inRandomOrder()
                     ->limit($emergencyNeeded)

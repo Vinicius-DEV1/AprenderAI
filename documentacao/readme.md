@@ -1,27 +1,45 @@
-# Registro de Modificações - Auditoria e Ajustes Admin
+# Documentação de Modificações — AprenderAI
 
-Este documento registra as alterações realizadas no sistema para garantir a integridade dos dados de teste (Seeder) e a correção de falhas de roteamento no painel administrativo.
-
-## 🛠 Modificações Realizadas
-
-### 1. Seeder de Uso Realista (`RealisticUsageSeeder.php`)
-- **Objetivo**: Criar um ambiente de teste com dados históricos para análise de performance.
-- **Alterações**:
-    - Implementação de lógica idempotente: o seeder agora limpa os dados antigos do usuário `aluno_teste@aprovaai.com` antes de gerar novos registros, garantindo contagens exatas (10 simulados, 12 redações).
-    - Fixação de data base (`2026-01-01`) para evitar duplicação em execuções sucessivas por variação de `Carbon::now()`.
-    - Mapeamento da coluna `theme` para `topic_description` (correção de erro de schema legado).
-    - Definição de valor padrão `[]` para o campo `configuration` em simulados.
-
-### 2. Correção de Roteamento Admin (`routes/api.php` e `layouts/admin.blade.php`)
-- **Erro Identificado**: O sistema apresentava um `ReflectionException` devido à falta de importação do `ApiPricingController` no arquivo de rotas API. Além disso, o link de "Concursos" na barra lateral levava para fora do painel admin.
-- **Ações**:
-    - **API**: Adicionada a importação `use App\Http\Controllers\Api\Admin\ApiPricingController as AdminApiPricingController;` em `routes/api.php`.
-    - **Sidebar (Blade)**: Removido o link inconsistente de "Concursos" e adicionado o link para "Custos de API" (`/admin/api-pricing`), alinhando a interface Blade com a interface React.
-    - **Sintaxe**: Limpeza de possíveis inconsistências de renderização de tags SVG/Path.
-
-## 📋 Verificação
-- **Seeder**: Validado via script `verify_seeder.php`. Resultados: 10 Simulados, 7 Redações ENEM, 5 Redações Concurso. Status: **PASS**.
-- **Rotas**: O comando `php artisan route:list` agora executa sem erros e o painel administrativo permite navegação fluida entre os módulos.
+> Registro técnico completo de todas as alterações realizadas no sistema.
+> Cada seção documenta: **motivo, arquivos alterados, lógica implementada e como verificar**.
 
 ---
-*Documentação gerada automaticamente por Antigravity em 27/02/2026.*
+
+## 📌 Índice
+
+1. [Seeder de Uso Realista](#1-seeder-de-uso-realista)
+2. [Auditoria Asaas — Integridade de Pagamentos](#2-auditoria-asaas)
+3. [Correção de Roteamento Admin Sidebar](#3-correção-de-roteamento-admin--sidebar)
+4. [Importação `react-imask` e `react-cropper`](#4-imports-de-pacotes-front-end)
+5. [Correção do Módulo de Importação ENEM Dev](#5-correção-do-módulo-de-importação-enem-dev)
+6. [Correção do Botão "Ativar Roteamento"](#6-correção-do-botão-ativar-roteamento)
+7. [Melhoria do Monitoramento VPS](#7-melhoria-do-monitoramento-vps)
+8. [Fix Admin API Keys "Tela Branca"](#8-fix-admin-api-keys-tela-branca)
+9. [Implementação do Motor de Simulados (Builder)](#9-implementação-do-motor-de-simulados-builder)
+
+---
+
+## 9. Implementação do Motor de Simulados (Builder)
+
+**Data**: 2026-02-28
+**Arquivos Principais**:
+- `backend/app/Models/SimulationPreset.php`
+- `backend/app/Models/SimulationRule.php`
+- `backend/app/Http/Controllers/Api/Admin/AdminSimulationController.php`
+- `frontend/src/pages/admin/SimulationBuilder.tsx`
+
+### Motivo
+Anteriormente, as regras de geração de simulado (ex: 90% banco / 10% IA) estavam "hardcoded" no código. Esta implementação permite que o administrador crie e edite diferentes perfis de geração de simulado (Presets) diretamente pela interface.
+
+### O que foi feito
+- **Banco de Dados**: Criadas tabelas `simulation_presets` e `simulation_rules`.
+- **API**: Endpoints de CRUD implementados em `/api/v1/admin/simulations/presets`.
+- **Frontend**: Criada a página "Motor de Simulados" com design premium, permitindo:
+  - Definir proporção IA vs Humana via Slider.
+  - Escolher curvas de dificuldade (Linear, Gauss, Progressiva).
+  - Ativar/Desativar presets.
+- **Integração**: Adicionado link no Sidebar do Admin sob a seção "Inteligência".
+- **Dados Iniciais**: Criado `DefaultSimulationPresetsSeeder` com as configurações padrão do sistema.
+
+### Verificação
+Acesse `/admin/simulations/builder` no painel administrativo para gerenciar os motores de geração.
