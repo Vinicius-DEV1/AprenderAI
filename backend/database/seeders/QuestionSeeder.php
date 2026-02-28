@@ -139,7 +139,7 @@ class QuestionSeeder extends Seeder
     /**
      * Auxiliar de inserção para documentar as etapas de popular a estrutura relacional.
      */
-    private function createQuestion($type, $format, $organization, $year, $institution, $role, $statement, $subjects, $topics, $alternatives, $correctLetter, $explanation, $theme)
+    private function createQuestion($type, $format, $organization = null, $year = null, $institution = null, $role = null, $statement = null, $subjects = [], $topics = [], $alternatives = [], $correctLetter = null, $explanation = null, $theme = null)
     {
         // 1. Geração de Identificador Idempotente (Evita Duplicadas)
         // A external_id é uma hash MD5 de atributos chave que compõem a identidade única macro da questão.
