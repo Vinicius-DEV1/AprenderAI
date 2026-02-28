@@ -41,13 +41,14 @@ class QuestionSeeder extends Seeder
         );
 
         // --- QUESTÃO 1: ENEM ---
+        // Questões enem não precisam de organization, instituion, role.
         $this->createQuestion(
             type: 'enem',
             format: 'multiple_choice',
-            organization: 'ENEM',
+            //organization: 'ENEM',
             year: 2023,
-            institution: 'MEC',
-            role: 'Estudante',
+            //institution: 'MEC',
+            //role: 'Estudante',
             statement: "Texto I: O hábito da leitura na era digital...\n\nQual o objetivo central do texto ao mencionar as redes sociais?",
             subjects: [$portSubject->id],
             topics: [$portTopic->id],
@@ -138,7 +139,7 @@ class QuestionSeeder extends Seeder
     /**
      * Auxiliar de inserção para documentar as etapas de popular a estrutura relacional.
      */
-    private function createQuestion($type, $format, $organization, $year, $institution, $role, $statement, $subjects, $topics, $alternatives, $correctLetter, $explanation, $theme)
+    private function createQuestion($type, $format, $organization = null, $year = null, $institution = null, $role = null, $statement = null, $subjects = [], $topics = [], $alternatives = [], $correctLetter = null, $explanation = null, $theme = null)
     {
         // 1. Geração de Identificador Idempotente (Evita Duplicadas)
         // A external_id é uma hash MD5 de atributos chave que compõem a identidade única macro da questão.
