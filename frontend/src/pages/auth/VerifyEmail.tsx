@@ -8,7 +8,7 @@ export default function VerifyEmail() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const config = useConfigStore();
-    const { fetchUser } = useAuthStore();
+    const { setUser } = useAuthStore();
 
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
     const [message, setMessage] = useState('Verificando seu e-mail...');
@@ -35,7 +35,8 @@ export default function VerifyEmail() {
                 setMessage(response.data.message || 'Seu e-mail foi verificado com sucesso!');
 
                 // Refresh local user data to get the new email_verified_at status
-                await fetchUser();
+                const userRes = await api.get('/api/user');
+                setUser(userRes.data);
             } catch (err: any) {
                 setStatus('error');
                 setMessage(err.response?.data?.message || 'Link de verificação inválido, expirado ou e-mail já verificado.');
@@ -43,7 +44,7 @@ export default function VerifyEmail() {
         };
 
         verify();
-    }, [searchParams, fetchUser]);
+    }, [searchParams, setUser]);
 
     return (
         <div className="auth-page">

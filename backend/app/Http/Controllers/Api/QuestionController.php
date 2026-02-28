@@ -174,4 +174,43 @@ class QuestionController extends Controller
             'roles' => Question::whereNotNull('role')->distinct()->orderBy('role')->pluck('role'),
         ]);
     }
+
+    /**
+     * List essay themes (tipo_questao = 'Redação') for the Step 2 theme picker.
+     * This is intentionally SEPARATE from index() which blocks Redação.
+     */
+    public function essayThemes(Request $request)
+    {
+        $query = Question::published()
+            ->where('tipo_questao', 'Redação')
+            ->select('id', 'statement', 'year', 'institution', 'type');
+
+        // Filter by essay type (enem / concurso) if provided
+        if ($request->filled('type')) {
+            $query->filterByType($request->type);
+        }
+
+        // Keyword search on the statement (theme text)
+        if ($request->filled('keyword')) {
+            $query->where('statement', 'like', '%' . $request->keyword . '%');
+        }
+
+        $themes = $query->orderByDesc('year')->orderByDesc('created_at')->paginate(20);
+
+        return response()->json([
+            'data' => $themes->map(fn($q) => [
+                'id' => $q->id,
+                'title' => $q->statement,
+                'year' => $q->year,
+                'institution' => $q->institution,
+                'type' => $q->type,
+            ]),
+            'meta' => [
+                'current_page' => $themes->currentPage(),
+                'last_page' => $themes->lastPage(),
+                'total' => $themes->total(),
+            ],
+        ]);
+    }
+
 }

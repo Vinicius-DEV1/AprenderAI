@@ -20,13 +20,13 @@ class AIBatchService
         $this->promptService = $promptService;
     }
 
-    public function processBatch(Collection $questions, string $type, ?string $model = null): array
+    public function processBatch(Collection $questions, string $type, ?string $model = null, ?string $batchId = null, bool $reprocess = false): array
     {
-        $prompt = $this->buildBatchPrompt($questions, $type);
+        $prompt = $this->buildBatchPrompt($questions, $type, $reprocess);
         try {
             $result = $this->aiService->generateJson($prompt, $model);
             $data = $result['data'] ?? [];
-            $appliedData = $this->applyResults($questions, $data, $type);
+            $appliedData = $this->applyResults($questions, $data, $type, $reprocess);
             \Illuminate\Support\Facades\DB::flushQueryLog();
             if (gc_enabled())
                 gc_collect_cycles();
@@ -37,15 +37,30 @@ class AIBatchService
         }
     }
 
-    protected function buildBatchPrompt(Collection $questions, string $type): string
+    protected function buildBatchPrompt(Collection $questions, string $type, bool $reprocess): string
     {
-        $questionsData = $questions->map(fn($q) => [
-            'id' => $q->id,
-            'statement' => $q->statement,
-            'alternatives' => $q->alternativesAsMap(),
-            'correct_label' => $q->correct_answer,
-            'missing_fields' => []
-        ]);
+        $questionsData = $questions->map(function ($q) use ($reprocess, $type) {
+            $missing = [];
+            if (!$reprocess) {
+                if (empty(trim($q->difficulty_reasoning)) && in_array($type, ['both', 'difficulty']))
+                    $missing[] = 'difficulty_reasoning';
+                if (empty(trim($q->explanation)) && in_array($type, ['both', 'explanation']))
+                    $missing[] = 'explanation';
+                if ($q->subjects->isEmpty() && in_array($type, ['both', 'classification']))
+                    $missing[] = 'subject';
+                if ($q->topics->isEmpty() && in_array($type, ['both', 'classification']))
+                    $missing[] = 'topic';
+            }
+
+            return [
+                'id' => $q->id,
+                'statement' => $q->statement,
+                'alternatives' => $q->alternativesAsMap(),
+                'correct_label' => $q->correct_answer,
+                'missing_fields' => $missing,
+                'reprocess_all' => $reprocess
+            ];
+        });
 
         $subjectsRef = Subject::pluck('name', 'id')->toArray();
         $topicsRef = Topic::pluck('name', 'id')->toArray();
@@ -79,7 +94,7 @@ class AIBatchService
         return $prompt;
     }
 
-    protected function applyResults(Collection $questions, array $results, string $type): array
+    protected function applyResults(Collection $questions, array $results, string $type, bool $reprocess): array
     {
         $applied = 0;
         foreach ($questions as $question) {
@@ -89,8 +104,22 @@ class AIBatchService
 
             // Mapeamento defensivo para chaves variadas que a IA possa retornar
             $difficulty = $data['difficulty'] ?? $question->difficulty;
-            $reasoning = $data['difficulty_reasoning'] ?? ($data['reasoning'] ?? $question->difficulty_reasoning);
-            $explanation = $data['explanation'] ?? $question->explanation;
+            $reasoning = $data['difficulty_reasoning'] ?? ($data['reasoning'] ?? null);
+            $explanation = $data['explanation'] ?? null;
+
+            // Preservação de dados caso $reprocess seja falso
+            if (!$reprocess) {
+                if (!empty(trim($question->difficulty_reasoning))) {
+                    $reasoning = $question->difficulty_reasoning;
+                }
+                if (!empty(trim($question->explanation))) {
+                    $explanation = $question->explanation;
+                }
+            } else {
+                // Fallback para fallback antigo se reprocess for true mas a IA não devolveu
+                $reasoning = $reasoning ?? $question->difficulty_reasoning;
+                $explanation = $explanation ?? $question->explanation;
+            }
 
             $question->update([
                 'difficulty' => $difficulty,
@@ -112,7 +141,9 @@ class AIBatchService
                 $subjectId = $subject->id;
             }
             if ($subjectId) {
-                $question->subjects()->sync([$subjectId]);
+                if ($reprocess || $question->subjects->isEmpty()) {
+                    $question->subjects()->sync([$subjectId]);
+                }
             }
 
             // Resolucao de Assunto (Topic)
@@ -128,7 +159,9 @@ class AIBatchService
                 $topicId = $topic->id;
             }
             if ($topicId) {
-                $question->topics()->sync([$topicId]);
+                if ($reprocess || $question->topics->isEmpty()) {
+                    $question->topics()->sync([$topicId]);
+                }
             }
 
             $applied++;

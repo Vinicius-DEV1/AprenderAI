@@ -1,8 +1,166 @@
-import { useState, FormEvent, useEffect, useRef } from 'react';
+import { useState, FormEvent, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createEssayDraft, startTopicGeneration, getTopicStatus, submitEssay } from '../../api/essays';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+    createEssayDraft, startTopicGeneration, getTopicStatus,
+    submitEssay, getEssayThemes, getEssayRule, getEssays,
+} from '../../api/essays';
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface EssayTheme {
+    id: number;
+    title: string;
+    year: number | null;
+    institution: string | null;
+    type: string;
+}
+
+interface WritingRule {
+    min_chars: number;
+    max_chars: number;
+    max_lines: number;
+}
+
+// ─── Theme Search Modal ────────────────────────────────────────────────────────
+function ThemeSearchModal({
+    essayType,
+    onSelect,
+    onClose,
+}: {
+    essayType: string;
+    onSelect: (theme: EssayTheme) => void;
+    onClose: () => void;
+}) {
+    const [keyword, setKeyword] = useState('');
+    const [debouncedKeyword, setDebouncedKeyword] = useState('');
+    const [page, setPage] = useState(1);
+
+    // Debounce keyword input
+    useEffect(() => {
+        const t = setTimeout(() => {
+            setDebouncedKeyword(keyword);
+            setPage(1);
+        }, 400);
+        return () => clearTimeout(t);
+    }, [keyword]);
+
+    const { data, isLoading, isError } = useQuery({
+        queryKey: ['essay-themes', essayType, debouncedKeyword, page],
+        queryFn: () => getEssayThemes({ type: essayType, keyword: debouncedKeyword || undefined, page }),
+        placeholderData: (prev) => prev,
+    });
+
+    const themes: EssayTheme[] = data?.data ?? [];
+    const meta = data?.meta;
+
+    return (
+        // Backdrop
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={onClose}
+        >
+            {/* Modal card */}
+            <div
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                        🔍 Pesquisar Temas de Redação
+                    </h2>
+                    <button
+                        onClick={onClose}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                        aria-label="Fechar"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                {/* Search input */}
+                <div className="px-6 py-3 border-b border-gray-100 dark:border-gray-700">
+                    <input
+                        type="text"
+                        value={keyword}
+                        onChange={(e) => setKeyword(e.target.value)}
+                        placeholder="Buscar por palavra-chave no tema..."
+                        autoFocus
+                        className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                    />
+                </div>
+
+                {/* Results */}
+                <div className="flex-1 overflow-y-auto px-6 py-3 space-y-2">
+                    {isLoading && (
+                        <div className="flex justify-center py-10">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                        </div>
+                    )}
+                    {isError && (
+                        <p className="text-center text-red-500 py-8 text-sm">
+                            Erro ao buscar temas. Tente novamente.
+                        </p>
+                    )}
+                    {!isLoading && !isError && themes.length === 0 && (
+                        <div className="text-center py-10">
+                            <p className="text-gray-500 dark:text-gray-400 text-sm">
+                                {debouncedKeyword
+                                    ? `Nenhum tema encontrado para "${debouncedKeyword}".`
+                                    : 'Nenhum tema de redação disponível ainda.'}
+                            </p>
+                        </div>
+                    )}
+                    {themes.map((theme) => (
+                        <button
+                            key={theme.id}
+                            onClick={() => onSelect(theme)}
+                            className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors group"
+                        >
+                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:text-blue-700 dark:group-hover:text-blue-300 line-clamp-2">
+                                {theme.title}
+                            </p>
+                            <div className="flex gap-3 mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                                {theme.year && <span>📅 {theme.year}</span>}
+                                {theme.institution && <span>🏛 {theme.institution}</span>}
+                                <span className={`px-1.5 py-0.5 rounded uppercase font-bold text-[10px] ${theme.type === 'enem' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300'}`}>
+                                    {theme.type}
+                                </span>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+
+                {/* Pagination */}
+                {meta && meta.last_page > 1 && (
+                    <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400">
+                        <span>Página {meta.current_page} de {meta.last_page} ({meta.total} temas)</span>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                disabled={meta.current_page <= 1}
+                                className="px-3 py-1 rounded border disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                            >
+                                ← Anterior
+                            </button>
+                            <button
+                                onClick={() => setPage((p) => Math.min(meta.last_page, p + 1))}
+                                disabled={meta.current_page >= meta.last_page}
+                                className="px-3 py-1 rounded border disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                            >
+                                Próximo →
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function EssayWrite() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -17,28 +175,54 @@ export default function EssayWrite() {
 
     // Step 2 State
     const [theme, setTheme] = useState('');
+    const [themeDescription, setThemeDescription] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [regenCount, setRegenCount] = useState(0);
+    const [showThemeModal, setShowThemeModal] = useState(false);
 
     // Step 3 State
     const [inputType, setInputType] = useState<'text' | 'image'>('text');
     const [content, setContent] = useState('');
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [charWarning, setCharWarning] = useState('');
+    const [lineWarning, setLineWarning] = useState('');
+    const charWarningTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lineWarningTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // WritingRule (fetched on entering step 3)
+    const [rule, setRule] = useState<WritingRule>({ min_chars: 1500, max_chars: 3000, max_lines: 30 });
 
     // Shared State
     const [error, setError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-
-
     const charCount = content.length;
     const wordCount = content.trim() === '' ? 0 : content.trim().split(/\s+/).filter(w => w.length > 0).length;
+    const charsRemaining = rule.max_chars - charCount;
+    const isNearLimit = charCount >= rule.max_chars * 0.9;
 
     // Timer
     const [remainingSeconds, setRemainingSeconds] = useState(timeLimit * 60);
 
-    // Mutations
+    // ── Essay Limit (how many submissions remain this month) ────────────────
+    const { data: essayMeta } = useQuery({
+        queryKey: ['essays-meta'],
+        queryFn: () => getEssays(1),
+        staleTime: 60_000,
+    });
+    const essayLimit: { remaining: number; total: number } | undefined = essayMeta?.meta?.essayLimit;
+
+    // ── Fetch WritingRule when entering step 3 ──────────────────────────────
+    useEffect(() => {
+        if (step === 3) {
+            getEssayRule(type).then((r) => setRule(r)).catch(() => {
+                // Keep sensible defaults on error
+            });
+        }
+    }, [step, type]);
+
+    // ── Mutations ──────────────────────────────────────────────────────────
     const draftMutation = useMutation({
         mutationFn: () => createEssayDraft({ type, time_limit: timeLimit }),
         onSuccess: (data) => {
@@ -46,7 +230,7 @@ export default function EssayWrite() {
             setStep(2);
             setError(null);
         },
-        onError: () => setError('Erro ao criar rascunho. Tente novamente.')
+        onError: () => setError('Erro ao criar rascunho. Tente novamente.'),
     });
 
     const generateMutation = useMutation({
@@ -56,28 +240,29 @@ export default function EssayWrite() {
             setError(null);
             pollTopicStatus();
         },
-        onError: (err: any) => setError(err.response?.data?.message || 'Erro ao iniciar geração.')
+        onError: (err: any) => setError(err.response?.data?.message || 'Erro ao iniciar geração.'),
     });
 
-    const pollTopicStatus = () => {
+    const pollTopicStatus = useCallback(() => {
         const interval = setInterval(async () => {
             try {
                 const data = await getTopicStatus(essayId!);
                 if (data.topic_description) {
                     clearInterval(interval);
-                    setTheme(data.topic_description);
+                    setTheme(data.title || data.topic_description);
+                    setThemeDescription(data.topic_description);
                     setRegenCount(data.topic_regen_count);
                     setIsGenerating(false);
                 } else if (data.status === 'error') {
                     clearInterval(interval);
                     setIsGenerating(false);
-                    setError('A IA falhou ao gerar o tema. Você pode digitar um tema manualmente.');
+                    setError('A IA falhou ao gerar o tema. Tente novamente ou pesquise um tema existente.');
                 }
             } catch (err) {
-                // Keep polling unless it's a fatal error
+                // Keep polling unless fatal
             }
         }, 3000);
-    };
+    }, [essayId]);
 
     const submitMutation = useMutation({
         mutationFn: (data: FormData) => submitEssay(essayId!, data),
@@ -85,10 +270,10 @@ export default function EssayWrite() {
             queryClient.invalidateQueries({ queryKey: ['essays'] });
             navigate(data?.data?.id ? `/essays/${data.data.id}` : '/essays');
         },
-        onError: (err: any) => setError(err.response?.data?.message || 'Falha ao enviar a redação.')
+        onError: (err: any) => setError(err.response?.data?.message || 'Falha ao enviar a redação.'),
     });
 
-    // Step Handlers
+    // ── Step Handlers ─────────────────────────────────────────────────────
     const handleStep1Submit = (e: FormEvent) => {
         e.preventDefault();
         setRemainingSeconds(timeLimit * 60);
@@ -105,29 +290,77 @@ export default function EssayWrite() {
         setStep(3);
     };
 
+    const showLineWarning = (msg: string) => {
+        setLineWarning(msg);
+        if (lineWarningTimeout.current) clearTimeout(lineWarningTimeout.current);
+        lineWarningTimeout.current = setTimeout(() => setLineWarning(''), 3000);
+    };
+
+    const showCharWarning = (msg: string) => {
+        setCharWarning(msg);
+        if (charWarningTimeout.current) clearTimeout(charWarningTimeout.current);
+        charWarningTimeout.current = setTimeout(() => setCharWarning(''), 3000);
+    };
+
+    const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        let text = e.target.value;
+
+        // Truncate lines exceeding max_lines (handles paste)
+        const lines = text.split('\n');
+        if (lines.length > rule.max_lines) {
+            text = lines.slice(0, rule.max_lines).join('\n');
+            showLineWarning(`Máximo de ${rule.max_lines} linhas atingido.`);
+        }
+
+        // maxlength is enforced by the attribute, but guard here too
+        if (text.length > rule.max_chars) {
+            text = text.slice(0, rule.max_chars);
+            showCharWarning(`Máximo de ${rule.max_chars} caracteres atingido.`);
+        }
+
+        setContent(text);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter') {
+            const lines = (content || '').split('\n').length;
+            if (lines >= rule.max_lines) {
+                e.preventDefault();
+                showLineWarning(`Máximo de ${rule.max_lines} linhas atingido.`);
+            }
+        }
+        if (content.length >= rule.max_chars && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            showCharWarning(`Máximo de ${rule.max_chars} caracteres atingido.`);
+        }
+    };
+
     const handleStep3Submit = (e: FormEvent) => {
         e.preventDefault();
         setError(null);
 
         const formData = new FormData();
         formData.append('input_type', inputType);
-        formData.append('custom_theme', theme); // Ensure backend updates it if manual
+        // NOTE: No 'custom_theme' field — theme was set in Step 2 by Xavier or selection.
 
         if (inputType === 'text') {
-            if (content.trim().length < 50) {
-                setError('Escreva ao menos 50 caracteres para avaliação.');
+            if (content.trim().length < rule.min_chars) {
+                setError(`Escreva ao menos ${rule.min_chars} caracteres (mínimo exigido).`);
+                return;
+            }
+            if (content.trim().length > rule.max_chars) {
+                setError(`Sua redação excede o limite de ${rule.max_chars} caracteres.`);
                 return;
             }
             formData.append('content', content);
         } else {
             if (!imageFile) {
-                setError('Selecione a imagem.');
+                setError('Selecione uma imagem da sua redação.');
                 return;
             }
             formData.append('image', imageFile);
         }
 
-        if (window.confirm('Confirmar envio para correção?')) {
+        if (window.confirm('Tem certeza que deseja enviar sua redação para correção?')) {
             submitMutation.mutate(formData);
         }
     };
@@ -147,7 +380,7 @@ export default function EssayWrite() {
         }
     };
 
-    // Timer Effect
+    // ── Timer Effect ──────────────────────────────────────────────────────
     useEffect(() => {
         if (step === 3 && remainingSeconds > 0) {
             const timer = setInterval(() => {
@@ -161,19 +394,35 @@ export default function EssayWrite() {
     const m = Math.floor((remainingSeconds % 3600) / 60).toString().padStart(2, '0');
     const s = (remainingSeconds % 60).toString().padStart(2, '0');
     const timerDisplay = `${h}:${m}:${s}`;
+    const timerCritical = remainingSeconds <= 300;
 
+    // ── Render ────────────────────────────────────────────────────────────
     return (
         <div className="py-12">
+            {showThemeModal && (
+                <ThemeSearchModal
+                    essayType={type}
+                    onSelect={(t) => {
+                        setTheme(t.title);
+                        setThemeDescription(t.title);
+                        setShowThemeModal(false);
+                        setError(null);
+                    }}
+                    onClose={() => setShowThemeModal(false)}
+                />
+            )}
+
             <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
 
                 <div className="mb-6 flex justify-between items-center">
                     <Link to="/essays" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                         Voltar
                     </Link>
                     {step === 3 && (
-                        <div className={`px-4 py-2 rounded-full font-mono font-bold shadow-sm border ${remainingSeconds <= 300 ? 'bg-red-50 border-red-200 text-red-600 animate-pulse' : 'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300'}`}>
+                        <div className={`px-4 py-2 rounded-full font-mono font-bold shadow-sm border transition-colors ${timerCritical ? 'bg-red-50 border-red-200 text-red-600 animate-pulse dark:bg-red-900/30 dark:border-red-700 dark:text-red-400' : 'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300'}`}>
                             {timerDisplay}
+                            {timerCritical && <span className="ml-2 text-xs">⚠ Menos de 5 min!</span>}
                         </div>
                     )}
                 </div>
@@ -183,9 +432,9 @@ export default function EssayWrite() {
                     <div className="border-b border-gray-200 dark:border-gray-700 p-4">
                         <div className="flex items-center justify-center space-x-8">
                             <div className={`font-bold ${step >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>1. Tipo e Tempo</div>
-                            <div className={`w-12 h-0.5 ${step >= 2 ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
+                            <div className={`w-12 h-0.5 ${step >= 2 ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`} />
                             <div className={`font-bold ${step >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>2. Tema</div>
-                            <div className={`w-12 h-0.5 ${step >= 3 ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
+                            <div className={`w-12 h-0.5 ${step >= 3 ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`} />
                             <div className={`font-bold ${step >= 3 ? 'text-blue-600' : 'text-gray-400'}`}>3. Escrita</div>
                         </div>
                     </div>
@@ -197,7 +446,7 @@ export default function EssayWrite() {
                             </div>
                         )}
 
-                        {/* STEP 1: Type & Time */}
+                        {/* ── STEP 1: Type & Time ── */}
                         {step === 1 && (
                             <form onSubmit={handleStep1Submit} className="space-y-6">
                                 <h3 className="text-lg font-medium">Escolha o formato</h3>
@@ -230,90 +479,206 @@ export default function EssayWrite() {
                                 </div>
                                 <div className="flex justify-end">
                                     <button type="submit" disabled={draftMutation.isPending} className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 font-bold">
-                                        {draftMutation.isPending ? 'Criando...' : 'Continuar'}
+                                        {draftMutation.isPending ? 'Criando...' : 'Continuar →'}
                                     </button>
                                 </div>
                             </form>
                         )}
 
-                        {/* STEP 2: Theme */}
+                        {/* ── STEP 2: Theme ── */}
                         {step === 2 && (
                             <form onSubmit={handleStep2Submit} className="space-y-6">
-                                <h3 className="text-lg font-medium">Defina o Tema</h3>
+                                <div>
+                                    <h3 className="text-lg font-semibold">Defina o Tema da Redação</h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                        Escolha como deseja obter o tema.{' '}
+                                        {essayLimit !== undefined && (
+                                            <span className={`font-semibold ${essayLimit.remaining <= 1 ? 'text-red-500' : 'text-blue-600 dark:text-blue-400'}`}>
+                                                Você possui {essayLimit.remaining} envio{essayLimit.remaining !== 1 ? 's' : ''} de redação restante{essayLimit.remaining !== 1 ? 's' : ''} este mês.
+                                            </span>
+                                        )}
+                                    </p>
+                                </div>
 
                                 {isGenerating ? (
-                                    <div className="flex flex-col items-center justify-center space-y-4 py-8">
-                                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                                        <p className="font-medium text-gray-600 dark:text-gray-300">A IA (Xavier) está gerando um tema para você...</p>
+                                    <div className="flex flex-col items-center justify-center space-y-4 py-12">
+                                        <div className="animate-spin rounded-full h-14 w-14 border-b-2 border-blue-600" />
+                                        <p className="font-semibold text-gray-600 dark:text-gray-300">Xavier está criando um tema exclusivo para você...</p>
+                                        <p className="text-sm text-gray-400">Isso pode levar alguns segundos.</p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-4">
-                                        <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Tema da Redação</label>
-                                            <textarea
-                                                value={theme}
-                                                onChange={(e) => setTheme(e.target.value)}
-                                                rows={4}
-                                                placeholder="Digite o tema no qual você deseja escrever..."
-                                                className="w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm resize-none"
-                                            />
-                                        </div>
+                                    <>
+                                        {/* Theme selected card */}
+                                        {theme ? (
+                                            <div className="p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg space-y-2">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="text-xs font-bold uppercase tracking-wide text-blue-500 dark:text-blue-400 mb-1">Tema selecionado</p>
+                                                        <p className="font-semibold text-gray-900 dark:text-gray-100">{theme}</p>
+                                                        {themeDescription && themeDescription !== theme && (
+                                                            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 leading-relaxed">{themeDescription}</p>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setTheme(''); setThemeDescription(''); }}
+                                                        className="flex-shrink-0 text-xs text-red-500 hover:text-red-700 font-semibold"
+                                                    >
+                                                        Trocar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            /* CTA buttons — vertical, centered, hierarchical */
+                                            <div className="flex flex-col items-center gap-4 w-full">
+                                                {/* Primary: Generate with Xavier (larger, full attention) */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => generateMutation.mutate()}
+                                                    disabled={generateMutation.isPending || regenCount >= 3}
+                                                    className="w-full max-w-lg flex flex-col items-center justify-center gap-3 py-8 px-6 rounded-xl border-2 border-blue-500 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <span className="text-4xl">✨</span>
+                                                    <div className="text-center">
+                                                        <p className="font-bold text-lg">Gerar tema exclusivo com Xavier</p>
+                                                        <p className="text-sm text-blue-100 mt-1">
+                                                            A IA cria um tema inédito, personalizado para você
+                                                        </p>
+                                                        {regenCount >= 3 && (
+                                                            <p className="text-xs text-yellow-300 mt-2 font-semibold">⚠ Limite de gerações de tema atingido</p>
+                                                        )}
+                                                    </div>
+                                                </button>
 
-                                        <div className="flex justify-between items-center">
+                                                {/* Divider */}
+                                                <div className="flex items-center gap-3 w-full max-w-lg text-gray-400 text-xs">
+                                                    <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                                                    <span className="font-medium uppercase tracking-wide">ou</span>
+                                                    <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                                                </div>
+
+                                                {/* Secondary: Search existing (smaller, subdued) */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowThemeModal(true)}
+                                                    className="w-full max-w-sm flex flex-col items-center justify-center gap-2 py-5 px-6 rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700/60 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-600 dark:text-gray-300 shadow-sm transition-all"
+                                                >
+                                                    <span className="text-2xl">🔍</span>
+                                                    <div className="text-center">
+                                                        <p className="font-semibold text-sm">Pesquisar temas já existentes</p>
+                                                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                                                            Escolha um tema do banco de redações
+                                                        </p>
+                                                    </div>
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {/* Actions row */}
+                                        <div className="flex justify-between items-center pt-2">
                                             <button
                                                 type="button"
-                                                onClick={() => generateMutation.mutate()}
-                                                disabled={generateMutation.isPending || regenCount >= 3}
-                                                className="text-blue-600 hover:text-blue-800 font-semibold text-sm disabled:opacity-50"
+                                                onClick={() => setStep(1)}
+                                                className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 font-medium"
                                             >
-                                                {regenCount < 3 ? '✨ Gerar tema com IA' : 'Limite de gerações atingido'}
+                                                ← Voltar
                                             </button>
-
-                                            <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 font-bold">
-                                                Continuar
+                                            <button
+                                                type="submit"
+                                                disabled={!theme.trim()}
+                                                className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+                                            >
+                                                Continuar →
                                             </button>
                                         </div>
-                                    </div>
+                                    </>
                                 )}
                             </form>
                         )}
 
-                        {/* STEP 3: Write */}
+                        {/* ── STEP 3: Write ── */}
                         {step === 3 && (
                             <form onSubmit={handleStep3Submit} className="space-y-6">
-                                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md mb-6 text-sm">
-                                    <span className="font-bold">Tema:</span> {theme}
+
+                                {/* Theme display (collapsible) */}
+                                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md text-sm">
+                                    <span className="font-bold">Tema:</span>{' '}
+                                    <span>{theme}</span>
+                                    {themeDescription && themeDescription !== theme && (
+                                        <p className="text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">{themeDescription}</p>
+                                    )}
                                 </div>
 
-                                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md mb-4 text-sm">
-                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Formato de Envio</label>
-                                    <select
-                                        className="w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                        value={inputType}
-                                        onChange={(e: any) => setInputType(e.target.value)}
-                                    >
-                                        <option value="text">Digitar Texto</option>
-                                        <option value="image">Enviar Foto (OCR)</option>
-                                    </select>
+                                {/* WritingRule card */}
+                                <div className={`p-4 rounded-lg border shadow-sm ${type === 'enem' ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800' : 'bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800'}`}>
+                                    <h3 className={`font-bold mb-2 flex items-center text-base ${type === 'enem' ? 'text-blue-800 dark:text-blue-300' : 'text-orange-800 dark:text-orange-300'}`}>
+                                        {type === 'enem' ? '📘 ENEM' : '📙 Concurso Público'}
+                                    </h3>
+                                    <div className={`text-sm space-y-0.5 ${type === 'enem' ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700 dark:text-orange-400'}`}>
+                                        <p>Mínimo: <strong>{rule.min_chars.toLocaleString('pt-BR')}</strong> caracteres</p>
+                                        <p>Máximo: <strong>{rule.max_chars.toLocaleString('pt-BR')}</strong> caracteres</p>
+                                        <p>Máximo: <strong>{rule.max_lines}</strong> linhas</p>
+                                    </div>
                                 </div>
 
+                                {/* Input Type Toggle (radio buttons) */}
+                                <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded-lg inline-flex">
+                                    {(['text', 'image'] as const).map((val) => (
+                                        <label
+                                            key={val}
+                                            className={`cursor-pointer px-5 py-2 rounded-md font-semibold text-sm transition-colors ${inputType === val ? 'bg-blue-600 text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                className="hidden"
+                                                value={val}
+                                                checked={inputType === val}
+                                                onChange={() => setInputType(val)}
+                                            />
+                                            {val === 'text' ? 'Digitar texto' : 'Enviar imagem (OCR)'}
+                                        </label>
+                                    ))}
+                                </div>
+
+                                {/* Text input */}
                                 {inputType === 'text' ? (
                                     <div>
                                         <textarea
                                             value={content}
-                                            onChange={(e) => setContent(e.target.value)}
+                                            onChange={handleContentChange}
+                                            onKeyDown={handleKeyDown}
                                             rows={25}
+                                            maxLength={rule.max_chars}
                                             className="lined-paper w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm resize-none font-serif text-lg p-6 disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-gray-800"
                                             placeholder="Escreva sua redação aqui..."
                                             disabled={submitMutation.isPending}
                                         />
-                                        <div className="flex justify-end space-x-4 mt-2 text-sm text-gray-500">
-                                            <span>Caracteres: <span>{charCount}</span></span>
-                                            <span>Palavras: <span>{wordCount}</span></span>
+
+                                        {/* Warnings */}
+                                        <div className="min-h-[20px] mt-1">
+                                            {charWarning && (
+                                                <span className="text-red-500 font-bold text-sm bg-red-50 dark:bg-red-900/40 px-2 py-1 rounded mr-3">
+                                                    {charWarning}
+                                                </span>
+                                            )}
+                                            {lineWarning && (
+                                                <span className="text-red-500 font-bold text-sm bg-red-50 dark:bg-red-900/40 px-2 py-1 rounded">
+                                                    {lineWarning}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Chars / words counter */}
+                                        <div
+                                            className={`flex justify-end space-x-4 mt-2 px-3 py-1.5 rounded-md border text-sm font-medium transition-colors ${isNearLimit ? 'text-red-600 dark:text-red-400 font-bold border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'}`}
+                                        >
+                                            <span>Caracteres restantes: <strong>{charsRemaining.toLocaleString('pt-BR')}</strong> / {rule.max_chars.toLocaleString('pt-BR')}</span>
+                                            <span>Palavras: <strong>{wordCount}</strong></span>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="p-4 border border-gray-300 dark:border-gray-700 border-dashed rounded-md bg-white dark:bg-gray-900 text-center">
+                                    /* Image upload */
+                                    <div className="p-6 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-center">
                                         <input
                                             type="file"
                                             ref={fileInputRef}
@@ -323,35 +688,48 @@ export default function EssayWrite() {
                                             id="image-upload"
                                             disabled={submitMutation.isPending}
                                         />
-
                                         {imagePreview ? (
-                                            <div className="mt-4">
+                                            <div className="mt-2">
                                                 <img src={imagePreview} alt="Preview" className="max-h-96 mx-auto rounded shadow-sm" />
-                                                <button type="button" onClick={() => { setImageFile(null); setImagePreview(null); }} className="mt-2 text-sm text-red-600 hover:text-red-800">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setImageFile(null); setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                                                    className="mt-3 text-sm text-red-600 hover:text-red-800 font-medium"
+                                                >
                                                     Remover imagem
                                                 </button>
                                             </div>
                                         ) : (
-                                            <label htmlFor="image-upload" className="cursor-pointer">
-                                                <div className="text-gray-500 dark:text-gray-400 py-12">
-                                                    <svg className="mx-auto h-12 w-12 mb-4" stroke="currentColor" fill="none" viewBox="0 0 48 48"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28H8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                                    <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Clique para selecionar foto (máx 8MB)</span>
-                                                </div>
+                                            <label htmlFor="image-upload" className="cursor-pointer block py-8">
+                                                <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28H8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                </svg>
+                                                <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Clique para selecionar a foto da sua redação</p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">JPG, PNG ou WebP — máximo 8MB</p>
                                             </label>
                                         )}
                                     </div>
                                 )}
 
-                                <div className="flex justify-end mt-6">
+                                {/* Submit */}
+                                <div className="flex justify-between items-center mt-6">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStep(2)}
+                                        disabled={submitMutation.isPending}
+                                        className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 font-medium"
+                                    >
+                                        ← Voltar ao Tema
+                                    </button>
                                     <button
                                         type="submit"
                                         disabled={submitMutation.isPending}
                                         className="bg-blue-600 text-white px-8 py-3 rounded-md hover:bg-blue-700 font-bold text-lg disabled:opacity-50 flex items-center gap-2"
                                     >
                                         {submitMutation.isPending && (
-                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                         )}
-                                        {submitMutation.isPending ? 'Enviando...' : 'Enviar para Correção'}
+                                        {submitMutation.isPending ? 'Enviando...' : 'Enviar para Correção ✓'}
                                     </button>
                                 </div>
                             </form>
@@ -362,4 +740,3 @@ export default function EssayWrite() {
         </div>
     );
 }
-

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ApiPricing;
 use App\Models\ApiPricingLog;
+use App\Models\ApiKeyVault;
 use App\Services\AI\PriceCalculatorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +24,63 @@ class ApiPricingController extends Controller
             ->get();
 
         return response()->json(['data' => $pricing]);
+    }
+
+    /**
+     * GET /api/v1/admin/api-pricing/vaults
+     * Returns minimal vault data to populate the frontend provider select.
+     */
+    public function vaults()
+    {
+        $vaults = ApiKeyVault::select('id', 'nickname', 'provider')
+            ->orderBy('nickname')
+            ->get();
+        return response()->json(['data' => $vaults]);
+    }
+
+    /**
+     * POST /api/v1/admin/api-pricing
+     * Creates a new pricing entry.
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'api_name' => 'required|string',
+            'model_key' => 'required|string',
+            'input_price_per_1m' => 'required|numeric|min:0',
+            'output_price_per_1m' => 'required|numeric|min:0',
+        ]);
+
+        // Check for duplicates
+        if (ApiPricing::where('api_name', $validated['api_name'])->where('model_key', $validated['model_key'])->exists()) {
+            return response()->json(['message' => 'Este modelo já está cadastrado para este provedor.'], 422);
+        }
+
+        $apiPricing = ApiPricing::create([
+            'api_name' => $validated['api_name'],
+            'model_key' => $validated['model_key'],
+            'input_price_per_1m' => $validated['input_price_per_1m'],
+            'output_price_per_1m' => $validated['output_price_per_1m'],
+            'updated_by' => Auth::id(),
+        ]);
+
+        ApiPricingLog::create([
+            'api_pricing_id' => $apiPricing->id,
+            'updated_by' => Auth::id(),
+            'old_input_price_per_1m' => 0,
+            'old_output_price_per_1m' => 0,
+            'new_input_price_per_1m' => $validated['input_price_per_1m'],
+            'new_output_price_per_1m' => $validated['output_price_per_1m'],
+        ]);
+
+        app(PriceCalculatorService::class)->invalidateCache();
+
+        $apiPricing->load('updatedBy:id,name');
+
+        return response()->json([
+            'message' => 'Preço cadastrado com sucesso!',
+            'data' => $apiPricing,
+        ]);
     }
 
     /**

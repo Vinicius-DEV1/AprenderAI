@@ -194,7 +194,9 @@ class Question extends Model
         return $query->whereNotNull('difficulty_reasoning')
             ->whereRaw("TRIM(difficulty_reasoning) != ''")
             ->whereNotNull('explanation')
-            ->whereRaw("TRIM(explanation) != ''");
+            ->whereRaw("TRIM(explanation) != ''")
+            ->whereHas('subjects')
+            ->whereHas('topics');
     }
 
     /**
