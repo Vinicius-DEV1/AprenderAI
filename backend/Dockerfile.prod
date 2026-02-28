@@ -52,6 +52,10 @@ COPY backend/ .
 # This ensures Nginx serves the React App through the same entrypoint
 COPY --from=frontend-builder /app/dist ./public
 
+# Ensure absolute mandatory Laravel directories exist and are writable for the build process
+RUN mkdir -p bootstrap/cache storage/framework/sessions storage/framework/views storage/framework/cache \
+    && chmod -R 777 bootstrap/cache storage
+
 # Install PHP dependencies
 ENV COMPOSER_MEMORY_LIMIT=-1
 RUN composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-req=php+
