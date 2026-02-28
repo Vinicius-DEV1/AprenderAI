@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Essay;
+use App\Models\WritingRule;
 use App\Http\Resources\EssayResource;
 use App\Services\EssayImageExtractorService;
 use Illuminate\Http\Request;
@@ -234,4 +235,20 @@ class EssayController extends Controller
 
         return new EssayResource($essay);
     }
+
+    /**
+     * Returns WritingRule limits for a given essay type (enem|concurso).
+     * Used by the React frontend Step 3 to enforce character/line limits.
+     */
+    public function getRule(Request $request, string $type)
+    {
+        $rule = \App\Models\WritingRule::where('type', $type)->first();
+
+        return response()->json([
+            'min_chars' => $rule?->min_chars ?? 1500,
+            'max_chars' => $rule?->max_chars ?? ($type === 'enem' ? 3000 : 4000),
+            'max_lines' => $rule?->max_lines ?? 30,
+        ]);
+    }
 }
+

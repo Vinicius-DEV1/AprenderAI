@@ -73,8 +73,10 @@ class AIBatchTriageController extends Controller
     {
         $validated = $request->validate([
             'quantity' => 'required|integer|min:1',
+            'chunk_size' => 'nullable|integer|min:1|max:50',
             'type' => 'required|in:difficulty,explanation,classification,complete,both',
             'model' => 'nullable|string',
+            'reprocess' => 'nullable|boolean',
             'question_ids' => 'nullable|array',
             'triage_status' => 'nullable|string',
             'triage_subject' => 'nullable|string',
@@ -137,12 +139,16 @@ class AIBatchTriageController extends Controller
             'last_error' => null
         ], now()->addHours(2));
 
-        $questions->chunk(5)->each(function ($chunk) use ($batchId, $validated) {
+        $chunkSize = $validated['chunk_size'] ?? 5;
+        $reprocess = $validated['reprocess'] ?? false;
+
+        $questions->chunk($chunkSize)->each(function ($chunk) use ($batchId, $validated, $reprocess) {
             AIBatchTriageJob::dispatch(
                 $batchId,
                 $chunk->pluck('id')->toArray(),
                 $validated['type'],
-                $validated['model'] ?? 'gpt-4'
+                $validated['model'] ?? 'gpt-4o',
+                $reprocess
             );
         });
 

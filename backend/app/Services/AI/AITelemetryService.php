@@ -19,7 +19,7 @@ class AITelemetryService
 
             // Inteligência Financeira: Calcula Custo da Transação
             $calculator = app(PriceCalculatorService::class);
-            $cost = $calculator->calculateCost($modelName, $inputTokens, $outputTokens);
+            $cost = $calculator->calculateCost($apiKey->provider, $modelName, $inputTokens, $outputTokens);
 
             AiRequestLog::create([
                 'user_id' => $userId,

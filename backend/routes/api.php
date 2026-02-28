@@ -76,6 +76,7 @@ Route::prefix('v1')->name('api.')->group(function () {
         Route::post('study-plan/update', [StudyPlanController::class, 'update']);
 
         Route::get('concursos', [ConcursoController::class, 'index']);
+        Route::get('essays/rule/{type}', [EssayController::class, 'getRule']); // Must be before apiResource
         Route::apiResource('essays', EssayController::class)->only(['index', 'show', 'store', 'update']);
         Route::post('essays/{essay}/start-topic', [EssayController::class, 'startTopicGeneration']);
         Route::get('essays/{essay}/topic-status', [EssayController::class, 'getTopicStatus']);
@@ -91,6 +92,7 @@ Route::prefix('v1')->name('api.')->group(function () {
 
         // Question Bank
         Route::prefix('questions')->group(function () {
+            Route::get('/essay-themes', [QuestionController::class, 'essayThemes']);
             Route::get('/', [QuestionController::class, 'index']);
             Route::get('/subjects', [QuestionController::class, 'subjects']);
             Route::get('/topics', [QuestionController::class, 'topics']);
@@ -138,6 +140,8 @@ Route::prefix('v1')->name('api.')->group(function () {
 
             // API Pricing
             Route::get('/api-pricing', [ApiPricingController::class, 'index']);
+            Route::get('/api-pricing/vaults', [ApiPricingController::class, 'vaults']);
+            Route::post('/api-pricing', [ApiPricingController::class, 'store']);
             Route::put('/api-pricing/{apiPricing}', [ApiPricingController::class, 'update']);
             Route::get('/api-pricing/{apiPricing}/logs', [ApiPricingController::class, 'logs']);
 

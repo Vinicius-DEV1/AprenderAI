@@ -16,20 +16,20 @@ class AIBatchTriageJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $batchId;
-    protected $questionIds;
     protected $type;
     protected $model;
+    protected $reprocess;
 
     /**
      * Create a new job instance.
      */
-    public function __construct(string $batchId, array $questionIds, string $type, ?string $model = null)
+    public function __construct(string $batchId, array $questionIds, string $type, ?string $model = null, bool $reprocess = false)
     {
         $this->batchId = $batchId;
         $this->questionIds = $questionIds;
         $this->type = $type;
         $this->model = $model;
+        $this->reprocess = $reprocess;
     }
 
     /**
@@ -50,10 +50,11 @@ class AIBatchTriageJob implements ShouldQueue
             Log::info("[AIBATCH] Starting batch job", [
                 'batch_id' => $this->batchId,
                 'count' => $questions->count(),
-                'type' => $this->type
+                'type' => $this->type,
+                'reprocess' => $this->reprocess
             ]);
 
-            $result = $batchService->processBatch($questions, $this->type, $this->model, $this->batchId);
+            $result = $batchService->processBatch($questions, $this->type, $this->model, $this->batchId, $this->reprocess);
 
             $this->updateProgress($result['applied'], count($result['errors']), null, $result['errors'] ?? []);
 
@@ -63,8 +64,7 @@ class AIBatchTriageJob implements ShouldQueue
                 'errors' => count($result['errors'])
             ]);
 
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             Log::error("[AIBATCH] Batch job failed", [
                 'batch_id' => $this->batchId,
                 'error' => $e->getMessage()
@@ -141,11 +141,9 @@ class AIBatchTriageJob implements ShouldQueue
                 $dbBatch->save();
             }
 
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             Log::error("[AIBATCH] Failed to update progress: " . $e->getMessage());
-        }
-        finally {
+        } finally {
             $lock->release();
         }
     }

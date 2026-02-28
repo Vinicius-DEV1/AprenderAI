@@ -2,7 +2,7 @@ import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
-import AdminBatchModal from './components/AdminBatchModal';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { AdminPageSkeleton } from './components/AdminSkeletons';
 
@@ -94,16 +94,7 @@ export default function EnemImport() {
         startImport.mutate(yearInput);
     };
 
-    const extractImages = (text: string) => {
-        if (!text) return [];
-        const regex = /!\[.*?\]\((.*?)\)/g;
-        const matches = [];
-        let match;
-        while ((match = regex.exec(text)) !== null) {
-            matches.push(match[1]);
-        }
-        return matches;
-    };
+
 
     if (isLoading) return <AdminPageSkeleton />;
 

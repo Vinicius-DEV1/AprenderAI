@@ -16,7 +16,7 @@ export const createEssayDraft = async (data: { type: string, time_limit: number 
     return response.data;
 };
 
-// STEP 2: Start topic generation
+// STEP 2: Start topic generation (Xavier AI)
 export const startTopicGeneration = async (id: number | string) => {
     const response = await api.post(`/api/v1/essays/${id}/start-topic`);
     return response.data;
@@ -24,6 +24,18 @@ export const startTopicGeneration = async (id: number | string) => {
 
 export const getTopicStatus = async (id: number | string) => {
     const response = await api.get(`/api/v1/essays/${id}/topic-status`);
+    return response.data;
+};
+
+// STEP 2: Search existing essay themes from questions bank
+export const getEssayThemes = async (params?: { type?: string; keyword?: string; page?: number }) => {
+    const response = await api.get('/api/v1/questions/essay-themes', { params });
+    return response.data;
+};
+
+// STEP 3: Get WritingRule limits for a given type (enem | concurso)
+export const getEssayRule = async (type: string) => {
+    const response = await api.get(`/api/v1/essays/rule/${type}`);
     return response.data;
 };
 
@@ -46,3 +58,4 @@ export const retryEssayEvaluation = async (id: number | string) => {
     const response = await api.post(`/api/v1/essays/${id}/retry`);
     return response.data;
 };
+
