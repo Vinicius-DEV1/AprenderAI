@@ -36,7 +36,7 @@ class UserSeeder extends Seeder
         $this->command->info("Plans found: Free({$free->id}), Basic({$basic->id}), Plus({$plus->id})");
 
         // Admin User (email_verified_at = now())
-        User::updateOrCreate(['email' => 'admin@aprenderai.com'], [
+        User::updateOrCreate(['email' => 'admin@aprovaai.com'], [
             'name' => 'Administrador',
             'password' => $password,
             'role' => 'admin',
@@ -50,7 +50,7 @@ class UserSeeder extends Seeder
         ]);
 
         // Gratuito User (email_verified_at = null)
-        User::updateOrCreate(['email' => 'gratuito@aprenderai.com'], [
+        User::updateOrCreate(['email' => 'free@aprovaai.test'], [
             'name' => 'Usuário Gratuito',
             'password' => $password,
             'role' => 'user',
@@ -63,8 +63,22 @@ class UserSeeder extends Seeder
             'usage_reset_at' => now()->addMonth(),
         ]);
 
+        // Basic User (email_verified_at = null)
+        User::updateOrCreate(['email' => 'basic@aprovaai.test'], [
+            'name' => 'Usuário Basic',
+            'password' => $password,
+            'role' => 'user',
+            'email_verified_at' => null,
+            'plan_id' => $basic->id,
+            'plan_started_at' => now(),
+            'plan_expires_at' => now()->addMonth(),
+            'simulations_used_this_month' => 0,
+            'essays_used_this_month' => 0,
+            'usage_reset_at' => now()->addMonth(),
+        ]);
+
         // Plus User (email_verified_at = null)
-        $uPlus = User::updateOrCreate(['email' => 'plus@aprenderai.com'], [
+        $uPlus = User::updateOrCreate(['email' => 'plus@aprovaai.test'], [
             'name' => 'Usuário Plus',
             'password' => $password,
             'role' => 'user',
