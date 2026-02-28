@@ -329,7 +329,14 @@ export default function AdminQuestions() {
                 <div className="p-6 border-b border-gray-50 bg-gray-50/30 flex flex-wrap gap-4 items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center text-lg">🏦</div>
-                        <h2 className="text-xl font-black text-gray-900">Banco Completo</h2>
+                        <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
+                            Banco Completo
+                            {data.DEBUG_CODE_VERSION && (
+                                <span className="text-[8px] bg-red-500 text-white px-1 rounded animate-pulse">
+                                    V_STRITO
+                                </span>
+                            )}
+                        </h2>
                     </div>
 
                     <div className="flex flex-wrap gap-2">

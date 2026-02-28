@@ -27,7 +27,11 @@ class QuestionController extends Controller
     {
         // --- 1. Main Bank Query ---
         // Exibimos apenas questões 100% classificadas no Banco Completo
-        $query = Question::complete()->with(['subjects:id,name', 'topics:id,name']);
+        // Aplicamos redundância de filtros para garantir a exclusão de sem-matéria
+        $query = Question::complete()
+            ->has('subjects')
+            ->has('topics')
+            ->with(['subjects:id,name', 'topics:id,name']);
 
         if ($request->filled('status')) {
             $query->where('review_status', $request->status);
@@ -98,6 +102,7 @@ class QuestionController extends Controller
             'counts' => $counts,
             'availableSubjects' => \App\Models\Subject::orderBy('name')->pluck('name'),
             'availableOrganizations' => \DB::table('questions')->whereNotNull('organization')->distinct()->pluck('organization'),
+            'DEBUG_CODE_VERSION' => 'FILTER_V2_' . time(),
         ]);
     }
 
