@@ -15,6 +15,11 @@ class CheckPlanLimits
         $this->planService = $planService;
     }
 
+    /**
+     * Handle an incoming request.
+     * API-first: always returns JSON 403 when limits are exceeded.
+     * The React frontend is responsible for any UI redirection.
+     */
     public function handle(Request $request, Closure $next, string $type = 'simulation')
     {
         $user = $request->user();
@@ -26,13 +31,13 @@ class CheckPlanLimits
         };
 
         if (!$check['can_create']) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'error' => $check['message']
-                ], 403);
-            }
-
-            return redirect()->route('dashboard')->with('error', $check['message']);
+            return response()->json([
+                'error' => $check['message'],
+                'quota' => [
+                    'limit' => $check['limit'] ?? 0,
+                    'used' => $check['used'] ?? 0,
+                ],
+            ], 403);
         }
 
         return $next($request);
