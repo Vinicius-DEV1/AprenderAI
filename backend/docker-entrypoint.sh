@@ -20,13 +20,14 @@ if [ -f .env ]; then
     echo "Aguardando o banco de dados ficar disponível..."
     MAX_TRIES=30
     COUNT=0
-    until php artisan db:show > /dev/null 2>&1; do
+    until php artisan db:show; do
         COUNT=$((COUNT + 1))
         if [ "$COUNT" -ge "$MAX_TRIES" ]; then
             echo "ERRO: Banco de dados não ficou disponível após ${MAX_TRIES} tentativas. Abortando."
+            php artisan db:show # Mostra o erro um última vez antes de sair totalmente
             exit 1
         fi
-        echo "  Banco não está pronto ainda. Tentativa ${COUNT}/${MAX_TRIES}. Aguardando 3s..."
+        echo "  Banco não está pronto ainda (veja erro acima). Tentativa ${COUNT}/${MAX_TRIES}. Aguardando 3s..."
         sleep 3
     done
     echo "Banco de dados disponível!"
