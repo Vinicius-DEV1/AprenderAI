@@ -221,7 +221,7 @@ class SimulationController extends Controller
         }
 
         $answer->update([
-            'user_answer' => $validated['answer'],
+            'user_answer' => $validated['answer'] ?? null,
             'marked_for_review' => $validated['marked_for_review'] ?? $answer->marked_for_review,
             'time_spent' => $validated['time_spent'] ?? 0,
             'is_correct' => $answer->question->isCorrect($validated['answer'] ?? ''),
