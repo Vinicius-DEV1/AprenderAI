@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\Admin\EnemImportController as AdminEnemImportContro
 use App\Http\Controllers\Api\Admin\AdminEssayController;
 use App\Http\Controllers\Api\Admin\AdminQuestionImportController;
 use App\Http\Controllers\Api\Admin\AdminImportReviewController;
+use App\Http\Controllers\Api\Admin\AdminSimulationController;
 use App\Http\Controllers\Api\Admin\ApiPricingController;
 
 /*
@@ -161,6 +162,15 @@ Route::prefix('v1')->name('api.')->group(function () {
                 Route::post('/start', [AdminAIBatchTriageController::class, 'start']);
                 Route::get('/{batchId}/status', [AdminAIBatchTriageController::class, 'status']);
                 Route::post('/{batchId}/cancel', [AdminAIBatchTriageController::class, 'cancel']);
+            });
+
+            // Simulation Builder
+            Route::prefix('simulations')->group(function () {
+                Route::get('/presets', [AdminSimulationController::class, 'index']);
+                Route::post('/presets', [AdminSimulationController::class, 'store']);
+                Route::get('/presets/{preset}', [AdminSimulationController::class, 'show']);
+                Route::put('/presets/{preset}', [AdminSimulationController::class, 'update']);
+                Route::delete('/presets/{preset}', [AdminSimulationController::class, 'destroy']);
             });
 
             // ENEM Import
