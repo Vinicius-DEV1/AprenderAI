@@ -18,11 +18,15 @@ class DatabaseSeeder extends Seeder
             SettingSeeder::class,
             SubjectSeeder::class,
             PlanSeeder::class,
+            ApiPricingSeeder::class,
             UserSeeder::class,
             QuestionSeeder::class,
+            SimulationModelSeeder::class,
+            DefaultSimulationPresetsSeeder::class,
             DiscursiveAndEssayMockSeeder::class,
             SystemPromptSeeder::class,
             XavierPromptsSeeder::class,
+            AiSearchPromptSeeder::class,
         ]);
     }
 }

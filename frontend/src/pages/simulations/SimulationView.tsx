@@ -34,6 +34,8 @@ export default function SimulationView() {
     const [currentQuestion, setCurrentQuestion] = useState(0);
     const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
     const [currentMsgIdx, setCurrentMsgIdx] = useState(0);
+    const [viewMode, setViewMode] = useState<'questions' | 'essay'>('questions');
+    const [essayContent, setEssayContent] = useState('');
 
     const messages = [
         'Analisando seu desempenho histórico...',
@@ -107,9 +109,22 @@ export default function SimulationView() {
         }
     }, [isGenerating, messages.length]);
 
+    useEffect(() => {
+        if (simulation?.essay && !essayContent) {
+            setEssayContent(simulation.essay.content || '');
+        }
+    }, [simulation?.essay]);
+
     // Mutations
     const answerMutation = useMutation({
         mutationFn: (payload: any) => submitSingleAnswer(id!, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['simulationDetails', id] });
+        }
+    });
+
+    const updateEssayMutation = useMutation({
+        mutationFn: (content: string) => api.put(`/api/v1/essays/${simulation?.essay?.id}`, { content }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['simulationDetails', id] });
         }
@@ -141,8 +156,25 @@ export default function SimulationView() {
     };
 
     const handleFinishSimulation = () => {
+        // Auto-save essay before finishing if we are in essay mode
+        if (viewMode === 'essay' && simulation?.essay) {
+            updateEssayMutation.mutate(essayContent);
+        }
+
         if (window.confirm('Tem certeza que deseja finalizar a prova? Esta ação não pode ser desfeita.')) {
             finishMutation.mutate();
+        }
+    };
+
+    const toggleViewMode = () => {
+        if (viewMode === 'questions') {
+            setViewMode('essay');
+        } else {
+            // Save essay draft when going back to questions
+            if (simulation?.essay) {
+                updateEssayMutation.mutate(essayContent);
+            }
+            setViewMode('questions');
         }
     };
 
@@ -191,6 +223,9 @@ export default function SimulationView() {
           :root.dark .progress-bar-container { background: #334155; }
           .progress-bar-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #4f46e5, #7c3aed, #4f46e5); background-size: 200% 100%; animation: bg-move 3s linear infinite; border-radius: 10px; position: relative; }
           @keyframes bg-move { 0% { background-position: 0% 0%; } 100% { background-position: -200% 0%; } }
+          @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+          @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+          .animate-fade-in { animation: fade-in 0.4s ease-out forwards; }
           .shimmer-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent); animation: shimmer 1.5s infinite; }
         `}</style>
 
@@ -338,72 +373,134 @@ export default function SimulationView() {
                         </div>
                     </div>
 
-                    <button type="button" className="btn btn-danger w-full mt-5" onClick={handleFinishSimulation}>
-                        Finalizar Prova
-                    </button>
+                    {simulation.essay && (
+                        <button
+                            type="button"
+                            className={`btn w-full mt-4 ${viewMode === 'essay' ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={toggleViewMode}
+                        >
+                            {viewMode === 'essay' ? '← Voltar para Questões' : '📝 Ir para Redação'}
+                        </button>
+                    )}
+
+                    {(viewMode === 'essay' || !simulation.essay) && (
+                        <button type="button" className="btn btn-danger w-full mt-2" onClick={handleFinishSimulation}>
+                            Finalizar Prova
+                        </button>
+                    )}
                 </aside>
 
-                {/* Main Question Area */}
+                {/* Main Content Area */}
                 <main className="question-area">
-                    {question && (
-                        <div className="question-content animate-fade-in">
+                    {viewMode === 'questions' ? (
+                        question && (
+                            <div className="question-content animate-fade-in">
+                                <div className="question-header">
+                                    <span className="question-number">Questão {currentQuestion + 1} de {totalQuestions}</span>
+                                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', background: '#f1f5f9', padding: '4px 12px', borderRadius: '12px' }} className="dark:bg-slate-800 dark:text-slate-300">
+                                        {question.subjects?.map((s: any) => s.name).join(', ') || 'Geral'}
+                                    </span>
+                                </div>
+
+                                <div className="question-statement" dangerouslySetInnerHTML={{ __html: question.html_statement || question.statement }} />
+
+                                <ul className="alternatives">
+                                    {(question.alternatives || []).map((alt: any) => (
+                                        <li key={alt.id || alt.label} className="alternative">
+                                            <input
+                                                type="radio"
+                                                id={`q${question.id}_${alt.label}`}
+                                                name={`question_${question.id}`}
+                                                value={alt.label}
+                                                checked={currentAnswerData.user_answer === alt.label}
+                                                onChange={() => handleAnswer(question.id, alt.label)}
+                                                className="sr-only" // using + label selector
+                                            />
+                                            <label htmlFor={`q${question.id}_${alt.label}`}>
+                                                <span className="alternative-letter">{alt.label})</span>
+                                                <div className="flex flex-col gap-2 flex-grow overflow-hidden">
+                                                    {alt.content && <span className="word-break-all">{alt.content}</span>}
+                                                    {alt.image_path && <img src={`/storage/${alt.image_path}`} alt={`Alternativa ${alt.label}`} className="max-w-full h-auto rounded object-contain mt-2" />}
+                                                </div>
+                                            </label>
+                                        </li>
+                                    ))}
+                                </ul>
+
+                                <div className="question-actions">
+                                    <div className="checkbox-mark">
+                                        <input
+                                            type="checkbox"
+                                            id={`mark_${currentQuestion}`}
+                                            checked={currentAnswerData.marked_for_review ? true : false}
+                                            onChange={() => handleToggleMark(question.id, currentAnswerData.marked_for_review)}
+                                        />
+                                        <label htmlFor={`mark_${currentQuestion}`} className="cursor-pointer select-none text-sm text-gray-600 dark:text-gray-300">
+                                            Marcar para revisão
+                                        </label>
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-3">
+                                        {currentQuestion > 0 && (
+                                            <button type="button" className="btn btn-secondary" onClick={() => setCurrentQuestion(curr => curr - 1)}>
+                                                ← Anterior
+                                            </button>
+                                        )}
+                                        {currentQuestion < totalQuestions - 1 ? (
+                                            <button type="button" className="btn btn-primary" onClick={() => setCurrentQuestion(curr => curr + 1)}>
+                                                Próxima →
+                                            </button>
+                                        ) : simulation.essay ? (
+                                            <button type="button" className="btn btn-primary" onClick={toggleViewMode}>
+                                                📝 Ir para Redação
+                                            </button>
+                                        ) : (
+                                            <button type="button" className="btn btn-danger" onClick={handleFinishSimulation}>
+                                                Finalizar Prova
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    ) : (
+                        <div className="essay-view animate-fade-in h-full flex flex-col">
                             <div className="question-header">
-                                <span className="question-number">Questão {currentQuestion + 1} de {totalQuestions}</span>
-                                <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', background: '#f1f5f9', padding: '4px 12px', borderRadius: '12px' }} className="dark:bg-slate-800 dark:text-slate-300">
-                                    {question.subjects?.map((s: any) => s.name).join(', ') || 'Geral'}
+                                <span className="question-number">Folha de Redação</span>
+                                <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', background: '#fef3c7', padding: '4px 12px', borderRadius: '12px' }} className="dark:bg-amber-900/30 dark:text-amber-300 text-amber-800 border border-amber-200">
+                                    {simulation.essay?.type?.toUpperCase()}
                                 </span>
                             </div>
 
-                            <div className="question-statement" dangerouslySetInnerHTML={{ __html: question.html_statement || question.statement }} />
-
-                            <ul className="alternatives">
-                                {(question.alternatives || []).map((alt: any) => (
-                                    <li key={alt.id || alt.label} className="alternative">
-                                        <input
-                                            type="radio"
-                                            id={`q${question.id}_${alt.label}`}
-                                            name={`question_${question.id}`}
-                                            value={alt.label}
-                                            checked={currentAnswerData.user_answer === alt.label}
-                                            onChange={() => handleAnswer(question.id, alt.label)}
-                                            className="sr-only" // using + label selector
-                                        />
-                                        <label htmlFor={`q${question.id}_${alt.label}`}>
-                                            <span className="alternative-letter">{alt.label})</span>
-                                            <div className="flex flex-col gap-2 flex-grow overflow-hidden">
-                                                {alt.content && <span className="word-break-all">{alt.content}</span>}
-                                                {alt.image_path && <img src={`/storage/${alt.image_path}`} alt={`Alternativa ${alt.label}`} className="max-w-full h-auto rounded object-contain mt-2" />}
-                                            </div>
-                                        </label>
-                                    </li>
-                                ))}
-                            </ul>
-
-                            <div className="question-actions">
-                                <div className="checkbox-mark">
-                                    <input
-                                        type="checkbox"
-                                        id={`mark_${currentQuestion}`}
-                                        checked={currentAnswerData.marked_for_review ? true : false}
-                                        onChange={() => handleToggleMark(question.id, currentAnswerData.marked_for_review)}
-                                    />
-                                    <label htmlFor={`mark_${currentQuestion}`} className="cursor-pointer select-none text-sm text-gray-600 dark:text-gray-300">
-                                        Marcar para revisão
-                                    </label>
+                            <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700">
+                                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">{simulation.essay?.title}</h3>
+                                <div className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed whitespace-pre-wrap">
+                                    {simulation.essay?.topic_description}
                                 </div>
+                            </div>
 
-                                <div className="flex flex-wrap gap-3">
-                                    {currentQuestion > 0 && (
-                                        <button type="button" className="btn btn-secondary" onClick={() => setCurrentQuestion(curr => curr - 1)}>
-                                            ← Anterior
-                                        </button>
-                                    )}
-                                    {currentQuestion < totalQuestions - 1 && (
-                                        <button type="button" className="btn btn-primary" onClick={() => setCurrentQuestion(curr => curr + 1)}>
-                                            Próxima →
-                                        </button>
-                                    )}
+                            <div className="flex-1 flex flex-col gap-4">
+                                <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Desenvolva seu texto abaixo:</label>
+                                <textarea
+                                    className="flex-1 p-6 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-indigo-500 focus:ring-0 dark:bg-slate-900 dark:text-slate-100 font-serif text-lg leading-relaxed resize-none transition-all"
+                                    placeholder="Comece a escrever aqui sua redação..."
+                                    value={essayContent}
+                                    onChange={(e) => setEssayContent(e.target.value)}
+                                    onBlur={() => simulation.essay && updateEssayMutation.mutate(essayContent)}
+                                />
+                                <div className="flex justify-between items-center text-xs text-slate-400">
+                                    <span>{essayContent.length} caracteres | ~{Math.floor(essayContent.length / 6)} palavras</span>
+                                    <span>O rascunho é salvo automaticamente ao mudar de aba ou sair do campo.</span>
                                 </div>
+                            </div>
+
+                            <div className="question-actions mt-8">
+                                <button type="button" className="btn btn-secondary" onClick={toggleViewMode}>
+                                    ← Voltar para Questões
+                                </button>
+                                <button type="button" className="btn btn-danger" onClick={handleFinishSimulation}>
+                                    Finalizar e Entregar Simulado
+                                </button>
                             </div>
                         </div>
                     )}

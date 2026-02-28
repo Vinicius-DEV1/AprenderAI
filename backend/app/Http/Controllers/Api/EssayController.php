@@ -112,6 +112,27 @@ class EssayController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    public function update(Request $request, Essay $essay)
+    {
+        if ($essay->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        if ($essay->status !== 'in_progress') {
+            return response()->json(['message' => 'Apenas redações em andamento podem ser editadas.'], 400);
+        }
+
+        $validated = $request->validate([
+            'content' => 'nullable|string',
+        ]);
+
+        $essay->update([
+            'content' => $validated['content'] ?? '',
+        ]);
+
+        return new EssayResource($essay);
+    }
+
     public function getTopicStatus(Request $request, Essay $essay)
     {
         if ($essay->user_id !== $request->user()->id)
