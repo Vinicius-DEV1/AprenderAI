@@ -26,7 +26,8 @@ class QuestionController extends Controller
     public function index(Request $request)
     {
         // --- 1. Main Bank Query ---
-        $query = Question::with(['subjects:id,name', 'topics:id,name']);
+        // Exibimos apenas questões 100% classificadas no Banco Completo
+        $query = Question::complete()->with(['subjects:id,name', 'topics:id,name']);
 
         if ($request->filled('status')) {
             $query->where('review_status', $request->status);
