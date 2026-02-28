@@ -89,10 +89,14 @@
 .lp-hero {
     background: linear-gradient(135deg, #0a1f5e 0%, #0f2b6e 40%, #1a4db8 100%);
     padding-top: 66px;
-    min-height: 580px;
+    /* offset fixed navbar */
     position: relative;
     overflow: hidden;
-    color: white;
+
+    /* ✅ CORREÇÃO PRINCIPAL:
+       - Hero com ALTURA FIXA (não cresce com conteúdo/imagem)
+       - E MENOR (antes estava grande) */
+    height: 477px;
 }
 
 /* ✅ ADD: glow radial atrás da moça (profundidade, sem poluir) */
@@ -109,10 +113,17 @@
     z-index: 1;
 }
 
+/* ✅ inner ocupa a altura do hero, mas NÃO define altura */
 .lp-hero-inner {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 5rem 1.5rem 4rem;
+
+    /* ✅ chave: ocupa 100% do hero fixo */
+    height: 100%;
+
+    /* padding original */
+    padding: 0.75rem 1.00rem 1.00rem;
+
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 3rem;
@@ -121,10 +132,29 @@
     z-index: 2;
 }
 
-@media (max-width: 768px) {
+/* ✅ se algo crescer dentro, não estoura o hero */
+.lp-hero-inner>* {
+    min-height: 0;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
     .lp-hero-inner {
         grid-template-columns: 1fr;
         text-align: center;
+        padding: 1.9rem 1.5rem 1.55rem;
+
+        /* no mobile pode crescer com conteúdo */
+        height: auto;
+    }
+
+    .lp-hero {
+        /* no mobile deixa auto pra não cortar conteúdo */
+        height: auto;
+    }
+
+    .lp-hero-btns {
+        justify-content: center;
     }
 
     .lp-nav-links {
@@ -154,14 +184,33 @@
     z-index: 2;
 }
 
+/* ✅ container da ilustração não pode estourar o hero */
 .lp-hero-illus {
     position: relative;
     z-index: 2;
+
+    display: flex;
+    align-items: center;
+
+    /* ✅ mover para a esquerda DE VERDADE (não depende do transform do img) */
+    justify-content: flex-start;
+    padding-left: -50px;
+
+    /* ✅ impede que a imagem force altura */
+    height: 100%;
+    overflow: hidden;
 }
 
 .lp-hero-illus img {
     animation: float 6s ease-in-out infinite;
-    max-height: 450px;
+
+    /* ✅ CORREÇÃO DA IMAGEM (SEM MEXER NO HERO):
+       - força 677px de altura SEM ser limitado por max-height:100%
+       - evita qualquer override de CSS externo */
+    height: 677px !important;
+    max-height: none !important;
+    width: auto !important;
+    max-width: 100%;
     object-fit: contain;
 }
 
@@ -176,6 +225,13 @@
 
     100% {
         transform: translateY(0px);
+    }
+}
+
+/* ✅ REGRA: no mobile a imagem não aparece */
+@media (max-width: 1200px) {
+    .lp-hero-illus {
+        display: none !important;
     }
 }
 
