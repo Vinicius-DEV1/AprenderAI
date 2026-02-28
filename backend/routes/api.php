@@ -28,7 +28,7 @@ use App\Http\Controllers\Api\Admin\EnemImportController as AdminEnemImportContro
 use App\Http\Controllers\Api\Admin\AdminEssayController;
 use App\Http\Controllers\Api\Admin\AdminQuestionImportController;
 use App\Http\Controllers\Api\Admin\AdminImportReviewController;
-use App\Http\Controllers\Api\Admin\ApiPricingController as AdminApiPricingController;
+use App\Http\Controllers\Api\Admin\ApiPricingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -93,6 +93,7 @@ Route::prefix('v1')->name('api.')->group(function () {
             Route::get('/', [QuestionController::class, 'index']);
             Route::get('/subjects', [QuestionController::class, 'subjects']);
             Route::get('/topics', [QuestionController::class, 'topics']);
+            Route::get('/filter-options', [QuestionController::class, 'filterOptions']);
             Route::get('/stats', [QuestionController::class, 'stats']);
             Route::get('/{question}/history', [QuestionController::class, 'history']);
             Route::post('/{question}/answer', [QuestionController::class, 'answer']);
@@ -135,9 +136,9 @@ Route::prefix('v1')->name('api.')->group(function () {
             Route::post('essays/{essay}/retry', [AdminEssayController::class, 'retry']);
 
             // API Pricing
-            Route::get('/api-pricing', [AdminApiPricingController::class, 'index']);
-            Route::put('/api-pricing/{apiPricing}', [AdminApiPricingController::class, 'update']);
-            Route::get('/api-pricing/{apiPricing}/logs', [AdminApiPricingController::class, 'logs']);
+            Route::get('/api-pricing', [ApiPricingController::class, 'index']);
+            Route::put('/api-pricing/{apiPricing}', [ApiPricingController::class, 'update']);
+            Route::get('/api-pricing/{apiPricing}/logs', [ApiPricingController::class, 'logs']);
 
             // Settings & Cache
             Route::get('/settings', [AdminSettingController::class, 'index']);

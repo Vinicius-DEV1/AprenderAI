@@ -41,13 +41,14 @@ class QuestionSeeder extends Seeder
         );
 
         // --- QUESTÃO 1: ENEM ---
+        // Questões enem não precisam de organization, instituion, role.
         $this->createQuestion(
             type: 'enem',
             format: 'multiple_choice',
-            organization: 'ENEM',
+            //organization: 'ENEM',
             year: 2023,
-            institution: 'MEC',
-            role: 'Estudante',
+            //institution: 'MEC',
+            //role: 'Estudante',
             statement: "Texto I: O hábito da leitura na era digital...\n\nQual o objetivo central do texto ao mencionar as redes sociais?",
             subjects: [$portSubject->id],
             topics: [$portTopic->id],
