@@ -71,9 +71,10 @@ class ServerMetricService
         }
 
         try {
-            $stat1 = file_get_contents('/proc/stat');
+            $path = file_exists('/host_proc/stat') ? '/host_proc/stat' : '/proc/stat';
+            $stat1 = file_get_contents($path);
             sleep(1);
-            $stat2 = file_get_contents('/proc/stat');
+            $stat2 = file_get_contents($path);
 
             $info1 = $this->parseProcStat($stat1);
             $info2 = $this->parseProcStat($stat2);
@@ -129,7 +130,8 @@ class ServerMetricService
         }
 
         try {
-            $memInfo = file_get_contents('/proc/meminfo');
+            $path = file_exists('/host_proc/meminfo') ? '/host_proc/meminfo' : '/proc/meminfo';
+            $memInfo = file_get_contents($path);
             // Valores em kB
             preg_match('/MemTotal:\s+(\d+)/', $memInfo, $total);
             preg_match('/MemAvailable:\s+(\d+)/', $memInfo, $available);
@@ -262,7 +264,8 @@ class ServerMetricService
      */
     protected function readProcNetDev(): array
     {
-        $stats = file_get_contents('/proc/net/dev');
+        $path = file_exists('/host_proc/net/dev') ? '/host_proc/net/dev' : '/proc/net/dev';
+        $stats = file_get_contents($path);
         $lines = explode("\n", $stats);
         $rxTotal = 0;
         $txTotal = 0;

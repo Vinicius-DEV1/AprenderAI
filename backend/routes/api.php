@@ -11,8 +11,6 @@ use App\Http\Controllers\Api\ConcursoController;
 use App\Http\Controllers\Api\EssayController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\QuestionController;
-use App\Http\Controllers\AiSearchController;
-use App\Http\Controllers\QuestionChatController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\Admin\CuradoriaController;
@@ -100,11 +98,6 @@ Route::prefix('v1')->name('api.')->group(function () {
             Route::get('/stats', [QuestionController::class, 'stats']);
             Route::get('/{question}/history', [QuestionController::class, 'history']);
             Route::post('/{question}/answer', [QuestionController::class, 'answer']);
-            Route::post('/ai-search', [AiSearchController::class, 'search']);
-            Route::get('/ai-search/{searchRequest}/status', [AiSearchController::class, 'status']);
-            Route::post('/{question}/chat', [QuestionChatController::class, 'storeStandalone']);
-            Route::post('/{question}/chat/stream', [QuestionChatController::class, 'streamStandalone']);
-            Route::get('/{question}/chat', [QuestionChatController::class, 'indexStandalone']);
         });
 
         // Profile
@@ -159,6 +152,13 @@ Route::prefix('v1')->name('api.')->group(function () {
                 Route::get('/monetization', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'monetization']);
                 Route::get('/realtime', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'realtimeData']);
             });
+
+            // Server Monitor
+            Route::prefix('monitor')->group(function () {
+                Route::get('/realtime', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'realtime']);
+                Route::get('/history', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'history']);
+            });
+
 
             // Simulation Engine Models (Motor de Simulados)
             Route::prefix('simulation-models')->group(function () {
