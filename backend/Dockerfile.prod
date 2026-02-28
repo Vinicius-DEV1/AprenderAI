@@ -7,7 +7,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # --- STAGE 2: PHP Application ---
-FROM php:8.4.16-fpm
+FROM php:8.3-fpm
 
 # Arguments for user and group
 ARG user=sail
@@ -24,6 +24,8 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libzip-dev \
     libicu-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
     gnupg
 
 # Clear cache
@@ -51,7 +53,8 @@ COPY backend/ .
 COPY --from=frontend-builder /app/dist ./public
 
 # Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader
+ENV COMPOSER_MEMORY_LIMIT=-1
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Create system user
 RUN useradd -G www-data,root -u $uid -d /home/$user $user
