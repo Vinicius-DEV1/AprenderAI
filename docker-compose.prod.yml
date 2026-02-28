@@ -102,10 +102,11 @@ services:
     networks:
       - production-network
 
-  # Database (Internal Only)
+    # Database (Internal Only)
   db:
     image: mysql:8.0
     restart: always
+    env_file: ./backend/.env
     environment:
       MYSQL_DATABASE: ${DB_DATABASE}
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
