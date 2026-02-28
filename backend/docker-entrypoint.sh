@@ -7,9 +7,10 @@ echo "Aguardando inicialização do ambiente..."
 chown -R 1337:www-data storage bootstrap/cache 2>/dev/null || true
 chmod -R 775 storage bootstrap/cache 2>/dev/null || true
 
-# Garante que bootstrap/cache exista (importante para o Laravel 11+)
-mkdir -p bootstrap/cache
-chmod -R 777 bootstrap/cache 2>/dev/null || true
+# Garante que as pastas de storage existem internamente
+# (Já devem existir pela imagem, mas o || true garante que o boot não trave)
+mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache/data 2>/dev/null || true
+chmod -R 777 storage bootstrap/cache 2>/dev/null || true
 
 if [ -f .env ]; then
     # ----------------------------------------------------------------
