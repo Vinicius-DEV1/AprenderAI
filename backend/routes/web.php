@@ -8,7 +8,7 @@ use App\Http\Controllers\PlanController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect(env('FRONTEND_URL', 'http://localhost:5174'));
+    return response()->file(public_path('index.html'));
 });
 
 Route::view('/privacidade', 'legal.privacy')->name('privacy');
@@ -307,7 +307,7 @@ Route::get('auth/google/callback', [\App\Http\Controllers\Auth\GoogleAuthControl
 
 require __DIR__ . '/auth.php';
 
-// SPA Catch-all: Qualquer rota não tratada pelo Laravel acima deve ser entregue ao Frontend (React)
+// SPA Catch-all: Qualquer rota não tratada pelo Laravel entrega o React app
 Route::fallback(function () {
-    return redirect(env('FRONTEND_URL', 'http://localhost:5174') . request()->getRequestUri());
+    return response()->file(public_path('index.html'));
 });
