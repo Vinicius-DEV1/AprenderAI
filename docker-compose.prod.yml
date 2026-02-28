@@ -8,7 +8,7 @@ services:
     restart: always
     working_dir: /var/www
     volumes:
-      - ./backend:/var/www
+      - ./backend/storage/app/public:/var/www/storage/app/public
     env_file: ./backend/.env
     # ----------------------------------------------------------------
     # app MUST wait for db to be HEALTHY (not just started).
@@ -31,7 +31,6 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./backend:/var/www
       - ./backend/nginx.conf:/etc/nginx/conf.d/default.conf
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
@@ -62,7 +61,7 @@ services:
     restart: always
     working_dir: /var/www
     volumes:
-      - ./backend:/var/www
+      - ./backend/storage/app/public:/var/www/storage/app/public
     env_file: ./backend/.env
     # Prioriza explicitamente a fila 'default' (Simulados/Chats) e depois a 'import'
     command: php artisan queue:work --queue=default,import --sleep=3 --tries=3 --max-time=3600
@@ -87,7 +86,7 @@ services:
     restart: always
     working_dir: /var/www
     volumes:
-      - ./backend:/var/www
+      - ./backend/storage/app/public:/var/www/storage/app/public
     env_file: ./backend/.env
     command: php artisan schedule:work
     depends_on:
