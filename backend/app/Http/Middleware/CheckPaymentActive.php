@@ -20,11 +20,14 @@ class CheckPaymentActive
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $isActive  = (bool) Configuration::get('payment_active', true);
+        $isActive = (bool) Configuration::get('payment_active', true);
         $isSandbox = (bool) Configuration::get('asaas_sandbox', false);
 
         // ---- Pagamentos desativados no admin → bloqueia tudo ----------------
         if (!$isActive) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'O sistema de pagamentos está temporariamente suspenso.'], 503);
+            }
             return redirect()->back()->with(
                 'error',
                 'O sistema de pagamentos está temporariamente suspenso. Tente novamente em breve.'
@@ -34,8 +37,8 @@ class CheckPaymentActive
         // ---- Modo Sandbox → permite mas sinaliza para a view ----------------
         // O checkout funciona normalmente (User Acceptance Testing).
         // A view deve exibir um banner de aviso usando session('sandbox_mode').
-        if ($isSandbox) {
-            session()->flash('sandbox_mode', true);
+        if ($isSandbox && $request->hasSession()) {
+            $request->session()->flash('sandbox_mode', true);
         }
 
         return $next($request);

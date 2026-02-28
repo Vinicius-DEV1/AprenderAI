@@ -32,7 +32,9 @@ class AuthController extends Controller
         ]);
 
         if (Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
-            $request->session()->regenerate();
+            if ($request->hasSession()) {
+                $request->session()->regenerate();
+            }
 
             // Retorna o usuário logado para o frontend decidir o redirecionamento (admin vs user)
             return response()->json([
@@ -83,8 +85,10 @@ class AuthController extends Controller
     {
         Auth::guard('web')->logout();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->json(['message' => 'Logout relizado com sucesso']);
     }
