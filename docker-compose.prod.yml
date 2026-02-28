@@ -18,6 +18,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - production-network
 
@@ -65,12 +67,14 @@ services:
     # Prioriza explicitamente a fila 'default' (Simulados/Chats) e depois a 'import'
     command: php artisan queue:work --queue=default,import --sleep=3 --tries=3 --max-time=3600
     deploy:
-      replicas: 2
+      replicas: 50
     depends_on:
       app:
         condition: service_started
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - production-network
 
@@ -91,6 +95,8 @@ services:
         condition: service_started
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - production-network
 
@@ -116,6 +122,13 @@ services:
       timeout: 5s
       retries: 20
       start_period: 30s
+    networks:
+      - production-network
+
+  # Redis for Sessions and Cache
+  redis:
+    image: redis:alpine
+    restart: always
     networks:
       - production-network
 
