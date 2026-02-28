@@ -412,7 +412,7 @@ export default function QuestionBank() {
                 <div className="qb-filters">
                     {/* Row 1: Core filters (always visible) */}
                     <div className="qb-filter-row">
-                        <div className="qb-filter-item qb-filter-master" style={{ maxWidth: '130px' }}>
+                        <div className="qb-filter-item qb-filter-master">
                             <label>⭐ Tipo</label>
                             <select name="type" value={filters.type} onChange={onFilterChange}>
                                 <option value="">Todos</option>
@@ -420,7 +420,7 @@ export default function QuestionBank() {
                                 <option value="concurso">Concurso</option>
                             </select>
                         </div>
-                        <div className="qb-filter-item" style={{ maxWidth: '200px' }}>
+                        <div className="qb-filter-item">
                             <label>Matéria</label>
                             <select name="subject" value={filters.subject} onChange={onFilterChange} disabled={loadingSubjects}>
                                 <option value="">{loadingSubjects ? 'Carregando...' : 'Todas'}</option>
@@ -440,11 +440,11 @@ export default function QuestionBank() {
                                 ))}
                             </select>
                         </div>
-                        <div className="qb-filter-item" style={{ minWidth: '200px' }}>
+                        <div className="qb-filter-item flex-[2_1_250px]">
                             <label>Busca</label>
                             <input type="text" name="keyword" value={filters.keyword} onChange={onFilterChange} placeholder="Palavras-chave..." />
                         </div>
-                        <div className="qb-filter-item flex items-center pt-6 px-4">
+                        <div className="qb-filter-checkbox">
                             <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
                                 <input
                                     type="checkbox"
@@ -454,162 +454,159 @@ export default function QuestionBank() {
                                         setFilters(prev => ({ ...prev, include_discursive: e.target.checked }));
                                         setPage(1);
                                     }}
-                                    className="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500"
                                 />
                                 <span className="text-sm font-bold text-slate-600 select-none">Mostrar Discursivas</span>
                             </label>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '2px' }}>
-                            <button type="button" className="qb-filter-toggle" onClick={() => setMoreFilters(!moreFilters)}>
-                                <svg className={`w-4 h-4 transition-transform ${moreFilters ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '14px', height: '14px' }}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                </svg>
-                                <span>{moreFilters ? 'Menos filtros' : 'Mais filtros'}</span>
-                            </button>
-                        </div>
+                        <button type="button" className="qb-filter-toggle" onClick={() => setMoreFilters(!moreFilters)}>
+                            <svg className={`w-4 h-4 transition-transform ${moreFilters ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                            <span>{moreFilters ? 'Menos filtros' : 'Mais filtros'}</span>
+                        </button>
                     </div>
+                </div>
 
-                    {/* Row 2: Advanced filters (toggled) */}
-                    {moreFilters && (
-                        <div className="qb-filter-row animate-fade-in">
-                            <div className="qb-filter-item" style={{ maxWidth: '110px' }}>
-                                <label>Ano</label>
-                                <select name="year" value={filters.year} onChange={onFilterChange}>
-                                    <option value="">Todos</option>
-                                    {[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012, 2011, 2010, 2009].map(y => <option key={y} value={y}>{y}</option>)}
-                                </select>
-                            </div>
-                            <div className="qb-filter-item" style={{ maxWidth: '130px' }}>
-                                <label>Dificuldade</label>
-                                <select name="difficulty" value={filters.difficulty} onChange={onFilterChange}>
-                                    <option value="">Todas</option>
-                                    <option value="easy">Fácil</option>
-                                    <option value="medium">Média</option>
-                                    <option value="hard">Difícil</option>
-                                </select>
-                            </div>
-                            <div className="qb-filter-item" style={{ maxWidth: '160px' }}>
-                                <label>Status</label>
-                                <select name="status" value={filters.status} onChange={onFilterChange}>
-                                    <option value="">Todos</option>
-                                    <option value="unanswered">Não respondidas</option>
-                                    <option value="answered">Respondidas</option>
-                                </select>
-                            </div>
-                            {/* Concurso-specific filters (hidden when type === 'enem') */}
-                            {showConcursoFilters && (
-                                <>
-                                    <div className="qb-filter-item" style={{ maxWidth: '160px' }}>
-                                        <label>Banca</label>
-                                        <input type="text" name="organization" value={filters.organization} onChange={onFilterChange} placeholder="Ex: CESPE, FCC..." />
-                                    </div>
-                                    <div className="qb-filter-item" style={{ maxWidth: '160px' }}>
-                                        <label>Órgão</label>
-                                        <input type="text" name="institution" value={filters.institution} onChange={onFilterChange} placeholder="Ex: TRF, INSS..." />
-                                    </div>
-                                    <div className="qb-filter-item" style={{ maxWidth: '160px' }}>
-                                        <label>Cargo</label>
-                                        <input type="text" name="role" value={filters.role} onChange={onFilterChange} placeholder="Ex: Analista..." />
-                                    </div>
-                                </>
-                            )}
+                {/* Row 2: Advanced filters (toggled) */}
+                {moreFilters && (
+                    <div className="qb-filter-row animate-fade-in">
+                        <div className="qb-filter-item">
+                            <label>Ano</label>
+                            <select name="year" value={filters.year} onChange={onFilterChange}>
+                                <option value="">Todos</option>
+                                {[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012, 2011, 2010, 2009].map(y => <option key={y} value={y}>{y}</option>)}
+                            </select>
+                        </div>
+                        <div className="qb-filter-item">
+                            <label>Dificuldade</label>
+                            <select name="difficulty" value={filters.difficulty} onChange={onFilterChange}>
+                                <option value="">Todas</option>
+                                <option value="easy">Fácil</option>
+                                <option value="medium">Média</option>
+                                <option value="hard">Difícil</option>
+                            </select>
+                        </div>
+                        <div className="qb-filter-item">
+                            <label>Status</label>
+                            <select name="status" value={filters.status} onChange={onFilterChange}>
+                                <option value="">Todos</option>
+                                <option value="unanswered">Não respondidas</option>
+                                <option value="answered">Respondidas</option>
+                            </select>
+                        </div>
+                        {/* Concurso-specific filters (hidden when type === 'enem') */}
+                        {showConcursoFilters && (
+                            <>
+                                <div className="qb-filter-item">
+                                    <label>Banca</label>
+                                    <input type="text" name="organization" value={filters.organization} onChange={onFilterChange} placeholder="Ex: CESPE, FCC..." />
+                                </div>
+                                <div className="qb-filter-item">
+                                    <label>Órgão</label>
+                                    <input type="text" name="institution" value={filters.institution} onChange={onFilterChange} placeholder="Ex: TRF, INSS..." />
+                                </div>
+                                <div className="qb-filter-item">
+                                    <label>Cargo</label>
+                                    <input type="text" name="role" value={filters.role} onChange={onFilterChange} placeholder="Ex: Analista..." />
+                                </div>
+                            </>
+                        )}
 
 
+                    </div>
+                )}
+
+                <div className="qb-filter-actions">
+                    <button className="qb-btn qb-btn-primary" onClick={() => setPage(1)}>🔍 Filtrar</button>
+                    <button className="qb-btn qb-btn-ghost" onClick={clearFilters}>✕ Limpar</button>
+                    <span className="qb-result-count">
+                        {meta.total || 0} questões encontradas
+                    </span>
+                </div>
+            </div>
+
+            {/* ── Question List ── */}
+            <div id="questions-container" className="relative" style={{ minHeight: '400px' }}>
+                {questionsLoading && (
+                    <div className="absolute inset-0 bg-white/70 dark:bg-slate-900/70 z-10 flex flex-col items-center justify-center backdrop-blur-sm rounded-xl">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+                        <div style={{ fontWeight: 700, color: '#4338ca', fontSize: '14px' }}>Minerando na base de dados...</div>
+                    </div>
+                )}
+
+                <div className="space-y-4">
+                    {questions.map((q: any) => (
+                        <QuestionCard key={q.id} question={q} />
+                    ))}
+                    {questions.length === 0 && !questionsLoading && (
+                        <div className="qb-card qb-no-results" style={{ textAlign: 'center', padding: '48px' }}>
+                            <p style={{ fontSize: '32px', marginBottom: '8px' }}>🔍</p>
+                            <p style={{ fontSize: '18px', color: '#94a3b8', fontWeight: 600 }}>Nenhuma questão encontrada</p>
+                            <p style={{ fontSize: '13px', color: '#64748b', marginTop: '8px' }}>Tente ajustar seus filtros ou peça uma busca ao {aiName}.</p>
                         </div>
                     )}
+                </div>
 
-                    <div className="qb-filter-actions">
-                        <button className="qb-btn qb-btn-primary" onClick={() => setPage(1)}>🔍 Filtrar</button>
-                        <button className="qb-btn qb-btn-ghost" onClick={clearFilters}>✕ Limpar</button>
-                        <span className="qb-result-count">
-                            {meta.total || 0} questões encontradas
+                {/* ── Pagination (smart window) ── */}
+                {meta.last_page > 1 && (
+                    <div className="flex justify-center items-center mt-8 gap-1 flex-wrap">
+                        {/* First + Prev */}
+                        <button
+                            onClick={() => handlePageChange(1)}
+                            disabled={page === 1}
+                            className="px-3 py-2 rounded-md text-sm font-bold transition bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 disabled:opacity-40"
+                        >
+                            «
+                        </button>
+                        <button
+                            onClick={() => handlePageChange(Math.max(1, page - 1))}
+                            disabled={page === 1}
+                            className="px-3 py-2 rounded-md text-sm font-bold transition bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 disabled:opacity-40"
+                        >
+                            ‹
+                        </button>
+
+                        {/* Page numbers */}
+                        {paginationWindow.map(p => (
+                            <button
+                                key={p}
+                                onClick={() => handlePageChange(p)}
+                                className={`px-4 py-2 rounded-md text-sm font-bold transition ${page === p ? 'bg-indigo-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
+                            >
+                                {p}
+                            </button>
+                        ))}
+
+                        {/* Next + Last */}
+                        <button
+                            onClick={() => handlePageChange(Math.min(meta.last_page, page + 1))}
+                            disabled={page === meta.last_page}
+                            className="px-3 py-2 rounded-md text-sm font-bold transition bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 disabled:opacity-40"
+                        >
+                            ›
+                        </button>
+                        <button
+                            onClick={() => handlePageChange(meta.last_page)}
+                            disabled={page === meta.last_page}
+                            className="px-3 py-2 rounded-md text-sm font-bold transition bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 disabled:opacity-40"
+                        >
+                            »
+                        </button>
+
+                        {/* Page info */}
+                        <span className="ml-4 text-xs text-slate-500 dark:text-slate-400">
+                            Página {meta.current_page} de {meta.last_page} ({meta.total} questões)
                         </span>
                     </div>
-                </div>
-
-                {/* ── Question List ── */}
-                <div id="questions-container" className="relative" style={{ minHeight: '400px' }}>
-                    {questionsLoading && (
-                        <div className="absolute inset-0 bg-white/70 dark:bg-slate-900/70 z-10 flex flex-col items-center justify-center backdrop-blur-sm rounded-xl">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-                            <div style={{ fontWeight: 700, color: '#4338ca', fontSize: '14px' }}>Minerando na base de dados...</div>
-                        </div>
-                    )}
-
-                    <div className="space-y-4">
-                        {questions.map((q: any) => (
-                            <QuestionCard key={q.id} question={q} />
-                        ))}
-                        {questions.length === 0 && !questionsLoading && (
-                            <div className="qb-card qb-no-results" style={{ textAlign: 'center', padding: '48px' }}>
-                                <p style={{ fontSize: '32px', marginBottom: '8px' }}>🔍</p>
-                                <p style={{ fontSize: '18px', color: '#94a3b8', fontWeight: 600 }}>Nenhuma questão encontrada</p>
-                                <p style={{ fontSize: '13px', color: '#64748b', marginTop: '8px' }}>Tente ajustar seus filtros ou peça uma busca ao {aiName}.</p>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* ── Pagination (smart window) ── */}
-                    {meta.last_page > 1 && (
-                        <div className="flex justify-center items-center mt-8 gap-1 flex-wrap">
-                            {/* First + Prev */}
-                            <button
-                                onClick={() => handlePageChange(1)}
-                                disabled={page === 1}
-                                className="px-3 py-2 rounded-md text-sm font-bold transition bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 disabled:opacity-40"
-                            >
-                                «
-                            </button>
-                            <button
-                                onClick={() => handlePageChange(Math.max(1, page - 1))}
-                                disabled={page === 1}
-                                className="px-3 py-2 rounded-md text-sm font-bold transition bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 disabled:opacity-40"
-                            >
-                                ‹
-                            </button>
-
-                            {/* Page numbers */}
-                            {paginationWindow.map(p => (
-                                <button
-                                    key={p}
-                                    onClick={() => handlePageChange(p)}
-                                    className={`px-4 py-2 rounded-md text-sm font-bold transition ${page === p ? 'bg-indigo-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
-                                >
-                                    {p}
-                                </button>
-                            ))}
-
-                            {/* Next + Last */}
-                            <button
-                                onClick={() => handlePageChange(Math.min(meta.last_page, page + 1))}
-                                disabled={page === meta.last_page}
-                                className="px-3 py-2 rounded-md text-sm font-bold transition bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 disabled:opacity-40"
-                            >
-                                ›
-                            </button>
-                            <button
-                                onClick={() => handlePageChange(meta.last_page)}
-                                disabled={page === meta.last_page}
-                                className="px-3 py-2 rounded-md text-sm font-bold transition bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 disabled:opacity-40"
-                            >
-                                »
-                            </button>
-
-                            {/* Page info */}
-                            <span className="ml-4 text-xs text-slate-500 dark:text-slate-400">
-                                Página {meta.current_page} de {meta.last_page} ({meta.total} questões)
-                            </span>
-                        </div>
-                    )}
-                </div>
-
-                {/* Stats Slide-over */}
-                <StatsSlideOver
-                    stats={statsData}
-                    open={statsOpen}
-                    onClose={() => setStatsOpen(false)}
-                />
+                )}
             </div>
+
+            {/* Stats Slide-over */}
+            <StatsSlideOver
+                stats={statsData}
+                open={statsOpen}
+                onClose={() => setStatsOpen(false)}
+            />
         </div>
     );
 }

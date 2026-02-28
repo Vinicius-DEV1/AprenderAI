@@ -71,7 +71,7 @@ class QuestionController extends Controller
      */
     public function show(Request $request, Question $question)
     {
-        $question->load(['subject', 'topic', 'alternatives', 'images']);
+        $question->load(['subjects', 'topics', 'alternatives', 'images']);
         return new QuestionResource($question);
     }
 
