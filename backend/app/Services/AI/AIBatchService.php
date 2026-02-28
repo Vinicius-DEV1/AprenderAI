@@ -12,10 +12,12 @@ use Illuminate\Support\Str;
 class AIBatchService
 {
     protected $aiService;
+    protected $promptService;
 
-    public function __construct(AIService $aiService)
+    public function __construct(AIService $aiService, \App\Services\PromptService $promptService)
     {
         $this->aiService = $aiService;
+        $this->promptService = $promptService;
     }
 
     public function processBatch(Collection $questions, string $type, ?string $model = null): array
@@ -26,7 +28,8 @@ class AIBatchService
             $data = $result['data'] ?? [];
             $appliedData = $this->applyResults($questions, $data, $type);
             \Illuminate\Support\Facades\DB::flushQueryLog();
-            if (gc_enabled()) gc_collect_cycles();
+            if (gc_enabled())
+                gc_collect_cycles();
             return $appliedData;
         } catch (\Exception $e) {
             Log::error("AIBatchService: Falha no processamento do lote: " . $e->getMessage());
@@ -44,27 +47,35 @@ class AIBatchService
             'missing_fields' => []
         ]);
 
-        $subjectsRef = json_encode(Subject::pluck('name', 'id')->toArray());
-        $topicsRef = json_encode(Topic::pluck('name', 'id')->toArray());
+        $subjectsRef = Subject::pluck('name', 'id')->toArray();
+        $topicsRef = Topic::pluck('name', 'id')->toArray();
 
         $instruction = match ($type) {
-            'both' => "Avalie a dificuldade com um Raciocinio curto, gere uma explicacao pedagogica, e classifique a Disciplina e o Assunto.",
+            'both' => "Dificuldade (com Raciocinio em 'difficulty_reasoning'), Explicação pedagógica (em 'explanation'), Disciplina e Assunto.",
+            'difficulty' => "Apenas Dificuldade (nível e 'difficulty_reasoning').",
+            'explanation' => "Apenas Explicação pedagógica (em 'explanation').",
+            'classification' => "Apenas Disciplina e Assunto.",
             default => "Avalie a questao e forneca os dados necessarios."
         };
 
-        $json = json_encode($questionsData);
+        // Usa o SystemPrompt se existir, senão usa o fallback hardcoded melhorado
+        return $this->promptService->get('triage_batch_classification', [
+            'instruction' => $instruction,
+            'subjects_reference' => json_encode($subjectsRef),
+            'topics_reference' => json_encode($topicsRef),
+            'questions_json' => json_encode($questionsData)
+        ], $this->getFallbackPrompt($instruction, $subjectsRef, $topicsRef, $questionsData));
+    }
 
+    protected function getFallbackPrompt($instruction, $subjectsRef, $topicsRef, $questionsData): string
+    {
         $prompt = "Atue como um Especialista em Educacao e IA.\n\n";
         $prompt .= "TAREFA: " . $instruction . "\n\n";
-        $prompt .= "DADOS DAS QUESTOES:\n" . $json . "\n\n";
-        $prompt .= "REFERENCIAS DE CLASSIFICACAO (Use SOMENTE os IDs abaixo se houver correspondencia):\n";
-        $prompt .= "Disciplinas (Subjects): " . $subjectsRef . "\n";
-        $prompt .= "Assuntos (Topics): " . $topicsRef . "\n\n";
-        $prompt .= "REGRAS DE CLASSIFICACAO:\n";
-        $prompt .= "1. Se a Disciplina ou Assunto NAO existir nas referencias acima, sugira um NOME claro e conciso nos campos 'subject_name' e 'topic_name'.\n";
-        $prompt .= "2. Use preferencialmente os IDs existentes ('subject_id', 'topic_id').\n";
-        $prompt .= "3. Responda APENAS um Array JSON: [{\"id\": 1, \"difficulty\": \"easy\", \"reasoning\": \"...\", \"explanation\": \"...\", \"subject_id\": ID_OU_NULL, \"subject_name\": \"NOME_NOVO_OU_NULL\", \"topic_id\": ID_OU_NULL, \"topic_name\": \"NOME_NOVO_OU_NULL\"}]";
-
+        $prompt .= "DADOS DAS QUESTOES:\n" . json_encode($questionsData) . "\n\n";
+        $prompt .= "REFERENCIAS (Use IDs se houver correspondencia):\n";
+        $prompt .= "Disciplinas: " . json_encode($subjectsRef) . "\n";
+        $prompt .= "Assuntos: " . json_encode($topicsRef) . "\n\n";
+        $prompt .= "RESPOSTA: Retorne APENAS um Array JSON: [{\"id\": 1, \"difficulty\": \"easy\", \"difficulty_reasoning\": \"...\", \"explanation\": \"...\", \"subject_id\": ID, \"subject_name\": \"NOME\", \"topic_id\": ID, \"topic_name\": \"NOME\"}]";
         return $prompt;
     }
 
@@ -73,21 +84,30 @@ class AIBatchService
         $applied = 0;
         foreach ($questions as $question) {
             $data = collect($results)->firstWhere('id', $question->id);
-            if (!is_array($data)) continue;
+            if (!is_array($data))
+                continue;
+
+            // Mapeamento defensivo para chaves variadas que a IA possa retornar
+            $difficulty = $data['difficulty'] ?? $question->difficulty;
+            $reasoning = $data['difficulty_reasoning'] ?? ($data['reasoning'] ?? $question->difficulty_reasoning);
+            $explanation = $data['explanation'] ?? $question->explanation;
 
             $question->update([
-                'difficulty' => $data['difficulty'] ?? $question->difficulty,
-                'difficulty_reasoning' => $data['reasoning'] ?? $question->difficulty_reasoning,
-                'explanation' => $data['explanation'] ?? $question->explanation,
+                'difficulty' => $difficulty,
+                'difficulty_reasoning' => $reasoning,
+                'explanation' => $explanation,
                 'review_status' => 'approved'
             ]);
 
             // Resolucao de Disciplina (Subject)
-            $subjectId = $data['subject_id'] ?? null;
-            if (!$subjectId && !empty($data['subject_name'])) {
+            $subjectVal = $data['subject'] ?? ($data['subject_id'] ?? null);
+            $subjectId = is_numeric($subjectVal) ? $subjectVal : null;
+            $subjectName = !is_numeric($subjectVal) ? $subjectVal : ($data['subject_name'] ?? null);
+
+            if (!$subjectId && !empty($subjectName)) {
                 $subject = Subject::firstOrCreate(
-                    ['name' => $data['subject_name']],
-                    ['slug' => Str::slug($data['subject_name']), 'type' => 'concurso']
+                    ['name' => $subjectName],
+                    ['slug' => \Illuminate\Support\Str::slug($subjectName), 'type' => 'concurso']
                 );
                 $subjectId = $subject->id;
             }
@@ -96,11 +116,14 @@ class AIBatchService
             }
 
             // Resolucao de Assunto (Topic)
-            $topicId = $data['topic_id'] ?? null;
-            if (!$topicId && !empty($data['topic_name'])) {
+            $topicVal = $data['topic'] ?? ($data['topic_id'] ?? null);
+            $topicId = is_numeric($topicVal) ? $topicVal : null;
+            $topicName = !is_numeric($topicVal) ? $topicVal : ($data['topic_name'] ?? null);
+
+            if (!$topicId && !empty($topicName)) {
                 $topic = Topic::firstOrCreate(
-                    ['name' => $data['topic_name']],
-                    ['slug' => Str::slug($data['topic_name'])]
+                    ['name' => $topicName],
+                    ['slug' => \Illuminate\Support\Str::slug($topicName)]
                 );
                 $topicId = $topic->id;
             }
