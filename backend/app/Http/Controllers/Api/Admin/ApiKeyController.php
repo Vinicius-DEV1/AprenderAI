@@ -46,13 +46,13 @@ class ApiKeyController extends Controller
                     return $key->capabilitiesList->first()->priority ?? 999;
                 })
                 ->values()
-                ->map(function ($key) {
+                ->map(function ($key) use ($cap) {
                     // Formato esperado pelo frontend (pivot)
                     $capInfo = $key->capabilitiesList->first();
                     $key->pivot = [
-                        'id' => $capInfo->id,
-                        'capability' => $capInfo->capability,
-                        'priority' => $capInfo->priority
+                        'id' => $capInfo?->id ?? 0,
+                        'capability' => $capInfo?->capability ?? $cap,
+                        'priority' => $capInfo?->priority ?? 0
                     ];
                     return $key;
                 });
@@ -73,13 +73,28 @@ class ApiKeyController extends Controller
         });
 
         return response()->json([
-            'vault_keys' => $vaultKeys,
-            'capabilities_grid' => $capabilitiesGrid,
-            'available_capabilities' => $availableCapabilities,
-            'logs' => $logs,
+            'vault_keys' => $vaultKeys->map(function ($vk) {
+                $vk->is_valid = (bool) $vk->is_valid;
+                return $vk;
+            }),
+            'capabilities_grid' => (object) collect($capabilitiesGrid)->map(function ($keys) {
+                return $keys->map(function ($key) {
+                    $key->is_active = (bool) $key->is_active;
+                    $key->capabilities = $key->capabilities ?? [];
+                    if ($key->vault) {
+                        $key->vault->is_valid = (bool) $key->vault->is_valid;
+                    }
+                    return $key;
+                });
+            })->toArray(),
+            'available_capabilities' => $availableCapabilities ?: (object) [],
+            'logs' => $logs->map(function ($l) {
+                $l->type = $l->type ?? 'info';
+                return $l;
+            }),
             'ai_logs' => $aiLogs,
             'ai_ranking' => $aiRanking,
-            'has_recent_errors' => $logs->where('type', 'error')->where('created_at', '>=', now()->subHours(6))->isNotEmpty()
+            'has_recent_errors' => (bool) $logs->where('type', 'error')->where('created_at', '>=', now()->subHours(6))->isNotEmpty()
         ]);
     }
 

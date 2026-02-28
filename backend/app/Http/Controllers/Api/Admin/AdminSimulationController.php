@@ -18,6 +18,10 @@ class AdminSimulationController extends Controller
 
     public function store(Request $request)
     {
+        \Illuminate\Support\Facades\Log::debug('AdminSimulationController@store reached', [
+            'payload' => $request->all()
+        ]);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -28,22 +32,27 @@ class AdminSimulationController extends Controller
             'rules.*.configuration' => 'required|array',
         ]);
 
-        return DB::transaction(function () use ($validated) {
-            $preset = SimulationPreset::create([
-                'name' => $validated['name'],
-                'description' => $validated['description'] ?? null,
-                'type' => $validated['type'],
-                'is_active' => $validated['is_active'] ?? true,
-            ]);
+        try {
+            return DB::transaction(function () use ($validated) {
+                $preset = SimulationPreset::create([
+                    'name' => $validated['name'],
+                    'description' => $validated['description'] ?? null,
+                    'type' => $validated['type'],
+                    'is_active' => $validated['is_active'] ?? true,
+                ]);
 
-            if (isset($validated['rules'])) {
-                foreach ($validated['rules'] as $ruleData) {
-                    $preset->rules()->create($ruleData);
+                if (isset($validated['rules'])) {
+                    foreach ($validated['rules'] as $ruleData) {
+                        $preset->rules()->create($ruleData);
+                    }
                 }
-            }
 
-            return response()->json($preset->load('rules'), 201);
-        });
+                return response()->json($preset->load('rules'), 201);
+            });
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Erro ao salvar Preset: ' . $e->getMessage());
+            return response()->json(['message' => 'Erro interno ao salvar'], 500);
+        }
     }
 
     public function show(SimulationPreset $preset)

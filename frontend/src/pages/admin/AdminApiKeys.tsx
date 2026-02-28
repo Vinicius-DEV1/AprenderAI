@@ -82,12 +82,13 @@ export default function AdminApiKeys() {
     const [routingForm, setRoutingForm] = useState({ vault_id: '', preferred_model: '', capabilities: [] as string[] });
     const [discoveryLoading, setDiscoveryLoading] = useState(false);
 
-    const { data, isLoading } = useQuery({
+    const { data, isLoading, isError, error } = useQuery({
         queryKey: ['admin-api-keys'],
         queryFn: async () => {
             const res = await api.get('/api/v1/admin/api-keys');
             return res.data;
-        }
+        },
+        retry: 1
     });
 
     // Mutations
@@ -152,19 +153,46 @@ export default function AdminApiKeys() {
     };
 
     const handlePriorityReorder = (capability: string, newOrder: ApiKey[]) => {
-        const orderedIds = newOrder.map(item => item.pivot.id);
-        updatePriorityMutation.mutate({ capability, ordered_ids: orderedIds });
+        const orderedIds = newOrder
+            .map(item => item?.pivot?.id)
+            .filter(id => id !== undefined && id !== null) as number[];
+
+        if (orderedIds.length > 0) {
+            updatePriorityMutation.mutate({ capability, ordered_ids: orderedIds });
+        }
     };
 
-    if (isLoading) return <div className="p-8 flex justify-center items-center font-bold text-gray-500 animate-pulse">Invocando infraestrutura SRE...</div>;
+    if (isLoading) return (
+        <div className="p-12 flex flex-col items-center justify-center min-h-[400px] text-slate-500 gap-4">
+            <div className="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+            <p className="font-bold tracking-tight animate-pulse">Invocando infraestrutura SRE...</p>
+        </div>
+    );
+
+    if (isError) return (
+        <div className="p-12 flex flex-col items-center justify-center min-h-[400px] text-red-500 gap-4 bg-red-50 rounded-3xl m-8">
+            <span className="text-4xl">🚫</span>
+            <div className="text-center">
+                <p className="font-black text-xl mb-2">Falha Crítica na Comunicação</p>
+                <p className="text-sm font-medium opacity-70">{(error as any)?.response?.data?.message || (error as any)?.message || 'Ocorreu um erro ao carregar as chaves de API.'}</p>
+            </div>
+            <button
+                onClick={() => queryClient.invalidateQueries({ queryKey: ['admin-api-keys'] })}
+                className="mt-4 px-6 py-2 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-100"
+            >
+                Tentar Novamente
+            </button>
+        </div>
+    );
+
     if (!data) return null;
 
-    const vaultKeys: VaultKey[] = data.vault_keys || [];
-    const availableCapabilities: Record<string, string> = data.available_capabilities || {};
-    const capabilitiesGrid: Record<string, ApiKey[]> = data.capabilities_grid || {};
-    const aiLogs: AiLog[] = data.ai_logs || [];
-    const aiRanking: AiRanking[] = data.ai_ranking || [];
-    const events: ApiEvent[] = data.logs || [];
+    const vaultKeys: VaultKey[] = data?.vault_keys || [];
+    const availableCapabilities: Record<string, string> = data?.available_capabilities || {};
+    const capabilitiesGrid: Record<string, ApiKey[]> = data?.capabilities_grid || {};
+    const aiLogs: AiLog[] = data?.ai_logs || [];
+    const aiRanking: AiRanking[] = data?.ai_ranking || [];
+    const events: ApiEvent[] = data?.logs || [];
 
     return (
         <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 bg-slate-50/30 min-h-screen">
@@ -386,8 +414,8 @@ export default function AdminApiKeys() {
                                     (ℹ) Arraste e solte os provedores para definir a ordem de tentativa. O sistema usará o primeiro online.
                                 </p>
                                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                                    {Object.entries(availableCapabilities).map(([cap, label]) => {
-                                        const keys = capabilitiesGrid[cap] || [];
+                                    {availableCapabilities && Object.entries(availableCapabilities).map(([cap, label]) => {
+                                        const keys = (capabilitiesGrid && capabilitiesGrid[cap]) || [];
                                         return (
                                             <div key={cap} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col">
                                                 <div className="bg-indigo-50/30 px-4 py-3 border-b border-indigo-100 flex justify-between items-center">
@@ -427,8 +455,8 @@ export default function AdminApiKeys() {
                                                                     <div className="flex items-center gap-2">
                                                                         <span className={`w-2 h-2 rounded-full ${key.status === 'online' ? 'bg-emerald-500' : key.status === 'quota_exceeded' ? 'bg-amber-500' : 'bg-red-500'}`}></span>
                                                                         <div className="flex divide-x divide-slate-100 border border-slate-100 rounded-lg overflow-hidden bg-slate-50/50">
-                                                                            <button onClick={() => retestMutation.mutate(key.id)} className="p-1.5 hover:bg-slate-100 text-amber-600">⚡</button>
-                                                                            <button onClick={() => key.pivot?.id && deleteApiKeyMutation.mutate(key.pivot.id)} className="p-1.5 hover:bg-red-50 text-red-500">✕</button>
+                                                                            <button type="button" onClick={() => retestMutation.mutate(key.id)} className="p-1.5 hover:bg-slate-100 text-amber-600">⚡</button>
+                                                                            <button type="button" onClick={() => key.pivot?.id && deleteApiKeyMutation.mutate(key.pivot.id)} className="p-1.5 hover:bg-red-50 text-red-500">✕</button>
                                                                         </div>
                                                                     </div>
                                                                 </Reorder.Item>
@@ -558,18 +586,21 @@ export default function AdminApiKeys() {
                             <button onClick={() => setShowModelModal(false)}>✕</button>
                         </div>
                         <div className="p-4 max-h-[60vh] overflow-y-auto space-y-2">
-                            {discoveredModels.map(m => (
+                            {(discoveredModels || []).map((m: any) => (
                                 <div
-                                    key={m.id}
-                                    onClick={() => { setRoutingForm({ ...routingForm, preferred_model: m.id }); setShowModelModal(false); }}
+                                    key={m?.id}
+                                    onClick={() => { m?.id && setRoutingForm({ ...routingForm, preferred_model: m.id }); setShowModelModal(false); }}
                                     className="p-4 border rounded-2xl hover:bg-slate-50 cursor-pointer flex justify-between items-center group transition-all">
                                     <div>
-                                        <p className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{m.name}</p>
-                                        <p className="text-[10px] font-mono text-slate-400">{m.id}</p>
+                                        <p className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{m?.name || 'Modelo Sem Nome'}</p>
+                                        <p className="text-[10px] font-mono text-slate-400">{m?.id}</p>
                                     </div>
                                     <span className="text-indigo-600 font-bold opacity-0 group-hover:opacity-100 transition-all">Selecionar →</span>
                                 </div>
                             ))}
+                            {(!discoveredModels || discoveredModels.length === 0) && (
+                                <p className="text-center py-8 text-slate-400 italic">Nenhum modelo descoberto.</p>
+                            )}
                         </div>
                     </motion.div>
                 </div>

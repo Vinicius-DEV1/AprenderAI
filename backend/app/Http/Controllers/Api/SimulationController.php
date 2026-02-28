@@ -74,17 +74,17 @@ class SimulationController extends Controller
         }
 
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'subject_ids' => 'array',
-            'topic_ids' => 'array',
-            'questions_count' => 'integer|min:1|max:90',
+            // ---- New engine-driven approach ----
+            'model_slug' => 'nullable|string|max:64',
+            // ---- Old direct approach (still supported for flexibility) ----
             'type' => 'nullable|string|in:concurso,enem,vestibular,custom',
-            'include_essay' => 'boolean',
-            'total_questions' => 'nullable|integer',
+            'title' => 'nullable|string|max:255',
+            'total_questions' => 'nullable|integer|min:1|max:200',
             'subject_distribution' => 'nullable|array',
             'organization' => 'nullable|array',
             'institution' => 'nullable|array',
             'role' => 'nullable|array',
+            'include_essay' => 'boolean',
         ]);
 
         // Guard essay inclusion for free users
@@ -92,22 +92,61 @@ class SimulationController extends Controller
             $validated['include_essay'] = false;
         }
 
-        // Ensure total_questions mapping for the service
-        if (!isset($validated['questions_count']) && isset($validated['total_questions'])) {
-            $validated['questions_count'] = $validated['total_questions'];
-        }
-        if (!isset($validated['total_questions']) && isset($validated['questions_count'])) {
-            $validated['total_questions'] = $validated['questions_count'];
+        // ── Engine-driven path ────────────────────────────────────────────
+        if (!empty($validated['model_slug'])) {
+            try {
+                /** @var \App\Services\SimulationEngine $engine */
+                $engine = app(\App\Services\SimulationEngine::class);
+                $resolved = $engine->resolveModel($validated['model_slug']);
+
+                // Build full configuration from DB rules
+                $config = $engine->buildConfiguration($resolved, [
+                    'include_essay' => $validated['include_essay'] ?? false,
+                    'organization' => $validated['organization'] ?? [],
+                    'institution' => $validated['institution'] ?? [],
+                    'role' => $validated['role'] ?? [],
+                    // Concurso-flex: allow caller to override distributions per request
+                    'subject_distribution_override' => $validated['subject_distribution'] ?? null,
+                    'nao_repetir_ultimos' => $resolved['rule']->nao_repetir_ultimos_simulados,
+                ]);
+
+                // For concurso_flexivel the caller may supply per-request subject_distribution
+                if ($resolved['model']->tipo === 'concurso' && !empty($validated['subject_distribution'])) {
+                    $config['subject_distribution'] = $validated['subject_distribution'];
+                    $config['questions'] = array_sum($validated['subject_distribution']);
+                }
+
+                /** @var \App\Models\Simulation $simulation */
+                $simulation = \App\Models\Simulation::create([
+                    'user_id' => $user->id,
+                    'type' => $resolved['model']->tipo,
+                    'configuration' => $config,
+                    'status' => 'pending',
+                ]);
+
+                \App\Jobs\GenerateSimulationQuestions::dispatch($simulation, array_merge($config, [
+                    'model_slug' => $validated['model_slug'],
+                    'tipo' => $resolved['model']->tipo,
+                ]));
+
+                return new \App\Http\Resources\SimulationResource($simulation);
+
+            } catch (\RuntimeException $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
         }
 
-        // 1. Create Simulation using the formal service (Sync — Status: generating)
+        // ── Legacy direct path (backward-compatible) ──────────────────────
+        if (!isset($validated['total_questions']) && isset($validated['subject_distribution'])) {
+            $validated['total_questions'] = array_sum($validated['subject_distribution']);
+        }
+
         $simulation = $this->simulationService->createPendingSimulation($user, $validated);
-
-        // 2. Dispatch background job
         \App\Jobs\GenerateSimulationQuestions::dispatch($simulation, $validated);
 
-        return new SimulationResource($simulation);
+        return new \App\Http\Resources\SimulationResource($simulation);
     }
+
 
     public function status(Request $request, Simulation $simulation)
     {
