@@ -32,7 +32,7 @@ class ImportEnemCommand extends Command
             'errors' => 0,
             'by_year' => [],
             'by_subject' => [
-                'português' => 0,
+                'Língua Portuguesa' => 0,
                 'matemática' => 0
             ]
         ];

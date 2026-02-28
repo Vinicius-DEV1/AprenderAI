@@ -49,7 +49,7 @@ class DashboardController extends Controller
         foreach ($subjectStats as $data) {
             if (mb_stripos($data->name, 'matemática') !== false)
                 $avgMath = $calcPct($data);
-            if (mb_stripos($data->name, 'português') !== false)
+            if (mb_stripos($data->name, 'Língua Portuguesa') !== false || mb_stripos($data->name, 'Português') !== false)
                 $avgPortuguese = $calcPct($data);
         }
 

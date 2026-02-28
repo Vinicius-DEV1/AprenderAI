@@ -12,9 +12,9 @@ class StudyStatsService
     protected array $subjectMeta = [
         'Matemática' => ['target' => 65, 'label' => 'Matemática'],
         'Matematica' => ['target' => 65, 'label' => 'Matemática'],
-        'Língua Portuguesa' => ['target' => 70, 'label' => 'Português'],
-        'Portugues' => ['target' => 70, 'label' => 'Português'],
-        'Português' => ['target' => 70, 'label' => 'Português'],
+        'Língua Portuguesa' => ['target' => 70, 'label' => 'Língua Portuguesa'],
+        'Portugues' => ['target' => 70, 'label' => 'Língua Portuguesa'],
+        'Português' => ['target' => 70, 'label' => 'Língua Portuguesa'],
         'Ciências da Natureza' => ['target' => 60, 'label' => 'Natureza'],
         'Natureza' => ['target' => 60, 'label' => 'Natureza'],
         'Ciências Humanas' => ['target' => 65, 'label' => 'Humanas'],

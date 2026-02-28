@@ -29,7 +29,7 @@ class QuestionGeneratorService
         $questions = [];
 
         // Batch 1: Português (30 questions)
-        $ptQuestions = $this->generateBatch($banca, 'português', 30);
+        $ptQuestions = $this->generateBatch($banca, 'Língua Portuguesa', 30);
         $questions = array_merge($questions, $ptQuestions);
 
         // Batch 2: Matemática (30 questions)
@@ -77,8 +77,8 @@ class QuestionGeneratorService
                     }
 
                     $subjectModel = \App\Models\Subject::firstOrCreate(
-                    ['name' => $subjectName],
-                    ['slug' => \Illuminate\Support\Str::slug($subjectName), 'type' => 'concurso']
+                        ['name' => $subjectName],
+                        ['slug' => \Illuminate\Support\Str::slug($subjectName), 'type' => 'concurso']
                     );
                     $createdQ->subjects()->attach($subjectModel->id);
 
@@ -86,8 +86,7 @@ class QuestionGeneratorService
                 }
             }
             DB::commit();
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             DB::rollBack();
             Log::error("Failed to save generated questions: " . $e->getMessage());
             throw $e;
@@ -163,8 +162,7 @@ class QuestionGeneratorService
                         'status' => 'pending', // Default status in migration
                     ]);
                 }
-            }
-            catch (\Exception $e) {
+            } catch (\Exception $e) {
                 Log::error("Failed to save essay: " . $e->getMessage());
             }
 
@@ -188,9 +186,9 @@ class QuestionGeneratorService
     protected function buildPrompt(string $banca, string $subject, int $count): string
     {
         // Construct the subject line for the prompt
-        $subjectLine = $subject === 'português'
-            ? "Matemática: 0\nPortuguês: $count"
-            : "Matemática: $count\nPortuguês: 0";
+        $subjectLine = $subject === 'Língua Portuguesa'
+            ? "Matemática: 0\nLíngua Portuguesa: $count"
+            : "Matemática: $count\nLíngua Portuguesa: 0";
 
         return $this->promptService->get('question_batch_generator', [
             'banca' => $banca,
