@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useConfigStore } from '../stores/configStore';
 import '../styles/landing-page.css';
 
 export default function HomePage() {
-    const { appName } = useConfigStore();
     const [faqOpen, setFaqOpen] = useState<number | null>(null);
     const [periodo, setPeriodo] = useState<'mensal' | 'anual'>('mensal');
 
@@ -15,27 +13,37 @@ export default function HomePage() {
         { q: 'Posso testar gratuitamente antes de assinar?', a: 'Sim. O plano gratuito permite que você conheça a plataforma e resolva provas antes de optar por um plano pago.' },
         { q: 'Os simulados seguem o padrão oficial das provas?', a: 'Sim. Os simulados são estruturados para replicar o formato real do ENEM e de concursos, incluindo controle de tempo.' },
         { q: 'Como funciona o plano anual com desconto?', a: 'Ao optar pelo plano anual, você recebe 20% de desconto em relação ao valor mensal, mantendo todos os benefícios do plano escolhido.' },
-        { q: 'A plataforma acompanha meu desempenho?', a: 'Sim. Você pode acompanhar sua evolução por disciplina, identificar pontos fracos e visualizar seu progresso ao longo do tempo.' },
-        { q: 'Posso cancelar quando quiser?', a: 'Sim. Você pode gerenciar sua assinatura conforme as regras do plano contratado.' }
+        { q: 'A plataforma acompanha meu desempenho?', a: 'Sim. Você pode acompanhar sua evolução por disciplina, identificar pontos fracos e visualizar seu progresso ao longo do time.' },
+        { q: 'Posso cancelar quando quiser?', a: 'Sim. Você pode gerenciar sua assinatura conforme as regras do plano contratado.' },
     ];
 
     const toggleFaq = (index: number) => {
         setFaqOpen(faqOpen === index ? null : index);
     };
 
+    const trackCTA = (location: string, plan?: string) => {
+        if (typeof (window as any).gtag === 'function') {
+            (window as any).gtag('event', 'cta_click', {
+                'button_location': location,
+                'plan_name': plan || 'n/a'
+            });
+        }
+    };
+
     return (
         <div className="lp-wrapper">
+
             {/* NAVBAR */}
-            <nav className="lp-nav">
+            <nav className="lp-nav" id="top">
                 <div className="lp-nav-inner">
-                    <Link to="/" className="lp-logo">
-                        {appName.replace('AI', '')}<span>AI</span>
-                    </Link>
+                    <Link to="/" className="lp-logo">Aprender<span>AI</span></Link>
+
                     <ul className="lp-nav-links">
+                        <li><a href="#plans">Planos</a></li>
                         <li><a href="#depoimentos">Depoimentos</a></li>
                         <li><Link to="/uso-justo">Política de Uso</Link></li>
-                        <li><Link to="/privacidade">Privacidade</Link></li>
-                        <li><a href="#plans" className="lp-btn-cta">Assine Agora</a></li>
+                        <li><Link to="/privacidade">Política de Privacidade</Link></li>
+                        <li><a href="#plans" className="lp-btn-cta" onClick={() => trackCTA('navbar', 'plans')}>Assine Agora</a></li>
                     </ul>
                 </div>
             </nav>
@@ -53,17 +61,24 @@ export default function HomePage() {
                             Comece hoje e conquiste a sua aprovação.
                         </p>
                         <div className="lp-hero-btns">
-                            <Link to="/register?plan=free" className="lp-btn-primary">
+                            <Link
+                                to="/register?plan=free"
+                                className="lp-btn-primary"
+                                onClick={() => trackCTA('hero', 'free')}
+                            >
                                 Comece Gratuitamente
                             </Link>
                             <Link to="/login" className="lp-btn-outline">
                                 Já tenho conta
                             </Link>
                         </div>
+
+                        {/* micro-copy de confiança */}
+                        <p className="lp-hero-trust">✔ Cartão de crédito · ✔ Acesso imediato · ✔ Cancele quando quiser</p>
                     </div>
 
                     <div className="lp-hero-illus">
-                        <img src="/hero.png" alt="Painel Inteligente" className="w-full h-auto rounded-3xl shadow-2xl" />
+                        <img src="/hero.png" alt="Painel Inteligente" />
                     </div>
                 </div>
             </section>
@@ -72,16 +87,16 @@ export default function HomePage() {
             <section className="lp-metrics">
                 <div className="lp-metrics-inner">
                     <div className="lp-metrics-divider">
-                        <div className="lp-metric-num">200k+</div>
-                        <div className="lp-metric-label">QUESTÕES <strong>PARA PRATICAR</strong></div>
+                        <div className="lp-metric-num">35%</div>
+                        <div className="lp-metric-label">MAIS ACERTOS EM <strong>30 DIAS</strong></div>
                     </div>
                     <div className="lp-metrics-divider">
                         <div className="lp-metric-num">1.200+</div>
                         <div className="lp-metric-label">REDAÇÕES <strong>NOTA 900+</strong></div>
                     </div>
                     <div>
-                        <div className="lp-metric-num">35%</div>
-                        <div className="lp-metric-label">MAIS ACERTOS EM <strong>30 DIAS</strong></div>
+                        <div className="lp-metric-num">100 MIL</div>
+                        <div className="lp-metric-label"><strong>ALUNOS IMPACTADOS</strong></div>
                     </div>
                 </div>
             </section>
@@ -129,166 +144,310 @@ export default function HomePage() {
                     </h2>
                     <p className="lp-plans-subtitle">Planos mensais e opção de plano anual com <strong>20% de desconto</strong>.</p>
 
-                    <div className="flex justify-center mb-10">
-                        <div className="flex items-center gap-4 bg-slate-100 rounded-full px-4 py-2">
+                    <div className="lp-plans-toggle-wrap">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#f1f5f9', borderRadius: '50px', padding: '.35rem .75rem' }}>
                             <span
+                                style={{ fontSize: '.85rem', fontWeight: 600, cursor: 'pointer', transition: 'color .2s', color: periodo === 'mensal' ? '#0f2b6e' : '#94a3b8' }}
                                 onClick={() => setPeriodo('mensal')}
-                                className={`text-sm font-bold cursor-pointer ${periodo === 'mensal' ? 'text-blue-900' : 'text-slate-400'}`}
                             >
                                 Mensal
                             </span>
-                            <div
+
+                            <button
+                                type="button"
                                 onClick={() => setPeriodo(periodo === 'mensal' ? 'anual' : 'mensal')}
-                                className="w-12 h-6 bg-slate-300 rounded-full relative cursor-pointer"
+                                className="relative inline-flex h-6 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none"
+                                style={{ background: periodo === 'anual' ? '#1d4ed8' : '#cbd5e1' }}
+                                role="switch"
+                                aria-checked={periodo === 'anual' ? 'true' : 'false'}
                             >
-                                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${periodo === 'anual' ? 'translate-x-6 bg-blue-600' : ''}`}></div>
-                            </div>
+                                <span
+                                    className="pointer-events-none inline-block h-4 w-4 mt-px ml-px transform rounded-full bg-white shadow ring-0 transition-transform duration-300"
+                                    style={{ transform: periodo === 'anual' ? 'translateX(1.25rem)' : 'translateX(0)' }}
+                                ></span>
+                            </button>
+
                             <span
+                                style={{ fontSize: '.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '.4rem', transition: 'color .2s', color: periodo === 'anual' ? '#0f2b6e' : '#94a3b8' }}
                                 onClick={() => setPeriodo('anual')}
-                                className={`text-sm font-bold cursor-pointer flex items-center gap-2 ${periodo === 'anual' ? 'text-blue-900' : 'text-slate-400'}`}
                             >
-                                Anual <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full">-20% OFF</span>
+                                Anual
+                                <span style={{ background: '#dcfce7', color: '#15803d', fontSize: '.7rem', fontWeight: 800, padding: '.15rem .5rem', borderRadius: '99px' }}>-20% OFF</span>
                             </span>
                         </div>
                     </div>
 
                     <div className="lp-plans-grid">
+
+                        {/* FREE */}
                         <div className="lp-plan-free">
-                            <div className="text-blue-900 font-bold text-2xl mb-1">Gratuito</div>
-                            <div className="lp-plan-tagline-free mb-4">Para começar e testar a plataforma.</div>
-                            <div className="mb-4">
+                            <div className="lp-plan-name-free">Gratuito</div>
+                            {/* tagline */}
+                            <div className="lp-plan-tagline-free">Para começar e testar a plataforma.</div>
+
+                            <div style={{ marginBottom: '.25rem' }}>
                                 <span className="lp-plan-price-free">R$ 0</span>
-                                <span className="text-slate-500 text-sm">/mês</span>
+                                <span className="lp-plan-price-unit lp-plan-price-unit-free">/mês</span>
                             </div>
-                            <p className="text-slate-400 text-[11px] mb-6">Sempre gratuito, sem cartão de crédito.</p>
-                            <ul className="lp-plan-list-free space-y-3 mb-8">
-                                <li className="flex items-center gap-2 text-sm"><span className="text-green-500">✓</span> 5 provas/mês</li>
-                                <li className="flex items-center gap-2 text-sm"><span className="text-green-500">✓</span> Correção básica</li>
-                                <li className="flex items-center gap-2 text-sm"><span className="text-green-500">✓</span> Estatísticas simples</li>
+                            <div className="lp-plan-annual-note lp-plan-annual-note-free" style={{ marginBottom: '1.25rem' }}>
+                                Sempre gratuito, sem cartão de crédito.
+                            </div>
+
+                            <ul className="lp-plan-list lp-plan-list-free">
+                                <li><span className="lp-check-free">✓</span> 5 provas/mês</li>
+                                <li><span className="lp-check-free">✓</span> Correção básica</li>
+                                <li><span className="lp-check-free">✓</span> Estatísticas simples</li>
+                                <li><span className="lp-check-free">✓</span> Acesso ilimitado a todas as questões</li>
+
+                                {/* Extras */}
+                                <li className="lp-plan-extras lp-plan-extras-free">
+                                    <span style={{ fontWeight: 800, color: '#0f2b6e' }}>+ Benefícios</span>
+                                </li>
+                                <li><span className="lp-check-free">✓</span> Gabarito Comentado</li>
+                                <li><span className="lp-check-free">✓</span> Modo noturno</li>
                             </ul>
-                            <Link to="/register?plan=free" className="lp-plan-btn-free">Começar Agora</Link>
+
+                            <Link
+                                to="/register?plan=free"
+                                className="lp-plan-btn-free"
+                                onClick={() => trackCTA('pricing_free', 'free')}
+                            >
+                                Começar Agora
+                            </Link>
                         </div>
 
+                        {/* BÁSICO */}
                         <div className="lp-plan-basic">
-                            <div className="text-white font-bold text-2xl mb-1">Básico</div>
-                            <div className="lp-plan-tagline-paid mb-4">Plano ideal para quem busca aprovação completa e redação guiada.</div>
-                            <div className="mb-2">
-                                <span className="lp-plan-price-paid">R$ {periodo === 'anual' ? '20,00' : '25,00'}</span>
-                                <span className="text-blue-200 text-sm">/mês</span>
+                            <div className="lp-plan-name-paid">Básico</div>
+                            {/* tagline */}
+                            <div className="lp-plan-tagline-paid">Para evoluir com correção completa e redação guiada.</div>
+
+                            <div style={{ marginBottom: '.25rem' }}>
+                                <span className="lp-plan-price-paid">
+                                    R$&nbsp;{periodo === 'anual' ? '20,00' : '25,00'}
+                                </span>
+                                <span className="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
                             </div>
-                            <p className="text-blue-100 text-[11px] mb-6">
-                                {periodo === 'anual' ? 'R$ 240,00/ano — economize R$ 60,00' : 'Ou R$ 240,00 no plano anual (20% OFF)'}
-                            </p>
-                            <ul className="space-y-3 mb-8">
-                                <li className="flex items-center gap-2 text-sm"><span className="text-green-300">✓</span> 10 provas/mês</li>
-                                <li className="flex items-center gap-2 text-sm"><span className="text-green-300">✓</span> Correção detalhada</li>
-                                <li className="flex items-center gap-2 text-sm"><span className="text-green-300">✓</span> 4 redações/mês</li>
-                                <li className="flex items-center gap-2 text-sm"><span className="text-green-300">✓</span> Radar de concursos</li>
+
+                            {periodo === 'anual' ? (
+                                <div className="lp-plan-annual-note lp-plan-annual-note-paid">
+                                    Ou R$ 240,00/ano — economize R$ 60,00
+                                </div>
+                            ) : (
+                                <div className="lp-plan-annual-note lp-plan-annual-note-paid">
+                                    Ou R$ 240,00 no plano anual (20% OFF)
+                                </div>
+                            )}
+
+                            <ul className="lp-plan-list lp-plan-list-paid">
+                                <li><span className="lp-check-paid">✓</span> Correção detalhada (IA)</li>
+                                <li><span className="lp-check-paid">✓</span> 5 redações/mês</li>
+                                <li><span className="lp-check-paid">✓</span> Redação com Nota por Competência (C1–C5)</li>
+                                <li><span className="lp-check-paid">✓</span> Radar de concursos</li>
+                                <li><span className="lp-check-paid">✓</span> 10 provas/mês</li>
+                                <li><span className="lp-check-paid">✓</span> +200 mil questões</li>
+                                <li><span className="lp-check-paid">✓</span> Acesso ilimitado a todas as questões</li>
+
+                                {/* Extras */}
+                                <li className="lp-plan-extras">
+                                    <span style={{ fontWeight: 800, color: '#fff' }}>+ Benefícios</span>
+                                </li>
+                                <li><span className="lp-check-paid">✓</span> Estatísticas simples</li>
+                                <li><span className="lp-check-paid">✓</span> Gabarito Comentado</li>
+                                <li><span className="lp-check-paid">✓</span> Modo noturno</li>
                             </ul>
-                            <Link to={`/register?plan=${periodo === 'anual' ? 'basic-annual' : 'basic'}`} className="lp-plan-btn-basic">Assinar Agora</Link>
+
+                            <Link
+                                to={`/register?plan=${periodo === 'anual' ? 'basic-annual' : 'basic'}`}
+                                className="lp-plan-btn-basic"
+                                onClick={() => trackCTA('pricing_basic', periodo === 'anual' ? 'basic-annual' : 'basic')}
+                            >
+                                Assinar Agora
+                            </Link>
+
+                            {/* não tirar o anual */}
+                            <Link
+                                to="/register?plan=basic-annual"
+                                className="lp-plan-btn-annual"
+                                onClick={() => trackCTA('pricing_basic_annual', 'basic-annual')}
+                            >
+                                Assinar Plano Anual (20% OFF)
+                            </Link>
                         </div>
 
+                        {/* PLUS */}
                         <div className="lp-plan-plus">
-                            <div className="bg-yellow-500 text-blue-900 text-[10px] font-black uppercase px-3 py-1 rounded-full inline-block mb-4">⭐ Mais Popular</div>
-                            <div className="text-white font-bold text-2xl mb-1">Plus</div>
-                            <div className="lp-plan-tagline-paid mb-4">Para acelerar no máximo com estratégia e simulados ilimitados.</div>
-                            <div className="mb-2">
-                                <span className="lp-plan-price-paid">R$ {periodo === 'anual' ? '40,00' : '49,90'}</span>
-                                <span className="text-blue-200 text-sm">/mês</span>
+                            <div className="lp-plan-badge lp-badge-popular">⭐ Mais Popular</div>
+                            <div className="lp-plan-name-paid">Plus</div>
+                            {/* tagline */}
+                            <div className="lp-plan-tagline-paid">Para acelerar no máximo com estratégia e simulados ilimitados.</div>
+
+                            <div style={{ marginBottom: '.25rem' }}>
+                                <span className="lp-plan-price-paid">
+                                    R$&nbsp;{periodo === 'anual' ? '40,00' : '49,90'}
+                                </span>
+                                <span className="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
                             </div>
-                            <p className="text-blue-100 text-[11px] mb-6">
-                                {periodo === 'anual' ? 'R$ 480,00/ano — economize R$ 118,80' : 'Ou R$ 480,00 no plano anual (20% OFF)'}
-                            </p>
-                            <ul className="space-y-3 mb-8">
-                                <li className="flex items-center gap-2 text-sm font-bold text-white"><span className="text-green-300">✓</span> Simulados ilimitados</li>
-                                <li className="flex items-center gap-2 text-sm font-bold text-white"><span className="text-green-300">✓</span> 15 redações/mês</li>
-                                <li className="flex items-center gap-2 text-sm"><span className="text-green-300">✓</span> Estatísticas completas</li>
-                                <li className="flex items-center gap-2 text-sm"><span className="text-green-300">✓</span> Análise estratégica</li>
-                                <li className="flex items-center gap-2 text-sm"><span className="text-green-300">✓</span> Radar de concursos</li>
+
+                            {periodo === 'anual' ? (
+                                <div className="lp-plan-annual-note lp-plan-annual-note-paid">
+                                    Ou R$ 480,00/ano — economize R$ 118,80
+                                </div>
+                            ) : (
+                                <div className="lp-plan-annual-note lp-plan-annual-note-paid">
+                                    Ou R$ 480,00 no plano anual (20% OFF)
+                                </div>
+                            )}
+
+                            <ul className="lp-plan-list lp-plan-list-paid">
+                                <li><span className="lp-check-paid">✓</span> <strong style={{ color: '#fff' }}>Análise estratégica</strong></li>
+                                <li><span className="lp-check-paid">✓</span> Cronograma de Estudos personalizado</li>
+                                <li><span className="lp-check-paid">✓</span> <strong style={{ color: '#fff' }}>Simulados ilimitados</strong></li>
+                                <li><span className="lp-check-paid">✓</span> <strong style={{ color: '#fff' }}>15 redações/mês</strong></li>
+                                <li><span className="lp-check-paid">✓</span> Redação com Nota por Competência (C1–C5)</li>
+                                <li><span className="lp-check-paid">✓</span> Estatísticas completas</li>
+                                <li><span className="lp-check-paid">✓</span> Radar de concursos</li>
+                                <li><span className="lp-check-paid">✓</span> +200 mil questões</li>
+                                <li><span className="lp-check-paid">✓</span> Acesso ilimitado a todas as questões</li>
+
+                                {/* Extras */}
+                                <li className="lp-plan-extras">
+                                    <span style={{ fontWeight: 800, color: '#fff' }}>+ Benefícios</span>
+                                </li>
+                                <li><span className="lp-check-paid">✓</span> Gabarito Comentado</li>
+                                <li><span className="lp-check-paid">✓</span> Modo noturno</li>
                             </ul>
-                            <Link to={`/register?plan=${periodo === 'anual' ? 'plus-annual' : 'plus'}`} className="lp-plan-btn-plus">Assinar Agora</Link>
+
+                            <Link
+                                to={`/register?plan=${periodo === 'anual' ? 'plus-annual' : 'plus'}`}
+                                className="lp-plan-btn-plus"
+                                onClick={() => trackCTA('pricing_plus', periodo === 'anual' ? 'plus-annual' : 'plus')}
+                            >
+                                Assinar Agora
+                            </Link>
+
+                            {/* não tirar o anual */}
+                            <Link
+                                to="/register?plan=plus-annual"
+                                className="lp-plan-btn-annual"
+                                onClick={() => trackCTA('pricing_plus_annual', 'plus-annual')}
+                            >
+                                Assinar Plano Anual (20% OFF)
+                            </Link>
                         </div>
+
+                    </div>
+                </div>
+            </section>
+
+            {/* VANTAGEM COMPETITIVA */}
+            <section className="lp-vantagem">
+                <div className="lp-vantagem-inner">
+                    <h2 className="lp-vantagem-title">Mais do que estudar. &Eacute; criar vantagem competitiva.</h2>
+                    <p className="lp-vantagem-sub">Quem estuda com m&eacute;todo evolui. Quem estuda com estrat&eacute;gia passa.</p>
+
+                    <div className="lp-vantagem-grid">
+
+                        <div className="lp-vantagem-card">
+                            <div className="lp-vantagem-icon">&#9881;</div>
+                            <h3>Clareza Estrat&eacute;gica</h3>
+                            <p>N&atilde;o &eacute; sobre estudar mais. &Eacute; sobre estudar certo. Descubra exatamente onde
+                                voc&ecirc; perde pontos e transforme erros em progresso real.</p>
+                        </div>
+
+                        <div className="lp-vantagem-card">
+                            <div className="lp-vantagem-icon">&#9654;</div>
+                            <h3>Seguran&ccedil;a no Dia da Prova</h3>
+                            <p>Simule sob press&atilde;o, cronometre seu desempenho e chegue no dia decisivo com
+                                confian&ccedil;a constru&iacute;da na pr&aacute;tica.</p>
+                        </div>
+
+                        <div className="lp-vantagem-card">
+                            <div className="lp-vantagem-icon">&#9650;</div>
+                            <h3>Evolu&ccedil;&atilde;o Baseada em Dados</h3>
+                            <p>Nada de achismo. Acompanhe m&eacute;tricas claras, hist&oacute;rico de desempenho e crescimento
+                                cont&iacute;nuo em cada disciplina.</p>
+                        </div>
+
+                        <div className="lp-vantagem-card">
+                            <div className="lp-vantagem-icon">&#10024;</div>
+                            <h3>Intelig&ecirc;ncia que Trabalha por Voc&ecirc;</h3>
+                            <p>A IA analisa seus padr&otilde;es, identifica fragilidades e ajusta sua prepara&ccedil;&atilde;o
+                                automaticamente.</p>
+                        </div>
+
+                        <div className="lp-vantagem-card">
+                            <div className="lp-vantagem-icon">&#9679;</div>
+                            <h3>Alto Retorno Sobre o Seu Tempo</h3>
+                            <p>Cada hora de estudo passa a ter dire&ccedil;&atilde;o. Menos desperd&iacute;cio. Mais resultado.</p>
+                        </div>
+
+                        <div className="lp-vantagem-card">
+                            <div className="lp-vantagem-icon">&#9788;</div>
+                            <h3>Acesso Real, Sem Barreiras</h3>
+                            <p>Prepara&ccedil;&atilde;o estruturada, acess&iacute;vel e dispon&iacute;vel 24/7 &mdash; para quem
+                                decide levar a aprova&ccedil;&atilde;o a s&eacute;rio.</p>
+                        </div>
+
                     </div>
                 </div>
             </section>
 
             {/* TESTIMONIALS */}
             <section className="lp-testimonials" id="depoimentos">
-                <div className="max-w-[1100px] mx-auto text-center">
-                    <h2 className="text-3xl font-black mb-2 text-white">Histórias de Sucesso</h2>
-                    <p className="text-blue-300 mb-12">Quem estudou com a gente, passou <strong>de verdade.</strong></p>
+                <div>
+                    <h2 className="lp-test-title">Histórias de Sucesso</h2>
+                    <p className="lp-test-subtitle">Quem estudou com a gente, passou <strong>de verdade.</strong></p>
                     <div className="lp-test-grid">
-                        <div className="lp-test-card text-left">
+                        <div className="lp-test-card">
                             <div className="lp-test-avatar">
-                                <img src="https://i.pravatar.cc/96?img=12" alt="Lucas" />
+                                <img src="https://i.pravatar.cc/96?img=12" alt="Lucas Andrade" />
                                 <div>
-                                    <div className="font-bold text-white text-sm">Lucas Andrade</div>
-                                    <div className="text-slate-400 text-[10px] uppercase font-bold">ENEM</div>
-                                    <div className="text-yellow-500 text-xs">★★★★★</div>
+                                    <div className="lp-test-name">Lucas Andrade</div>
+                                    <div className="lp-test-tag">ENEM</div>
+                                    <div className="lp-test-stars">★★★★★</div>
                                 </div>
                             </div>
-                            <p className="text-blue-100 text-xs italic leading-relaxed">"Eu sempre estudava muito, mas não sabia exatamente onde estava errando. Quando comecei a usar as análises da plataforma, consegui organizar melhor minha revisão e minha nota subiu de forma consistente."</p>
+                            <p className="lp-test-quote">"Eu sempre estudava muito, mas não sabia exatamente onde estava errando.
+                                Quando comecei a usar as análises da plataforma, consegui organizar melhor minha revisão e minha
+                                nota subiu de forma consistente."</p>
                         </div>
-                        <div className="lp-test-card text-left">
+                        <div className="lp-test-card">
                             <div className="lp-test-avatar">
-                                <img src="https://i.pravatar.cc/96?img=32" alt="Mary" />
+                                <img src="https://i.pravatar.cc/96?img=32" alt="Mary S." />
                                 <div>
-                                    <div className="font-bold text-white text-sm">Mary S.</div>
-                                    <div className="text-slate-400 text-[10px] uppercase font-bold">Concurso Administrativo</div>
-                                    <div className="text-yellow-500 text-xs">★★★★★</div>
+                                    <div className="lp-test-name">Marian Silva</div>
+                                    <div className="lp-test-tag">Concurso Administrativo</div>
+                                    <div className="lp-test-stars">★★★★★</div>
                                 </div>
                             </div>
-                            <p className="text-blue-100 text-xs italic leading-relaxed">"O que mais me ajudou foi conseguir visualizar meu desempenho por disciplina. Antes eu estudava no escuro, agora sei exatamente onde preciso melhorar."</p>
+                            <p className="lp-test-quote">"O que mais me ajudou foi conseguir visualizar meu desempenho por
+                                disciplina. Antes eu estudava no escuro, agora sei exatamente onde preciso melhorar."</p>
                         </div>
-                        <div className="lp-test-card text-left">
+                        <div className="lp-test-card">
                             <div className="lp-test-avatar">
-                                <img src="https://i.pravatar.cc/96?img=45" alt="Feeh" />
+                                <img src="https://i.pravatar.cc/96?img=45" alt="Feeh Costa" />
                                 <div>
-                                    <div className="font-bold text-white text-sm">Feeh Costa</div>
-                                    <div className="text-slate-400 text-[10px] uppercase font-bold">Redação</div>
-                                    <div className="text-yellow-500 text-xs">★★★★★</div>
+                                    <div className="lp-test-name">Fernanda Costa</div>
+                                    <div className="lp-test-tag">Redação</div>
+                                    <div className="lp-test-stars">★★★★★</div>
                                 </div>
                             </div>
-                            <p className="text-blue-100 text-xs italic leading-relaxed">"Eu travava muito na redação. Depois que comecei a receber o feedback por competência, consegui entender meus erros estruturais e evoluir muito mais rápido."</p>
+                            <p className="lp-test-quote">"Eu travava muito na redação. Depois que comecei a receber o feedback por
+                                competência, consegui entender meus erros estruturais e evoluir muito mais rápido."</p>
                         </div>
-                        <div className="lp-test-card text-left">
+                        <div className="lp-test-card">
                             <div className="lp-test-avatar">
-                                <img src="https://i.pravatar.cc/96?img=8" alt="Rafael" />
+                                <img src="https://i.pravatar.cc/96?img=8" alt="Rafael Mendes" />
                                 <div>
-                                    <div className="font-bold text-white text-sm">Rafael Mendes</div>
-                                    <div className="text-slate-400 text-[10px] uppercase font-bold">Polícia Militar</div>
-                                    <div className="text-yellow-500 text-xs">★★★★★</div>
+                                    <div className="lp-test-name">Rafael Mendes</div>
+                                    <div className="lp-test-tag">Polícia Militar</div>
+                                    <div className="lp-test-stars">★★★★★</div>
                                 </div>
                             </div>
-                            <p className="text-blue-100 text-xs italic leading-relaxed">"O cronômetro e os simulados completos mudaram minha preparação. Hoje consigo administrar o tempo muito melhor na hora da prova."</p>
+                            <p className="lp-test-quote">"O cronômetro e os simulados completos mudaram minha preparação. Hoje
+                                consigo administrar o tempo muito melhor na hora da prova."</p>
                         </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* VANTAGEM COMPETITIVA (Restored) */}
-            <section className="lp-vantagem bg-white dark:bg-slate-950 py-24 px-6 md:px-12 border-y border-slate-100 dark:border-slate-900">
-                <div className="max-w-[1100px] mx-auto">
-                    <h2 className="text-center text-3xl md:text-4xl font-black text-blue-900 dark:text-white mb-3">Mais do que estudar. É criar vantagem competitiva.</h2>
-                    <p className="text-center text-slate-500 dark:text-slate-400 italic mb-12">Quem estuda com método evolui. Quem estuda com estratégia passa.</p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {[
-                            { icon: '⚙️', title: 'Clareza Estratégica', desc: 'Não é sobre estudar mais. É sobre estudar certo. Descubra exatamente onde você perde pontos e transforme erros em progresso real.' },
-                            { icon: '▶️', title: 'Segurança no Dia da Prova', desc: 'Simule sob pressão, cronometre seu desempenho e chegue no dia decisivo com confiança construída na prática.' },
-                            { icon: '⏫', title: 'Evolução Baseada em Dados', desc: 'Nada de achismo. Acompanhe métricas claras, histórico de desempenho e crescimento contínuo em cada disciplina.' },
-                            { icon: '✨', title: 'Inteligência que Trabalha por Você', desc: 'A IA analisa seus padrões, identifica fragilidades e ajusta sua preparação automaticamente.' },
-                            { icon: '🎯', title: 'Alto Retorno Sobre o Seu Tempo', desc: 'Cada hora de estudo passa a ter direção. Menos desperdício. Mais resultado.' },
-                            { icon: '☀️', title: 'Acesso Real, Sem Barreiras', desc: 'Preparação estruturada, acessível e disponível 24/7 — para quem decide levar a aprovação a sério.' }
-                        ].map((item, id) => (
-                            <div key={id} className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-100/50 dark:shadow-none hover:-translate-y-2 transition-transform group">
-                                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-900 flex items-center justify-center text-xl text-white shadow-lg shadow-blue-500/30 mb-6 group-hover:scale-110 transition-transform">
-                                    {item.icon}
-                                </div>
-                                <h3 className="text-lg font-black text-blue-900 dark:text-white mb-2 leading-tight">{item.title}</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{item.desc}</p>
-                            </div>
-                        ))}
                     </div>
                 </div>
             </section>
@@ -297,23 +456,23 @@ export default function HomePage() {
             <section className="lp-faq" id="faq">
                 <div className="lp-faq-inner">
                     <h2 className="lp-faq-title">Perguntas Frequentes</h2>
-                    <p className="lp-faq-subtitle text-center mb-10">Tire suas dúvidas sobre a plataforma {appName}.</p>
-                    <div className="space-y-1">
-                        {faqs.map((faq, idx) => (
-                            <div key={idx} className="lp-faq-item border-b border-slate-200">
-                                <button
-                                    onClick={() => toggleFaq(idx)}
-                                    className="w-full flex justify-between items-center py-4 text-left"
-                                >
-                                    <span className="font-bold text-blue-900">{faq.q}</span>
-                                    <span className={`text-xl transition-transform ${faqOpen === idx ? 'rotate-45 text-yellow-600' : 'text-blue-900'}`}>+</span>
-                                </button>
-                                <div className={`overflow-hidden transition-all duration-300 ${faqOpen === idx ? 'max-h-40 pb-4 opacity-100' : 'max-h-0 opacity-0'}`}>
-                                    <p className="text-slate-600 text-sm leading-relaxed">{faq.a}</p>
-                                </div>
+                    <p className="lp-faq-subtitle">Tire suas dúvidas sobre a plataforma AprenderAI.</p>
+
+                    {faqs.map((faq, idx) => (
+                        <div key={idx} className="lp-faq-item">
+                            <button
+                                className="lp-faq-btn"
+                                onClick={() => toggleFaq(idx)}
+                                type="button"
+                            >
+                                <span className="lp-faq-question">{faq.q}</span>
+                                <span className={`lp-faq-icon${faqOpen === idx ? ' open' : ''}`}>+</span>
+                            </button>
+                            <div className={`lp-faq-answer${faqOpen === idx ? ' open' : ''}`}>
+                                <p>{faq.a}</p>
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    ))}
                 </div>
             </section>
 
@@ -322,30 +481,29 @@ export default function HomePage() {
                 <div className="lp-footer-inner">
                     <div className="lp-footer-top">
                         <div>
-                            <span className="lp-footer-logo">{appName.replace('AI', '')}<span>AI</span></span>
-                            <p className="text-slate-500 text-xs leading-relaxed max-w-xs mt-4">
-                                A plataforma que usa tecnologia para democratizar o acesso à aprovação. Experiência premium focada em performance.
-                            </p>
+                            <span className="lp-footer-logo">Aprender<span>AI</span></span>
+                            <p className="lp-footer-desc">A plataforma que usa tecnologia para democratizar o acesso à aprovação.
+                                Experiência premium focada em performance.</p>
                         </div>
-                        <div className="space-y-4">
-                            <h4 className="text-white text-xs font-black uppercase tracking-widest">Produto</h4>
-                            <ul className="space-y-2 text-slate-500 text-sm">
+                        <div className="lp-footer-col">
+                            <h4>Produto</h4>
+                            <ul>
                                 <li><a href="#features">Recursos</a></li>
                                 <li><a href="#plans">Planos</a></li>
                                 <li><a href="#depoimentos">Depoimentos</a></li>
                             </ul>
                         </div>
-                        <div className="space-y-4">
-                            <h4 className="text-white text-xs font-black uppercase tracking-widest">Legal</h4>
-                            <ul className="space-y-2 text-slate-500 text-sm">
-                                <li><Link to="/privacidade">Privacidade</Link></li>
-                                <li><Link to="/uso-justo">Uso Justo</Link></li>
-                                <li><a href="/contato">Contato</a></li>
+                        <div className="lp-footer-col">
+                            <h4>Uso Legal</h4>
+                            <ul>
+                                <li><Link to="/privacidade">Política de Privacidade</Link></li>
+                                <li><Link to="/uso-justo">Política de Uso Justo</Link></li>
+                                <li><Link to="/uso-justo">Política de Uso</Link></li>
                             </ul>
                         </div>
                     </div>
-                    <div className="pt-8 border-t border-slate-800 text-center text-slate-600 text-[10px]">
-                        &copy; 2026 {appName}. Todos os direitos reservados.
+                    <div className="lp-footer-border">
+                        &copy; {new Date().getFullYear()} aprenderAI. Todos os direitos reservados.
                     </div>
                 </div>
             </footer>
