@@ -130,6 +130,7 @@ Route::prefix('v1')->name('api.')->group(function () {
 
             Route::patch('users/{user}/toggle-status', [AdminUserController::class, 'toggleStatus']);
             Route::post('users/{user}/reset-password', [AdminUserController::class, 'resetPassword']);
+            Route::post('users/{user}/refund', [AdminUserController::class, 'refundAndCancel']);
             Route::apiResource('users', AdminUserController::class);
             Route::apiResource('plans', AdminPlanController::class);
             Route::apiResource('coupons', AdminCouponController::class);
