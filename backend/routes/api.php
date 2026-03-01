@@ -36,7 +36,15 @@ use App\Http\Controllers\Api\Admin\PaymentSettingsController;
 |--------------------------------------------------------------------------
 */
 
+Route::post('/plans/{plan}/checkout', function () {
+    return response()->json(['message' => 'DEBUG: Hit /plans/{plan}/checkout (NO PREFIX)'], 200);
+});
+
 Route::prefix('v1')->name('api.')->group(function () {
+    // DEBUG: Catch any strays
+    Route::post('/plans/{plan}/checkout', function () {
+        return response()->json(['message' => 'DEBUG: Hit /api/v1/plans/{plan}/checkout (OLD ROUTE)'], 200);
+    });
 
     // Público
     Route::get('/config', [ConfigController::class, 'index'])->name('api.config');

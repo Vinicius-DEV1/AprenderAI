@@ -86,7 +86,9 @@ export default function PlanCheckout() {
                 payment_method: method,
                 coupon_code: couponSuccess ? couponCode : null
             };
+            console.log('DEBUG: Calling processCheckout for plan:', plan!.id);
             const response = await processCheckout(plan!.id, payload);
+            console.log('DEBUG: Checkout response:', response);
             if (response.data.success) {
                 if (method === 'pix') {
                     setCheckoutResult(response.data);
