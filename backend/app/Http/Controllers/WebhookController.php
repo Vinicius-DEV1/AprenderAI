@@ -5,11 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\PaymentLog;
 use App\Models\Subscription;
 use App\Models\Configuration;
+use App\Services\QuotaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class WebhookController extends Controller
 {
+    protected QuotaService $quotaService;
+
+    public function __construct(QuotaService $quotaService)
+    {
+        $this->quotaService = $quotaService;
+    }
     /**
      * Recebe e processa eventos de pagamento do Asaas.
      *
@@ -125,12 +132,32 @@ class WebhookController extends Controller
                     'current_period_end' => $periodEnd,
                 ]);
 
-                // Ativa o plano do usuário
+                // Guarda o plano antigo para decidir se é Upgrade
+                $oldPlanId = $user->plan_id;
+
+                // Ativa o plano do usuário primeiramente na tabela (compatibilidade retroativa)
                 $user->update([
                     'plan_id' => $plan->id,
                     'plan_started_at' => now(), // A data que o acesso real começou
                     'plan_expires_at' => $periodEnd,
                 ]);
+
+                // --- NOVO MODELO ACUMULATIVO ---
+                try {
+                    // Se o usuário já tinha um plano diferente do Grátis(1) e agora mudou para um maior
+                    if ($oldPlanId && $oldPlanId != $plan->id && $oldPlanId != 1) {
+                        Log::info('[Webhook] Detectado UPGRADE. Aplicando Soma Acumulativa!', ['user_id' => $user->id]);
+                        $this->quotaService->processUpgradeSoma($subscription, $plan->default_limits ?? []);
+                    } else {
+                        Log::info('[Webhook] Renovacão normal ou plano original. Criando ciclo base.', ['user_id' => $user->id]);
+                        $this->quotaService->createOrRenewCycle($subscription);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('[Webhook] Erro ao instanciar Ciclos de Quota', [
+                        'user_id' => $user->id,
+                        'message' => $e->getMessage()
+                    ]);
+                }
 
                 Log::info('[Webhook] Plano ativado/renovado', [
                     'user_id' => $user->id,
