@@ -8,7 +8,7 @@ Este documento formaliza a arquitetura e modelagem de dados proposta para implem
 2. **Downgrade Agendado:** Não possui devolução de limites "não usados" ou roll-over. A vigência encerra-se na data oficial de faturamento e muda para o plano base no momento da renovação.
 3. **Desconto Anual:** Pago antecipado com exatos 20% OFF. Seus limites não são despejados anualmente (ex: 150 redações de uma vez); eles continuam alimentando o pote **mensalmente**.
 4. **Pró-Rata:** Abatimento de custo diário para Upgrades realizados no meio do ciclo.
-5. **Cancelamento / CDC (7 dias):** Permitido reembolso via suporte. Usuários que consumiram e cancelaram no CDC sofrem *softban* nas rédeas de trial/renovações subsequentes para impedir fluxo pendular gratuito.
+5. **Cancelamento / CDC (7 dias):** Permitido reembolso via suporte. O painel Admin possui um botão de "Cancelamento Instantâneo" que, via backend (`UserController@refundAndCancel`), destrói o ciclo vigente mudando seu `end_date` para `now()` — revogando imediatamente qualquer consumo de LLM residual.
 
 ---
 
@@ -94,3 +94,23 @@ Se quisermos saber quanto o usuário gastou no ciclo, fazemos `SUM(amount) FROM 
 Pagou upfront (via Asaas), o `Subscription` muda para `interval=yearly`.
 CronJob/Job Semanal ou evento de Webhook:
 Todo dia "X", o sistema cria um **novo `subscription_cycle` de 30 dias** preenchido com as métricas do JSON `default_limits`, inserido 12x ao longo do ano faturado. Isso espalha o risco dos custos de LLM e engaja o usuário a retornar na plataforma mensalmente para resgatar/utilizar os limites frescos.
+
+---
+
+## 🚫 Proteção contra Vampirização: Refund CDC
+
+Como a fonte de verdade mudou da Model do Usuário para o **SubscriptionCycle**, alterações financeiras no painel Asaas não cortavam o acesso de quem realizou Download de PDF ou gerou redações intensas e logo após solicitou estorno por arrependimento (Lei CDC - 7 Dias).
+
+O mecanismo de defesa implementado baseia-se num "Kill Switch" em `POST /api/v1/admin/users/{id}/refund`:
+
+1. **Destruição Prematura de Ciclos Abertos:**
+```php
+ SubscriptionCycle::where('subscription_id', $sub->id)
+    ->where('end_date', '>=', now())
+    ->update(['end_date' => now()]);
+```
+2. **Rebaixamento de Perfil:**
+O aluno volta a ter `plan_id = 1` e `expires_at = now()` forçadamente, travando validações antigas de Frontend baseadas no nome do plano.
+
+3. **Log de Auditoria Carimbado:**
+A ação dispara a marcação `admin_force_refund_cdc` no painel. O dono da plataforma pode consultar rapidamente o log do usuário e negar subscrições repetidas do mesmo CPF naquele mês.
