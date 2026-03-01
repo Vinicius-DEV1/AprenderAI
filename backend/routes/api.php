@@ -40,6 +40,14 @@ Route::post('/plans/{plan}/checkout', function () {
     return response()->json(['message' => 'DEBUG: Hit /plans/{plan}/checkout (NO PREFIX)'], 200);
 });
 
+// ALIAS FOR LARAVEL NATIVE VERIFICATION MAILER
+// The VerifyEmail notification hardcodes 'verification.verify' by default. 
+// When inside the 'api.' group, it becomes 'api.verification.verify' and throws RouteNotFoundException.
+// We bind the exact name here to alias it to the controller.
+Route::get('/v1/email/verify/{id}/{hash}', [\App\Http\Controllers\Api\AuthController::class, 'verifyEmail'])
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('verification.verify');
+
 Route::prefix('v1')->name('api.')->group(function () {
     // DEBUG: Catch any strays
     Route::post('/plans/{plan}/checkout', function () {
@@ -51,7 +59,7 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('api.login');
     Route::post('/register', [AuthController::class, 'register'])->name('api.register');
 
-    // Verificacao via URL enviada por Email
+    // Verificacao via URL enviada por Email (agora com prefixo api. automatico)
     Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
         ->middleware(['signed', 'throttle:6,1'])
         ->name('verification.verify');
