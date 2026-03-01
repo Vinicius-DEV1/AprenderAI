@@ -157,6 +157,7 @@ Route::prefix('v1')->name('api.')->group(function () {
             Route::prefix('monitor')->group(function () {
                 Route::get('/realtime', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'realtime']);
                 Route::get('/history', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'history']);
+                Route::get('/logs', [\App\Http\Controllers\Api\Admin\SystemLogController::class, 'index']);
             });
 
 
