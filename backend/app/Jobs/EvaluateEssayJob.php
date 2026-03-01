@@ -45,9 +45,45 @@ class EvaluateEssayJob implements ShouldQueue
         try {
             $this->essay->update(['status' => 'evaluating']);
 
+            // --- OFF-TOPIC GATE ---
+            $evalContent = $this->essay->input_type === 'image' && $this->essay->extracted_text
+                ? $this->essay->extracted_text
+                : $this->essay->content;
+
+            $offTopicResult = $aiService->detectOffTopic(
+                $this->essay->title,
+                $evalContent,
+                $this->essay->type
+            );
+
+            if ($offTopicResult['off_topic'] === true) {
+                $this->essay->update([
+                    'status' => 'completed',
+                    'score' => 0,
+                    'competencies' => [], // Ensure API/Resource uses 0s
+                    'off_topic' => true,
+                    'off_topic_reason' => $offTopicResult['reason'] ?? 'Você fugiu do tema proposto.',
+                    'final_score_locked' => true,
+                    'evaluated_at' => now(),
+                    'feedback_json' => [
+                        'score' => 0,
+                        'summary' => 'Fuga do tema: nota 0.',
+                        'strengths' => [],
+                        'weaknesses' => ['Fuga do tema propoto.'],
+                        'corrections' => [],
+                        'improved_version' => '',
+                        'competencies' => []
+                    ],
+                ]);
+
+                Log::info("Essay ID: {$this->essay->id} detected as OFF-TOPIC. Score locked to 0.");
+                return; // LOCK - Stop processing
+            }
+            // --- END OFF-TOPIC GATE ---
+
             $result = $aiService->evaluateEssay(
                 $this->essay->title,
-                $this->essay->content,
+                $evalContent,
                 $this->essay->type
             );
 

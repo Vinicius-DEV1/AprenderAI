@@ -81,7 +81,7 @@ class SystemPromptSeeder extends Seeder
 
         foreach ($prompts as $prompt) {
             \App\Models\SystemPrompt::updateOrCreate(
-            ['slug' => $prompt['slug']],
+                ['slug' => $prompt['slug']],
                 $prompt
             );
         }

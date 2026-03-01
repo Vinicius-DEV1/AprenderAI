@@ -35,6 +35,9 @@ class Essay extends Model
         'started_at',
         'submitted_at',
         'evaluated_at',
+        'off_topic',
+        'off_topic_reason',
+        'final_score_locked',
     ];
 
     protected $casts = [
@@ -46,6 +49,8 @@ class Essay extends Model
         'evaluated_at' => 'datetime',
         'topic_regen_count' => 'integer',
         'time_limit' => 'integer',
+        'off_topic' => 'boolean',
+        'final_score_locked' => 'boolean',
     ];
 
     public function user()
