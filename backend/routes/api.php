@@ -82,8 +82,8 @@ Route::prefix('v1')->name('api.')->group(function () {
         Route::post('essays/{essay}/submit', [EssayController::class, 'submit']);
         Route::post('essays/{essay}/retry', [EssayController::class, 'retryEvaluation']);
 
-        // Plans & Subscriptions
-        Route::prefix('plans')->group(function () {
+        // Subscriptions
+        Route::prefix('subscriptions')->group(function () {
             Route::post('/{plan}/validate-coupon', [SubscriptionController::class, 'validateCoupon']);
             Route::post('/{plan}/checkout', [SubscriptionController::class, 'store']);
             Route::get('/check-status', [SubscriptionController::class, 'checkStatus']);
