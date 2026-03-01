@@ -150,6 +150,14 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->plan && $this->plan->name === 'Plus';
     }
 
+    public function hasActiveSubscription(): bool
+    {
+        return $this->subscriptions()
+            ->where('status', 'active')
+            ->where('current_period_end', '>', now())
+            ->exists();
+    }
+
     public function hasCompletedSimulation(): bool
     {
         return $this->simulations()

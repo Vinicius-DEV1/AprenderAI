@@ -493,6 +493,33 @@ class AIService
         });
     }
 
+    public function detectOffTopic(string $title, string $content, string $type): array
+    {
+        if (!$this->hasActiveKey(ApiKey::CAPABILITY_ESSAYS))
+            return ['off_topic' => false, 'reason' => 'API não disponível'];
+
+        try {
+            return $this->executeWithFailover(ApiKey::CAPABILITY_ESSAYS, function ($apiKey) use ($title, $content, $type) {
+                $provider = $apiKey->provider;
+                $prompt = $this->buildOffTopicPrompt($title, $content, $type);
+
+                $result = $this->callAI($provider, $apiKey, $prompt);
+                $apiKey->incrementUsage();
+
+                $responseContent = $result['content'];
+
+                return [
+                    'off_topic' => isset($responseContent['off_topic']) ? (bool) $responseContent['off_topic'] : false,
+                    'reason' => $responseContent['reason'] ?? 'Indeterminado'
+                ];
+            });
+        } catch (\Exception $e) {
+            Log::error('OffTopic Detection failed', ['error' => $e->getMessage(), 'title' => $title]);
+            // Fail open
+            return ['off_topic' => false, 'reason' => 'Falha na detecção'];
+        }
+    }
+
     public function evaluateEssay(string $title, string $content, string $type): ?array
     {
         if (!$this->hasActiveKey(ApiKey::CAPABILITY_ESSAYS))
@@ -532,6 +559,15 @@ class AIService
             'essay_title' => $title,
             'essay_content' => $content,
             'max_score' => $maxScore
+        ]);
+    }
+
+    protected function buildOffTopicPrompt(string $title, string $content, string $type): string
+    {
+        return $this->promptService->get('essay_offtopic_detector', [
+            'essay_type' => $type,
+            'essay_title' => $title,
+            'essay_content' => $content,
         ]);
     }
 

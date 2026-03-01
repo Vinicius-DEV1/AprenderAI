@@ -21,6 +21,7 @@
         "cropperjs": "^1.6.2",
         "framer-motion": "^12.34.3",
         "marked": "^17.0.3",
+        "puppeteer": "^24.37.5",
         "react": "^19.0.0",
         "react-apexcharts": "^2.0.1",
         "react-chartjs-2": "^5.3.1",

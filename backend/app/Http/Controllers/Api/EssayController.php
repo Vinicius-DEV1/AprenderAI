@@ -32,11 +32,13 @@ class EssayController extends Controller
             return ['date' => $e->created_at->format('d/m'), 'value' => $e->score];
         })->toArray();
 
-        $hasEnem = Essay::where('user_id', $user->id)->where('type', 'enem')->exists();
-        $hasConcursos = Essay::where('user_id', $user->id)->where('type', 'concurso')->exists();
+        // Used by frontend (Dashboard/EssayList) rules
+        $hasEnem = $chartEssays->where('type', 'enem')->isNotEmpty();
+        $hasConcursos = $chartEssays->where('type', 'concurso')->isNotEmpty();
 
-        if (!$hasEnem && !$hasConcursos) {
-            $hasEnem = true;
+        // Empty state fallback - just to make sure graphs show correctly when there's only 1 type
+        if (!$hasEnem && $hasConcursos) {
+            $hasEnem = false;
         }
 
         return response()->json([
@@ -44,7 +46,6 @@ class EssayController extends Controller
             'meta' => [
                 'current_page' => $essays->currentPage(),
                 'last_page' => $essays->lastPage(),
-                'per_page' => $essays->perPage(),
                 'total' => $essays->total(),
                 'charts' => [
                     'enemSeries' => $enemSeries,
@@ -67,50 +68,36 @@ class EssayController extends Controller
             abort(403);
         }
 
-        // Load specific correction details if present
         $essay->load(['correction']);
-
         return new EssayResource($essay);
     }
 
     public function store(Request $request)
     {
+        $user = $request->user();
+        
+        if (!$user->canCreateEssay()) {
+            return response()->json(['message' => 'Você atingiu o limite de redações do seu plano.'], 403);
+        }
+
         $validated = $request->validate([
             'type' => 'required|in:enem,concurso',
             'time_limit' => 'required|integer|in:30,45,60,90,120',
         ]);
 
-        $user = $request->user();
-
-        // Create initial draft
-        $essay = Essay::create([
-            'user_id' => $user->id,
+        $essay = $user->essays()->create([
             'type' => $validated['type'],
-            'time_limit' => $validated['time_limit'],
+            'time_limit' => $validated['time_limit'] * 60, // save in seconds
             'title' => 'Gerando tema...',
             'content' => '',
-            'status' => 'in_progress',
-            'topic_regen_count' => 0,
+            'status' => 'pending',
             'started_at' => now(),
         ]);
 
+        // Record usage for limit calculations
+        $user->recordEssayUsage();
+
         return new EssayResource($essay);
-    }
-
-    public function startTopicGeneration(Request $request, Essay $essay)
-    {
-        if ($essay->user_id !== $request->user()->id)
-            abort(403);
-
-        if ($essay->topic_regen_count >= 3) {
-            return response()->json([
-                'message' => 'Limite de tentativas atingido.'
-            ], 429);
-        }
-
-        \App\Jobs\GenerateEssayTopicJob::dispatch($essay->id);
-
-        return response()->json(['ok' => true]);
     }
 
     public function update(Request $request, Essay $essay)
@@ -119,111 +106,69 @@ class EssayController extends Controller
             abort(403);
         }
 
-        if ($essay->status !== 'in_progress') {
-            return response()->json(['message' => 'Apenas redações em andamento podem ser editadas.'], 400);
-        }
-
         $validated = $request->validate([
-            'content' => 'nullable|string',
+            'content' => 'required|string',
         ]);
 
-        $essay->update([
-            'content' => $validated['content'] ?? '',
-        ]);
+        $essay->update(['content' => $validated['content']]);
 
         return new EssayResource($essay);
     }
 
+    public function startTopicGeneration(Request $request, Essay $essay)
+    {
+        if ($essay->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        \App\Jobs\GenerateEssayTopicJob::dispatch($essay->id);
+
+        return response()->json(['message' => 'Geração de tema iniciada.']);
+    }
+
     public function getTopicStatus(Request $request, Essay $essay)
     {
-        if ($essay->user_id !== $request->user()->id)
+        if ($essay->user_id !== $request->user()->id) {
             abort(403);
+        }
 
         return response()->json([
             'status' => $essay->status,
             'title' => $essay->title,
             'topic_description' => $essay->topic_description,
-            'topic_regen_count' => $essay->topic_regen_count
+            'theme' => $essay->theme,
         ]);
     }
 
     public function submit(Request $request, Essay $essay)
     {
-        if ($essay->user_id !== $request->user()->id)
+        if ($essay->user_id !== $request->user()->id) {
             abort(403);
-
-        if ($essay->submitted_at) {
-            return response()->json(['message' => 'Redação já enviada'], 400);
         }
 
-        $validated = $request->validate([
-            'input_type' => 'required|in:text,image',
-            'content' => 'required_if:input_type,text|nullable|string|min:50',
-            'image' => 'required_if:input_type,image|nullable|image|mimes:jpeg,png,webp|max:8192',
-            'custom_theme' => 'nullable|string|max:255'
+        // Validate text OR image
+        $request->validate([
+            'content' => 'required_without:image|string|nullable',
+            'image' => 'required_without:content|image|mimes:jpeg,png,jpg,webp|max:8192',
         ]);
 
-        // --- MODELO ACUMULATIVO: Debita a Quota primeiro usando Lock no Banco ---
-        try {
-            // Se o usuário tem admin override, não passamos pelo gateway
-            if (is_null($request->user()->max_essays_override)) {
-                app(\App\Services\QuotaService::class)->consumeQuota($request->user(), 'essays', 1);
-            }
-        } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 403);
-        }
-
-        // --- Prossegue se a quota permitiu ---
-        // If user provided a custom theme manually instead of AI
-        if (!empty($validated['custom_theme'])) {
-            $essay->title = $validated['custom_theme'];
-            $essay->topic_description = $validated['custom_theme'];
-        }
-
-        if ($request->input_type === 'image' && $request->hasFile('image')) {
-            $path = $request->file('image')->store('essays_images', 'public');
-
-            try {
-                $ocrService = app(\App\Services\EssayImageExtractorService::class);
-                $publicUrl = asset('storage/' . $path);
-
-                $extractedText = $ocrService->extractText(storage_path('app/public/' . $path), $publicUrl);
-
-                $essay->input_type = 'image';
-                $essay->image_path = $path;
-                $essay->content = $extractedText;
-                $essay->extracted_text = $extractedText;
-                $essay->ocr_status = 'success';
-                $essay->status = 'evaluating';
-                $essay->submitted_at = now();
-                $essay->save();
-
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::warning('OCR failed in EssayController API', [
-                    'reason' => $e->getMessage()
-                ]);
-
-                $essay->input_type = 'image';
-                $essay->image_path = $path;
-                $essay->ocr_status = 'failed';
-                $essay->ocr_error = substr($e->getMessage(), 0, 500);
-                $essay->status = 'in_progress'; // Back to form
-                $essay->save();
-
-                return response()->json([
-                    'message' => 'Não foi possível extrair o texto da sua imagem. ' . $e->getMessage() . ' Por favor, tente enviar uma foto mais nítida ou digite.',
-                ], 422);
-            }
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('essays', 'public');
+            $essay->input_type = 'image';
+            $essay->image_path = $path;
+            // The job will do the OCR
         } else {
             $essay->input_type = 'text';
             $essay->content = $request->input('content');
-            $essay->status = 'evaluating';
-            $essay->submitted_at = now();
-            $essay->save();
         }
+
+        $essay->status = 'evaluating';
+        $essay->submitted_at = now();
+        $essay->save();
 
         \App\Jobs\EvaluateEssayJob::dispatch($essay);
 
+        return new EssayResource($essay);
     }
 
     public function retryEvaluation(Request $request, Essay $essay)
@@ -233,7 +178,7 @@ class EssayController extends Controller
         }
 
         if ($essay->status !== 'error') {
-            return response()->json(['message' => 'Esta redação não está em estado de erro.'], 400);
+            return response()->json(['message' => 'Esta redação não está em estado de erro.'], 400); // UI expects 400
         }
 
         $essay->update([
@@ -254,7 +199,7 @@ class EssayController extends Controller
     public function getRule(Request $request, string $type)
     {
         $rule = \App\Models\WritingRule::where('type', $type)->first();
-
+        
         return response()->json([
             'min_chars' => $rule?->min_chars ?? 1500,
             'max_chars' => $rule?->max_chars ?? ($type === 'enem' ? 3000 : 4000),
@@ -262,4 +207,3 @@ class EssayController extends Controller
         ]);
     }
 }
-
