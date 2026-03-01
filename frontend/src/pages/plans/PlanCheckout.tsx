@@ -2,13 +2,16 @@ import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useConfigStore } from '../../stores/configStore';
+import { useAuthStore } from '../../stores/authStore';
 import { validateCoupon, processCheckout } from '../../api/subscriptions';
+import { getUser } from '../../api/auth';
 import { IMaskInput } from 'react-imask';
 
 export default function PlanCheckout() {
     const { planId } = useParams();
     const navigate = useNavigate();
     const { plans } = useConfigStore();
+    const { setUser } = useAuthStore();
 
     const plan = plans.find(p => p.id === Number(planId));
 
@@ -42,6 +45,37 @@ export default function PlanCheckout() {
             setFinalPrice(plan.price);
         }
     }, [plan]);
+
+    // Polling function for PIX
+    useEffect(() => {
+        let interval: ReturnType<typeof setInterval>;
+
+        const checkPaymentStatus = async () => {
+            try {
+                const response = await getUser();
+                const freshUser = response.data.user;
+
+                // If the user's plan_id has updated to the paid plan, payment is successful!
+                if (freshUser && freshUser.plan_id === plan?.id) {
+                    setUser(freshUser);
+                    clearInterval(interval);
+                    toast.success('Pagamento Pix confirmado com sucesso!');
+                    navigate('/dashboard', { state: { message: 'Assinatura ativada com sucesso!' } });
+                }
+            } catch (err) {
+                console.error('Falha no polling do pagamento:', err);
+            }
+        };
+
+        if (checkoutResult?.pix) {
+            // Poll every 5 seconds waitng for the Webhook to update the DB
+            interval = setInterval(checkPaymentStatus, 5000);
+        }
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [checkoutResult, plan, navigate, setUser]);
 
     if (!plan && plans.length > 0) {
         return (
