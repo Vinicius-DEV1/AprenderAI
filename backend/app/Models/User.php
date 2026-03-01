@@ -404,4 +404,20 @@ class User extends Authenticatable implements MustVerifyEmail
             ]);
         }
     }
+    // =========================================================================
+    // NATIVE EMAIL VERIFICATION OVERRIDE
+    // =========================================================================
+
+    /**
+     * Override default email verification notification dispatch.
+     * Native Laravel Behavior: Dispatches the SendEmailVerificationNotification synchronously when
+     * the Registered event is fired.
+     *
+     * New Behavior: Do nothing here. We handle asynchronous dispatch manually when the user requests it
+     * via point `POST /api/v1/email/resend-verification`.
+     */
+    public function sendEmailVerificationNotification()
+    {
+        // Intentionally left blank to disable automatic email sending on registration.
+    }
 }

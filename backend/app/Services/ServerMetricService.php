@@ -47,6 +47,12 @@ class ServerMetricService
             // Rede: bytes/s calculados por delta de tempo
             'net_rx_speed' => $net['rx_speed'],
             'net_tx_speed' => $net['tx_speed'],
+
+            // Novos Módulos de Comando
+            'uptime' => $this->getSystemUptimeFormatted(),
+            'services' => $this->getServiceHealth(),
+            'queues' => $this->getQueueStats(),
+            'top_processes' => $this->getTopProcesses(10),
         ];
     }
 
@@ -303,6 +309,158 @@ class ServerMetricService
         }
 
         return ['rx' => $rxTotal, 'tx' => $txTotal];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // NOVOS COMPONENTES (UPTIME, SAÚDE, PROCESSOS, FILAS)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function getSystemUptimeSeconds(): float
+    {
+        if (PHP_OS_FAMILY === 'Windows')
+            return 0;
+        try {
+            $path = file_exists('/host_proc/uptime') ? '/host_proc/uptime' : '/proc/uptime';
+            if (is_readable($path)) {
+                $uptime = explode(' ', file_get_contents($path));
+                return (float) $uptime[0];
+            }
+        } catch (\Exception $e) {
+        }
+        return 0;
+    }
+
+    public function getSystemUptimeFormatted(): string
+    {
+        $seconds = (int) $this->getSystemUptimeSeconds();
+        if ($seconds === 0)
+            return '0s';
+
+        $days = floor($seconds / 86400);
+        $hours = floor(($seconds % 86400) / 3600);
+        $minutes = floor(($seconds % 3600) / 60);
+
+        $parts = [];
+        if ($days > 0)
+            $parts[] = $days . 'd';
+        if ($hours > 0)
+            $parts[] = $hours . 'h';
+        $parts[] = $minutes . 'm';
+
+        return implode(' ', $parts);
+    }
+
+    public function getServiceHealth(): array
+    {
+        $mysql = false;
+        try {
+            \Illuminate\Support\Facades\DB::connection()->getPdo();
+            $mysql = true;
+        } catch (\Exception $e) {
+        }
+
+        $redis = false;
+        try {
+            $redisConnection = \Illuminate\Support\Facades\Redis::connection();
+            if ($redisConnection) {
+                $redisConnection->ping();
+                $redis = true;
+            }
+        } catch (\Exception $e) {
+        }
+
+        return [
+            'database' => $mysql,
+            'redis' => $redis,
+            'app' => true, // Se respondeu, está vivo
+            'webserver' => true, // Presumido vivo se a request passou
+        ];
+    }
+
+    public function getQueueStats(): array
+    {
+        try {
+            $pending = \Illuminate\Support\Facades\Queue::size('default') + \Illuminate\Support\Facades\Queue::size('import');
+            $failed = \Illuminate\Support\Facades\DB::table('failed_jobs')->count();
+            return [
+                'pending' => $pending,
+                'failed' => $failed,
+                'workers' => 'Ativo',
+            ];
+        } catch (\Exception $e) {
+            return ['pending' => 0, 'failed' => 0, 'workers' => 'Offline'];
+        }
+    }
+
+    public function getTopProcesses(int $limit = 10): array
+    {
+        if (PHP_OS_FAMILY === 'Windows')
+            return [];
+
+        $procPath = file_exists('/host_proc') ? '/host_proc' : '/proc';
+        $processes = [];
+        $uptime = $this->getSystemUptimeSeconds();
+        $pageSize = 4096;
+        $hertz = 100; // USER_HZ padrão
+
+        $dirs = @glob($procPath . '/[0-9]*', GLOB_ONLYDIR);
+        if (!$dirs || $uptime <= 0)
+            return [];
+
+        // Para evitar gargalo de I/O, lemos apenas o necessário
+        foreach ($dirs as $dir) {
+            $pid = basename($dir);
+            $statFile = $dir . '/stat';
+            $statmFile = $dir . '/statm';
+
+            if (!is_readable($statFile))
+                continue;
+
+            $stat = @file_get_contents($statFile);
+            if (!$stat)
+                continue;
+
+            // Formato stat Linux: o comm está entre parênteses
+            if (!preg_match('/^(\d+) \((.*)\) [A-Z] (.*)$/', $stat, $matches))
+                continue;
+
+            $comm = $matches[2];
+            $fields = explode(' ', $matches[3]);
+
+            $utime = (int) ($fields[11] ?? 0);
+            $stime = (int) ($fields[12] ?? 0);
+            $starttime = (int) ($fields[19] ?? 0);
+
+            $totalTimeSeconds = ($utime + $stime) / $hertz;
+            $secondsSinceStart = $uptime - ($starttime / $hertz);
+            $cpuPercent = 0;
+            if ($secondsSinceStart > 0) {
+                $cpuPercent = ($totalTimeSeconds / $secondsSinceStart) * 100;
+            }
+
+            $memBytes = 0;
+            if (is_readable($statmFile)) {
+                $statm = @file_get_contents($statmFile);
+                if ($statm) {
+                    $statmFields = explode(' ', trim($statm));
+                    $rssPages = (int) ($statmFields[1] ?? 0);
+                    $memBytes = $rssPages * $pageSize;
+                }
+            }
+
+            $processes[] = [
+                'pid' => $pid,
+                'name' => $comm,
+                'cpu' => round($cpuPercent, 1),
+                'mem_bytes' => $memBytes,
+            ];
+        }
+
+        // Ordena por CPU descendente usando array_multisort para máxima performance
+        $cpuCol = array_column($processes, 'cpu');
+        array_multisort($cpuCol, SORT_DESC, $processes);
+
+        return array_slice($processes, 0, $limit);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

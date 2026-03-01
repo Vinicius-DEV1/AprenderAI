@@ -86,7 +86,9 @@ export default function PlanCheckout() {
                 payment_method: method,
                 coupon_code: couponSuccess ? couponCode : null
             };
+            console.log('DEBUG: Calling processCheckout for plan:', plan!.id);
             const response = await processCheckout(plan!.id, payload);
+            console.log('DEBUG: Checkout response:', response);
             if (response.data.success) {
                 if (method === 'pix') {
                     setCheckoutResult(response.data);
@@ -146,7 +148,7 @@ export default function PlanCheckout() {
         <div className="py-12 max-w-4xl mx-auto px-4">
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-800">
                 <div className="p-8 md:p-10">
-                    <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mb-8">Finalizar Assinatura</h2>
+                    <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mb-8">Finalizar Assinatura [v2]</h2>
 
                     {/* Plan Summary */}
                     <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-2xl mb-10 flex flex-col sm:flex-row justify-between items-center gap-4">
