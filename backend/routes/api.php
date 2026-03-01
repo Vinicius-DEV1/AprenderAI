@@ -111,6 +111,10 @@ Route::prefix('v1')->group(function () {
             Route::get('/{question}/history', [QuestionController::class, 'history']);
             Route::post('/{question}/answer', [QuestionController::class, 'answer']);
 
+            // Xavier AI Search
+            Route::post('/ai-search', [QuestionController::class, 'aiSearch'])->name('questions.ai-search');
+            Route::get('/ai-search/{aiSearchRequest}/status', [QuestionController::class, 'aiSearchStatus'])->name('questions.ai-search.status');
+
             // Xavier Chat
             Route::get('/{question}/chat', [QuestionController::class, 'chat'])->name('questions.chat.index');
             Route::post('/{question}/chat', [QuestionController::class, 'sendChat'])->name('questions.chat.store');

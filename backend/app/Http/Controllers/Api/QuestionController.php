@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Question;
 use App\Models\QuestionInteraction;
+use App\Models\AiSearchRequest;
 use App\Jobs\RespondToStandaloneChatJob;
+use App\Jobs\InterpretSearchPromptJob;
 use App\Http\Resources\QuestionResource;
 use Illuminate\Http\Request;
 
@@ -283,5 +285,63 @@ class QuestionController extends Controller
         );
 
         return response()->json(['status' => 'queued']);
+    }
+
+    /**
+     * Submit a prompt to the AI Search (Busca Assistida)
+     */
+    public function aiSearch(Request $request)
+    {
+        $request->validate([
+            'prompt' => 'required|string|max:500',
+        ]);
+
+        $user = $request->user();
+
+        if (!$user->hasAiQuota()) {
+            return response()->json([
+                'status' => 'error',
+                'code' => 'quota_exceeded',
+                'message' => 'Você atingiu o limite de consultas de inteligência artificial do seu plano.',
+                'upgrade_url' => '/plans'
+            ], 403);
+        }
+
+        // Create the tracking record
+        $searchRequest = AiSearchRequest::create([
+            'user_id' => $user->id,
+            'prompt' => $request->prompt,
+            'status' => 'pending',
+        ]);
+
+        // Increment quota usage immediately
+        $user->incrementAiUsage();
+
+        // Dispatch background job to interpret the prompt
+        InterpretSearchPromptJob::dispatch($searchRequest);
+
+        return response()->json([
+            'status' => 'queued',
+            'request_id' => $searchRequest->id
+        ], 200);
+    }
+
+    /**
+     * Poll the status of an active AI Search request
+     */
+    public function aiSearchStatus(Request $request, AiSearchRequest $aiSearchRequest)
+    {
+        // Ensure the user owns this request
+        if ($aiSearchRequest->user_id !== $request->user()->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        return response()->json([
+            'status' => $aiSearchRequest->status,
+            'filters' => $aiSearchRequest->filters,
+            'suggestion_tip' => $aiSearchRequest->filters['suggestion_tip'] ?? null,
+            'suggestions' => $aiSearchRequest->filters['suggestions'] ?? [],
+            'error' => $aiSearchRequest->error
+        ], 200);
     }
 }
