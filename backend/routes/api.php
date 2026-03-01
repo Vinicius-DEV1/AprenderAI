@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\Admin\AdminQuestionImportController;
 use App\Http\Controllers\Api\Admin\AdminImportReviewController;
 use App\Http\Controllers\Api\Admin\AdminSimulationController;
 use App\Http\Controllers\Api\Admin\ApiPricingController;
+use App\Http\Controllers\Api\Admin\PaymentSettingsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -141,6 +142,8 @@ Route::prefix('v1')->name('api.')->group(function () {
             // Settings & Cache
             Route::get('/settings', [AdminSettingController::class, 'index']);
             Route::post('/settings', [AdminSettingController::class, 'update']);
+            Route::get('/payment-settings', [PaymentSettingsController::class, 'index']);
+            Route::put('/payment-settings', [PaymentSettingsController::class, 'update']);
             Route::post('/settings/clear-cache', [AdminSettingController::class, 'clearCache']);
 
             // Analytics

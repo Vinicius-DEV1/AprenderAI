@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 import { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
 import api from '../../api/axios';
@@ -45,7 +46,8 @@ export default function QuestionCard({ question: q }: { question: Question }) {
     const [difficultyReasoning, setDifficultyReasoning] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
-    const [showChat, setShowChat] = useState(false);
+    const [activeTab, setActiveTab] = useState<'feedback' | 'chat' | 'history' | null>(null);
+
     const [chatMessages, setChatMessages] = useState<any[]>([]);
     const [chatInput, setChatInput] = useState('');
     const [chatTyping, setChatTyping] = useState(false);
@@ -112,6 +114,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
             setCorrectAnswer(data.correct_answer ?? null);
             setExplanation(data.explanation || '');
             setDifficultyReasoning(data.difficulty_reasoning || '');
+            setActiveTab('feedback');
         } catch (e) {
             toast.error('Erro ao enviar resposta.');
         } finally {
@@ -127,8 +130,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
         setCorrectAnswer(null);
         setExplanation(null);
         setDifficultyReasoning(null);
-        setShowChat(false);
-        setShowHistory(false);
+        setActiveTab(null);
     };
 
     const loadChatHistory = async () => {
@@ -153,8 +155,8 @@ export default function QuestionCard({ question: q }: { question: Question }) {
     };
 
     const toggleChat = async () => {
-        const nextState = !showChat;
-        setShowChat(nextState);
+        const nextState = activeTab !== 'chat';
+        setActiveTab(nextState ? 'chat' : 'feedback');
         if (nextState && !chatLoaded) {
             await loadChatHistory();
         }
@@ -210,8 +212,8 @@ export default function QuestionCard({ question: q }: { question: Question }) {
     };
 
     const toggleHistory = async () => {
-        const nextState = !showHistory;
-        setShowHistory(nextState);
+        const nextState = activeTab !== 'history';
+        setActiveTab(nextState ? 'history' : 'feedback');
         if (nextState && !historyLoaded) {
             setHistoryLoading(true);
             try {
@@ -308,136 +310,164 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                     </button>
                 )}
                 {answered && (
-                    <>
-                        <button className="qb-action-btn" onClick={toggleChat}>
-                            {showChat ? '▲ Ocultar Chat' : '💬 Tirar Dúvida'}
+                    <div className="flex overflow-x-auto whitespace-nowrap gap-2 pb-2 items-center w-full max-w-full" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                        <button
+                            className={`qb-action-btn transition-colors duration-200 ${activeTab === 'chat' ? '!bg-indigo-600 !text-white !border-indigo-600 shadow-sm' : ''}`}
+                            onClick={toggleChat}
+                            style={{ flexShrink: 0 }}
+                        >
+                            {activeTab === 'chat' ? '▲ Ocultar Chat' : '✨ Tirar Dúvida'}
                         </button>
-                        <button className="qb-action-btn" onClick={toggleHistory}>📜 Meu Histórico</button>
-                        <button className="qb-action-btn retry" onClick={resetCard}>
+                        <button
+                            className={`qb-action-btn transition-colors duration-200 ${activeTab === 'history' ? '!bg-indigo-600 !text-white !border-indigo-600 shadow-sm' : ''}`}
+                            onClick={toggleHistory}
+                            style={{ flexShrink: 0 }}
+                        >
+                            📜 Meu Histórico
+                        </button>
+                        <button className="qb-action-btn retry" onClick={resetCard} style={{ flexShrink: 0 }}>
                             <span>🔄 Tentar Novamente</span>
                         </button>
-                    </>
+                    </div>
                 )}
             </div>
 
-            {answered && isDiscursive && (
-                <div className="qb-feedback border-l-4 border-indigo-500 bg-indigo-50 p-4 mt-6 rounded-r-lg">
-                    <div className="flex justify-between items-center mb-4">
-                        <h4 className="font-bold text-indigo-900 flex items-center gap-2">
-                            <span className="text-xl">📋</span> Espelho de Correção Oficial
-                        </h4>
-                        <button className="text-sm bg-white text-indigo-600 px-3 py-1.5 rounded-md border border-indigo-200 hover:bg-indigo-100 font-semibold shadow-sm transition">
-                            ✨ Pedir correção para {aiName}
-                        </button>
-                    </div>
+            <AnimatePresence mode="wait">
+                {answered && isDiscursive && activeTab === 'feedback' && (
+                    <motion.div
+                        key="feedback-discursive"
+                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}
+                        className="qb-feedback border-l-4 border-indigo-500 bg-indigo-50 p-4 mt-6 rounded-r-lg shadow-sm"
+                    >
+                        <div className="flex justify-between items-center mb-4">
+                            <h4 className="font-bold text-indigo-900 flex items-center gap-2">
+                                <span className="text-xl">📋</span> Espelho de Correção Oficial
+                            </h4>
+                            <button className="text-sm bg-white text-indigo-600 px-3 py-1.5 rounded-md border border-indigo-200 hover:bg-indigo-100 font-semibold shadow-sm transition">
+                                ✨ Pedir correção para {aiName}
+                            </button>
+                        </div>
 
-                    <div className="space-y-4">
-                        {typeof q.discursive_answer === 'object' && q.discursive_answer !== null ? (
-                            Object.entries(q.discursive_answer).map(([key, value]) => (
-                                <div key={key} className="bg-white p-3 rounded-md shadow-sm border border-indigo-100">
-                                    <strong className="text-indigo-800">Padrão Esperado ({key}):</strong>
-                                    <div className="text-slate-700 mt-1 text-sm whitespace-pre-wrap">{String(value)}</div>
+                        <div className="space-y-4">
+                            {typeof q.discursive_answer === 'object' && q.discursive_answer !== null ? (
+                                Object.entries(q.discursive_answer).map(([key, value]) => (
+                                    <div key={key} className="bg-white p-3 rounded-md shadow-sm border border-indigo-100">
+                                        <strong className="text-indigo-800">Padrão Esperado ({key}):</strong>
+                                        <div className="text-slate-700 mt-1 text-sm whitespace-pre-wrap">{String(value)}</div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="bg-white p-3 rounded-md shadow-sm border border-indigo-100 text-slate-700 whitespace-pre-wrap">
+                                    {q.discursive_answer ? String(q.discursive_answer) : "Espelho não encontrado."}
                                 </div>
-                            ))
-                        ) : (
-                            <div className="bg-white p-3 rounded-md shadow-sm border border-indigo-100 text-slate-700 whitespace-pre-wrap">
-                                {q.discursive_answer ? String(q.discursive_answer) : "Espelho não encontrado."}
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+
+                {answered && !isDiscursive && activeTab === 'feedback' && (
+                    <motion.div
+                        key="feedback-objective"
+                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}
+                        className={`qb-feedback rounded-2xl shadow-sm ${isCorrect ? 'correct' : 'incorrect'}`}
+                    >
+                        <div className="qb-feedback-title">
+                            <span>{isCorrect ? '✅ Resposta Correta!' : '❌ Resposta Incorreta'}</span>
+                            {!isCorrect && (
+                                <span style={{ fontWeight: 400, fontSize: '12px', color: '#64748b' }}>
+                                    {" "}Correta: <strong style={{ color: '#065f46' }}>{correctAnswer}</strong>
+                                </span>
+                            )}
+                        </div>
+                        {explanation && (
+                            <div className="qb-explanation">
+                                <h4>📖 Resolução Comentada</h4>
+                                <div className="qb-explanation-text" dangerouslySetInnerHTML={renderMd(explanation)} />
                             </div>
                         )}
-                    </div>
-                </div>
-            )}
-
-            {answered && !isDiscursive && (
-                <div className={`qb-feedback ${isCorrect ? 'correct' : 'incorrect'}`}>
-                    <div className="qb-feedback-title">
-                        <span>{isCorrect ? '✅ Resposta Correta!' : '❌ Resposta Incorreta'}</span>
-                        {!isCorrect && (
-                            <span style={{ fontWeight: 400, fontSize: '12px', color: '#64748b' }}>
-                                {" "}Correta: <strong style={{ color: '#065f46' }}>{correctAnswer}</strong>
-                            </span>
+                        {difficultyReasoning && (
+                            <div className="qb-difficulty-box" style={{ borderColor: isCorrect ? '#bbf7d0' : '#fecaca', background: isCorrect ? '#f0fdf4' : '#fef2f2' }}>
+                                <h5 className="text-sm font-bold uppercase mb-1">
+                                    [{dc.label}] 🎯 Por que essa dificuldade?
+                                </h5>
+                                <p style={{ color: '#475569', fontSize: '13px' }}>{difficultyReasoning}</p>
+                            </div>
                         )}
-                    </div>
-                    {explanation && (
-                        <div className="qb-explanation">
-                            <h4>📖 Resolução Comentada</h4>
-                            <div className="qb-explanation-text" dangerouslySetInnerHTML={renderMd(explanation)} />
-                        </div>
-                    )}
-                    {difficultyReasoning && (
-                        <div className="qb-difficulty-box" style={{ borderColor: isCorrect ? '#bbf7d0' : '#fecaca', background: isCorrect ? '#f0fdf4' : '#fef2f2' }}>
-                            <h5 className="text-sm font-bold uppercase mb-1">
-                                [{dc.label}] 🎯 Por que essa dificuldade?
-                            </h5>
-                            <p style={{ color: '#475569', fontSize: '13px' }}>{difficultyReasoning}</p>
-                        </div>
-                    )}
-                </div>
-            )}
+                    </motion.div>
+                )}
 
-            {showHistory && (
-                <div className="qb-history-popover animate-fade-in">
-                    <h4 style={{ fontSize: '13px', fontWeight: 700, color: '#6366f1', marginBottom: '8px' }}>📜 Seu Histórico nesta Questão</h4>
-                    {historyLoading && <p style={{ fontSize: '12px', color: '#94a3b8' }}>Carregando...</p>}
-                    {!historyLoading && historyData.length === 0 && <p style={{ fontSize: '12px', color: '#94a3b8' }}>Nenhum registro encontrado.</p>}
-                    {historyData.map((h, idx) => (
-                        <div key={idx} className="qb-history-row">
-                            <span style={{ color: '#64748b' }}>{formatDate(h.answered_at)}</span>
-                            <span>Resposta: <strong>{h.selected_answer}</strong></span>
-                            <span className={`qb-badge ${h.is_correct ? 'qb-badge-correct' : 'qb-badge-incorrect'}`}>
-                                {h.is_correct ? 'Acerto' : 'Erro'}
-                            </span>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {showChat && (
-                <div className="qb-chat-container">
-                    <div className="qb-chat-history space-y-2 p-1" ref={chatHistoryRef}>
-                        {chatMessages.map((msg, idx) => (
-                            <div key={idx} className={msg.role === 'user' ? 'flex justify-end' : (msg.role === 'system' ? 'flex justify-center' : 'flex justify-start')}>
-                                {msg.role === 'user' && (
-                                    <div className="rounded-lg px-3 py-1.5 max-w-[85%] text-xs shadow-sm" style={{ background: '#4f46e5', color: 'white' }}>{msg.message}</div>
-                                )}
-                                {msg.role === 'assistant' && (
-                                    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 max-w-[85%] text-xs shadow-sm" dangerouslySetInnerHTML={renderMd(msg.message)} />
-                                )}
-                                {msg.role === 'system' && (
-                                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center w-[90%]">
-                                        <p className="text-xs text-red-800 font-bold">{msg.message}</p>
-                                        <a href={msg.upgrade_url || '/plans'} className="mt-2 inline-block bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs font-bold py-1.5 px-4 rounded-full">🚀 Turbinar Plano</a>
-                                    </div>
-                                )}
+                {answered && activeTab === 'history' && (
+                    <motion.div
+                        key="history-panel"
+                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}
+                        className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mt-6 overflow-hidden w-full"
+                    >
+                        <h4 style={{ fontSize: '13px', fontWeight: 700, color: '#6366f1', marginBottom: '8px' }}>📜 Seu Histórico nesta Questão</h4>
+                        {historyLoading && <p style={{ fontSize: '12px', color: '#94a3b8' }}>Carregando...</p>}
+                        {!historyLoading && historyData.length === 0 && <p style={{ fontSize: '12px', color: '#94a3b8' }}>Nenhum registro encontrado.</p>}
+                        {historyData.map((h, idx) => (
+                            <div key={idx} className="qb-history-row">
+                                <span style={{ color: '#64748b' }}>{formatDate(h.answered_at)}</span>
+                                <span>Resposta: <strong>{h.selected_answer}</strong></span>
+                                <span className={`qb-badge ${h.is_correct ? 'qb-badge-correct' : 'qb-badge-incorrect'}`}>
+                                    {h.is_correct ? 'Acerto' : 'Erro'}
+                                </span>
                             </div>
                         ))}
-                        {chatTyping && (
-                            <div className="flex items-start">
-                                <div className="bg-gray-100 dark:bg-slate-700 rounded-lg px-3 py-2 text-xs text-gray-500 flex items-center gap-2 border border-gray-200">
-                                    <span className="font-medium">{aiName} digitando</span>
-                                    <span className="flex gap-1">
-                                        <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></span>
-                                        <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></span>
-                                        <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
-                                    </span>
+                    </motion.div>
+                )}
+
+                {answered && activeTab === 'chat' && (
+                    <motion.div
+                        key="chat-panel"
+                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}
+                        className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mt-6 overflow-hidden w-full"
+                    >
+                        <div className="qb-chat-history space-y-2 p-1 overflow-y-auto max-h-64" ref={chatHistoryRef}>
+                            {chatMessages.map((msg, idx) => (
+                                <div key={idx} className={msg.role === 'user' ? 'flex justify-end' : (msg.role === 'system' ? 'flex justify-center' : 'flex justify-start')}>
+                                    {msg.role === 'user' && (
+                                        <div className="rounded-lg px-3 py-1.5 max-w-[85%] text-xs shadow-sm" style={{ background: '#4f46e5', color: 'white' }}>{msg.message}</div>
+                                    )}
+                                    {msg.role === 'assistant' && (
+                                        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 max-w-[85%] text-xs shadow-sm" dangerouslySetInnerHTML={renderMd(msg.message)} />
+                                    )}
+                                    {msg.role === 'system' && (
+                                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center w-[90%]">
+                                            <p className="text-xs text-red-800 font-bold">{msg.message}</p>
+                                            <a href={msg.upgrade_url || '/plans'} className="mt-2 inline-block bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs font-bold py-1.5 px-4 rounded-full">🚀 Turbinar Plano</a>
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
-                        )}
-                    </div>
-                    <div className="flex gap-2 mt-2">
-                        <input
-                            type="text"
-                            value={chatInput}
-                            onChange={e => setChatInput(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && sendChat()}
-                            placeholder={`Qual sua dúvida, ${user?.name?.split(' ')[0] || 'estudante'}?`}
-                            disabled={chatTyping}
-                            className="flex-1 rounded-md border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 shadow-sm text-xs px-3 py-2"
-                        />
-                        <button onClick={sendChat} disabled={chatTyping || !chatInput.trim()} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-xs font-medium disabled:opacity-50">Enviar</button>
-                    </div>
-                </div>
-            )}
+                            ))}
+                            {chatTyping && (
+                                <div className="flex items-start">
+                                    <div className="bg-gray-100 dark:bg-slate-700 rounded-lg px-3 py-2 text-xs text-gray-500 flex items-center gap-2 border border-gray-200">
+                                        <span className="font-medium">{aiName} digitando</span>
+                                        <span className="flex gap-1">
+                                            <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></span>
+                                            <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></span>
+                                            <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                            <input
+                                type="text"
+                                value={chatInput}
+                                onChange={e => setChatInput(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && sendChat()}
+                                placeholder={`Qual sua dúvida, ${user?.name?.split(' ')[0] || 'estudante'}?`}
+                                disabled={chatTyping}
+                                className="flex-1 rounded-md border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 shadow-sm text-xs px-3 py-2 focus:ring-1 focus:ring-indigo-500"
+                            />
+                            <button onClick={sendChat} disabled={chatTyping || !chatInput.trim()} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-xs font-medium disabled:opacity-50 transition-colors">Enviar</button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
