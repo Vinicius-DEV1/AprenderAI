@@ -4,6 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Question;
+use App\Models\QuestionInteraction;
+use App\Models\AiSearchRequest;
+use App\Jobs\RespondToStandaloneChatJob;
+use App\Jobs\InterpretSearchPromptJob;
 use App\Http\Resources\QuestionResource;
 use Illuminate\Http\Request;
 
@@ -213,4 +217,131 @@ class QuestionController extends Controller
         ]);
     }
 
+    /**
+     * Get chat history for a specific question.
+     */
+    public function chat(Request $request, Question $question)
+    {
+        $interactions = QuestionInteraction::where('user_id', $request->user()->id)
+            ->where('question_id', $question->id)
+            ->whereNull('simulation_id') // Standalone chat
+            ->orderBy('created_at', 'asc')
+            ->get(['role', 'message', 'created_at']);
+
+        return response()->json($interactions);
+    }
+
+    /**
+     * Send a new chat message to Xavier.
+     */
+    public function sendChat(Request $request, Question $question)
+    {
+        $request->validate([
+            'message' => 'required|string|max:1000',
+        ]);
+
+        $user = $request->user();
+
+        // 1. Check AI Quota
+        if (!$user->hasAiQuota()) {
+            return response()->json([
+                'status' => 'quota_exceeded',
+                'message' => 'Você atingiu o limite de dúvidas do seu plano.',
+                'upgrade_url' => '/plans'
+            ]);
+        }
+
+        // 2. Save User Message
+        QuestionInteraction::create([
+            'user_id' => $user->id,
+            'question_id' => $question->id,
+            'role' => 'user',
+            'message' => $request->message,
+        ]);
+
+        // 3. Increment usage immediately (prevent race conditions)
+        $user->incrementAiUsage();
+
+        // 4. Get history for context
+        $history = QuestionInteraction::where('user_id', $user->id)
+            ->where('question_id', $question->id)
+            ->whereNull('simulation_id')
+            ->orderBy('created_at', 'asc')
+            ->get(['role', 'message'])
+            ->toArray();
+
+        // 5. Dispatch AI background job
+        $lastAnswer = \App\Models\UserQuestionAnswer::where('user_id', $user->id)
+            ->where('question_id', $question->id)
+            ->orderByDesc('answered_at')
+            ->value('selected_answer') ?? 'Não respondida';
+
+        RespondToStandaloneChatJob::dispatch(
+            $question,
+            $lastAnswer,
+            $request->message,
+            $history,
+            $user->id
+        );
+
+        return response()->json(['status' => 'queued']);
+    }
+
+    /**
+     * Submit a prompt to the AI Search (Busca Assistida)
+     */
+    public function aiSearch(Request $request)
+    {
+        $request->validate([
+            'prompt' => 'required|string|max:500',
+        ]);
+
+        $user = $request->user();
+
+        if (!$user->hasAiQuota()) {
+            return response()->json([
+                'status' => 'error',
+                'code' => 'quota_exceeded',
+                'message' => 'Você atingiu o limite de consultas de inteligência artificial do seu plano.',
+                'upgrade_url' => '/plans'
+            ], 403);
+        }
+
+        // Create the tracking record
+        $searchRequest = AiSearchRequest::create([
+            'user_id' => $user->id,
+            'prompt' => $request->prompt,
+            'status' => 'pending',
+        ]);
+
+        // Increment quota usage immediately
+        $user->incrementAiUsage();
+
+        // Dispatch background job to interpret the prompt
+        InterpretSearchPromptJob::dispatch($searchRequest);
+
+        return response()->json([
+            'status' => 'queued',
+            'request_id' => $searchRequest->id
+        ], 200);
+    }
+
+    /**
+     * Poll the status of an active AI Search request
+     */
+    public function aiSearchStatus(Request $request, AiSearchRequest $aiSearchRequest)
+    {
+        // Ensure the user owns this request
+        if ($aiSearchRequest->user_id !== $request->user()->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        return response()->json([
+            'status' => $aiSearchRequest->status,
+            'filters' => $aiSearchRequest->filters,
+            'suggestion_tip' => $aiSearchRequest->filters['suggestion_tip'] ?? null,
+            'suggestions' => $aiSearchRequest->filters['suggestions'] ?? [],
+            'error' => $aiSearchRequest->error
+        ], 200);
+    }
 }

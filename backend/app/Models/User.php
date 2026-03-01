@@ -259,15 +259,15 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * How many essays the user has submitted in the current calendar month.
-     * Uses submitted_at timestamp (not created_at) to count only truly consumed essays.
+     * Repassado para a Query unificada do QuotaService (Ledgers do ciclo ativo).
      */
     public function monthlyEssayUsed(): int
     {
-        return $this->essays()
-            ->whereNotNull('submitted_at')
-            ->whereYear('submitted_at', now()->year)
-            ->whereMonth('submitted_at', now()->month)
-            ->count();
+        try {
+            return app(\App\Services\QuotaService::class)->getUsage($this, 'essays')['used'];
+        } catch (\Exception $e) {
+            return 0;
+        }
     }
 
     /**
@@ -282,45 +282,33 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Whether the user can create (and submit) a new essay this month.
-     *
-     * Two distinct code paths:
-     *
-     * A) Admin override is set:
-     *    - Override = 0 ⟹ unlimited
-     *    - Override > 0 ⟹ hard cap
-     *
-     * B) No override:
-     *    - Plan limit = 0 ⟹ essay feature not available in this plan (BLOCKED)
-     *    - Plan limit + credits = 0 ⟹ also BLOCKED
-     *    - Plan limit + credits > 0 ⟹ compare vs usage
+     * Centralizado no QuotaService (Lógica de Ciclo e Acumulação).
      */
     public function canCreateEssay(): bool
     {
-        if (!$this->plan) {
+        if (!$this->plan)
             return false;
-        }
 
         // --- PATH A: Admin override is active ---
         if (!is_null($this->max_essays_override)) {
-            // Override = 0 means unlimited (admin explicitly granted this)
-            if ($this->max_essays_override === 0) {
-                return true;
-            }
+            if ($this->max_essays_override === 0)
+                return true; // unlimited
             return $this->monthlyEssayUsed() < $this->max_essays_override;
         }
 
-        // --- PATH B: No override, use plan + credits ---
-        $planLimit = $this->plan->essays_limit ?? 0;
-        $totalCredits = $this->essay_credits ?? 0;
-        $effectiveLimit = $planLimit + $totalCredits;
+        // --- PATH B: No override, verifica QuotaService real ---
+        try {
+            $usage = app(\App\Services\QuotaService::class)->getUsage($this, 'essays');
+            $limit = $usage['limit'] ?? 0;
 
-        // plan essays_limit = 0 means the plan doesn't include essays
-        // Even if the user somehow has 0 credits, they cannot proceed
-        if ($effectiveLimit === 0) {
+            // Ilimitado no JSON (ex: Plus Plan)
+            if ($limit === null)
+                return true;
+
+            return $usage['used'] < $limit;
+        } catch (\Exception $e) {
             return false;
         }
-
-        return $this->monthlyEssayUsed() < $effectiveLimit;
     }
 
     /**

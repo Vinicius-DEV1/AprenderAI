@@ -2,13 +2,16 @@ import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useConfigStore } from '../../stores/configStore';
+import { useAuthStore } from '../../stores/authStore';
 import { validateCoupon, processCheckout } from '../../api/subscriptions';
+import { getUser } from '../../api/auth';
 import { IMaskInput } from 'react-imask';
 
 export default function PlanCheckout() {
     const { planId } = useParams();
     const navigate = useNavigate();
     const { plans } = useConfigStore();
+    const { setUser } = useAuthStore();
 
     const plan = plans.find(p => p.id === Number(planId));
 
@@ -42,6 +45,37 @@ export default function PlanCheckout() {
             setFinalPrice(plan.price);
         }
     }, [plan]);
+
+    // Polling function for PIX
+    useEffect(() => {
+        let interval: ReturnType<typeof setInterval>;
+
+        const checkPaymentStatus = async () => {
+            try {
+                const response = await getUser();
+                const freshUser = response.data.user;
+
+                // If the user's plan_id has updated to the paid plan, payment is successful!
+                if (freshUser && freshUser.plan_id === plan?.id) {
+                    setUser(freshUser);
+                    clearInterval(interval);
+                    toast.success('Pagamento Pix confirmado com sucesso!');
+                    navigate('/dashboard', { state: { message: 'Assinatura ativada com sucesso!' } });
+                }
+            } catch (err) {
+                console.error('Falha no polling do pagamento:', err);
+            }
+        };
+
+        if (checkoutResult?.pix) {
+            // Poll every 5 seconds waitng for the Webhook to update the DB
+            interval = setInterval(checkPaymentStatus, 5000);
+        }
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [checkoutResult, plan, navigate, setUser]);
 
     if (!plan && plans.length > 0) {
         return (
@@ -289,7 +323,7 @@ export default function PlanCheckout() {
                                 </h3>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
+                                    <div className={method === 'pix' ? 'col-span-1 md:col-span-2' : ''}>
                                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">CPF / CNPJ</label>
                                         <IMaskInput
                                             mask={[{ mask: '000.000.000-00' }, { mask: '00.000.000/0000-00' }]} unmask={true}
@@ -300,37 +334,41 @@ export default function PlanCheckout() {
                                         />
                                     </div>
 
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Telefone Celular</label>
-                                        <IMaskInput
-                                            mask="(00) 00000-0000" unmask={true}
-                                            type="text" name="phone" required
-                                            value={formData.phone} onAccept={(val) => handleMaskChange(val, 'phone')}
-                                            placeholder="(11) 99999-9999"
-                                            className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
-                                        />
-                                    </div>
+                                    {method === 'credit_card' && (
+                                        <>
+                                            <div className="animate-in fade-in slide-in-from-left-2 duration-300">
+                                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Telefone Celular</label>
+                                                <IMaskInput
+                                                    mask="(00) 00000-0000" unmask={true}
+                                                    type="text" name="phone" required={method === 'credit_card'}
+                                                    value={formData.phone} onAccept={(val) => handleMaskChange(val, 'phone')}
+                                                    placeholder="(11) 99999-9999"
+                                                    className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                />
+                                            </div>
 
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">CEP</label>
-                                        <IMaskInput
-                                            mask="00000-000" unmask={true}
-                                            type="text" name="postal_code" required
-                                            value={formData.postal_code} onAccept={(val) => handleMaskChange(val, 'postal_code')}
-                                            placeholder="00000-000"
-                                            className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
-                                        />
-                                    </div>
+                                            <div className="animate-in fade-in slide-in-from-right-2 duration-300">
+                                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">CEP</label>
+                                                <IMaskInput
+                                                    mask="00000-000" unmask={true}
+                                                    type="text" name="postal_code" required={method === 'credit_card'}
+                                                    value={formData.postal_code} onAccept={(val) => handleMaskChange(val, 'postal_code')}
+                                                    placeholder="00000-000"
+                                                    className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                />
+                                            </div>
 
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Número (Endereço)</label>
-                                        <input
-                                            type="text" name="address_number" required
-                                            value={formData.address_number} onChange={handleInputChange}
-                                            placeholder="123"
-                                            className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
-                                        />
-                                    </div>
+                                            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Número (Endereço)</label>
+                                                <input
+                                                    type="text" name="address_number" required={method === 'credit_card'}
+                                                    value={formData.address_number} onChange={handleInputChange}
+                                                    placeholder="123"
+                                                    className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                />
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                                 <p className="mt-2 text-[11px] text-slate-400 font-medium">Os dados acima são obrigatórios pela instituição financeira para prevenir recusas por suspeita de fraude.</p>
                             </div>

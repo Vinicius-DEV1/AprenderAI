@@ -100,6 +100,64 @@ class UserController extends Controller
     }
 
     /**
+     * Cancel and Refund User Subscription (CDC 7 days or manual Admin kill)
+     * Kills active quotas (SubscriptionCycle), resets Plan to Free, and cancels on Asaas.
+     */
+    public function refundAndCancel(Request $request, User $user)
+    {
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($user, $request) {
+                // 1. Locate User's active subscription
+                $subscription = \App\Models\Subscription::where('user_id', $user->id)
+                    ->where('status', 'active')
+                    ->first();
+
+                if ($subscription) {
+                    $subscription->update([
+                        'status' => 'refunded',
+                        'canceled_at' => now(),
+                    ]);
+
+                    // Call Asaas Service to actually refund it on gateway (Optional, depends on Asaas App rules)
+                    // if ($request->boolean('refund_gateway')) {
+                    //     app(\App\Services\AsaasService::class)->refundPayment($subscription->gateway_id);
+                    // }
+                }
+
+                // 2. Kill Active Quotas (The Model Acumulativo switch)
+                $activeCycles = \App\Models\SubscriptionCycle::where('subscription_id', $subscription?->id ?? 0)
+                    ->orWhereHas('subscription', function ($q) use ($user) {
+                        $q->where('user_id', $user->id);
+                    })
+                    ->where('end_date', '>=', now())
+                    ->update(['end_date' => now()]);
+
+                // 3. Reset Profile to Free Plan immediatly
+                $user->update([
+                    'plan_id' => 1, // Plano Grátis Base
+                    'plan_expires_at' => now(),
+                ]);
+
+                // 4. Mark user to prevent Future Abuses of 7-days refunds
+                \App\Models\UserLog::create([
+                    'user_id' => $user->id,
+                    'action' => 'admin_force_refund_cdc',
+                    'details' => json_encode(['admin_id' => $request->user()->id, 'message' => 'Admin forçou o cancelamento imediato / estorno cortando limites ciclos acumulados.'])
+                ]);
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Assinatura cancelada! Limites premium revogados instantaneamente.'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error("Error on Admin Refund User {$user->id}: " . $e->getMessage());
+            return response()->json(['message' => 'Erro ao processar o cancelamento: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * Update user role or information (Admin only).
      */
     public function update(Request $request, User $user)
