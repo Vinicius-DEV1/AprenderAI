@@ -1,0 +1,91 @@
+--- TABLES ---
+ai_batch_items
+ai_processing_batches
+ai_request_logs
+ai_search_requests
+analytics_alerts
+analytics_dailies
+analytics_devices
+analytics_events
+analytics_hourlies
+analytics_pages
+analytics_sources
+api_key_capabilities
+api_key_vaults
+api_keys
+api_logs
+api_pricing
+api_pricing_logs
+cache
+cache_locks
+concursos
+configurations
+corrections
+coupon_user
+coupons
+discursive_responses
+enem_import_logs
+essays
+failed_jobs
+job_batches
+jobs
+migrations
+password_reset_tokens
+payment_logs
+plans
+question_alternatives
+question_images
+question_import_items
+question_imports
+question_interactions
+question_subject
+question_topic
+questions
+server_metrics
+sessions
+settings
+simulation_answers
+simulation_discipline_distributions
+simulation_engine_rules
+simulation_models
+simulation_presets
+simulation_rules
+simulations
+study_plans
+subjects
+subscriptions
+system_prompts
+topics
+user_logs
+user_question_answers
+user_stats
+user_topic_stats
+users
+
+--- WRITING RULE MODEL ---
+Class App\Models\WritingRule exists: NO (Searched for app/Models/WritingRule.php)
+
+--- ESSAYS TABLE STRUCTURE ---
+id, user_id, simulation_id, type, title, content, status, score, competencies, feedback, ai_suggestions, example_essay, time_limit, topic_description, topic_regen_count, topic_hash, started_at, submitted_at, evaluated_at, feedback_json, created_at, updated_at
+
+--- LAST ERROR LOGS (Tail) ---
+[stacktrace]
+#0 /var/www/vendor/psy/psysh/src/Shell.php(1640): Psy\\Shell->setCode('echo 'Essays Ta...', true)
+#1 /var/www/vendor/laravel/tinker/src/Console/TinkerCommand.php(77): Psy\\Shell->execute('echo 'Essays Ta...')
+#2 /var/www/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(36): Laravel\\Tinker\\Console\\TinkerCommand->handle()
+#3 /var/www/vendor/laravel/framework/src/Illuminate/Container/Util.php(43): Illuminate\\Container\\BoundMethod::{closure:Illuminate\\Container\\BoundMethod::call():35}()
+#4 /var/www/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(95): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))
+#5 /var/www/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))
+#6 /var/www/vendor/laravel/framework/src/Illuminate/Container/Container.php(696): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)
+#7 /var/www/vendor/laravel/framework/src/Illuminate/Console/Command.php(213): Illuminate\\Container\\Container->call(Array)
+#8 /var/www/vendor/symfony/console/Command/Command.php(341): Illuminate\\Console\\Command->execute(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))
+#9 /var/www/vendor/laravel/framework/src/Illuminate/Console/Command.php(182): Symfony\\Component\\Console\\Command\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))
+#10 /var/www/vendor/symfony/console/Application.php(1102): Illuminate\\Console\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#11 /var/www/vendor/symfony/console/Application.php(356): Symfony\\Component\\Console\\Application->doRunCommand(Object(Laravel\\Tinker\\Console\\TinkerCommand), Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#12 /var/www/vendor/symfony/console/Application.php(195): Symfony\\Component\\Console\\Application->doRun(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#13 /var/www/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(198): Symfony\\Component\\Console\\Application->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#14 /var/www/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1235): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#15 /var/www/artisan(16): Illuminate\\Foundation\\Application->handleCommand(Object(Symfony\\Component\\Console\\Input\\ArgvInput))
+#16 {main}
+"} 
+
