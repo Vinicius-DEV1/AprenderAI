@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Simulation;
+use App\Models\Question;
+use App\Models\QuestionInteraction;
+use App\Jobs\RespondToChatJob;
 use App\Http\Resources\SimulationResource;
 use App\Services\PlanService;
 use App\Services\SimulationCreationService;
@@ -261,5 +264,79 @@ class SimulationController extends Controller
         ]);
 
         return new SimulationResource($simulation);
+    }
+
+    /**
+     * Get chat history for a specific question in a simulation.
+     */
+    public function chat(Request $request, Simulation $simulation, Question $question)
+    {
+        if ($simulation->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        $interactions = QuestionInteraction::where('user_id', $request->user()->id)
+            ->where('simulation_id', $simulation->id)
+            ->where('question_id', $question->id)
+            ->orderBy('created_at', 'asc')
+            ->get(['role', 'message', 'created_at']);
+
+        return response()->json($interactions);
+    }
+
+    /**
+     * Send a new chat message to Xavier from within a simulation.
+     */
+    public function sendChat(Request $request, Simulation $simulation, Question $question)
+    {
+        if ($simulation->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        $request->validate([
+            'message' => 'required|string|max:1000',
+        ]);
+
+        $user = $request->user();
+
+        // 1. Check AI Quota
+        if (!$user->hasAiQuota()) {
+            return response()->json([
+                'status' => 'quota_exceeded',
+                'message' => 'Você atingiu o limite de dúvidas do seu plano.',
+                'upgrade_url' => '/plans'
+            ]);
+        }
+
+        // 2. Save User Message
+        QuestionInteraction::create([
+            'simulation_id' => $simulation->id,
+            'question_id' => $question->id,
+            'user_id' => $user->id,
+            'role' => 'user',
+            'message' => $request->message,
+        ]);
+
+        // 3. Increment usage
+        $user->incrementAiUsage();
+
+        // 4. Get history for context
+        $history = QuestionInteraction::where('user_id', $user->id)
+            ->where('simulation_id', $simulation->id)
+            ->where('question_id', $question->id)
+            ->orderBy('created_at', 'asc')
+            ->get(['role', 'message'])
+            ->toArray();
+
+        // 5. Dispatch job
+        RespondToChatJob::dispatch(
+            $simulation,
+            $question,
+            $request->message,
+            $history,
+            $user->id
+        );
+
+        return response()->json(['status' => 'queued']);
     }
 }

@@ -163,6 +163,17 @@ class EssayController extends Controller
             'custom_theme' => 'nullable|string|max:255'
         ]);
 
+        // --- MODELO ACUMULATIVO: Debita a Quota primeiro usando Lock no Banco ---
+        try {
+            // Se o usuário tem admin override, não passamos pelo gateway
+            if (is_null($request->user()->max_essays_override)) {
+                app(\App\Services\QuotaService::class)->consumeQuota($request->user(), 'essays', 1);
+            }
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 403);
+        }
+
+        // --- Prossegue se a quota permitiu ---
         // If user provided a custom theme manually instead of AI
         if (!empty($validated['custom_theme'])) {
             $essay->title = $validated['custom_theme'];
