@@ -20,6 +20,14 @@ Route::get('/sitemap.xml', [\App\Http\Controllers\SitemapController::class, 'ind
 Route::post('/webhooks/asaas', [\App\Http\Controllers\WebhookController::class, 'handleAsaas'])->name('webhooks.asaas');
 
 // -------------------------------------------------------
+// Email Verification Helper (Native Laravel requires 'verification.verify' exact name)
+// Defined here to escape the `api.` route prefix from the API group.
+// -------------------------------------------------------
+Route::get('/api/v1/email/verify/{id}/{hash}', [\App\Http\Controllers\Api\AuthController::class, 'verifyEmail'])
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('verification.verify');
+
+// -------------------------------------------------------
 // Google OAuth — server-side redirect flow
 // -------------------------------------------------------
 Route::get('auth/google', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'redirect'])->name('auth.google');
