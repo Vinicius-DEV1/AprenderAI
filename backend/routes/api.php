@@ -68,6 +68,9 @@ Route::prefix('v1')->name('api.')->group(function () {
         Route::post('/email/verification-notification', [AuthController::class, 'sendVerificationEmail'])
             ->middleware('throttle:6,1')
             ->name('verification.send');
+        Route::post('/email/resend-verification', [AuthController::class, 'resendVerification'])
+            ->middleware('throttle:3,1')
+            ->name('verification.resend.async');
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('api.dashboard');
 
         // Resources

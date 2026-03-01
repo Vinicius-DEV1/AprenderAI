@@ -134,6 +134,26 @@ class AuthController extends Controller
         return response()->json(['status' => 'Um novo link de verificação foi enviado para o seu e-mail.']);
     }
 
+    public function resendVerification(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json(['status' => 'already_verified'], 200);
+        }
+
+        try {
+            $user->notify(new \App\Notifications\QueuedVerifyEmail);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Erro ao enviar e-mail assíncrono de verificação: ' . $e->getMessage(), [
+                'user_id' => $user->id
+            ]);
+            // Ocultar a falha de envio do front-end. Retornamos 'success' para que o fluxo do front-end não quebre.
+        }
+
+        return response()->json(['status' => 'success'], 200);
+    }
+
     public function forgotPasswordProxy(Request $request)
     {
         $request->validate(['email' => 'required|email']);
