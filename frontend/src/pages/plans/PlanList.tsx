@@ -1,13 +1,29 @@
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
+import PlanConfirmationModal from '../../components/PlanConfirmationModal';
 
 export default function PlanList() {
     const navigate = useNavigate();
     const { plans } = useConfigStore();
     const { user } = useAuthStore();
 
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedPlanForModal, setSelectedPlanForModal] = useState<any>(null);
+
     const userPlanId = user?.plan_id;
+
+    const handlePlanClick = (plan: any) => {
+        setSelectedPlanForModal(plan);
+        setIsModalOpen(true);
+    };
+
+    const handleConfirm = () => {
+        if (selectedPlanForModal) {
+            navigate(`/plans/${selectedPlanForModal.id}/checkout`);
+        }
+    };
 
     return (
         <div className="py-12">
@@ -78,7 +94,7 @@ export default function PlanList() {
                                     </button>
                                 ) : (
                                     <button
-                                        onClick={() => navigate(`/plans/${plan.id}/checkout`)}
+                                        onClick={() => handlePlanClick(plan)}
                                         className="w-full block text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded transition duration-200"
                                     >
                                         {plan.price > 0 ? 'Assinar Agora' : 'Mudar para Gratuito'}
@@ -92,6 +108,14 @@ export default function PlanList() {
                 <div className="mt-12 text-center text-gray-500 dark:text-slate-400 text-sm">
                     <p>Pagamento seguro via Mercado Pago. Cancele quando quiser.</p>
                 </div>
+
+                <PlanConfirmationModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    onConfirm={handleConfirm}
+                    currentPlan={plans?.find((p: any) => p.id === userPlanId)}
+                    selectedPlan={selectedPlanForModal}
+                />
             </div>
         </div>
     );
