@@ -507,8 +507,8 @@ export default function AdminApiKeys() {
                                                         <p className="text-[10px] text-slate-400 font-mono">{log.model}</p>
                                                     </td>
                                                     <td className="px-6 py-4 font-mono">{log.tokens_used_input} / {log.tokens_used_output}</td>
-                                                    <td className="px-6 py-4">{(log.execution_time ?? 0).toFixed(2)}s</td>
-                                                    <td className="px-6 py-4 font-bold text-slate-700">{(log.estimated_cost ?? 0).toFixed(4)}</td>
+                                                    <td className="px-6 py-4">{(Number(log.execution_time) || 0).toFixed(2)}s</td>
+                                                    <td className="px-6 py-4 font-bold text-slate-700">{(Number(log.estimated_cost) || 0).toFixed(4)}</td>
                                                     <td className="px-6 py-4 text-right">
                                                         <button
                                                             onClick={() => { setActiveLog(log); setShowLogModal(true); }}
@@ -564,7 +564,7 @@ export default function AdminApiKeys() {
                                         <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400/60 mt-0.5">{rank.total_tokens.toLocaleString()} tokens</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="font-black text-emerald-400 tracking-tighter text-lg">R$ {rank.total_cost.toFixed(2)}</p>
+                                        <p className="font-black text-emerald-400 tracking-tighter text-lg">R$ {Number(rank.total_cost).toFixed(2)}</p>
                                     </div>
                                 </div>
                             ))}
@@ -620,8 +620,8 @@ export default function AdminApiKeys() {
                                 <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Usuário</p><p className="font-bold text-slate-800">{activeLog.user?.name || 'Sistema'}</p></div>
                                 <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Provedor / Modelo</p><p className="font-bold text-slate-800">{activeLog.provider} / {activeLog.model}</p></div>
                                 <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Tokens (I/O)</p><p className="font-bold text-slate-800">{activeLog.tokens_used_input} / {activeLog.tokens_used_output}</p></div>
-                                <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Tempo Execução</p><p className="font-bold text-slate-800">{(activeLog.execution_time ?? 0).toFixed(3)}s</p></div>
-                                <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Custo Est.</p><p className="font-bold text-indigo-600">R$ {(activeLog.estimated_cost ?? 0).toFixed(4)}</p></div>
+                                <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Tempo Execução</p><p className="font-bold text-slate-800">{(Number(activeLog.execution_time) || 0).toFixed(3)}s</p></div>
+                                <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Custo Est.</p><p className="font-bold text-indigo-600">R$ {(Number(activeLog.estimated_cost) || 0).toFixed(4)}</p></div>
                             </div>
                             <div className="space-y-6">
                                 <div className="space-y-2">
