@@ -36,7 +36,7 @@ use App\Http\Controllers\Api\Admin\PaymentSettingsController;
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('v1')->name('api.')->group(function () {
+Route::prefix('v1')->group(function () {
     // DEBUG: Catch any strays
     Route::post('/plans/{plan}/checkout', function () {
         return response()->json(['message' => 'DEBUG: Hit /api/v1/plans/{plan}/checkout (OLD ROUTE)'], 200);
@@ -75,6 +75,10 @@ Route::prefix('v1')->name('api.')->group(function () {
         Route::post('simulations/{simulation}/answer', [SimulationController::class, 'answer']);
         Route::post('simulations/{simulation}/finish', [SimulationController::class, 'finish']);
         Route::post('simulations/{simulation}/submit', [SimulationController::class, 'submit']);
+        Route::prefix('simulations/{simulation}/questions/{question}')->group(function () {
+            Route::get('chat', [SimulationController::class, 'chat'])->name('simulations.questions.chat.index');
+            Route::post('chat', [SimulationController::class, 'sendChat'])->name('simulations.questions.chat.store');
+        });
 
         Route::get('study-plan', [StudyPlanController::class, 'index']);
         Route::post('study-plan', [StudyPlanController::class, 'store']);
@@ -106,6 +110,10 @@ Route::prefix('v1')->name('api.')->group(function () {
             Route::get('/stats', [QuestionController::class, 'stats']);
             Route::get('/{question}/history', [QuestionController::class, 'history']);
             Route::post('/{question}/answer', [QuestionController::class, 'answer']);
+
+            // Xavier Chat
+            Route::get('/{question}/chat', [QuestionController::class, 'chat'])->name('questions.chat.index');
+            Route::post('/{question}/chat', [QuestionController::class, 'sendChat'])->name('questions.chat.store');
         });
 
         // Profile
