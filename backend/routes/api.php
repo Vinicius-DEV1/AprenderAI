@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\Admin\AdminQuestionImportController;
 use App\Http\Controllers\Api\Admin\AdminImportReviewController;
 use App\Http\Controllers\Api\Admin\AdminSimulationController;
 use App\Http\Controllers\Api\Admin\ApiPricingController;
+use App\Http\Controllers\Api\Admin\PaymentSettingsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,13 +37,17 @@ use App\Http\Controllers\Api\Admin\ApiPricingController;
 */
 
 Route::prefix('v1')->name('api.')->group(function () {
+    // DEBUG: Catch any strays
+    Route::post('/plans/{plan}/checkout', function () {
+        return response()->json(['message' => 'DEBUG: Hit /api/v1/plans/{plan}/checkout (OLD ROUTE)'], 200);
+    });
 
     // Público
     Route::get('/config', [ConfigController::class, 'index'])->name('api.config');
     Route::post('/login', [AuthController::class, 'login'])->name('api.login');
     Route::post('/register', [AuthController::class, 'register'])->name('api.register');
 
-    // Verificacao via URL enviada por Email
+    // Verificacao via URL enviada por Email (agora com prefixo api. automatico)
     Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
         ->middleware(['signed', 'throttle:6,1'])
         ->name('verification.verify');
@@ -59,6 +64,9 @@ Route::prefix('v1')->name('api.')->group(function () {
         Route::post('/email/verification-notification', [AuthController::class, 'sendVerificationEmail'])
             ->middleware('throttle:6,1')
             ->name('verification.send');
+        Route::post('/email/resend-verification', [AuthController::class, 'resendVerification'])
+            ->middleware('throttle:3,1')
+            ->name('verification.resend.async');
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('api.dashboard');
 
         // Resources
@@ -81,8 +89,8 @@ Route::prefix('v1')->name('api.')->group(function () {
         Route::post('essays/{essay}/submit', [EssayController::class, 'submit']);
         Route::post('essays/{essay}/retry', [EssayController::class, 'retryEvaluation']);
 
-        // Plans & Subscriptions
-        Route::prefix('plans')->group(function () {
+        // Subscriptions
+        Route::prefix('subscriptions')->group(function () {
             Route::post('/{plan}/validate-coupon', [SubscriptionController::class, 'validateCoupon']);
             Route::post('/{plan}/checkout', [SubscriptionController::class, 'store']);
             Route::get('/check-status', [SubscriptionController::class, 'checkStatus']);
@@ -141,6 +149,8 @@ Route::prefix('v1')->name('api.')->group(function () {
             // Settings & Cache
             Route::get('/settings', [AdminSettingController::class, 'index']);
             Route::post('/settings', [AdminSettingController::class, 'update']);
+            Route::get('/payment-settings', [PaymentSettingsController::class, 'index']);
+            Route::put('/payment-settings', [PaymentSettingsController::class, 'update']);
             Route::post('/settings/clear-cache', [AdminSettingController::class, 'clearCache']);
 
             // Analytics
@@ -157,6 +167,7 @@ Route::prefix('v1')->name('api.')->group(function () {
             Route::prefix('monitor')->group(function () {
                 Route::get('/realtime', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'realtime']);
                 Route::get('/history', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'history']);
+                Route::get('/logs', [\App\Http\Controllers\Api\Admin\SystemLogController::class, 'index']);
             });
 
 
