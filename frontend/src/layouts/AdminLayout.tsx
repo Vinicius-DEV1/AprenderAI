@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useConfigStore } from '../stores/configStore';
+import { useAuthStore } from '../stores/authStore';
 
 export default function AdminLayout() {
     const config = useConfigStore();
@@ -172,6 +173,24 @@ export default function AdminLayout() {
                                 </div>
                             </div>
                         </nav>
+                    </div>
+                    <div className="p-6">
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                            <div className="h-10 w-10 flex-shrink-0 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
+                                {useAuthStore.getState().user?.name?.substring(0, 2).toUpperCase() || 'AD'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-gray-800 truncate">{useAuthStore.getState().user?.name || 'Administrador'}</p>
+                                <span className={`inline-block mt-0.5 px-2 py-0.5 text-[9px] font-black rounded-md uppercase tracking-wider border ${(useAuthStore.getState().user?.plan?.name || '').toLowerCase().includes('plus')
+                                    ? 'bg-blue-900 text-white border-blue-800'
+                                    : (useAuthStore.getState().user?.plan?.name || '').toLowerCase().includes('básico') || (useAuthStore.getState().user?.plan?.name || '').toLowerCase().includes('basico')
+                                        ? 'bg-blue-100 text-blue-800 border-blue-200'
+                                        : 'bg-white text-gray-500 border-gray-200'
+                                    }`}>
+                                    {useAuthStore.getState().user?.plan?.name || 'Gratuito'}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </aside>
 
