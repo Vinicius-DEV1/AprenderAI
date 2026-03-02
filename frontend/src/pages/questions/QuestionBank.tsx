@@ -476,78 +476,76 @@ export default function QuestionBank() {
                             <span>{moreFilters ? 'Menos filtros' : 'Mais filtros'}</span>
                         </button>
                     </div>
-                </div>
 
-                {/* Row 2: Advanced filters (toggled) */}
-                {moreFilters && (
-                    <div className="qb-filter-row animate-fade-in">
-                        <div className="qb-filter-item">
-                            <label>Ano</label>
-                            <select name="year" value={filters.year} onChange={onFilterChange}>
-                                <option value="">Todos</option>
-                                {[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012, 2011, 2010, 2009].map(y => <option key={y} value={y}>{y}</option>)}
-                            </select>
+                    {/* Row 2: Advanced filters (toggled) */}
+                    {moreFilters && (
+                        <div className="qb-filter-row animate-fade-in">
+                            <div className="qb-filter-item">
+                                <label>Ano</label>
+                                <select name="year" value={filters.year} onChange={onFilterChange}>
+                                    <option value="">Todos</option>
+                                    {[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012, 2011, 2010, 2009].map(y => <option key={y} value={y}>{y}</option>)}
+                                </select>
+                            </div>
+                            <div className="qb-filter-item">
+                                <label>Dificuldade</label>
+                                <select name="difficulty" value={filters.difficulty} onChange={onFilterChange}>
+                                    <option value="">Todas</option>
+                                    <option value="easy">Fácil</option>
+                                    <option value="medium">Média</option>
+                                    <option value="hard">Difícil</option>
+                                </select>
+                            </div>
+                            <div className="qb-filter-item">
+                                <label>Status</label>
+                                <select name="status" value={filters.status} onChange={onFilterChange}>
+                                    <option value="">Todos</option>
+                                    <option value="unanswered">Não respondidas</option>
+                                    <option value="answered">Respondidas</option>
+                                </select>
+                            </div>
+                            {/* Concurso-specific filters (hidden when type === 'enem') */}
+                            {showConcursoFilters && (
+                                <>
+                                    <SearchableSelect
+                                        label="Banca"
+                                        name="organization"
+                                        value={filters.organization}
+                                        options={filterOptions?.organizations || []}
+                                        loading={loadingFilterOptions}
+                                        placeholder="Ex: CESPE, FCC..."
+                                        onChange={updateFilter}
+                                    />
+                                    <SearchableSelect
+                                        label="Órgão"
+                                        name="institution"
+                                        value={filters.institution}
+                                        options={filterOptions?.institutions || []}
+                                        loading={loadingFilterOptions}
+                                        placeholder="Ex: TRF, INSS..."
+                                        onChange={updateFilter}
+                                    />
+                                    <SearchableSelect
+                                        label="Cargo"
+                                        name="role"
+                                        value={filters.role}
+                                        options={filterOptions?.roles || []}
+                                        loading={loadingFilterOptions}
+                                        placeholder="Ex: Analista..."
+                                        onChange={updateFilter}
+                                    />
+                                </>
+                            )}
                         </div>
-                        <div className="qb-filter-item">
-                            <label>Dificuldade</label>
-                            <select name="difficulty" value={filters.difficulty} onChange={onFilterChange}>
-                                <option value="">Todas</option>
-                                <option value="easy">Fácil</option>
-                                <option value="medium">Média</option>
-                                <option value="hard">Difícil</option>
-                            </select>
-                        </div>
-                        <div className="qb-filter-item">
-                            <label>Status</label>
-                            <select name="status" value={filters.status} onChange={onFilterChange}>
-                                <option value="">Todos</option>
-                                <option value="unanswered">Não respondidas</option>
-                                <option value="answered">Respondidas</option>
-                            </select>
-                        </div>
-                        {/* Concurso-specific filters (hidden when type === 'enem') */}
-                        {showConcursoFilters && (
-                            <>
-                                <SearchableSelect
-                                    label="Banca"
-                                    name="organization"
-                                    value={filters.organization}
-                                    options={filterOptions?.organizations || []}
-                                    loading={loadingFilterOptions}
-                                    placeholder="Ex: CESPE, FCC..."
-                                    onChange={updateFilter}
-                                />
-                                <SearchableSelect
-                                    label="Órgão"
-                                    name="institution"
-                                    value={filters.institution}
-                                    options={filterOptions?.institutions || []}
-                                    loading={loadingFilterOptions}
-                                    placeholder="Ex: TRF, INSS..."
-                                    onChange={updateFilter}
-                                />
-                                <SearchableSelect
-                                    label="Cargo"
-                                    name="role"
-                                    value={filters.role}
-                                    options={filterOptions?.roles || []}
-                                    loading={loadingFilterOptions}
-                                    placeholder="Ex: Analista..."
-                                    onChange={updateFilter}
-                                />
-                            </>
-                        )}
+                    )}
 
-
+                    <div className="qb-filter-actions">
+                        <button className="qb-btn qb-btn-primary" onClick={() => setPage(1)}>🔍 Filtrar</button>
+                        <button className="qb-btn qb-btn-ghost" onClick={clearFilters}>✕ Limpar</button>
+                        <span className="qb-result-count">
+                            {meta.total || 0} questões encontradas
+                        </span>
                     </div>
-                )}
-
-                <div className="qb-filter-actions">
-                    <button className="qb-btn qb-btn-primary" onClick={() => setPage(1)}>🔍 Filtrar</button>
-                    <button className="qb-btn qb-btn-ghost" onClick={clearFilters}>✕ Limpar</button>
-                    <span className="qb-result-count">
-                        {meta.total || 0} questões encontradas
-                    </span>
                 </div>
             </div>
 
