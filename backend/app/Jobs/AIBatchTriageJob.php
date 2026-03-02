@@ -16,6 +16,8 @@ class AIBatchTriageJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    protected $batchId;
+    protected $questionIds;
     protected $type;
     protected $model;
     protected $reprocess;
@@ -37,6 +39,15 @@ class AIBatchTriageJob implements ShouldQueue
      */
     public function handle(AIBatchService $batchService): void
     {
+        // Safety check for old/corrupted jobs in queue
+        if (empty($this->batchId) || empty($this->questionIds)) {
+            Log::warning("[AIBATCH] Skipping job: missing batchId or questionIds. If this is an old job retried after a deploy, it cannot be recovered.", [
+                'batch_id' => $this->batchId ?? 'NULL',
+                'has_questions' => !empty($this->questionIds)
+            ]);
+            return;
+        }
+
         // Check if batch was cancelled before starting
         $batch = \App\Models\AiProcessingBatch::where('batch_id', $this->batchId)->first();
         if ($batch && $batch->status === 'cancelled') {
