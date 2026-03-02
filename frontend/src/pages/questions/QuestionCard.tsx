@@ -190,7 +190,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
 
         try {
             const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token') || localStorage.getItem('token');
-            const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+            const baseUrl = api.defaults.baseURL || '';
 
             const res = await fetch(`${baseUrl}/api/v1/questions/${q.id}/chat`, {
                 method: 'POST',
