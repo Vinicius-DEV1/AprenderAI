@@ -77,6 +77,7 @@ const FAILURE_MESSAGES = [
 ];
 
 const STATIC_PREFIX = 'Comece agora busque: ex: ';
+const ENABLE_DISCURSIVAS_FILTER = false;
 
 export default function QuestionBank() {
     const { user } = useAuthStore();
@@ -464,8 +465,8 @@ export default function QuestionBank() {
                             <label>Busca</label>
                             <input type="text" name="keyword" value={filters.keyword} onChange={onFilterChange} placeholder="Palavras-chave..." />
                         </div>
-                        <div className="qb-filter-checkbox">
-                            <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
+                        <div className={`qb-filter-checkbox ${!ENABLE_DISCURSIVAS_FILTER ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap" title={!ENABLE_DISCURSIVAS_FILTER ? "Filtro temporariamente indisponível" : ""}>
                                 <input
                                     type="checkbox"
                                     name="include_discursive"
@@ -474,6 +475,7 @@ export default function QuestionBank() {
                                         setFilters(prev => ({ ...prev, include_discursive: e.target.checked }));
                                         setPage(1);
                                     }}
+                                    disabled={!ENABLE_DISCURSIVAS_FILTER}
                                 />
                                 <span className="text-sm font-bold text-slate-600 select-none">Mostrar Discursivas</span>
                             </label>
