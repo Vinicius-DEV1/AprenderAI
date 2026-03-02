@@ -58,7 +58,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
         }
     }, [q.id]);
 
-    const [activeTab, setActiveTab] = useState<'feedback' | 'chat' | 'history' | null>(null);
+    const [activeTab, setActiveTab] = useState<'gabarito' | 'chat' | 'history' | null>(null);
 
     const [chatMessages, setChatMessages] = useState<any[]>([]);
     const [chatInput, setChatInput] = useState('');
@@ -140,7 +140,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
             setCorrectAnswer(data.correct_answer ?? null);
             setExplanation(data.explanation || '');
             setDifficultyReasoning(data.difficulty_reasoning || '');
-            setActiveTab('feedback');
+            setActiveTab('gabarito');
         } catch (e) {
             toast.error('Erro ao enviar resposta.');
         } finally {
@@ -182,7 +182,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
 
     const toggleChat = async () => {
         const nextState = activeTab !== 'chat';
-        setActiveTab(nextState ? 'chat' : 'feedback');
+        setActiveTab(nextState ? 'chat' : null);
         if (nextState && !chatLoaded) {
             await loadChatHistory();
         }
@@ -302,7 +302,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
 
     const toggleHistory = async () => {
         const nextState = activeTab !== 'history';
-        setActiveTab(nextState ? 'history' : 'feedback');
+        setActiveTab(nextState ? 'history' : null);
         if (nextState && !historyLoaded) {
             setHistoryLoading(true);
             try {
@@ -321,6 +321,10 @@ export default function QuestionCard({ question: q }: { question: Question }) {
         hard: { class: 'qb-badge-hard', label: 'Difícil' }
     };
     const dc = difficultyMap[q.difficulty] || difficultyMap.medium;
+
+    const toggleGabarito = () => {
+        setActiveTab(activeTab === 'gabarito' ? null : 'gabarito');
+    };
 
     return (
         <div className="qb-card">
@@ -400,6 +404,13 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                 {answered && (
                     <div className="flex overflow-x-auto whitespace-nowrap gap-2 pb-2 items-center w-full max-w-full" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                         <button
+                            className={`qb-action-btn transition-colors duration-200 ${activeTab === 'gabarito' ? '!bg-indigo-600 !text-white !border-indigo-600 shadow-sm' : ''}`}
+                            onClick={toggleGabarito}
+                            style={{ flexShrink: 0 }}
+                        >
+                            📖 Gabarito Comentado
+                        </button>
+                        <button
                             className={`qb-action-btn transition-colors duration-200 ${activeTab === 'chat' ? '!bg-indigo-600 !text-white !border-indigo-600 shadow-sm' : ''}`}
                             onClick={toggleChat}
                             style={{ flexShrink: 0 }}
@@ -421,11 +432,28 @@ export default function QuestionCard({ question: q }: { question: Question }) {
             </div>
 
             <AnimatePresence mode="wait">
-                {answered && isDiscursive && activeTab === 'feedback' && (
+                {/* Independent Correctness Indicator */}
+                {answered && !isDiscursive && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                        className={`qb-feedback rounded-2xl shadow-sm mb-4 ${isCorrect ? 'correct' : 'incorrect'}`}
+                    >
+                        <div className="qb-feedback-title !mb-0">
+                            <span>{isCorrect ? '✅ Resposta Correta!' : '❌ Resposta Incorreta'}</span>
+                            {!isCorrect && correctAnswer && (
+                                <span style={{ fontWeight: 400, fontSize: '12px', color: '#64748b' }}>
+                                    {" "}Correta: <strong style={{ color: '#065f46' }}>{correctAnswer}</strong>
+                                </span>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+
+                {answered && isDiscursive && activeTab === 'gabarito' && (
                     <motion.div
                         key="feedback-discursive"
                         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}
-                        className="qb-feedback border-l-4 border-indigo-500 bg-indigo-50 p-4 mt-6 rounded-r-lg shadow-sm"
+                        className="qb-feedback border-l-4 border-indigo-500 bg-indigo-50 p-4 mb-4 rounded-r-lg shadow-sm"
                     >
                         <div className="flex justify-between items-center mb-4">
                             <h4 className="font-bold text-indigo-900 flex items-center gap-2">
@@ -453,34 +481,14 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                     </motion.div>
                 )}
 
-                {answered && !isDiscursive && activeTab === 'feedback' && (
+                {answered && !isDiscursive && activeTab === 'gabarito' && explanation && (
                     <motion.div
                         key="feedback-objective"
                         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}
-                        className={`qb-feedback rounded-2xl shadow-sm ${isCorrect ? 'correct' : 'incorrect'}`}
+                        className="qb-explanation mt-0 mb-4"
                     >
-                        <div className="qb-feedback-title">
-                            <span>{isCorrect ? '✅ Resposta Correta!' : '❌ Resposta Incorreta'}</span>
-                            {!isCorrect && (
-                                <span style={{ fontWeight: 400, fontSize: '12px', color: '#64748b' }}>
-                                    {" "}Correta: <strong style={{ color: '#065f46' }}>{correctAnswer}</strong>
-                                </span>
-                            )}
-                        </div>
-                        {explanation && (
-                            <div className="qb-explanation">
-                                <h4>📖 Resolução Comentada</h4>
-                                <div className="qb-explanation-text" dangerouslySetInnerHTML={renderMd(explanation)} />
-                            </div>
-                        )}
-                        {difficultyReasoning && (
-                            <div className="qb-difficulty-box" style={{ borderColor: isCorrect ? '#bbf7d0' : '#fecaca', background: isCorrect ? '#f0fdf4' : '#fef2f2' }}>
-                                <h5 className="text-sm font-bold uppercase mb-1">
-                                    [{dc.label}] 🎯 Por que essa dificuldade?
-                                </h5>
-                                <p style={{ color: '#475569', fontSize: '13px' }}>{difficultyReasoning}</p>
-                            </div>
-                        )}
+                        <h4>📖 Resolução Comentada</h4>
+                        <div className="qb-explanation-text" dangerouslySetInnerHTML={renderMd(explanation)} />
                     </motion.div>
                 )}
 
@@ -488,7 +496,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                     <motion.div
                         key="history-panel"
                         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}
-                        className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mt-6 overflow-hidden w-full"
+                        className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-4 overflow-hidden w-full"
                     >
                         <h4 style={{ fontSize: '13px', fontWeight: 700, color: '#6366f1', marginBottom: '8px' }}>📜 Seu Histórico nesta Questão</h4>
                         {historyLoading && <p style={{ fontSize: '12px', color: '#94a3b8' }}>Carregando...</p>}
@@ -509,7 +517,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                     <motion.div
                         key="chat-panel"
                         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}
-                        className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mt-6 overflow-hidden w-full"
+                        className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-4 overflow-hidden w-full"
                     >
                         <div className="qb-chat-history space-y-2 p-1 overflow-y-auto max-h-64" ref={chatHistoryRef}>
                             {chatMessages.map((msg, idx) => (
@@ -556,6 +564,6 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div>
+        </div >
     );
 }
