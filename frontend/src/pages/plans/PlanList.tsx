@@ -31,7 +31,7 @@ export default function PlanList() {
 
     const getButtonLabel = (cardPlan: any) => {
         if (!cardPlan) return 'Assinar';
-        if (String(cardPlan.id) === String(getPlanBySlug('gratuito')?.id)) {
+        if (String(cardPlan.id) === String(getPlanBySlug('free')?.id)) {
             return String(userPlanId) === String(cardPlan.id) ? 'Plano Ativo' : 'Disponível';
         }
         if (String(userPlanId) === String(cardPlan.id)) return 'Seu Plano Atual';
@@ -86,13 +86,13 @@ export default function PlanList() {
         }
     }, [plans, currentPlan]);
 
-    const getPlanPrice = (name: string) => {
-        const p = plans?.find(p => p.name.toLowerCase().includes(name.toLowerCase()) && (periodo === 'anual' ? p.interval === 'yearly' : p.interval === 'monthly'));
+    const getPlanPrice = (slugKeyword: string) => {
+        const p = plans?.find(p => p.slug.includes(slugKeyword) && (periodo === 'anual' ? p.interval === 'yearly' : p.interval === 'monthly'));
         return p?.price || 0;
     };
 
-    const getPlanBySlug = (slug: string) => {
-        return plans?.find(p => p.name.toLowerCase().includes(slug.toLowerCase()) && (periodo === 'anual' ? p.interval === 'yearly' : p.interval === 'monthly'));
+    const getPlanBySlug = (slugKeyword: string) => {
+        return plans?.find(p => p.slug.includes(slugKeyword) && (periodo === 'anual' ? p.interval === 'yearly' : p.interval === 'monthly'));
     };
 
     return (
@@ -243,8 +243,7 @@ export default function PlanList() {
                 </div>
 
                 <div className="lp-plans-grid">
-                    {/* FREE */}
-                    <div className={`lp-plan-free flex flex-col justify-between border-2 transition-all duration-300 ${String(userPlanId) === String(getPlanBySlug('gratuito')?.id) ? 'border-green-500 bg-green-50/30 dark:bg-green-900/10' : 'border-gray-100 dark:border-slate-800 shadow-sm hover:border-slate-200 dark:hover:border-slate-700'}`}>
+                    <div className={`lp-plan-free flex flex-col justify-between border-2 transition-all duration-300 ${String(userPlanId) === String(getPlanBySlug('free')?.id) ? 'border-green-500 bg-green-50/30 dark:bg-green-900/10' : 'border-gray-100 dark:border-slate-800 shadow-sm hover:border-slate-200 dark:hover:border-slate-700'}`}>
                         <div>
                             <div className="lp-plan-name-free">Gratuito</div>
                             <div className="lp-plan-tagline-free">Ideal para começar e testar.</div>
@@ -268,17 +267,17 @@ export default function PlanList() {
                             </div>
                         </div>
                         <button disabled className="lp-plan-btn-free bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed border border-slate-300 dark:border-slate-700">
-                            {getButtonLabel(getPlanBySlug('gratuito'))}
+                            {getButtonLabel(getPlanBySlug('free'))}
                         </button>
                     </div>
 
                     {/* BÁSICO */}
-                    <div className={`lp-plan-basic flex flex-col justify-between ${String(userPlanId) === String(getPlanBySlug('básico')?.id) ? 'ring-4 ring-blue-400' : ''}`}>
+                    <div className={`lp-plan-basic flex flex-col justify-between ${String(userPlanId) === String(getPlanBySlug('basic')?.id) ? 'ring-4 ring-blue-400' : ''}`}>
                         <div>
                             <div className="lp-plan-name-paid">Básico</div>
                             <div className="lp-plan-tagline-paid">Para evoluir com correção completa e IA.</div>
                             <div className="mb-2">
-                                <span className="lp-plan-price-paid">R$&nbsp;{new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(getPlanPrice('básico'))}</span>
+                                <span className="lp-plan-price-paid">R$&nbsp;{new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(getPlanPrice('basic'))}</span>
                                 <span className="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
                             </div>
                             <ul className="lp-plan-list lp-plan-list-paid">
@@ -302,15 +301,14 @@ export default function PlanList() {
                             </div>
                         </div>
                         <button
-                            onClick={() => handlePlanClick(getPlanBySlug('básico'))}
-                            disabled={String(userPlanId) === String(getPlanBySlug('básico')?.id)}
-                            className={`lp-plan-btn-basic ${String(userPlanId) === String(getPlanBySlug('básico')?.id) ? 'bg-blue-400 opacity-50 cursor-not-allowed' : 'hover:scale-105 transition-transform'}`}
+                            onClick={() => handlePlanClick(getPlanBySlug('basic'))}
+                            disabled={String(userPlanId) === String(getPlanBySlug('basic')?.id)}
+                            className={`lp-plan-btn-basic ${String(userPlanId) === String(getPlanBySlug('basic')?.id) ? 'bg-blue-400 opacity-50 cursor-not-allowed' : 'hover:scale-105 transition-transform'}`}
                         >
-                            {getButtonLabel(getPlanBySlug('básico'))}
+                            {getButtonLabel(getPlanBySlug('basic'))}
                         </button>
                     </div>
 
-                    {/* PLUS */}
                     <div className={`lp-plan-plus flex flex-col justify-between relative overflow-hidden ${String(userPlanId) === String(getPlanBySlug('plus')?.id) ? 'ring-4 ring-amber-400' : ''}`}>
                         <div className="absolute top-4 right-[-35px] bg-amber-500 text-blue-900 text-[10px] font-black px-10 py-1 rotate-45 shadow-sm">
                             POPULAR
