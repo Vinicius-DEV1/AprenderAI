@@ -319,7 +319,7 @@ class QuestionController extends Controller
                 $fullResponse = '';
                 foreach ($stream as $chunk) {
                     $fullResponse .= $chunk;
-                    echo $chunk;
+                    echo "data: " . $chunk . "\n\n";
                     ob_flush();
                     flush();
                 }
@@ -336,7 +336,7 @@ class QuestionController extends Controller
                 \Illuminate\Support\Facades\Log::error("Chat streaming aborted: " . $e->getMessage());
             }
         }, 200, [
-            'Content-Type' => 'text/plain; charset=utf-8',
+            'Content-Type' => 'text/event-stream',
             'Cache-Control' => 'no-cache',
             'Connection' => 'keep-alive',
             'X-Accel-Buffering' => 'no',

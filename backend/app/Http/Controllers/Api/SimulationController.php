@@ -356,7 +356,7 @@ class SimulationController extends Controller
                 $fullResponse = '';
                 foreach ($stream as $chunk) {
                     $fullResponse .= $chunk;
-                    echo $chunk;
+                    echo "data: " . $chunk . "\n\n";
                     ob_flush();
                     flush();
                 }
@@ -372,7 +372,7 @@ class SimulationController extends Controller
                 \Illuminate\Support\Facades\Log::error("Simulation Chat streaming aborted: " . $e->getMessage());
             }
         }, 200, [
-            'Content-Type' => 'text/plain; charset=utf-8',
+            'Content-Type' => 'text/event-stream',
             'Cache-Control' => 'no-cache',
             'Connection' => 'keep-alive',
             'X-Accel-Buffering' => 'no',
