@@ -327,7 +327,8 @@ class QuestionController extends Controller
                 foreach ($stream as $chunk) {
                     $fullResponse .= $chunk;
                     echo "data: " . $chunk . "\n\n";
-                    ob_flush();
+                    if (ob_get_level() > 0)
+                        ob_flush();
                     flush();
                 }
 
