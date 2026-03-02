@@ -29,7 +29,7 @@ class StudyPlanGenerator
             return true;
         }
 
-        return $lastPlan->created_at->lt(now()->subDays(30));
+        return $lastPlan->created_at->lt(now()->subDays(14));
     }
 
     public function canUpdate(User $user): bool
@@ -55,8 +55,8 @@ class StudyPlanGenerator
     {
         if (!$this->canGenerate($user)) {
             $lastPlan = $user->studyPlans()->latest()->first();
-            $nextDate = $lastPlan ? $lastPlan->created_at->addDays(30) : now();
-            if ($lastPlan && $lastPlan->created_at->gte(now()->subDays(30))) {
+            $nextDate = $lastPlan ? $lastPlan->created_at->addDays(14) : now();
+            if ($lastPlan && $lastPlan->created_at->gte(now()->subDays(14))) {
                 abort(429, 'Você só pode gerar um novo plano em ' . $nextDate->format('d/m/Y'));
             }
             abort(403, 'Acesso negado ou pré-requisitos não atendidos.');
@@ -72,7 +72,7 @@ class StudyPlanGenerator
             'plan_json' => null,
             'stats_snapshot' => null,
             'generated_at' => now(),
-            'next_generate_at' => now()->addDays(30),
+            'next_generate_at' => now()->addDays(14),
             'next_update_at' => now()->addDays(14),
         ]);
     }
@@ -122,7 +122,7 @@ class StudyPlanGenerator
     {
         if (!$this->canGenerate($user)) {
             $lastPlan = $user->studyPlans()->latest()->first();
-            $nextDate = $lastPlan ? $lastPlan->created_at->addDays(30) : now();
+            $nextDate = $lastPlan ? $lastPlan->created_at->addDays(14) : now();
             abort(429, 'Você só pode gerar um novo plano em ' . $nextDate->format('d/m/Y'));
         }
 
@@ -151,7 +151,7 @@ class StudyPlanGenerator
             'plan_json' => null,
             'stats_snapshot' => null,
             'generated_at' => now(),
-            'next_generate_at' => now()->addDays(30),
+            'next_generate_at' => now()->addDays(14),
             'next_update_at' => now()->addDays(14),
         ]);
 

@@ -31,16 +31,18 @@ class StudyPlanController extends Controller
         if (!$user->hasPlusPlan()) {
             return response()->json([
                 'view_state' => 'paywall',
-                'message' => 'O Plano de Estudos é exclusivo para usuários Plus.'
-            ]);
+                'code' => 'PAYWALL',
+                'message' => 'O Plano de Estudos Premium é exclusivo para usuários Plus. Faça upgrade para continuar!'
+            ], 403);
         }
 
-        // 2. Check Prerequisites (At least 1 completed sim)
-        if (!$user->hasCompletedSimulation()) {
+        // 2. Check Prerequisites (50 questions or 1 large sim)
+        if (!$user->hasStudyPlanPrerequisites()) {
             return response()->json([
                 'view_state' => 'empty',
-                'message' => 'Realize pelo menos um simulado para gerar seu plano.'
-            ]);
+                'code' => 'INSUFFICIENT_DATA',
+                'message' => 'É necessário resolver pelo menos 50 questões ou 1 simulado com 50+ questões para que o Xavier possa criar seu plano.'
+            ], 403);
         }
 
         // 3. Check if has plan
@@ -52,9 +54,19 @@ class StudyPlanController extends Controller
             ]);
         }
 
-        // 4. Build all dashboard data via service
+        // 4. Cooldown Check (if plan exists, we might still be in cooldown for update)
+        $canUpdate = $this->generator->canUpdate($user);
+        $nextUpdateAt = $plan->next_update_at;
+        $daysRemaining = $nextUpdateAt && $nextUpdateAt->isFuture()
+            ? (int) now()->diffInDays($nextUpdateAt, false) + 1
+            : 0;
+
+        // 5. Build all dashboard data via service
         $data = $this->dashboardService->buildDashboardData($user, $plan);
         $data['view_state'] = 'dashboard';
+        $data['can_update'] = $canUpdate;
+        $data['next_update_at'] = $nextUpdateAt;
+        $data['days_remaining'] = $daysRemaining;
 
         return response()->json($data);
     }
@@ -62,6 +74,23 @@ class StudyPlanController extends Controller
     public function store(Request $request)
     {
         $user = Auth::user();
+
+        // 1. Check Plan (Plus only)
+        if (!$user->hasPlusPlan()) {
+            return response()->json(['code' => 'PAYWALL', 'message' => 'Faça upgrade para o Plus.'], 403);
+        }
+
+        // 2. Check Prerequisites
+        if (!$user->hasStudyPlanPrerequisites()) {
+            return response()->json(['code' => 'INSUFFICIENT_DATA', 'message' => 'Dados insuficientes.'], 403);
+        }
+
+        // 3. Cooldown Check (14 days)
+        if (!$this->generator->canGenerate($user)) {
+            $plan = $user->studyPlans()->latest()->first();
+            $nextDate = $plan?->next_update_at?->format('d/m/Y') ?? 'em breve';
+            return response()->json(['code' => 'PLAN_LOCKED', 'message' => "Você poderá gerar um novo plano em {$nextDate}."], 403);
+        }
 
         $validated = $request->validate([
             'hours_per_day' => 'required|integer|min:1|max:12',
@@ -118,12 +147,20 @@ class StudyPlanController extends Controller
     {
         $user = Auth::user();
 
+        // All validations same as store
+        if (!$user->hasPlusPlan()) {
+            return response()->json(['code' => 'PAYWALL', 'message' => 'Faça upgrade para o Plus.'], 403);
+        }
+
+        if (!$user->hasStudyPlanPrerequisites()) {
+            return response()->json(['code' => 'INSUFFICIENT_DATA', 'message' => 'Dados insuficientes.'], 403);
+        }
+
         // Enforce 14-day rule
         if (!$this->generator->canUpdate($user)) {
             $plan = $user->studyPlans()->latest()->first();
             $nextDate = $plan?->next_update_at?->format('d/m/Y') ?? 'em breve';
-            $message = "Seu plano só pode ser atualizado em {$nextDate}.";
-            return response()->json(['error' => $message], 403);
+            return response()->json(['code' => 'PLAN_LOCKED', 'message' => "Seu plano só pode ser atualizado em {$nextDate}."], 403);
         }
 
         try {

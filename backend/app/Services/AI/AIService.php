@@ -963,6 +963,28 @@ class AIService
             return null;
         }
 
+        // Fetch User and additional metrics
+        $user = $userId ? User::find($userId) : null;
+        if ($user) {
+            $totalAttempts = \App\Models\UserTopicStat::where('user_id', $user->id)->sum('attempts');
+            $totalCorrect = \App\Models\UserTopicStat::where('user_id', $user->id)->sum('correct');
+            $stats['overall_accuracy'] = $totalAttempts > 0 ? round(($totalCorrect / $totalAttempts) * 100, 1) : 0;
+
+            // Average time per question (from simulations)
+            $sims = $user->simulations()->where('status', 'finished')->where('time_spent', '>', 0)->latest()->take(10)->get();
+            if ($sims->isNotEmpty()) {
+                $totalTime = $sims->sum('time_spent');
+                $totalQs = $sims->sum('questions_count');
+                $stats['avg_seconds_per_question'] = $totalQs > 0 ? round($totalTime / $totalQs, 1) : 0;
+            }
+
+            // Recent Essay
+            $lastEssay = $user->essays()->where('status', 'corrected')->latest()->first();
+            if ($lastEssay) {
+                $stats['last_essay_score'] = $lastEssay->score;
+            }
+        }
+
         try {
             return $this->executeWithFailover(ApiKey::CAPABILITY_STUDY_PLANS, function ($apiKey) use ($stats, $input, $userId) {
                 $provider = $apiKey->effective_provider;

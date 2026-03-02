@@ -19,12 +19,13 @@ export default function StudyPlanEmpty() {
                         </div>
 
                         <h3 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 dark:text-white mb-4 tracking-tight">
-                            Vamos conhecer seu nível primeiro?
+                            Dados insuficientes para gerar o plano
                         </h3>
 
                         <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 mb-10 max-w-xl mx-auto leading-relaxed">
-                            Para que a IA possa criar um plano realmente efetivo e personalizado,
-                            precisamos de dados sobre seu desempenho atual. Realize pelo menos um simulado completo.
+                            Para que o Xavier possa criar um plano realmente efetivo, precisamos de dados sobre seu desempenho.
+                            <br /><br />
+                            <strong>Requisito:</strong> Resolva pelo menos <strong>50 questões</strong> ou finalize <strong>1 simulado com 50+ questões</strong>.
                         </p>
 
                         <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6">
