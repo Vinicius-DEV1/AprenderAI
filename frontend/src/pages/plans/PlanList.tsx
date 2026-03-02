@@ -123,42 +123,28 @@ export default function PlanList() {
                     </div>
                 )}
 
-                <div className="lp-plans-toggle-wrap mb-10">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#f1f5f9', borderRadius: '50px', padding: '.35rem .75rem' }}>
+                <div className="flex justify-center mb-10">
+                    <div className="bg-slate-100 dark:bg-slate-800/80 rounded-full p-1.5 flex items-center gap-4 shadow-sm border border-slate-200 dark:border-slate-700">
                         <span
-                            style={{ fontSize: '.85rem', fontWeight: 600, cursor: 'pointer', transition: 'color .2s', color: periodo === 'mensal' ? '#0f2b6e' : '#94a3b8' }}
+                            className={`text-sm font-bold cursor-pointer transition-colors px-3 py-1 rounded-full ${periodo === 'mensal' ? 'text-blue-900 bg-white dark:bg-slate-700 dark:text-blue-100 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
                             onClick={() => setPeriodo('mensal')}
                         >
                             Mensal
                         </span>
 
-                        <button
-                            type="button"
-                            onClick={() => setPeriodo(periodo === 'mensal' ? 'anual' : 'mensal')}
-                            className="relative inline-flex h-6 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none"
-                            style={{ background: periodo === 'anual' ? '#1d4ed8' : '#cbd5e1' }}
-                            role="switch"
-                            aria-checked={periodo === 'anual' ? 'true' : 'false'}
-                        >
-                            <span
-                                className="pointer-events-none inline-block h-4 w-4 mt-px ml-px transform rounded-full bg-white shadow ring-0 transition-transform duration-300"
-                                style={{ transform: periodo === 'anual' ? 'translateX(1.25rem)' : 'translateX(0)' }}
-                            ></span>
-                        </button>
-
                         <span
-                            style={{ fontSize: '.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '.4rem', transition: 'color .2s', color: periodo === 'anual' ? '#0f2b6e' : '#94a3b8' }}
+                            className={`text-sm font-bold cursor-pointer transition-colors flex items-center gap-2 px-3 py-1 rounded-full ${periodo === 'anual' ? 'text-blue-900 bg-white dark:bg-slate-700 dark:text-blue-100 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
                             onClick={() => setPeriodo('anual')}
                         >
                             Anual
-                            <span style={{ background: '#dcfce7', color: '#15803d', fontSize: '.7rem', fontWeight: 800, padding: '.15rem .5rem', borderRadius: '99px' }}>-20% OFF</span>
+                            <span className="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">-20% OFF</span>
                         </span>
                     </div>
                 </div>
 
                 <div className="lp-plans-grid">
                     {/* FREE */}
-                    <div className={`lp-plan-free flex flex-col justify-between border-2 ${String(userPlanId) === String(getPlanBySlug('gratuito')?.id) ? 'border-green-500 bg-green-50/30' : 'border-gray-100'}`}>
+                    <div className={`lp-plan-free flex flex-col justify-between border-2 transition-all duration-300 ${String(userPlanId) === String(getPlanBySlug('gratuito')?.id) ? 'border-green-500 bg-green-50/30 dark:bg-green-900/10' : 'border-gray-100 dark:border-slate-800 shadow-sm hover:border-slate-200 dark:hover:border-slate-700'}`}>
                         <div>
                             <div className="lp-plan-name-free">Gratuito</div>
                             <div className="lp-plan-tagline-free">Ideal para começar e testar.</div>
@@ -181,7 +167,7 @@ export default function PlanList() {
                                 </Accordion>
                             </div>
                         </div>
-                        <button disabled className="lp-plan-btn-free bg-gray-300 text-gray-600 cursor-not-allowed">
+                        <button disabled className="lp-plan-btn-free bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed border border-slate-300 dark:border-slate-700">
                             {getButtonLabel(getPlanBySlug('gratuito'))}
                         </button>
                     </div>
