@@ -100,6 +100,36 @@ class InterpretSearchPromptJob implements ShouldQueue
 
                 $count = $query->count();
 
+                // [Smart Recovery] Se a IA falhou em mapear o ID (ex: duplicidade no banco ou termo novo),
+                // tentamos uma busca textual emergencial por Matéria antes de desistir.
+                if ($count === 0 && empty($filters['suggestions'])) {
+                    $cleanedPrompt = preg_replace('/[^A-Za-z0-9\s]/', '', $userPrompt);
+                    $words = explode(' ', $cleanedPrompt);
+
+                    // Procuramos por matérias que batam com palavras do prompt
+                    $guessedSubject = \App\Models\Subject::where(function ($q) use ($words) {
+                        foreach ($words as $word) {
+                            if (strlen($word) > 3) {
+                                $q->orWhere('name', 'like', "%{$word}%");
+                            }
+                        }
+                    })->first();
+
+                    if ($guessedSubject) {
+                        $filters['subject'] = (string) $guessedSubject->id;
+                        // Refazemos a query com o ID "adivinhado"
+                        $query = \App\Models\Question::published()->where('tipo_questao', '!=', 'Redação');
+                        if (!empty($filters['type']))
+                            $query->filterByType($filters['type']);
+                        $query->filterBySubject($filters['subject']);
+
+                        $count = $query->count();
+                        if ($count > 0) {
+                            $filters['suggestion_tip'] = "O Xavier recalibrou a busca: Eu notei que você procura por '{$guessedSubject->name}' e encontrei estas questões para você.";
+                        }
+                    }
+                }
+
                 if ($count === 0 && empty($filters['suggestions'])) {
                     $filters['year'] = '';
                     $filters['difficulty'] = '';
