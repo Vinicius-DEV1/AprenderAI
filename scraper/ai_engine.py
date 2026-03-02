@@ -392,9 +392,19 @@ def analise_visual_ia(prova_path, gabarito_path, pasta_prova, exam_id, nome_carg
             
         except Exception as e:
             error_msg = str(e).lower()
-            if "429" in error_msg or "quota" in error_msg:
+            if "429" in error_msg or "quota" in error_msg or "403" in error_msg or "permission" in error_msg:
                 rotacionar_api_key()
                 model = genai.GenerativeModel(config.SELECTED_MODEL_NAME)
+                
+                log("🔄 Refazendo o upload do arquivo para a nova chave API...", Fore.YELLOW)
+                try:
+                    f_p = genai.upload_file(path=prova_path)
+                    if gabarito_path and os.path.exists(gabarito_path):
+                        f_g = genai.upload_file(path=gabarito_path)
+                    time.sleep(5)
+                except Exception as upload_err:
+                    log(f"Erro no re-upload: {upload_err}", Fore.RED)
+                    return []
                 continue 
             else:
                 log(f"❌ Erro fatal na extração JSON da IA: {e}", Fore.RED)
