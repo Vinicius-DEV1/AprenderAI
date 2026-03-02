@@ -74,7 +74,12 @@ export default function QuestionForm() {
                 const alts = question.alternatives;
                 const getAlt = (letter: string) => {
                     const found = alts.find((a: any) => a.label === letter);
-                    return found ? found.content : '';
+                    if (!found) return '';
+                    if (found.content) return found.content;
+                    if (found.image_path) {
+                        return `![Imagem da Alternativa](/storage/${found.image_path.replace('storage/', '')})`;
+                    }
+                    return '';
                 };
 
                 setAltA(getAlt('A'));

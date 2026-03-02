@@ -145,10 +145,19 @@ function AnswerCard({ answer, index, aiName, simulationId }: { answer: any, inde
     const q = answer.question;
     const [showChat, setShowChat] = useState(false);
 
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
+
     const renderMd = (text: string) => {
         if (!text) return { __html: '' };
-        try { return { __html: marked.parse(text) as string }; }
-        catch (e) { return { __html: text }; }
+        let processed = text;
+        if (processed.includes('](/storage/')) {
+            processed = processed.replace(/\]\(\/storage\//g, `](${apiUrl}/storage/`);
+        }
+        if (processed.includes('src="/storage/')) {
+            processed = processed.replace(/src="\/storage\//g, `src="${apiUrl}/storage/`);
+        }
+        try { return { __html: marked.parse(processed) as string }; }
+        catch (e) { return { __html: processed }; }
     };
 
     const getDifficultyInfo = (difficulty: string) => {
@@ -197,8 +206,12 @@ function AnswerCard({ answer, index, aiName, simulationId }: { answer: any, inde
                             {alt.label}
                         </span>
                         <div className="flex flex-col gap-2 flex-grow overflow-hidden">
-                            {alt.content && <div className="text-sm dark:text-slate-300 word-break-all">{alt.content}</div>}
-                            {alt.image_path && <img src={`/storage/${alt.image_path}`} alt={`Alternativa ${alt.label}`} className="max-w-full h-auto rounded object-contain mt-2" />}
+                            {alt.content && (
+                                <div className="text-sm dark:text-slate-300 word-break-all prose max-w-none" dangerouslySetInnerHTML={renderMd(alt.content)} />
+                            )}
+                            {alt.image_path && (
+                                <img src={alt.image_path.startsWith('http') ? alt.image_path : `${apiUrl}/storage/${alt.image_path.replace('storage/', '')}`} alt={`Alternativa ${alt.label}`} className="max-w-full h-auto rounded object-contain mt-2" />
+                            )}
                         </div>
                         {alt.is_correct && <span className="ml-auto text-green-600 font-bold">✓</span>}
                     </div>

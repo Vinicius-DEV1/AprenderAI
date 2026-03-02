@@ -99,7 +99,8 @@ export default function ImportReview() {
     const hasImageModels = question?.images?.length > 0;
     const hasEmbeddedImages = /<img|!\[.*?\]\(.*?\)/i.test(question?.statement || '') ||
         /<img/i.test(question?.statement_html || '') ||
-        question?.alternatives?.some((a: any) => /<img|!\[.*?\]\(.*?\)/i.test(a.content || ''));
+        question?.image_path ||
+        question?.alternatives?.some((a: any) => /<img|!\[.*?\]\(.*?\)/i.test(a.content || '') || a.image_path);
 
     return (
         <div className="py-6 px-4 md:px-6 w-full">
@@ -197,8 +198,12 @@ export default function ImportReview() {
                                                 {(alt.content?.startsWith('questions_images/') || alt.content?.startsWith('storage/')) ? (
                                                     <img src={alt.content.startsWith('http') ? alt.content : `${apiUrl}/storage/${alt.content.replace('storage/', '')}`} alt={`Alternativa ${alt.label}`} className="max-w-full h-auto rounded border border-gray-200" />
                                                 ) : (
-                                                    <div className="prose prose-indigo max-w-none text-sm text-gray-700">
-                                                        <ReactMarkdown urlTransform={urlTransform}>
+                                                    <div className="prose prose-indigo max-w-none text-sm text-gray-700 alternatives-markdown">
+                                                        <ReactMarkdown
+                                                            urlTransform={urlTransform}
+                                                            components={{
+                                                                img: ({ ...props }) => <img {...props} className="max-w-full h-auto rounded-lg border border-gray-200 block my-2" />
+                                                            }}>
                                                             {alt.content}
                                                         </ReactMarkdown>
                                                     </div>

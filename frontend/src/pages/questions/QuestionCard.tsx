@@ -87,12 +87,23 @@ export default function QuestionCard({ question: q }: { question: Question }) {
         return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     };
 
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
+
     const renderMd = (text: string) => {
         if (!text) return { __html: '' };
+
+        let processedText = text;
+        if (processedText.includes('](/storage/')) {
+            processedText = processedText.replace(/\]\(\/storage\//g, `](${apiUrl}/storage/`);
+        }
+        if (processedText.includes('src="/storage/')) {
+            processedText = processedText.replace(/src="\/storage\//g, `src="${apiUrl}/storage/`);
+        }
+
         try {
-            return { __html: marked.parse(text) as string };
+            return { __html: marked.parse(processedText) as string };
         } catch (e) {
-            return { __html: text };
+            return { __html: processedText };
         }
     };
 
@@ -369,11 +380,10 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                             <div className="qb-alt-letter">{alt.label}</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexGrow: 1, overflow: 'hidden' }}>
                                 {alt.content && (
-                                    <div className="qb-alt-text" style={{ wordBreak: 'break-word' }}>{alt.content}</div>
+                                    <div className="qb-alt-text prose prose-sm max-w-none text-slate-700 dark:text-slate-300" style={{ wordBreak: 'break-word', fontSize: '15px' }} dangerouslySetInnerHTML={renderMd(alt.content)} />
                                 )}
                                 {alt.image_path && (
-                                    <img src={`/storage/${alt.image_path}`} alt={`Alternativa ${alt.label}`} style={{ maxWidth: '100%', height: 'auto', borderRadius: '4px', objectFit: 'contain' }} />
-                                    // Note: In production use actual storage URL helper logic
+                                    <img src={alt.image_path.startsWith('http') ? alt.image_path : `${apiUrl}/storage/${alt.image_path}`} alt={`Alternativa ${alt.label}`} style={{ maxWidth: '100%', height: 'auto', borderRadius: '4px', objectFit: 'contain' }} />
                                 )}
                             </div>
                         </div>
