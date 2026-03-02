@@ -104,20 +104,71 @@ export default function OnboardingWelcome() {
                                         </span>
                                     </div>
 
-                                    <Accordion title="Ver Todos os Recursos" defaultExpanded={true} className="mb-10 w-full flex-1">
-                                        <ul className="space-y-4 pt-2">
-                                            {((cycle === 'monthly' ? basicM?.features : basicY?.features) || []).map((feature: string, idx: number) => (
-                                                <li key={idx} className="flex items-start gap-3 text-[15px] font-medium text-slate-700">
+                                    <div className="flex-1">
+                                        <ul className="space-y-4 pt-2 mb-6">
+                                            <li className="flex items-start gap-3 text-[15px] font-medium text-slate-700">
+                                                <div className="rounded-full bg-blue-100 p-1 flex-shrink-0 mt-0.5">
+                                                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                                    </svg>
+                                                </div>
+                                                <span className="leading-tight">Correção detalhada (IA)</span>
+                                            </li>
+                                            <li className="flex items-start gap-3 text-[15px] font-medium text-slate-700">
+                                                <div className="rounded-full bg-blue-100 p-1 flex-shrink-0 mt-0.5">
+                                                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                                    </svg>
+                                                </div>
+                                                <span className="leading-tight">5 redações/mês</span>
+                                            </li>
+                                            <li className="flex items-start gap-3 text-[15px] font-medium text-slate-700">
+                                                <div className="rounded-full bg-blue-100 p-1 flex-shrink-0 mt-0.5">
+                                                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                                    </svg>
+                                                </div>
+                                                <span className="leading-tight">Redação com Nota por Competência</span>
+                                            </li>
+                                            <li className="flex items-start gap-3 text-[15px] font-medium text-slate-700">
+                                                <div className="rounded-full bg-blue-100 p-1 flex-shrink-0 mt-0.5">
+                                                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                                    </svg>
+                                                </div>
+                                                <span className="leading-tight">Radar de concursos</span>
+                                            </li>
+                                        </ul>
+
+                                        <Accordion title="Ver Lista Completa" defaultExpanded={false} className="mb-10 w-full">
+                                            <ul className="space-y-4 pt-2">
+                                                <li className="flex items-start gap-3 text-[15px] font-medium text-slate-700">
                                                     <div className="rounded-full bg-blue-100 p-1 flex-shrink-0 mt-0.5">
                                                         <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                                                         </svg>
                                                     </div>
-                                                    <span className="leading-tight">{feature}</span>
+                                                    <span className="leading-tight">10 provas/mês</span>
                                                 </li>
-                                            ))}
-                                        </ul>
-                                    </Accordion>
+                                                <li className="flex items-start gap-3 text-[15px] font-medium text-slate-700">
+                                                    <div className="rounded-full bg-blue-100 p-1 flex-shrink-0 mt-0.5">
+                                                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                                        </svg>
+                                                    </div>
+                                                    <span className="leading-tight">+200 mil questões</span>
+                                                </li>
+                                                <li className="flex items-start gap-3 text-[15px] font-medium text-slate-700">
+                                                    <div className="rounded-full bg-blue-100 p-1 flex-shrink-0 mt-0.5">
+                                                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                                        </svg>
+                                                    </div>
+                                                    <span className="leading-tight">Gabarito Comentado</span>
+                                                </li>
+                                            </ul>
+                                        </Accordion>
+                                    </div>
 
                                     <Link
                                         to={`/checkout/${cycle === 'monthly' ? basicM?.slug : basicY?.slug}`}
@@ -152,20 +203,71 @@ export default function OnboardingWelcome() {
                                         </span>
                                     </div>
 
-                                    <Accordion title="Ver Todos os Recursos" defaultExpanded={true} className="mb-10 w-full flex-1 shadow-sm border-blue-200">
-                                        <ul className="space-y-4 pt-2">
-                                            {((cycle === 'monthly' ? plusM?.features : plusY?.features) || []).map((feature: string, idx: number) => (
-                                                <li key={idx} className="flex items-start gap-3 text-[15px] font-medium text-slate-700">
+                                    <div className="flex-1">
+                                        <ul className="space-y-4 pt-2 mb-6">
+                                            <li className="flex items-start gap-3 text-[15px] font-medium text-slate-700">
+                                                <div className="rounded-full bg-indigo-100 p-1 flex-shrink-0 mt-0.5">
+                                                    <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                                    </svg>
+                                                </div>
+                                                <span className="leading-tight">Análise estratégica</span>
+                                            </li>
+                                            <li className="flex items-start gap-3 text-[15px] font-medium text-slate-700">
+                                                <div className="rounded-full bg-indigo-100 p-1 flex-shrink-0 mt-0.5">
+                                                    <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                                    </svg>
+                                                </div>
+                                                <span className="leading-tight">Cronograma de Estudos personalizado</span>
+                                            </li>
+                                            <li className="flex items-start gap-3 text-[15px] font-medium text-slate-700">
+                                                <div className="rounded-full bg-indigo-100 p-1 flex-shrink-0 mt-0.5">
+                                                    <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                                    </svg>
+                                                </div>
+                                                <span className="leading-tight">Simulados ilimitados</span>
+                                            </li>
+                                            <li className="flex items-start gap-3 text-[15px] font-medium text-slate-700">
+                                                <div className="rounded-full bg-indigo-100 p-1 flex-shrink-0 mt-0.5">
+                                                    <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                                    </svg>
+                                                </div>
+                                                <span className="leading-tight">15 redações/mês</span>
+                                            </li>
+                                        </ul>
+
+                                        <Accordion title="Ver Todas as Vantagens" defaultExpanded={false} className="mb-10 w-full shadow-sm border-blue-200">
+                                            <ul className="space-y-4 pt-2">
+                                                <li className="flex items-start gap-3 text-[15px] font-medium text-slate-700">
                                                     <div className="rounded-full bg-indigo-100 p-1 flex-shrink-0 mt-0.5">
                                                         <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                                                         </svg>
                                                     </div>
-                                                    <span className="leading-tight">{feature}</span>
+                                                    <span className="leading-tight">Redação com Nota por Competência</span>
                                                 </li>
-                                            ))}
-                                        </ul>
-                                    </Accordion>
+                                                <li className="flex items-start gap-3 text-[15px] font-medium text-slate-700">
+                                                    <div className="rounded-full bg-indigo-100 p-1 flex-shrink-0 mt-0.5">
+                                                        <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                                        </svg>
+                                                    </div>
+                                                    <span className="leading-tight">Estatísticas completas</span>
+                                                </li>
+                                                <li className="flex items-start gap-3 text-[15px] font-medium text-slate-700">
+                                                    <div className="rounded-full bg-indigo-100 p-1 flex-shrink-0 mt-0.5">
+                                                        <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                                        </svg>
+                                                    </div>
+                                                    <span className="leading-tight">Radar de concursos</span>
+                                                </li>
+                                            </ul>
+                                        </Accordion>
+                                    </div>
 
                                     <Link
                                         to={`/checkout/${cycle === 'monthly' ? plusM?.slug : plusY?.slug}`}
