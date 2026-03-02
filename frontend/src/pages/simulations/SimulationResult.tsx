@@ -318,6 +318,8 @@ function ChatInterface({ questionId, simulationId, aiName }: { questionId: numbe
 
             if (reader) {
                 let buffer = '';
+                let firstChunkReceived = false;
+
                 while (!done) {
                     const { done: doneReading, value } = await reader.read();
                     done = doneReading;
@@ -325,30 +327,39 @@ function ChatInterface({ questionId, simulationId, aiName }: { questionId: numbe
                         buffer += decoder.decode(value, { stream: true });
 
                         const parts = buffer.split('\n\n');
-                        buffer = parts.pop() || ''; // Keep last incomplete chunk
+                        buffer = parts.pop() || '';
 
                         for (const part of parts) {
-                            if (part.startsWith('data: ')) {
-                                const content = part.substring(6);
-                                if (content) {
-                                    setMessages(prev => {
-                                        const updated = [...prev];
-                                        updated[currentMsgIndex] = {
-                                            role: 'assistant',
-                                            message: (updated[currentMsgIndex]?.message || '') + content
-                                        };
-                                        return updated;
-                                    });
+                            const lines = part.split('\n');
+                            for (const line of lines) {
+                                if (line.startsWith('data: ')) {
+                                    const content = line.substring(6);
+                                    if (content) {
+                                        if (!firstChunkReceived) {
+                                            setIsTyping(false);
+                                            firstChunkReceived = true;
+                                        }
+
+                                        setMessages(prev => {
+                                            const updated = [...prev];
+                                            updated[currentMsgIndex] = {
+                                                role: 'assistant',
+                                                message: (updated[currentMsgIndex]?.message || '') + content
+                                            };
+                                            return updated;
+                                        });
+                                    }
                                 }
                             }
                         }
                     }
                 }
 
-                // Final flush if anything left in buffer starting with data:
+                // Final flush
                 if (buffer.startsWith('data: ')) {
                     const finalContent = buffer.substring(6);
                     if (finalContent) {
+                        if (!firstChunkReceived) setIsTyping(false);
                         setMessages(prev => {
                             const updated = [...prev];
                             updated[currentMsgIndex] = {

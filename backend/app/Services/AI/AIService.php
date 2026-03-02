@@ -317,10 +317,24 @@ class AIService
     {
         $line = '';
         while (!$body->eof()) {
-            $char = $body->read(1);
-            if ($char === "\n")
+            // Read in chunks of 1024 bytes instead of 1 byte for better performance
+            $chunk = $body->read(1024);
+            if ($chunk === '')
                 break;
-            $line .= $char;
+
+            $newlinePos = strpos($chunk, "\n");
+            if ($newlinePos !== false) {
+                // Found a newline, take the part before it and seek back the rest
+                $line .= substr($chunk, 0, $newlinePos);
+
+                // Calculate how much we need to seek back
+                $remains = strlen($chunk) - ($newlinePos + 1);
+                if ($remains > 0) {
+                    $body->seek($body->tell() - $remains);
+                }
+                break;
+            }
+            $line .= $chunk;
         }
         return trim($line);
     }

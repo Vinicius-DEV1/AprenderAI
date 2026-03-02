@@ -345,6 +345,13 @@ class SimulationController extends Controller
         $aiService = app(\App\Services\AI\AIService::class);
 
         return response()->stream(function () use ($aiService, $question, $simulation, $request, $history, $user) {
+            // Disable buffering and compression for real-time streaming
+            @ini_set('zlib.output_compression', 0);
+            @ini_set('implicit_flush', 1);
+            while (ob_get_level()) {
+                ob_end_flush();
+            }
+
             try {
                 $stream = $aiService->streamChatAboutQuestion(
                     $question,
@@ -376,6 +383,7 @@ class SimulationController extends Controller
             'Cache-Control' => 'no-cache',
             'Connection' => 'keep-alive',
             'X-Accel-Buffering' => 'no',
+            'Content-Encoding' => 'none',
         ]);
     }
 }

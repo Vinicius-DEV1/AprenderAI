@@ -232,6 +232,8 @@ export default function QuestionCard({ question: q }: { question: Question }) {
             let done = false;
             let buffer = '';
 
+            let firstChunkReceived = false;
+
             while (reader && !done) {
                 const { value, done: doneReading } = await reader.read();
                 done = doneReading;
@@ -239,27 +241,37 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                     buffer += decoder.decode(value, { stream: true });
 
                     // SSE format: data: <content>\n\n
+                    // Some providers might send multiple data blocks in one chunk
                     const parts = buffer.split('\n\n');
-                    buffer = parts.pop() || ''; // Keep the last incomplete part in the buffer
+                    buffer = parts.pop() || '';
 
                     for (const part of parts) {
-                        if (part.startsWith('data: ')) {
-                            const content = part.substring(6);
-                            if (content) {
-                                setChatMessages(prev =>
-                                    prev.map(m => m.id === replyId ? { ...m, message: m.message + content } : m)
-                                );
-                                scrollToBottom();
+                        const lines = part.split('\n');
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const content = line.substring(6);
+                                if (content) {
+                                    if (!firstChunkReceived) {
+                                        setChatTyping(false);
+                                        firstChunkReceived = true;
+                                    }
+
+                                    setChatMessages(prev =>
+                                        prev.map(m => m.id === replyId ? { ...m, message: m.message + content } : m)
+                                    );
+                                    scrollToBottom();
+                                }
                             }
                         }
                     }
                 }
             }
 
-            // Flush remaining buffer if any (though usually SSE ends with \n\n)
+            // Flush remaining buffer if any
             if (buffer.startsWith('data: ')) {
                 const finalContent = buffer.substring(6);
                 if (finalContent) {
+                    if (!firstChunkReceived) setChatTyping(false);
                     setChatMessages(prev =>
                         prev.map(m => m.id === replyId ? { ...m, message: m.message + finalContent } : m)
                     );
