@@ -203,6 +203,16 @@ export default function AppLayout() {
                                 <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
                                     {user?.name || 'User'}
                                 </p>
+                                <span className={`inline-block mt-0.5 px-2 py-0.5 text-[10px] font-bold rounded-md uppercase tracking-wide border ${(user?.plan?.name || '').toLowerCase().includes('plus')
+                                        ? 'bg-blue-900 text-white border-blue-800'
+                                        : (user?.plan?.name || '').toLowerCase().includes('básico') || (user?.plan?.name || '').toLowerCase().includes('basico')
+                                            ? 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800'
+                                            : isAdmin
+                                                ? 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800'
+                                                : 'bg-white text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+                                    }`}>
+                                    {user?.plan?.name || (isAdmin ? 'Administrador' : 'Gratuito')}
+                                </span>
                             </div>
                         )}
 

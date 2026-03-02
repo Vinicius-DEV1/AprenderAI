@@ -189,16 +189,20 @@ class AIService
                 default => throw new \Exception("Streaming not supported for provider: $provider")
             };
 
+            $usage = ['input_tokens' => 0, 'output_tokens' => 0, 'total_tokens' => 0];
             foreach ($stream as $chunk) {
+                if (is_array($chunk) && isset($chunk['usage'])) {
+                    $usage = $chunk['usage'];
+                    continue;
+                }
                 $fullText .= $chunk;
                 yield $chunk;
             }
 
             $executionTime = microtime(true) - $startTime;
-            // Note: Token count estimation or final check might be needed here
             $this->telemetryService->logRequest($apiKey, $prompt, [
                 'content' => $fullText,
-                'usage' => ['input_tokens' => 0, 'output_tokens' => 0, 'total_tokens' => 0] // Usage usually comes in stream for OpenAI
+                'usage' => $usage
             ], $executionTime, $userId);
 
         } catch (\Exception $e) {
@@ -293,6 +297,7 @@ class AIService
                 'messages' => [['role' => 'user', 'content' => $prompt]],
                 'temperature' => 0.7,
                 'stream' => true,
+                'stream_options' => ['include_usage' => true]
             ],
             'stream' => true,
         ]);
@@ -309,6 +314,16 @@ class AIService
                 $content = $json['choices'][0]['delta']['content'] ?? '';
                 if ($content)
                     yield $content;
+
+                if (isset($json['usage'])) {
+                    yield [
+                        'usage' => [
+                            'input_tokens' => $json['usage']['prompt_tokens'] ?? 0,
+                            'output_tokens' => $json['usage']['completion_tokens'] ?? 0,
+                            'total_tokens' => $json['usage']['total_tokens'] ?? 0,
+                        ]
+                    ];
+                }
             }
         }
     }
@@ -399,6 +414,58 @@ class AIService
         ];
     }
 
+    /**
+     * Gera um embedding usando o Gemini text-embedding-004
+     */
+    public function generateEmbedding(string $text): ?array
+    {
+        try {
+            // Busca uma chave com a capacidade específica de embedding
+            $apiKeyModel = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_EMBEDDING, 'gemini');
+
+            if (!$apiKeyModel) {
+                // Fallback para qualquer chave gemini se não houver uma específica
+                $apiKeyModel = ApiKey::getActiveKeyForProvider('gemini');
+            }
+
+            if (!$apiKeyModel) {
+                Log::warning('Nenhuma chave ativa para embeddings.', ['provider' => 'gemini']);
+                return null;
+            }
+
+            $apiKey = $apiKeyModel->decrypted_key;
+            // Usando v1beta e o modelo retornado pela discovery da API
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key={$apiKey}";
+
+            $payload = [
+                'content' => [
+                    'parts' => [
+                        ['text' => $text]
+                    ]
+                ]
+            ];
+
+            $response = Http::timeout(5)->post($url, $payload);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['embedding']['values'] ?? null;
+            }
+
+            Log::error('Erro ao chamar API de Embedding.', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'url' => str_replace($apiKey, 'HIDDEN', $url)
+            ]);
+
+            return null;
+
+        } catch (\Exception $e) {
+            Log::error('Exceção ao gerar Embedding.', ['error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
     protected function callGeminiStream(ApiKey $apiKey, string $prompt): \Generator
     {
         $model = $apiKey->preferred_model;
@@ -424,6 +491,16 @@ class AIService
                 $content = $json['candidates'][0]['content']['parts'][0]['text'] ?? '';
                 if ($content)
                     yield $content;
+
+                if (isset($json['usageMetadata'])) {
+                    yield [
+                        'usage' => [
+                            'input_tokens' => $json['usageMetadata']['promptTokenCount'] ?? 0,
+                            'output_tokens' => $json['usageMetadata']['candidatesTokenCount'] ?? 0,
+                            'total_tokens' => $json['usageMetadata']['totalTokenCount'] ?? 0,
+                        ]
+                    ];
+                }
             }
         }
     }
@@ -1005,14 +1082,37 @@ class AIService
                 $prompt = $this->promptService->get('ai_search_interpreter', [
                     'user_prompt' => $userPrompt,
                     'filter_options' => json_encode($filterOptions)
-                ], "Você é o {$aiName}, um Agente de Busca moderno e empático. Seu objetivo é minerar o banco de dados para encontrar exatamente o que o aluno precisa.
-DIRETRIZES:
-1. Respostas Curtas: Use no máximo 5 linhas no campo 'suggestion_tip'. Seja encorajador e proativo.
-2. Formato: Retorne APENAS o JSON: { \"type\": \"enem|concurso\", \"subject\": \"...\", \"topic\": \"...\", \"difficulty\": \"...\", \"year\": ..., \"keyword\": \"...\", \"suggestion_tip\": \"...\", \"suggestions\": [ {\"label\": \"Texto do Botão\", \"filters\": {...}} ] }
-3. Sem Resultados: Se não encontrar nada, use 'suggestion_tip' para explicar de forma empática e 'suggestions' para propor caminhos alternativos.
+                ], "Você é o {$aiName}, um Agente de Busca de alta precisão. Sua missão é converter a frase do usuário em um JSON de filtros ESTRITAMENTE baseados nas opções fornecidas.
 
-Busca do usuário: '{user_prompt}'
-Opções válidas (JSON): {filter_options}");
+### REGRAS DE OURO (NÃO NEGOCIÁVEIS):
+1. **USO OBRIGATÓRIO DE IDS**: Para os campos 'subject' e 'topic', você DEVE retornar o ID (número ou string curta) encontrado no JSON de opções válidas. NUNCA retorne o nome amigável (ex: retornar '12' em vez de 'Geografia').
+2. **PROIBIDO FILTROS FANTASMAS**: Se o usuário não mencionou o ANO, o campo 'year' DEVE ser string vazia (\"\"). Se ele não mencionou a dificuldade, 'difficulty' DEVE ser \"\". NUNCA invente '2024' ou qualquer outro valor por conta própria.
+3. **ECONOMIA DE KEYWORDS**: O campo 'keyword' deve conter APENAS termos que não foram capturados como matéria ou assunto. Se já mapeou o assunto, deixe 'keyword' vazio (\"\").
+4. **VALORES TÉCNICOS**:
+   - Tipo DEVE ser: \"enem\", \"concurso\" ou vazio (\"\") se o usuário não especificar.
+   - Dificuldade DEVE ser: \"easy\", \"medium\" ou \"hard\".
+   - Status DEVE ser: \"unanswered\" ou \"answered\".
+
+### EXEMPLO DE SUCESSO:
+**Input do Usuário:** \"questões de geografia\"
+**Opções Válidas:** {\"subjects\":[{\"id\":45, \"name\":\"Geografia\"}], ...}
+**Output Correto:**
+{
+  \"type\": \"\",
+  \"subject\": \"45\",
+  \"topic\": \"\",
+  \"difficulty\": \"\",
+  \"year\": \"\",
+  \"keyword\": \"\",
+  \"suggestion_tip\": \"Encontrei questões de Geografia para você.\",
+  \"suggestions\": []
+}
+
+### DADOS PARA PROCESSAR AGORA:
+Busca do aluno: '{user_prompt}'
+Opções válidas (JSON): {filter_options}
+
+RETORNE APENAS O JSON:");
 
                 $result = $this->callAI($provider, $apiKey, $prompt, $userId);
                 $apiKey->incrementUsage();

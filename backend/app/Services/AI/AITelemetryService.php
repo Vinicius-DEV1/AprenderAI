@@ -14,7 +14,18 @@ class AITelemetryService
         try {
             $inputTokens = $result['usage']['input_tokens'] ?? 0;
             $outputTokens = $result['usage']['output_tokens'] ?? 0;
-            $totalTokens = $result['usage']['total_tokens'] ?? 0;
+
+            // Fallback estimation if tokens are missing but content exists
+            $responseText = is_string($result['content']) ? $result['content'] : json_encode($result['content']);
+            if ($outputTokens <= 0 && !empty($responseText) && empty($result['error'])) {
+                $outputTokens = $this->estimateTokens($responseText);
+            }
+
+            if ($inputTokens <= 0 && !empty($prompt)) {
+                $inputTokens = $this->estimateTokens($prompt);
+            }
+
+            $totalTokens = $result['usage']['total_tokens'] ?? ($inputTokens + $outputTokens);
             $modelName = $apiKey->preferred_model ?? 'unknown';
 
             // Inteligência Financeira: Calcula Custo da Transação
@@ -64,5 +75,16 @@ class AITelemetryService
         } catch (\Exception $e) {
             Log::warning("ApiLog Error: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Estimativa de tokens baseada em caracteres (Fallback).
+     * Média de 3.8 caracteres por token para Português/Inglês.
+     */
+    public function estimateTokens(string $text): int
+    {
+        if (empty($text))
+            return 0;
+        return max(1, (int) ceil(mb_strlen($text) / 3.8));
     }
 }

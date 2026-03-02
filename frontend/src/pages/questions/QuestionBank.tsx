@@ -110,7 +110,52 @@ export default function QuestionBank() {
     const [isAiError, setIsAiError] = useState(false);
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
+    const [triggerScroll, setTriggerScroll] = useState(false);
     const [placeholderText, setPlaceholderText] = useState(STATIC_PREFIX);
+
+    // --- Data Fetching (Moved up to avoid "used before declaration" in effects) ---
+    const { data: questionsData, isLoading: questionsLoading } = useQuery({
+        queryKey: ['questions', page, filters],
+        queryFn: async () => {
+            const res = await api.get('/api/v1/questions', { params: { ...filters, page } });
+            return res.data;
+        }
+    });
+
+    const { data: subjectsData, isLoading: loadingSubjects } = useQuery({
+        queryKey: ['subjects', filters.type],
+        queryFn: async () => {
+            const res = await api.get('/api/v1/questions/subjects', { params: { type: filters.type } });
+            return res.data;
+        }
+    });
+
+    const { data: topicsData, isLoading: loadingTopics } = useQuery({
+        queryKey: ['topics', filters.subject, filters.type],
+        queryFn: async () => {
+            if (!filters.subject) return [];
+            const res = await api.get('/api/v1/questions/topics', { params: { subject: filters.subject, type: filters.type } });
+            return res.data;
+        },
+        enabled: !!filters.subject
+    });
+
+    const { data: statsData } = useQuery({
+        queryKey: ['stats'],
+        queryFn: async () => {
+            const res = await api.get('/api/v1/questions/stats');
+            return res.data;
+        },
+        enabled: statsOpen
+    });
+
+    const { data: filterOptions, isLoading: loadingFilterOptions } = useQuery({
+        queryKey: ['filterOptions'],
+        queryFn: async () => {
+            const res = await api.get('/api/v1/questions/filter-options');
+            return res.data;
+        }
+    });
 
     // ── Typewriter effect ──
     const phIndex = useRef(0);
@@ -155,49 +200,19 @@ export default function QuestionBank() {
         return () => clearInterval(interval);
     }, [aiLoading]);
 
-    // --- Data Fetching ---
-    const { data: questionsData, isLoading: questionsLoading } = useQuery({
-        queryKey: ['questions', page, filters],
-        queryFn: async () => {
-            const res = await api.get('/api/v1/questions', { params: { ...filters, page } });
-            return res.data;
+    // ── Auto Scroll When Search/Filters Finish Loading ──
+    useEffect(() => {
+        if (triggerScroll && !questionsLoading) {
+            setTriggerScroll(false);
+            setTimeout(() => {
+                const container = document.getElementById('questions-container');
+                if (container) {
+                    const topPos = container.getBoundingClientRect().top + window.scrollY - 100; // Offset para o header
+                    window.scrollTo({ top: topPos, behavior: 'smooth' });
+                }
+            }, 100);
         }
-    });
-
-    const { data: subjectsData, isLoading: loadingSubjects } = useQuery({
-        queryKey: ['subjects', filters.type],
-        queryFn: async () => {
-            const res = await api.get('/api/v1/questions/subjects', { params: { type: filters.type } });
-            return res.data;
-        }
-    });
-
-    const { data: topicsData, isLoading: loadingTopics } = useQuery({
-        queryKey: ['topics', filters.subject, filters.type],
-        queryFn: async () => {
-            if (!filters.subject) return [];
-            const res = await api.get('/api/v1/questions/topics', { params: { subject: filters.subject, type: filters.type } });
-            return res.data;
-        },
-        enabled: !!filters.subject
-    });
-
-    const { data: statsData } = useQuery({
-        queryKey: ['stats'],
-        queryFn: async () => {
-            const res = await api.get('/api/v1/questions/stats');
-            return res.data;
-        },
-        enabled: statsOpen
-    });
-
-    const { data: filterOptions, isLoading: loadingFilterOptions } = useQuery({
-        queryKey: ['filterOptions'],
-        queryFn: async () => {
-            const res = await api.get('/api/v1/questions/filter-options');
-            return res.data;
-        }
-    });
+    }, [questionsLoading, triggerScroll]);
 
     const questions = questionsData?.data || [];
     const meta = questionsData?.meta || { total: 0, current_page: 1, last_page: 1 };
@@ -240,7 +255,15 @@ export default function QuestionBank() {
     };
 
     const applyXavierSuggestion = (newFilters: Partial<FilterOptions>) => {
-        setFilters((prev: FilterOptions) => ({ ...prev, ...newFilters }));
+        // RADICAL RESET: Substituímos TUDO pelo que a IA sugeriu, 
+        // evitando que filtros anteriores (ex: Ano 2024) persistam se não estiverem na sugestão.
+        const baseFilters = {
+            type: '', subject: '', topic: '', keyword: '', year: '',
+            difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false
+        };
+        const finalFilters = { ...baseFilters, ...newFilters };
+        setFilters(finalFilters as FilterOptions);
+
         // Auto-expand advanced filters if suggestion sets them
         if (newFilters.year || newFilters.difficulty || newFilters.organization || newFilters.institution || newFilters.role) {
             setMoreFilters(true);
@@ -249,6 +272,7 @@ export default function QuestionBank() {
         setAiSuggestions([]);
         setAiSuggestion(null);
         setPage(1);
+        setTriggerScroll(true);
         setToastMessage('✅ Busca atualizada conforme sugestão.');
         setShowToast(true);
         setTimeout(() => setShowToast(false), 4000);
@@ -262,10 +286,36 @@ export default function QuestionBank() {
         setAiSuggestions([]);
         setIsQuotaExceeded(false);
         setIsAiError(false);
+        setTriggerScroll(false);
 
         try {
             const res = await api.post('/api/v1/questions/ai-search', { prompt });
-            if (res.data.status === 'queued') {
+
+            if (res.data.status === 'completed') {
+                // INSTANT CACHE HIT!
+                setAiLoading(false);
+                if (res.data.suggestion_tip) setAiSuggestion(res.data.suggestion_tip);
+                if (res.data.suggestions) setAiSuggestions(res.data.suggestions);
+
+                const baseFilters = {
+                    type: '', subject: '', topic: '', keyword: '', year: '',
+                    difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false
+                };
+                const finalFilters = { ...baseFilters, ...res.data.filters };
+                setFilters(finalFilters as FilterOptions);
+
+                if (res.data.filters?.year || res.data.filters?.difficulty || res.data.filters?.organization || res.data.filters?.institution || res.data.filters?.role) {
+                    setMoreFilters(true);
+                }
+                setPage(1);
+                if (!res.data.suggestions || res.data.suggestions.length === 0) {
+                    setTriggerScroll(true);
+                }
+                setToastMessage(`⚡ Inteligência Instantânea: Busca recuperada do Cache com Xavier.`);
+                setShowToast(true);
+                setTimeout(() => setShowToast(false), 4000);
+            } else if (res.data.status === 'queued') {
+                // BACKEND FILA SLOW RESPONSE
                 pollSearch(res.data.request_id);
             } else {
                 setAiLoading(false);
@@ -287,17 +337,28 @@ export default function QuestionBank() {
             try {
                 const res = await api.get(`/api/v1/questions/ai-search/${requestId}/status`);
                 if (res.data.status === 'completed') {
+                    console.log('DEBUG: Filtros recebidos do Xavier:', res.data.filters);
                     clearInterval(poller);
                     setAiLoading(false);
                     if (res.data.suggestion_tip) setAiSuggestion(res.data.suggestion_tip);
                     if (res.data.suggestions) setAiSuggestions(res.data.suggestions);
 
-                    setFilters((prev: FilterOptions) => ({ ...prev, ...res.data.filters }));
+                    // RADICAL REPLACEMENT: When AI responds, we replace all filters to avoid ghosts
+                    const baseFilters = {
+                        type: '', subject: '', topic: '', keyword: '', year: '',
+                        difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false
+                    };
+                    const finalFilters = { ...baseFilters, ...res.data.filters };
+                    setFilters(finalFilters as FilterOptions);
+
                     // Auto-show advanced filters if AI sets them
                     if (res.data.filters?.year || res.data.filters?.difficulty || res.data.filters?.organization) {
                         setMoreFilters(true);
                     }
                     setPage(1);
+                    if (!res.data.suggestions || res.data.suggestions.length === 0) {
+                        setTriggerScroll(true);
+                    }
                     setToastMessage(`✅ Busca realizada com sucesso! ${aiName} encontrou o que você precisava.`);
                     setShowToast(true);
                     setTimeout(() => setShowToast(false), 4000);
@@ -309,12 +370,12 @@ export default function QuestionBank() {
                     setAiMessage(res.data.error || randomFail);
                 }
             } catch { /* polling error, just retry */ }
-            if (attempts >= 30) {
+            if (attempts >= 100) {
                 clearInterval(poller);
                 setAiLoading(false);
                 setAiMessage('A busca demorou demais. Tente novamente.');
             }
-        }, 2000);
+        }, 800);
     };
 
     const closeBubble = () => {
@@ -444,7 +505,7 @@ export default function QuestionBank() {
                             onChange={updateFilter}
                         />
                         <SearchableSelect
-                            label={filters.type === 'enem' ? 'Eixo Temático' : 'Assunto'}
+                            label={filters.type === 'enem' ? 'Eixo Temático' : (filters.type === 'concurso' ? 'Assunto' : 'Assunto / Eixo Temático')}
                             name="topic"
                             value={filters.topic}
                             options={topicsData || []}

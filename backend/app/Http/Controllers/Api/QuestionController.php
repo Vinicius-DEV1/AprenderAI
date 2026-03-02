@@ -390,17 +390,49 @@ class QuestionController extends Controller
             ], 403);
         }
 
-        // Create the tracking record
+        $userPrompt = trim(strtolower($request->prompt));
+        $cacheService = app(\App\Services\AI\SemanticCacheService::class);
+
+        // [Nível 1] Busca Exata (Hash MD5) - Instantâneo Síncrono
+        $cachedFilters = $cacheService->findExactMatch($userPrompt);
+
+        // [Nível 2] Busca por Similaridade (Embeddings) - Quase Instantâneo Síncrono (~500ms)
+        if (!$cachedFilters) {
+            $aiService = app(\App\Services\AI\AIService::class);
+            $vector = $aiService->generateEmbedding($userPrompt);
+            if ($vector) {
+                $cachedFilters = $cacheService->findSimilarMatch($vector, 0.94);
+            }
+        }
+
+        // Se encontrou no Cache Instantâneo da Request HTTTP:
+        if ($cachedFilters) {
+            $user->incrementAiUsage();
+
+            // Grava histórico p/ Analytics
+            AiSearchRequest::create([
+                'user_id' => $user->id,
+                'prompt' => $request->prompt,
+                'status' => 'completed',
+                'filters' => $cachedFilters,
+            ]);
+
+            return response()->json([
+                'status' => 'completed',
+                'filters' => $cachedFilters,
+                'suggestion_tip' => $cachedFilters['suggestion_tip'] ?? null,
+                'suggestions' => $cachedFilters['suggestions'] ?? [],
+            ], 200);
+        }
+
+        // Caso Inédito: Cria o registro e manda pro Xavier trabalhar na Fila Background
         $searchRequest = AiSearchRequest::create([
             'user_id' => $user->id,
             'prompt' => $request->prompt,
             'status' => 'pending',
         ]);
 
-        // Increment quota usage immediately
         $user->incrementAiUsage();
-
-        // Dispatch background job to interpret the prompt
         InterpretSearchPromptJob::dispatch($searchRequest);
 
         return response()->json([
