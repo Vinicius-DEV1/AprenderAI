@@ -272,7 +272,7 @@ function ChatInterface({ questionId, simulationId, aiName }: { questionId: numbe
             const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token') || localStorage.getItem('token');
             const baseUrl = api.defaults.baseURL || '';
 
-            const response = await fetch(`${baseUrl}/api/v1/questions/${questionId}/chat`, {
+            const response = await fetch(`${baseUrl}/api/v1/simulations/${simulationId}/questions/${questionId}/chat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
