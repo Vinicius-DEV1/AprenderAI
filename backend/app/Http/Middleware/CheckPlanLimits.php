@@ -33,7 +33,7 @@ class CheckPlanLimits
 
         if (!$check['can_create']) {
             return response()->json([
-                'error' => $check['message'],
+                'message' => $check['message'],
                 'quota' => [
                     'limit' => $check['limit'] ?? 0,
                     'used' => $check['used'] ?? 0,

@@ -20,6 +20,7 @@ class PlanSeeder extends Seeder
                 'interval' => 'monthly',
                 'simulations_limit' => 5,
                 'essays_limit' => 0,
+                'daily_question_limit' => 30,
                 'features' => [
                     'basic_correction',
                 ],
@@ -35,6 +36,7 @@ class PlanSeeder extends Seeder
                 'interval' => 'monthly',
                 'simulations_limit' => 10,
                 'essays_limit' => 5,
+                'daily_question_limit' => 10,
                 'features' => [
                     'detailed_correction',
                     'improvement_points',
@@ -52,6 +54,7 @@ class PlanSeeder extends Seeder
                 'interval' => 'monthly',
                 'simulations_limit' => 0,
                 'essays_limit' => 15,
+                'daily_question_limit' => 9999,
                 'features' => [
                     'advanced_correction',
                     'personalized_study_plan',
@@ -73,6 +76,7 @@ class PlanSeeder extends Seeder
                 'interval' => 'yearly',
                 'simulations_limit' => 10,
                 'essays_limit' => 5,
+                'daily_question_limit' => 10,
                 'features' => [
                     'detailed_correction',
                     'improvement_points',
@@ -90,6 +94,7 @@ class PlanSeeder extends Seeder
                 'interval' => 'yearly',
                 'simulations_limit' => 0,
                 'essays_limit' => 15,
+                'daily_question_limit' => 9999,
                 'features' => [
                     'advanced_correction',
                     'personalized_study_plan',
