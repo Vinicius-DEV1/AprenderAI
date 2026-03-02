@@ -104,21 +104,103 @@ export default function PlanList() {
                 </div>
 
                 {user && (
-                    <div className="mb-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 text-xl shadow-inner">
-                                ⭐️
+                    <div className="mb-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-sm">
+                        <div className="flex flex-col lg:flex-row gap-8">
+                            {/* Lado Esquerdo: Info do Plano */}
+                            <div className="flex-1">
+                                <div className="flex items-center gap-4 mb-6">
+                                    <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 text-2xl shadow-inner group transition-transform hover:scale-105">
+                                        <span className="group-hover:animate-pulse">⭐️</span>
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-1">
+                                            <p className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Minha Assinatura</p>
+                                            <span className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full uppercase tracking-widest font-black flex items-center gap-1">
+                                                <span className="w-1 w-1 h-1 h-1 bg-green-500 rounded-full animate-ping"></span>
+                                                Ativo
+                                            </span>
+                                        </div>
+                                        <h4 className="text-2xl font-black text-slate-900 dark:text-white leading-none">
+                                            Plano {currentPlan?.name || (user?.role === 'admin' ? 'Administrador' : 'Gratuito')}
+                                            <span className="ml-2 text-sm font-medium text-slate-400 dark:text-slate-500">
+                                                • {currentPlan?.interval === 'yearly' ? 'Anual' : 'Mensal'}
+                                            </span>
+                                        </h4>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Início do Período</p>
+                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                            {(user as any).subscription_start ? new Date((user as any).subscription_start).toLocaleDateString() : '--/--/----'}
+                                        </p>
+                                    </div>
+                                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Próxima Renovação</p>
+                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                            {(user as any).subscription_end ? new Date((user as any).subscription_end).toLocaleDateString() : '--/--/----'}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Minha Assinatura</p>
-                                <h4 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                                    Plano {currentPlan?.name || (user?.role === 'admin' ? 'Administrador' : 'Gratuito')}
-                                    <span className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full uppercase tracking-widest font-black">Ativo</span>
-                                </h4>
+
+                            {/* Divisor Vertical (apenas desk) */}
+                            <div className="hidden lg:block w-px bg-slate-100 dark:bg-slate-800"></div>
+
+                            {/* Lado Direito: Consumos */}
+                            <div className="flex-1 flex flex-col justify-center">
+                                <h5 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Consumo do Período</h5>
+                                <div className="space-y-4">
+                                    {/* Simulações */}
+                                    <div>
+                                        <div className="flex justify-between text-[11px] mb-1.5">
+                                            <span className="font-bold text-slate-600 dark:text-slate-400">Simulados</span>
+                                            <span className="font-black text-blue-600 dark:text-blue-400">
+                                                {(user as any).quotas?.simulations?.used || 0} / {(user as any).quotas?.simulations?.limit === 9999 ? '∞' : (user as any).quotas?.simulations?.limit || 0}
+                                            </span>
+                                        </div>
+                                        <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                                                style={{ width: `${Math.min(100, (((user as any).quotas?.simulations?.used || 0) / ((user as any).quotas?.simulations?.limit || 1)) * 100)}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+
+                                    {/* Redações */}
+                                    <div>
+                                        <div className="flex justify-between text-[11px] mb-1.5">
+                                            <span className="font-bold text-slate-600 dark:text-slate-400">Redações</span>
+                                            <span className="font-black text-purple-600 dark:text-purple-400">
+                                                {(user as any).quotas?.essays?.used || 0} / {(user as any).quotas?.essays?.limit === 9999 ? '∞' : (user as any).quotas?.essays?.limit || 0}
+                                            </span>
+                                        </div>
+                                        <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-purple-500 rounded-full transition-all duration-500"
+                                                style={{ width: `${Math.min(100, (((user as any).quotas?.essays?.used || 0) / ((user as any).quotas?.essays?.limit || 1)) * 100)}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+
+                                    {/* Questões IA */}
+                                    <div>
+                                        <div className="flex justify-between text-[11px] mb-1.5">
+                                            <span className="font-bold text-slate-600 dark:text-slate-400">Xavier (Perguntas IA)</span>
+                                            <span className="font-black text-amber-600 dark:text-amber-400">
+                                                {(user as any).quotas?.ai_questions?.used || 0} / {(user as any).quotas?.ai_questions?.limit === 9999 ? '∞' : (user as any).quotas?.ai_questions?.limit || 0}
+                                            </span>
+                                        </div>
+                                        <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                                                style={{ width: `${Math.min(100, (((user as any).quotas?.ai_questions?.used || 0) / ((user as any).quotas?.ai_questions?.limit || 1)) * 100)}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div className="text-left md:text-right">
-                            <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">Você tem acesso aos recursos do plano atual.</p>
                         </div>
                     </div>
                 )}
