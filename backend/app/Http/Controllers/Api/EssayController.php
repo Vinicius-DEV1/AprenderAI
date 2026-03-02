@@ -8,6 +8,7 @@ use App\Models\WritingRule;
 use App\Http\Resources\EssayResource;
 use App\Services\EssayImageExtractorService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class EssayController extends Controller
 {
@@ -76,25 +77,58 @@ class EssayController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->canCreateEssay()) {
-            return response()->json(['message' => 'Você atingiu o limite de redações do seu plano.'], 403);
-        }
-
         $validated = $request->validate([
             'type' => 'required|in:enem,concurso',
             'time_limit' => 'required|integer|in:30,45,60,90,120',
         ]);
 
-        $essay = $user->essays()->create([
-            'type' => $validated['type'],
-            'time_limit' => $validated['time_limit'] * 60, // save in seconds
-            'title' => 'Gerando tema...',
-            'content' => '',
-            'status' => 'pending',
-            'started_at' => now(),
-        ]);
+        // Check essay quota — catch exceptions so they don't silently return false
+        try {
+            $canCreate = $user->canCreateEssay();
+        } catch (\Throwable $e) {
+            Log::error('[EssayController::store] Erro ao verificar quota de redação', [
+                'user_id' => $user->id,
+                'type' => $validated['type'],
+                'time_limit' => $validated['time_limit'],
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'code' => 'DRAFT_CREATE_FAILED',
+                'message' => 'Falha interna ao verificar sua quota de redações. Tente novamente.',
+            ], 500);
+        }
 
-        // Draft created successfully
+        if (!$canCreate) {
+            return response()->json([
+                'code' => 'QUOTA_EXCEEDED',
+                'message' => 'Você atingiu seu limite mensal de redações.',
+            ], 403);
+        }
+
+        try {
+            $essay = $user->essays()->create([
+                'type' => $validated['type'],
+                'time_limit' => $validated['time_limit'] * 60,
+                'title' => 'Gerando tema...',
+                'content' => '',
+                'status' => 'pending',
+                'started_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('[EssayController::store] Erro ao criar rascunho', [
+                'user_id' => $user->id,
+                'type' => $validated['type'],
+                'time_limit' => $validated['time_limit'],
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'code' => 'DRAFT_CREATE_FAILED',
+                'message' => 'Falha interna ao criar rascunho. Tente novamente.',
+            ], 500);
+        }
+
         return new EssayResource($essay);
     }
 
@@ -199,7 +233,14 @@ class EssayController extends Controller
      */
     public function getRule(Request $request, string $type)
     {
-        $rule = \App\Models\WritingRule::where('type', $type)->first();
+        if (!in_array($type, ['enem', 'concurso'])) {
+            return response()->json([
+                'code' => 'INVALID_TYPE',
+                'message' => 'Tipo inválido. Use enem ou concurso.',
+            ], 422);
+        }
+
+        $rule = WritingRule::where('type', $type)->first();
 
         return response()->json([
             'min_chars' => $rule?->min_chars ?? 1500,

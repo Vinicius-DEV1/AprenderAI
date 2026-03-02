@@ -294,6 +294,12 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Whether the user can create (and submit) a new essay this month.
      * Centralizado no QuotaService (Lógica de Ciclo e Acumulação).
+     *
+     * NOTE: This method no longer swallows unexpected exceptions.
+     * It returns false only for genuine "quota exhausted" cases.
+     * Unexpected exceptions are re-thrown so callers (EssayController::store)
+     * can log them and return HTTP 500 instead of silently returning false
+     * which caused the misleading 403 "Você atingiu o limite" error.
      */
     public function canCreateEssay(): bool
     {
@@ -311,19 +317,22 @@ class User extends Authenticatable implements MustVerifyEmail
             return $this->monthlyEssayUsed() < $this->max_essays_override;
         }
 
-        // --- PATH B: No override, verifica QuotaService real ---
-        try {
-            $usage = app(\App\Services\QuotaService::class)->getUsage($this, 'essays');
-            $limit = $usage['limit'] ?? 0;
+        // --- PATH B: No override — use QuotaService.
+        // We intentionally do NOT catch exceptions here anymore.
+        // A database/infrastructure failure should propagate so that
+        // EssayController::store() can log it and return HTTP 500.
+        $usage = app(\App\Services\QuotaService::class)->getUsage($this, 'essays');
+        $limit = $usage['limit'] ?? 0;
 
-            // Ilimitado no JSON (ex: Plus Plan)
-            if ($limit === null)
-                return true;
+        // null limit means "unlimited" (e.g. Plus plan)
+        if ($limit === null)
+            return true;
 
-            return $usage['used'] < $limit;
-        } catch (\Exception $e) {
+        // 0 limit means the plan does not include essay access
+        if ($limit === 0)
             return false;
-        }
+
+        return $usage['used'] < $limit;
     }
 
     /**

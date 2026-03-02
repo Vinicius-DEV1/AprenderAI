@@ -230,7 +230,14 @@ export default function EssayWrite() {
             setStep(2);
             setError(null);
         },
-        onError: () => setError('Erro ao criar rascunho. Tente novamente.'),
+        onError: (err: any) => {
+            const code = err.response?.data?.code;
+            if (code === 'QUOTA_EXCEEDED') {
+                setError('Você atingiu seu limite mensal de redações.');
+            } else {
+                setError('Falha interna ao criar rascunho. Tente novamente.');
+            }
+        },
     });
 
     const generateMutation = useMutation({
@@ -542,7 +549,7 @@ export default function EssayWrite() {
                                                     <div className="text-center">
                                                         <p className="font-bold text-lg">Gerar tema exclusivo com Xavier</p>
                                                         <p className="text-sm text-blue-100 mt-1">
-                                                            A IA cria um tema inédito, personalizado para você
+                                                            Xavier cria um tema inédito, personalizado para você
                                                         </p>
                                                         {regenCount >= 3 && (
                                                             <p className="text-xs text-yellow-300 mt-2 font-semibold">⚠ Limite de gerações de tema atingido</p>
@@ -670,9 +677,9 @@ export default function EssayWrite() {
 
                                         {/* Chars / words counter */}
                                         <div
-                                            className={`flex justify-end space-x-4 mt-2 px-3 py-1.5 rounded-md border text-sm font-medium transition-colors ${isNearLimit ? 'text-red-600 dark:text-red-400 font-bold border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'}`}
+                                            className={`flex justify-between items-center mt-2 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${isNearLimit ? 'text-red-600 dark:text-red-400 font-bold border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'}`}
                                         >
-                                            <span>Caracteres restantes: <strong>{charsRemaining.toLocaleString('pt-BR')}</strong> / {rule.max_chars.toLocaleString('pt-BR')}</span>
+                                            <span>Caracteres: <strong>{charCount.toLocaleString('pt-BR')}</strong> / {rule.max_chars.toLocaleString('pt-BR')}</span>
                                             <span>Palavras: <strong>{wordCount}</strong></span>
                                         </div>
                                     </div>

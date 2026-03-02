@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Chart, registerables } from 'chart.js';
 import { useDashboard } from '../hooks/useDashboard';
 import { useAuthStore } from '../stores/authStore';
+import { useQuery } from '@tanstack/react-query';
+import { getEssays } from '../api/essays';
 
 Chart.register(...registerables);
 
@@ -13,6 +15,24 @@ export default function Dashboard() {
     const subjectChartRef = useRef<HTMLCanvasElement>(null);
     const progressChartInstance = useRef<Chart | null>(null);
     const subjectChartInstance = useRef<Chart | null>(null);
+
+    // Essay evolution chart refs
+    const enemChartRef = useRef<HTMLCanvasElement>(null);
+    const concursosChartRef = useRef<HTMLCanvasElement>(null);
+    const enemChartInstance = useRef<Chart | null>(null);
+    const concursosChartInstance = useRef<Chart | null>(null);
+
+    // Fetch essay chart data from the essays index endpoint
+    const { data: essayData } = useQuery({
+        queryKey: ['essays-dashboard-charts'],
+        queryFn: () => getEssays(1),
+        staleTime: 60_000,
+    });
+    const essayCharts = essayData?.meta?.charts ?? {};
+    const hasEnem: boolean = !!essayCharts.hasEnem;
+    const hasConcursos: boolean = !!essayCharts.hasConcursos;
+    const enemSeries: { date: string; value: number }[] = essayCharts.enemSeries ?? [];
+    const concursosSeries: { date: string; value: number }[] = essayCharts.concursosSeries ?? [];
 
     useEffect(() => {
         if (isLoading || !data) return;
@@ -162,6 +182,101 @@ export default function Dashboard() {
             subjectChartInstance.current?.destroy();
         };
     }, [data, isLoading]);
+
+    // --- Essay Evolution Charts ---
+    useEffect(() => {
+        const isDark = document.documentElement.classList.contains('dark');
+        const gridColor = isDark ? 'rgba(255,255,255,.06)' : 'rgba(15,23,42,.06)';
+        const tickColor = isDark ? 'rgba(255,255,255,.45)' : 'rgba(15,23,42,.55)';
+        const commonFont = {
+            family: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial',
+            size: 12,
+            weight: 600 as any
+        };
+
+        const makeAreaChart = (
+            ref: React.RefObject<HTMLCanvasElement | null>,
+            instanceRef: React.MutableRefObject<Chart | null>,
+            series: { date: string; value: number }[],
+            color: string,
+            bgColor: string
+        ) => {
+            if (!ref.current) return;
+            instanceRef.current?.destroy();
+
+            if (series.length === 0) return;
+
+            instanceRef.current = new Chart(ref.current, {
+                type: 'line',
+                data: {
+                    labels: series.map(p => p.date),
+                    datasets: [{
+                        data: series.map(p => p.value),
+                        borderColor: color,
+                        backgroundColor: bgColor,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        borderWidth: 2.5,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15,23,42,.92)',
+                            titleColor: '#fff',
+                            bodyColor: '#e5e7eb',
+                            padding: 10,
+                            displayColors: false,
+                            callbacks: {
+                                label: (ctx: any) => `Nota: ${Number(ctx.raw).toFixed(1)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: gridColor },
+                            ticks: { color: tickColor, font: commonFont }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            suggestedMax: 10,
+                            grid: { color: gridColor },
+                            ticks: { color: tickColor, font: commonFont, callback: (v: any) => v }
+                        }
+                    }
+                }
+            });
+        };
+
+        if (hasEnem) {
+            makeAreaChart(
+                enemChartRef,
+                enemChartInstance,
+                enemSeries,
+                '#2563eb',
+                'rgba(37,99,235,.12)'
+            );
+        }
+        if (hasConcursos) {
+            makeAreaChart(
+                concursosChartRef,
+                concursosChartInstance,
+                concursosSeries,
+                '#7c3aed',
+                'rgba(124,58,237,.12)'
+            );
+        }
+
+        return () => {
+            enemChartInstance.current?.destroy();
+            concursosChartInstance.current?.destroy();
+        };
+    }, [hasEnem, hasConcursos, enemSeries, concursosSeries]);
 
     if (isLoading) {
         return (
@@ -694,6 +809,44 @@ export default function Dashboard() {
                             <canvas ref={subjectChartRef}></canvas>
                         </div>
                     </div>
+                </div>
+
+                {/* ─── Essay Evolution Charts ────────────────────────────────────── */}
+                <div className="card" style={{ marginBottom: '14px' }}>
+                    <div className="card-head">
+                        <div>
+                            <h3>Evolução das Redações</h3>
+                            <p className="sub">Progresso por nota (últimas redações)</p>
+                        </div>
+                    </div>
+
+                    {!hasEnem && !hasConcursos ? (
+                        <div style={{ textAlign: 'center', padding: '28px 10px', color: 'var(--muted2)', fontWeight: 600, fontSize: '13px' }}>
+                            📝 Sem dados suficientes ainda.
+                            <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 400, color: 'var(--muted)' }}>
+                                Complete sua primeira redação para ver a evolução aqui.
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: (hasEnem && hasConcursos) ? '1fr 1fr' : '1fr', gap: '12px' }}>
+                            {hasEnem && (
+                                <div>
+                                    <p style={{ margin: '0 0 8px', fontSize: '12px', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '.25px' }}>📘 ENEM</p>
+                                    <div className="chart-box">
+                                        <canvas ref={enemChartRef}></canvas>
+                                    </div>
+                                </div>
+                            )}
+                            {hasConcursos && (
+                                <div>
+                                    <p style={{ margin: '0 0 8px', fontSize: '12px', fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '.25px' }}>📙 Concursos</p>
+                                    <div className="chart-box">
+                                        <canvas ref={concursosChartRef}></canvas>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="card">

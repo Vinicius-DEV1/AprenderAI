@@ -27,6 +27,8 @@ class DatabaseSeeder extends Seeder
             SystemPromptSeeder::class,
             XavierPromptsSeeder::class,
             AiSearchPromptSeeder::class,
+            WritingRuleSeeder::class,
         ]);
     }
+
 }
