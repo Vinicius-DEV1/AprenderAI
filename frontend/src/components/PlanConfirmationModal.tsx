@@ -63,7 +63,11 @@ export default function PlanConfirmationModal({
                                     <div className="flex gap-4">
                                         <div className="flex-shrink-0 h-6 w-6 rounded-full bg-blue-200 dark:bg-blue-800 flex items-center justify-center text-xs font-bold text-blue-800 dark:text-blue-200">1</div>
                                         <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                                            <strong className="text-slate-900 dark:text-white">Limite Acumulativo:</strong> As novas cotas do plano {selectedPlan.name} serão <span className="underline decoration-blue-500 decoration-2 font-bold">SOMADAS</span> às que você já possui hoje.
+                                            {currentPrice === 0 ? (
+                                                <><strong className="text-slate-900 dark:text-white">Reinício de Cotas:</strong> Os limites de uso gratuitos serão zerados e o seu novo saldo passará a ser as cotas cheias e exclusivas do plano {selectedPlan.name}.</>
+                                            ) : (
+                                                <><strong className="text-slate-900 dark:text-white">Limite Acumulativo:</strong> As novas cotas do plano {selectedPlan.name} serão <span className="underline decoration-blue-500 decoration-2 font-bold">SOMADAS</span> às que você já possui hoje.</>
+                                            )}
                                         </p>
                                     </div>
                                     <div className="flex gap-4">
