@@ -199,7 +199,7 @@ export default function EssayWrite() {
 
     const charCount = content.length;
     const wordCount = content.trim() === '' ? 0 : content.trim().split(/\s+/).filter(w => w.length > 0).length;
-    const charsRemaining = rule.max_chars - charCount;
+    // Unused charsRemaining removed to prevent build warning
     const isNearLimit = charCount >= rule.max_chars * 0.9;
 
     // Timer
@@ -275,9 +275,17 @@ export default function EssayWrite() {
         mutationFn: (data: FormData) => submitEssay(essayId!, data),
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['essays'] });
+            queryClient.invalidateQueries({ queryKey: ['essays-meta'] }); // Refetch limit
             navigate(data?.data?.id ? `/essays/${data.data.id}` : '/essays');
         },
-        onError: (err: any) => setError(err.response?.data?.message || 'Falha ao enviar a redação.'),
+        onError: (err: any) => {
+            const code = err.response?.data?.code;
+            if (code === 'QUOTA_EXCEEDED') {
+                setError('Você atingiu o limite mensal de redações.');
+            } else {
+                setError(err.response?.data?.message || 'Falha ao enviar a redação.');
+            }
+        },
     });
 
     // ── Step Handlers ─────────────────────────────────────────────────────
@@ -347,7 +355,9 @@ export default function EssayWrite() {
 
         const formData = new FormData();
         formData.append('input_type', inputType);
-        // NOTE: No 'custom_theme' field — theme was set in Step 2 by Xavier or selection.
+        if (theme) {
+            formData.append('theme', theme); // Changed from theme.title to theme as theme is a string
+        }
 
         if (inputType === 'text') {
             if (content.trim().length < rule.min_chars) {
@@ -365,6 +375,11 @@ export default function EssayWrite() {
                 return;
             }
             formData.append('image', imageFile);
+        }
+
+        if (essayLimit && essayLimit.remaining <= 0) {
+            setError('Você atingiu o limite mensal de redações.');
+            return;
         }
 
         if (window.confirm('Tem certeza que deseja enviar sua redação para correção?')) {

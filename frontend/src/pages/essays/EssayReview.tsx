@@ -108,8 +108,9 @@ export default function EssayReview() {
             });
         } else {
             // Fallback
-            const base = Math.floor(totalScore / 5);
-            const remainder = totalScore % 5;
+            // Fallback
+            const base = Math.floor((essay.score || 0) / 5);
+            const remainder = (essay.score || 0) % 5;
             competencies = Object.keys(defaultLabels).map((code, idx) => ({
                 code,
                 label: (defaultLabels as any)[code],
@@ -309,29 +310,38 @@ export default function EssayReview() {
 
                                 {/* Corrections */}
                                 {tab === 'corrections' && (
-                                    <div>
+                                    <>
                                         <h3 className="text-xl font-bold mb-4">Correções Pontuais</h3>
-                                        <div className="space-y-4">
-                                            {(feedback.corrections || []).map((c: any, i: number) => (
-                                                <div key={i} className="border-l-4 border-yellow-400 pl-4 py-2 bg-gray-50 dark:bg-gray-700 dark:border-yellow-500 rounded-r">
-                                                    <p className="font-mono text-sm text-red-600 dark:text-red-400 mb-1">"{c.excerpt || 'Trecho'}"</p>
-                                                    <p className="font-bold text-gray-800 dark:text-gray-200">{c.issue || 'Problema'}</p>
-                                                    <p className="text-green-600 dark:text-green-400 italic mt-1">Sugestão: {c.suggestion || ''}</p>
-                                                </div>
-                                            ))}
-                                            {!(feedback.corrections?.length > 0) && <p className="text-gray-500 italic">Nenhuma correção pontual destacada.</p>}
-                                        </div>
-                                    </div>
-                                )}
+                                        {(() => {
+                                            const hasCorrections = (feedback?.corrections && feedback.corrections.length > 0) ||
+                                                (essay.ai_suggestions && essay.ai_suggestions.length > 0) ||
+                                                (essay.feedback_json?.corrections && essay.feedback_json.corrections.length > 0) ||
+                                                (essay.feedback_json?.ai_suggestions && essay.feedback_json.ai_suggestions.length > 0);
+                                            const correctionsList = hasCorrections ?
+                                                (feedback?.corrections || essay.ai_suggestions || essay.feedback_json?.corrections || essay.feedback_json?.ai_suggestions)
+                                                : [];
 
-                                {/* Improved Version */}
-                                {tab === 'improved' && (
-                                    <div>
-                                        <h3 className="text-xl font-bold mb-4">Versão Sugerida por {aiName}</h3>
-                                        <div className="prose dark:prose-invert max-w-none bg-gray-50 dark:bg-gray-900 p-6 rounded-lg border border-gray-200 dark:border-gray-700 whitespace-pre-line">
-                                            {feedback.improved_version || 'Versão melhorada indisponível.'}
-                                        </div>
-                                    </div>
+                                            if (!hasCorrections) {
+                                                return (
+                                                    <div className="p-8 text-center text-slate-500">
+                                                        Nenhuma correção pontual destacada pelo avaliador para este texto.
+                                                    </div>
+                                                );
+                                            }
+
+                                            return (
+                                                <div className="space-y-4">
+                                                    {correctionsList.map((c: any, i: number) => (
+                                                        <div key={i} className="border-l-4 border-yellow-400 pl-4 py-2 bg-gray-50 dark:bg-gray-700 dark:border-yellow-500 rounded-r">
+                                                            <p className="font-mono text-sm text-red-600 dark:text-red-400 mb-1">"{c.excerpt || 'Trecho'}"</p>
+                                                            <p className="font-bold text-gray-800 dark:text-gray-200">{c.issue || 'Problema'}</p>
+                                                            <p className="text-green-600 dark:text-green-400 italic mt-1">Sugestão: {c.suggestion || ''}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        })()}
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -349,6 +359,6 @@ export default function EssayReview() {
                 </div>
 
             </div>
-        </div>
+        </div >
     );
 }
