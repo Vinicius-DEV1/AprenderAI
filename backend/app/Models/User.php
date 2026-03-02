@@ -274,11 +274,14 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function monthlyEssayUsed(): int
     {
+        $ledgerUsed = 0;
         try {
-            return app(\App\Services\QuotaService::class)->getUsage($this, 'essays')['used'];
+            $ledgerUsed = (int) app(\App\Services\QuotaService::class)->getUsage($this, 'essays')['used'];
         } catch (\Exception $e) {
-            return 0;
+            // Silently fall back to legacy column if QuotaService fails
         }
+
+        return max((int) ($this->essays_used_this_month ?? 0), $ledgerUsed);
     }
 
     /**
@@ -343,6 +346,14 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         $this->resetUsageIfNeeded();
         $this->increment('essays_used_this_month');
+
+        // Attempt new system consumption
+        try {
+            app(\App\Services\QuotaService::class)->consumeQuota($this, 'essays');
+        } catch (\Exception $e) {
+            // Silently fail: user might not have an active subscription cycle (e.g. Admin or Override-only user)
+            // but the legacy increment above ensures usage is still tracked for overrides.
+        }
     }
 
     // =========================================================================
