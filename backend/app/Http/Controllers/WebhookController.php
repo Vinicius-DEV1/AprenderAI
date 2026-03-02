@@ -151,12 +151,12 @@ class WebhookController extends Controller
 
                 // --- NOVO MODELO ACUMULATIVO ---
                 try {
-                    // Se o usuário já tinha um plano diferente do Grátis(1) e agora mudou para um maior
+                    // Se o usuário já tinha um plano ativo, e esse plano NÃO ERA O GRÁTIS (1), e não é uma mera renovação do mesmo plano
                     if ($oldPlanId && $oldPlanId != $plan->id && $oldPlanId != 1) {
-                        Log::info('[Webhook] Detectado UPGRADE. Aplicando Soma Acumulativa!', ['user_id' => $user->id]);
+                        Log::info('[Webhook] Detectado UPGRADE de Plano Pago. Aplicando Soma Acumulativa!', ['user_id' => $user->id]);
                         $this->quotaService->processUpgradeSoma($subscription, $plan->default_limits ?? []);
                     } else {
-                        Log::info('[Webhook] Renovacão normal ou plano original. Criando ciclo base.', ['user_id' => $user->id]);
+                        Log::info('[Webhook] Renovacão normal, compra inicial ou upgrade vindo do Grátis. Criando ciclo limpo.', ['user_id' => $user->id]);
                         $this->quotaService->createOrRenewCycle($subscription);
                     }
                 } catch (\Exception $e) {
