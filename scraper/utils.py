@@ -102,20 +102,26 @@ def selecionar_banca():
             print(Fore.RED + "❌ Digite apenas o número.")
 
 def obter_pagina_inicial(nome_banca):
-    with open(config.ESTADO_SCRAPING_FILE, "r", encoding="utf-8") as f:
+    # Agora o estado fica isolado dentro da pasta da própria banca
+    pasta_banca = os.path.join(config.BASE_DIR, nome_banca)
+    arquivo_estado = os.path.join(pasta_banca, f"estado_{nome_banca.lower()}.json")
+    
+    if not os.path.exists(arquivo_estado):
+        return 1
+        
+    with open(arquivo_estado, "r", encoding="utf-8") as f:
         estado = json.load(f)
-    return estado.get(nome_banca, {}).get("ultima_pagina", 1)
+    return estado.get("ultima_pagina", 1)
 
 def salvar_progresso(nome_banca, pagina):
-    with open(config.ESTADO_SCRAPING_FILE, "r", encoding="utf-8") as f:
-        estado = json.load(f)
+    pasta_banca = os.path.join(config.BASE_DIR, nome_banca)
+    if not os.path.exists(pasta_banca):
+        os.makedirs(pasta_banca)
         
-    if nome_banca not in estado:
-        estado[nome_banca] = {}
-    estado[nome_banca]["ultima_pagina"] = pagina
+    arquivo_estado = os.path.join(pasta_banca, f"estado_{nome_banca.lower()}.json")
     
-    with open(config.ESTADO_SCRAPING_FILE, "w", encoding="utf-8") as f:
-        json.dump(estado, f, indent=4)
+    with open(arquivo_estado, "w", encoding="utf-8") as f:
+        json.dump({"ultima_pagina": pagina}, f, indent=4)
 
 def registrar_revisao_manual(banca, exam_id, cargo, numero_questao, motivo):
     arquivo_revisao = os.path.join(config.BASE_DIR, banca, f"revisao_{banca.lower()}.txt")

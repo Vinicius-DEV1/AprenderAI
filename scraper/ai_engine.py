@@ -171,10 +171,20 @@ def organizar_arquivos_com_ia(lista_arquivos, cargo, banca):
             config.TOTAL_COMPLETION_TOKENS += c_tokens
             config.TOTAL_COST_USD += custo_org
             
-            texto_json = res.text.strip()
+            # --- BYPASS: Bug do SDK do Google ---
+            try:
+                texto_json = res.text.strip()
+            except Exception:
+                texto_json = "".join([p.text for p in res.candidates[0].content.parts]).strip()
+            # ------------------------------------
             if "```json" in texto_json: texto_json = texto_json.split("```json")[1].split("```")[0].strip()
             elif "```" in texto_json: texto_json = texto_json.split("```")[1].split("```")[0].strip()
             
+            # --- VACINA ANTI-CRASH DE JSON ---
+            # Escapa as barras invertidas perdidas (\u) que causam o erro fatal no Python
+            text = re.sub(r'\\u(?![0-9a-fA-F]{4})', r'\\\\u', text)
+            # ---------------------------------
+
             grupos = json.loads(texto_json)
             return grupos
             
@@ -341,7 +351,12 @@ def analise_visual_ia(prova_path, gabarito_path, pasta_prova, exam_id, nome_carg
             log(f"🪙  Tokens usados (Extrator): {p_tokens} in | {c_tokens} out", Fore.BLUE)
             log(f"💵 Custo desta extração: U$ {custo_prova:.6f}", Fore.BLUE)
 
-            text = res.text.strip()
+            # --- BYPASS: Bug do SDK do Google ---
+            try:
+                text = res.text.strip()
+            except Exception:
+                text = "".join([p.text for p in res.candidates[0].content.parts]).strip()
+            # ------------------------------------
             if "```json" in text: text = text.split("```json")[1].split("```")[0].strip()
             elif "```" in text: text = text.split("```")[1].split("```")[0].strip()
             

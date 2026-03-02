@@ -120,10 +120,24 @@ def main():
                     cargo_final = f"{meta['cargo']} - {identificador.upper()}"
                     link_virtual = f"{link}#{identificador.replace(' ', '')}"
                     
-                cursor.execute("SELECT id FROM exams WHERE source_url = ?", (link_virtual,))
-                if cursor.fetchone():
-                    log(f"Prova já cadastrada no banco: {cargo_final}. Saltando...", Fore.YELLOW)
+                # --- NOVA VERIFICAÇÃO BLINDADA ANTI-DUPLICATA ---
+                ja_processado = False
+                for prova_path in provas_paths:
+                    nome_pdf = os.path.basename(prova_path)
+                    cursor.execute("""
+                        SELECT q.id FROM questions q
+                        JOIN exams e ON q.exam_id = e.id
+                        WHERE e.source_url LIKE ? AND q.arquivo_origem = ?
+                    """, (f"{link}%", nome_pdf))
+                    
+                    if cursor.fetchone():
+                        ja_processado = True
+                        break
+
+                if ja_processado:
+                    log(f"Os PDFs deste grupo já foram processados anteriormente neste link. Saltando...", Fore.YELLOW)
                     continue
+                # ------------------------------------------------
                 
                 try:
                     data_extracao_atual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
