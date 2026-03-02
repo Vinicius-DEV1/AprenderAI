@@ -37,6 +37,7 @@ import EssayReview from './pages/essays/EssayReview';
 
 import QuestionBank from './pages/questions/QuestionBank';
 import PlanList from './pages/plans/PlanList';
+import WelcomePlans from './pages/plans/WelcomePlans';
 import PlanCheckout from './pages/plans/PlanCheckout';
 import PlanSuccess from './pages/plans/PlanSuccess';
 
@@ -140,6 +141,8 @@ function App() {
 
                 {/* Protected App Routes */}
                 <Route element={<PrivateRoute />}>
+                    <Route path="/welcome" element={<><MetaTags title="Bem-vindo(a)!" /><WelcomePlans /></>} />
+
                     <Route element={<AppLayout />}>
                         {/* Dashboard */}
                         <Route path="/dashboard" element={<><MetaTags title="Dashboard" /><Dashboard /></>} />

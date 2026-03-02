@@ -30,8 +30,8 @@ if [ -f .env ] || [ -f .env.example ]; then
     if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
         echo "🐌 Node modules não encontrados. Instalando dependências do Node no volume interno..."
         npm install
-        echo "🏗️ Buildando assets iniciais..."
-        npm run build
+        # echo "🏗️ Buildando assets iniciais..."
+        # npm run build
     fi
 
     # ----------------------------------------------------------------
