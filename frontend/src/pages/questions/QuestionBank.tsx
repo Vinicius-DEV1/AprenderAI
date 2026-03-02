@@ -370,7 +370,7 @@ export default function QuestionBank() {
                     setAiMessage(res.data.error || randomFail);
                 }
             } catch { /* polling error, just retry */ }
-            if (attempts >= 30) {
+            if (attempts >= 100) {
                 clearInterval(poller);
                 setAiLoading(false);
                 setAiMessage('A busca demorou demais. Tente novamente.');
