@@ -136,6 +136,35 @@ class InterpretSearchPromptJob implements ShouldQueue
                     $filters['organization'] = '';
                     $filters['institution'] = '';
                     $filters['role'] = '';
+
+                    // [Smart Recovery 2] Se a busca por Matéria deu ZERO, 
+                    // tentamos uma busca textual direta no enunciado como último recurso síncrono.
+                    $query = \App\Models\Question::published()->where('tipo_questao', '!=', 'Redação');
+                    if (!empty($filters['type']))
+                        $query->filterByType($filters['type']);
+
+                    $searchWords = explode(' ', preg_replace('/[^A-Za-z0-9\s]/', '', $userPrompt));
+                    $query->where(function ($q) use ($searchWords) {
+                        foreach ($searchWords as $word) {
+                            if (strlen($word) > 3) {
+                                $q->orWhere('statement', 'like', "%{$word}%");
+                            }
+                        }
+                    });
+
+                    $count = $query->count();
+                    if ($count > 0) {
+                        $filters['suggestion_tip'] = "O Xavier encontrou questões através de busca textual para você.";
+                        $filters['subject'] = ''; // Limpa o ID da matéria que deu conflito/vazio
+                    }
+                }
+
+                if ($count === 0 && empty($filters['suggestions'])) {
+                    $filters['year'] = '';
+                    $filters['difficulty'] = '';
+                    $filters['organization'] = '';
+                    $filters['institution'] = '';
+                    $filters['role'] = '';
                     $filters['keyword'] = '';
 
                     $fallbackTopics = collect();
@@ -174,8 +203,13 @@ class InterpretSearchPromptJob implements ShouldQueue
                         ];
                     }
 
-                    $filters['suggestion_tip'] = "Eu vasculhei todos os anos e bancas, mas não encontrei questões exatas para essa busca específica. Mas não se preocupe! Separei estes temas em alta que podem te interessar:";
-                    $filters['suggestions'] = $suggestions;
+                    if (!empty($suggestions)) {
+                        $filters['suggestion_tip'] = "Eu vasculhei todos os anos e bancas, mas não encontrei questões exatas para essa busca específica. Mas não se preocupe! Separei estes temas em alta que podem te interessar:";
+                        $filters['suggestions'] = $suggestions;
+                    } else {
+                        $filters['suggestion_tip'] = null; // GARANTE QUE NÃO APAREÇA BALÃO VAZIO
+                        $filters['suggestions'] = [];
+                    }
 
                     $filters['topic'] = '';
                     if ($fallbackTopics->isEmpty()) {

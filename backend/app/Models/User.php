@@ -147,7 +147,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function hasPlusPlan(): bool
     {
-        return $this->plan && $this->plan->name === 'Plus';
+        return $this->plan && str_contains(strtolower($this->plan->name), 'plus');
     }
 
     public function hasActiveSubscription(): bool
