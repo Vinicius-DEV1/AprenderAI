@@ -16,7 +16,7 @@ export default function Plans() {
     if (!plans) return <div className="p-8 text-center text-red-500 font-black uppercase tracking-widest">Erro ao conectar com a API de Planos.</div>;
 
     return (
-        <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto animate-in fade-in duration-500">
+        <div className="py-6 px-4 md:px-6 w-full animate-in fade-in duration-500">
             <div className="mb-8 flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-black text-gray-900 mb-2 tracking-tighter uppercase">Gerenciar Planos</h1>

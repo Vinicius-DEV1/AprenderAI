@@ -54,7 +54,6 @@ export default function QuestionCard({ question: q }: { question: Question }) {
     const [chatLoaded, setChatLoaded] = useState(false);
     const chatHistoryRef = useRef<HTMLDivElement>(null);
 
-    const [showHistory, setShowHistory] = useState(false);
     const [historyData, setHistoryData] = useState<any[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
     const [historyLoaded, setHistoryLoaded] = useState(false);

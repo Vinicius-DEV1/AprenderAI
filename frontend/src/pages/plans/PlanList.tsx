@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
 import PlanConfirmationModal from '../../components/PlanConfirmationModal';
@@ -24,6 +24,29 @@ export default function PlanList() {
             navigate(`/plans/${selectedPlanForModal.id}/checkout`);
         }
     };
+
+    useEffect(() => {
+        const searchParams = new URLSearchParams(window.location.search);
+        const autoSelect = searchParams.get('autoSelect');
+        if (autoSelect && plans?.length > 0) {
+            let targetGroup = plans.filter((p: any) => p.price > 0);
+
+            let matchedPlan = null;
+            if (autoSelect.includes('basic')) {
+                matchedPlan = targetGroup.find((p: any) => p.name.toLowerCase().includes('básico') || p.name.toLowerCase().includes('basico'));
+            } else if (autoSelect.includes('plus')) {
+                matchedPlan = targetGroup.find((p: any) => p.name.toLowerCase().includes('plus'));
+            }
+
+            if (matchedPlan) {
+                const isAnnual = autoSelect.includes('annual');
+                const finalPlan = targetGroup.find((p: any) => p.name === matchedPlan.name && (isAnnual ? p.interval === 'yearly' : p.interval === 'monthly')) || matchedPlan;
+
+                handlePlanClick(finalPlan);
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+    }, [plans]);
 
     return (
         <div className="py-12">
