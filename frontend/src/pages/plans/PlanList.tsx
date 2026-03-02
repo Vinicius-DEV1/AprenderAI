@@ -184,6 +184,22 @@ export default function PlanList() {
                                         </div>
                                     </div>
 
+                                    {/* Questões Objetivas */}
+                                    <div>
+                                        <div className="flex justify-between text-[11px] mb-1.5">
+                                            <span className="font-bold text-slate-600 dark:text-slate-400">Questões Objetivas</span>
+                                            <span className="font-black text-emerald-600 dark:text-emerald-400">
+                                                {(user as any).quotas?.daily_questions?.used || 0} / {(user as any).quotas?.daily_questions?.limit === 9999 ? '∞' : (user as any).quotas?.daily_questions?.limit || 0}
+                                            </span>
+                                        </div>
+                                        <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                                                style={{ width: `${Math.min(100, (((user as any).quotas?.daily_questions?.used || 0) / ((user as any).quotas?.daily_questions?.limit || 1)) * 100)}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+
                                     {/* Questões IA - Oculto Temporariamente a pedido do usuário */}
                                     {/* 
                                     <div>
