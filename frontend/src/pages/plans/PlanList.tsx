@@ -123,8 +123,9 @@ export default function PlanList() {
                             </div>
                             <ul className="lp-plan-list lp-plan-list-free">
                                 <li><span className="lp-check-free">✓</span> 5 provas/mês</li>
-                                <li><span className="lp-check-free">✓</span> Correção básica IA</li>
-                                <li><span className="lp-check-free">✓</span> Acesso total às questões</li>
+                                <li><span className="lp-check-free">✓</span> Correção básica</li>
+                                <li><span className="lp-check-free">✓</span> Estatísticas simples</li>
+                                <li><span className="lp-check-free">✓</span> 30 questões para praticar todos os dias</li>
                             </ul>
                             <div className="mt-4 mb-6">
                                 <Accordion title={<span className="font-bold text-slate-600">+ Detalhes do Plano</span>} defaultExpanded={false}>
@@ -152,15 +153,18 @@ export default function PlanList() {
                             <ul className="lp-plan-list lp-plan-list-paid">
                                 <li><span className="lp-check-paid">✓</span> Correção detalhada (IA)</li>
                                 <li><span className="lp-check-paid">✓</span> 5 redações/mês</li>
+                                <li><span className="lp-check-paid">✓</span> Redação com Nota por Competência</li>
                                 <li><span className="lp-check-paid">✓</span> Radar de concursos</li>
-                                <li><span className="lp-check-paid">✓</span> 10 provas/mês</li>
                             </ul>
                             <div className="mt-4 mb-6">
                                 <Accordion title={<span className="font-bold text-white opacity-90 hover:opacity-100">+ Lista Completa</span>} defaultExpanded={false} variant="transparent" className="!text-blue-100">
                                     <ul className="lp-plan-list lp-plan-list-paid mt-2 !mb-0 text-sm">
-                                        <li><span className="lp-check-paid">✓</span> Estatísticas e Gabaritos</li>
-                                        <li><span className="lp-check-paid">✓</span> Modo noturno nativo</li>
-                                        <li><span className="lp-check-paid">✓</span> Gestor de simulados</li>
+                                        <li><span className="lp-check-paid">✓</span> 10 provas/mês</li>
+                                        <li><span className="lp-check-paid">✓</span> +200 mil questões para praticar</li>
+                                        <li><span className="lp-check-paid">✓</span> Acesso ilimitado a todas as questões</li>
+                                        <li><span className="lp-check-paid">✓</span> Estatísticas simples</li>
+                                        <li><span className="lp-check-paid">✓</span> Gabarito Comentado</li>
+                                        <li><span className="lp-check-paid">✓</span> Modo noturno</li>
                                     </ul>
                                 </Accordion>
                             </div>
@@ -187,18 +191,21 @@ export default function PlanList() {
                                 <span className="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
                             </div>
                             <ul className="lp-plan-list lp-plan-list-paid">
-                                <li><span className="lp-check-paid">✓</span> <strong>Simulados ilimitados</strong></li>
-                                <li><span className="lp-check-paid">✓</span> <strong>15 redações/mês</strong></li>
-                                <li><span className="lp-check-paid">✓</span> Cronograma IA Personalizado</li>
-                                <li><span className="lp-check-paid">✓</span> Xavier Tutor Ilimitado</li>
+                                <li><span className="lp-check-paid">✓</span> Análise estratégica</li>
+                                <li><span className="lp-check-paid">✓</span> Cronograma de Estudos personalizado</li>
+                                <li><span className="lp-check-paid">✓</span> Simulados ilimitados</li>
+                                <li><span className="lp-check-paid">✓</span> 15 redações/mês</li>
                             </ul>
                             <div className="mt-4 mb-6">
                                 <Accordion title={<span className="font-bold text-white opacity-90 hover:opacity-100">+ Ver Todas as Vantagens</span>} defaultExpanded={false} variant="transparent" className="!text-blue-100">
                                     <ul className="lp-plan-list lp-plan-list-paid mt-2 !mb-0 text-sm">
-                                        <li><span className="lp-check-paid">✓</span> Tira-Dúvidas AI em tempo real</li>
-                                        <li><span className="lp-check-paid">✓</span> Análise Profunda com IA</li>
-                                        <li><span className="lp-check-paid">✓</span> Filtros Avançados Prioritários</li>
-                                        <li><span className="lp-check-paid">✓</span> Todo o conteúdo Básico</li>
+                                        <li><span className="lp-check-paid">✓</span> Redação com Nota por Competência</li>
+                                        <li><span className="lp-check-paid">✓</span> Estatísticas completas</li>
+                                        <li><span className="lp-check-paid">✓</span> Radar de concursos</li>
+                                        <li><span className="lp-check-paid">✓</span> +200 mil questões para praticar</li>
+                                        <li><span className="lp-check-paid">✓</span> Acesso ilimitado a todas as questões</li>
+                                        <li><span className="lp-check-paid">✓</span> Gabarito Comentado</li>
+                                        <li><span className="lp-check-paid">✓</span> Modo noturno</li>
                                     </ul>
                                 </Accordion>
                             </div>
