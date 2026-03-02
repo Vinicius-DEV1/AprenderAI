@@ -15,16 +15,11 @@ export default function PlanList() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedPlanForModal, setSelectedPlanForModal] = useState<any>(null);
 
-    const userPlanId = user?.plan_id;
+    const userPlanId = user?.plan_id || (user?.plan as any)?.id;
     const currentPlan = plans?.find((p: any) => String(p.id) === String(userPlanId));
 
     const handlePlanClick = (plan: any) => {
         if (!plan) return;
-
-        // Debug info
-        console.log('[PlanList] Clicked Plan:', plan.id, plan.name);
-        console.log('[PlanList] User Plan ID:', userPlanId);
-        console.log('[PlanList] Current Plan Found:', currentPlan?.id, currentPlan?.name);
 
         // Se o plano atual for o novo plano, não faz nada
         if (String(userPlanId) === String(plan.id)) return;
@@ -33,13 +28,9 @@ export default function PlanList() {
         // Se for de Pago para Pago -> Abre Modal para explicar que é ACUMULATIVO
         const isCurrentFree = !currentPlan || Number(currentPlan.price) === 0;
 
-        console.log('[PlanList] isCurrentFree:', isCurrentFree);
-
         if (isCurrentFree) {
-            console.log('[PlanList] Navigating direct to checkout');
             navigate(`/plans/${plan.id}/checkout`);
         } else {
-            console.log('[PlanList] Opening confirmation modal');
             setSelectedPlanForModal(plan);
             setIsModalOpen(true);
         }
