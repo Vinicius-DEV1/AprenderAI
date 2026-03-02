@@ -23,6 +23,7 @@ class PlanController extends Controller
             'interval' => 'required|in:month,year',
             'simulations_limit' => 'required|integer|min:0',
             'essays_limit' => 'required|integer|min:0',
+            'daily_question_limit' => 'required|integer|min:0',
             'max_ai_questions' => 'required|integer|min:0',
             'is_active' => 'boolean',
         ]);
@@ -53,6 +54,7 @@ class PlanController extends Controller
             'interval' => 'required|in:month,year',
             'simulations_limit' => 'required|integer|min:0',
             'essays_limit' => 'required|integer|min:0',
+            'daily_question_limit' => 'required|integer|min:0',
             'max_ai_questions' => 'required|integer|min:0',
             'is_active' => 'boolean',
         ]);

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
 import PlanConfirmationModal from '../../components/PlanConfirmationModal';
+import Accordion from '../../components/Accordion';
 import '../../styles/landing-page.css';
 
 export default function PlanList() {
@@ -124,12 +125,15 @@ export default function PlanList() {
                                 <li><span className="lp-check-free">✓</span> 5 provas/mês</li>
                                 <li><span className="lp-check-free">✓</span> Correção básica IA</li>
                                 <li><span className="lp-check-free">✓</span> Acesso total às questões</li>
-                                <li className="lp-plan-extras lp-plan-extras-free">
-                                    <span style={{ fontWeight: 800, color: '#0f2b6e' }}>+ Benefícios</span>
-                                </li>
-                                <li><span className="lp-check-free">✓</span> Gabarito Comentado</li>
-                                <li><span className="lp-check-free">✓</span> Modo noturno</li>
                             </ul>
+                            <div className="mt-4 mb-6">
+                                <Accordion title={<span className="font-bold text-slate-600">+ Detalhes do Plano</span>} defaultExpanded={false}>
+                                    <ul className="lp-plan-list lp-plan-list-free mt-2 !mb-0 text-sm">
+                                        <li><span className="lp-check-free">✓</span> Gabarito Comentado</li>
+                                        <li><span className="lp-check-free">✓</span> Modo noturno</li>
+                                    </ul>
+                                </Accordion>
+                            </div>
                         </div>
                         <button disabled className="lp-plan-btn-free bg-gray-300 text-gray-600 cursor-not-allowed">
                             {userPlanId === getPlanBySlug('gratuito')?.id ? 'Plano Ativo' : 'Disponível'}
@@ -150,12 +154,16 @@ export default function PlanList() {
                                 <li><span className="lp-check-paid">✓</span> 5 redações/mês</li>
                                 <li><span className="lp-check-paid">✓</span> Radar de concursos</li>
                                 <li><span className="lp-check-paid">✓</span> 10 provas/mês</li>
-                                <li className="lp-plan-extras">
-                                    <span style={{ fontWeight: 800, color: '#fff' }}>+ Benefícios</span>
-                                </li>
-                                <li><span className="lp-check-paid">✓</span> Estatísticas e Gabaritos</li>
-                                <li><span className="lp-check-paid">✓</span> Modo noturno</li>
                             </ul>
+                            <div className="mt-4 mb-6">
+                                <Accordion title={<span className="font-bold text-white opacity-90 hover:opacity-100">+ Lista Completa</span>} defaultExpanded={false} variant="transparent" className="!text-blue-100">
+                                    <ul className="lp-plan-list lp-plan-list-paid mt-2 !mb-0 text-sm">
+                                        <li><span className="lp-check-paid">✓</span> Estatísticas e Gabaritos</li>
+                                        <li><span className="lp-check-paid">✓</span> Modo noturno nativo</li>
+                                        <li><span className="lp-check-paid">✓</span> Gestor de simulados</li>
+                                    </ul>
+                                </Accordion>
+                            </div>
                         </div>
                         <button
                             onClick={() => handlePlanClick(getPlanBySlug('básico'))}
@@ -183,12 +191,17 @@ export default function PlanList() {
                                 <li><span className="lp-check-paid">✓</span> <strong>15 redações/mês</strong></li>
                                 <li><span className="lp-check-paid">✓</span> Cronograma IA Personalizado</li>
                                 <li><span className="lp-check-paid">✓</span> Xavier Tutor Ilimitado</li>
-                                <li className="lp-plan-extras">
-                                    <span style={{ fontWeight: 800, color: '#fff' }}>+ Benefícios</span>
-                                </li>
-                                <li><span className="lp-check-paid">✓</span> Tira-Dúvidas AI em tempo real</li>
-                                <li><span className="lp-check-paid">✓</span> Modo noturno</li>
                             </ul>
+                            <div className="mt-4 mb-6">
+                                <Accordion title={<span className="font-bold text-white opacity-90 hover:opacity-100">+ Ver Todas as Vantagens</span>} defaultExpanded={false} variant="transparent" className="!text-blue-100">
+                                    <ul className="lp-plan-list lp-plan-list-paid mt-2 !mb-0 text-sm">
+                                        <li><span className="lp-check-paid">✓</span> Tira-Dúvidas AI em tempo real</li>
+                                        <li><span className="lp-check-paid">✓</span> Análise Profunda com IA</li>
+                                        <li><span className="lp-check-paid">✓</span> Filtros Avançados Prioritários</li>
+                                        <li><span className="lp-check-paid">✓</span> Todo o conteúdo Básico</li>
+                                    </ul>
+                                </Accordion>
+                            </div>
                         </div>
                         <button
                             onClick={() => handlePlanClick(getPlanBySlug('plus'))}

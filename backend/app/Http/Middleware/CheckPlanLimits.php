@@ -27,6 +27,7 @@ class CheckPlanLimits
         $check = match ($type) {
             'simulation' => $this->planService->checkSimulationLimit($user),
             'essay' => $this->planService->checkEssayLimit($user),
+            'daily_question' => $this->planService->checkDailyQuestionLimit($user),
             default => ['can_create' => false, 'message' => 'Tipo inválido']
         };
 

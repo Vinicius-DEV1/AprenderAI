@@ -112,7 +112,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/filter-options', [QuestionController::class, 'filterOptions']);
             Route::get('/stats', [QuestionController::class, 'stats']);
             Route::get('/{question}/history', [QuestionController::class, 'history']);
-            Route::post('/{question}/answer', [QuestionController::class, 'answer']);
+            Route::post('/{question}/answer', [QuestionController::class, 'answer'])
+                ->middleware('check.plan.limits:daily_question');
 
             // Xavier AI Search
             Route::post('/ai-search', [QuestionController::class, 'aiSearch'])->name('questions.ai-search');
