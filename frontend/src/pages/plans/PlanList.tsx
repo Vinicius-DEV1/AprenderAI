@@ -16,7 +16,7 @@ export default function PlanList() {
     const [selectedPlanForModal, setSelectedPlanForModal] = useState<any>(null);
 
     const userPlanId = user?.plan_id;
-    const currentPlan = plans?.find((p: any) => p.id === userPlanId);
+    const currentPlan = plans?.find((p: any) => String(p.id) === String(userPlanId));
 
     const handlePlanClick = (plan: any) => {
         // Se o plano atual for o novo plano, não faz nada
@@ -113,7 +113,7 @@ export default function PlanList() {
 
                 <div className="lp-plans-grid">
                     {/* FREE */}
-                    <div className={`lp-plan-free flex flex-col justify-between border-2 ${userPlanId === getPlanBySlug('gratuito')?.id ? 'border-green-500 bg-green-50/30' : 'border-gray-100'}`}>
+                    <div className={`lp-plan-free flex flex-col justify-between border-2 ${String(userPlanId) === String(getPlanBySlug('gratuito')?.id) ? 'border-green-500 bg-green-50/30' : 'border-gray-100'}`}>
                         <div>
                             <div className="lp-plan-name-free">Gratuito</div>
                             <div className="lp-plan-tagline-free">Ideal para começar e testar.</div>
@@ -137,12 +137,12 @@ export default function PlanList() {
                             </div>
                         </div>
                         <button disabled className="lp-plan-btn-free bg-gray-300 text-gray-600 cursor-not-allowed">
-                            {userPlanId === getPlanBySlug('gratuito')?.id ? 'Plano Ativo' : 'Disponível'}
+                            {String(userPlanId) === String(getPlanBySlug('gratuito')?.id) ? 'Plano Ativo' : 'Disponível'}
                         </button>
                     </div>
 
                     {/* BÁSICO */}
-                    <div className={`lp-plan-basic flex flex-col justify-between ${userPlanId === getPlanBySlug('básico')?.id ? 'ring-4 ring-blue-400' : ''}`}>
+                    <div className={`lp-plan-basic flex flex-col justify-between ${String(userPlanId) === String(getPlanBySlug('básico')?.id) ? 'ring-4 ring-blue-400' : ''}`}>
                         <div>
                             <div className="lp-plan-name-paid">Básico</div>
                             <div className="lp-plan-tagline-paid">Para evoluir com correção completa e IA.</div>
@@ -172,15 +172,15 @@ export default function PlanList() {
                         </div>
                         <button
                             onClick={() => handlePlanClick(getPlanBySlug('básico'))}
-                            disabled={userPlanId === getPlanBySlug('básico')?.id}
-                            className={`lp-plan-btn-basic ${userPlanId === getPlanBySlug('básico')?.id ? 'bg-blue-400 opacity-50 cursor-not-allowed' : 'hover:scale-105 transition-transform'}`}
+                            disabled={String(userPlanId) === String(getPlanBySlug('básico')?.id)}
+                            className={`lp-plan-btn-basic ${String(userPlanId) === String(getPlanBySlug('básico')?.id) ? 'bg-blue-400 opacity-50 cursor-not-allowed' : 'hover:scale-105 transition-transform'}`}
                         >
-                            {userPlanId === getPlanBySlug('básico')?.id ? 'Seu Plano Atual' : 'Fazer Upgrade'}
+                            {String(userPlanId) === String(getPlanBySlug('básico')?.id) ? 'Seu Plano Atual' : 'Fazer Upgrade'}
                         </button>
                     </div>
 
                     {/* PLUS */}
-                    <div className={`lp-plan-plus flex flex-col justify-between relative overflow-hidden ${userPlanId === getPlanBySlug('plus')?.id ? 'ring-4 ring-amber-400' : ''}`}>
+                    <div className={`lp-plan-plus flex flex-col justify-between relative overflow-hidden ${String(userPlanId) === String(getPlanBySlug('plus')?.id) ? 'ring-4 ring-amber-400' : ''}`}>
                         <div className="absolute top-4 right-[-35px] bg-amber-500 text-blue-900 text-[10px] font-black px-10 py-1 rotate-45 shadow-sm">
                             POPULAR
                         </div>
@@ -214,10 +214,10 @@ export default function PlanList() {
                         </div>
                         <button
                             onClick={() => handlePlanClick(getPlanBySlug('plus'))}
-                            disabled={userPlanId === getPlanBySlug('plus')?.id}
-                            className={`lp-plan-btn-plus ${userPlanId === getPlanBySlug('plus')?.id ? 'bg-amber-400 opacity-50 cursor-not-allowed' : 'hover:scale-105 transition-transform'}`}
+                            disabled={String(userPlanId) === String(getPlanBySlug('plus')?.id)}
+                            className={`lp-plan-btn-plus ${String(userPlanId) === String(getPlanBySlug('plus')?.id) ? 'bg-amber-400 opacity-50 cursor-not-allowed' : 'hover:scale-105 transition-transform'}`}
                         >
-                            {userPlanId === getPlanBySlug('plus')?.id ? 'Seu Plano Atual' : 'Acessar Plus'}
+                            {String(userPlanId) === String(getPlanBySlug('plus')?.id) ? 'Seu Plano Atual' : 'Acessar Plus'}
                         </button>
                     </div>
                 </div>
