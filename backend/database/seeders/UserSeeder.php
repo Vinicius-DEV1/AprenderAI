@@ -41,14 +41,9 @@ class UserSeeder extends Seeder
             'password' => $password,
             'role' => 'admin',
             'email_verified_at' => now(),
-            'plan_id' => $plus->id,
-            'plan_started_at' => now(),
-            'plan_expires_at' => now()->addYear(),
-            'simulations_used_this_month' => 0,
-            'essays_used_this_month' => 0,
-            'usage_reset_at' => now()->addMonth(),
+            'ai_questions_count' => 0,
+            'last_reset_at' => now(),
         ]);
-
         // Gratuito User (email_verified_at = null)
         User::updateOrCreate(['email' => 'gratuito@aprenderai.com'], [
             'name' => 'Usuário Gratuito',
@@ -58,9 +53,6 @@ class UserSeeder extends Seeder
             'plan_id' => $free->id,
             'plan_started_at' => now(),
             'plan_expires_at' => null,
-            'simulations_used_this_month' => 0,
-            'essays_used_this_month' => 0,
-            'usage_reset_at' => now()->addMonth(),
         ]);
 
         // Basic User (email_verified_at = null)
@@ -72,9 +64,6 @@ class UserSeeder extends Seeder
             'plan_id' => $basic->id,
             'plan_started_at' => now(),
             'plan_expires_at' => now()->addMonth(),
-            'simulations_used_this_month' => 0,
-            'essays_used_this_month' => 0,
-            'usage_reset_at' => now()->addMonth(),
         ]);
 
         // Plus User (email_verified_at = null)
@@ -86,9 +75,6 @@ class UserSeeder extends Seeder
             'plan_id' => $plus->id,
             'plan_started_at' => now(),
             'plan_expires_at' => now()->addMonth(),
-            'simulations_used_this_month' => 0,
-            'essays_used_this_month' => 0,
-            'usage_reset_at' => now()->addMonth(),
         ]);
 
         // Plus Subscription

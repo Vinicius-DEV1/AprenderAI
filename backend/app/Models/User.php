@@ -56,7 +56,6 @@ class User extends Authenticatable implements MustVerifyEmail
         'max_simulations_override',
         'max_essays_override',
         'max_daily_questions_override',
-        'daily_questions_used',
         // Asaas gateway customer reference — used to avoid duplicate customers
         'asaas_customer_id',
     ];
@@ -84,9 +83,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'plan_started_at' => 'datetime',
             'plan_expires_at' => 'datetime',
             'is_banned' => 'boolean',
-            'usage_reset_at' => 'datetime',
             'last_reset_at' => 'datetime',
-            'daily_questions_reset_at' => 'datetime',
         ];
     }
 
@@ -195,14 +192,13 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->plan?->simulations_limit ?? 0;
     }
 
-    /**
-     * How many simulations the user has created in the current billing cycle.
-     * Uses the `simulations_used_this_month` counter (reset via resetUsageIfNeeded).
-     */
     public function monthlySimulationUsed(): int
     {
-        $this->resetUsageIfNeeded();
-        return $this->simulations_used_this_month ?? 0;
+        try {
+            return (int) app(\App\Services\QuotaService::class)->getUsage($this, 'simulations')['used'];
+        } catch (\Exception $e) {
+            return 0;
+        }
     }
 
     /**
@@ -223,19 +219,15 @@ class User extends Authenticatable implements MustVerifyEmail
             return true;
         }
 
-        $this->resetUsageIfNeeded();
-
-        return $this->simulations_used_this_month < $limit;
+        return $this->monthlySimulationUsed() < $limit;
     }
 
-    /**
-     * Increment the simulation usage counter within the current billing cycle.
-     * Always calls resetUsageIfNeeded() first to ensure the cycle is current.
-     */
     public function incrementSimulationUsage(): void
     {
-        $this->resetUsageIfNeeded();
-        $this->increment('simulations_used_this_month');
+        try {
+            app(\App\Services\QuotaService::class)->consumeQuota($this, 'simulations');
+        } catch (\Exception $e) {
+        }
     }
 
     // =========================================================================
@@ -268,20 +260,13 @@ class User extends Authenticatable implements MustVerifyEmail
         return ($this->plan?->essays_limit ?? 0) + ($this->essay_credits ?? 0);
     }
 
-    /**
-     * How many essays the user has submitted in the current calendar month.
-     * Repassado para a Query unificada do QuotaService (Ledgers do ciclo ativo).
-     */
     public function monthlyEssayUsed(): int
     {
-        $ledgerUsed = 0;
         try {
-            $ledgerUsed = (int) app(\App\Services\QuotaService::class)->getUsage($this, 'essays')['used'];
+            return (int) app(\App\Services\QuotaService::class)->getUsage($this, 'essays')['used'];
         } catch (\Exception $e) {
-            // Silently fall back to legacy column if QuotaService fails
+            return 0;
         }
-
-        return max((int) ($this->essays_used_this_month ?? 0), $ledgerUsed);
     }
 
     /**
@@ -334,25 +319,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->plan && ($this->plan->essays_limit > 0 || ($this->essay_credits ?? 0) > 0);
     }
 
-    /**
-     * Increment essay usage counter (for legacy stats tracking).
-     *
-     * NOTE: The primary essay quota check uses monthlyEssayUsed() which counts
-     * submissions from the essays table. This counter is kept for admin stats only.
-     *
-     * @deprecated The essays_used_this_month column is a legacy stat counter.
-     */
     public function incrementEssayUsage(): void
     {
-        $this->resetUsageIfNeeded();
-        $this->increment('essays_used_this_month');
-
-        // Attempt new system consumption
         try {
             app(\App\Services\QuotaService::class)->consumeQuota($this, 'essays');
         } catch (\Exception $e) {
-            // Silently fail: user might not have an active subscription cycle (e.g. Admin or Override-only user)
-            // but the legacy increment above ensures usage is still tracked for overrides.
         }
     }
 
@@ -407,8 +378,11 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function dailyQuestionUsed(): int
     {
-        $this->resetDailyQuestionsIfNeeded();
-        return $this->daily_questions_used ?? 0;
+        try {
+            return (int) app(\App\Services\QuotaService::class)->getUsage($this, 'daily_questions')['used'];
+        } catch (\Exception $e) {
+            return 0;
+        }
     }
 
     public function canAnswerDailyQuestion(): bool
@@ -420,51 +394,17 @@ class User extends Authenticatable implements MustVerifyEmail
         if ($limit === 9999)
             return true;
 
-        $this->resetDailyQuestionsIfNeeded();
-        return $this->daily_questions_used < $limit;
+        return $this->dailyQuestionUsed() < $limit;
     }
 
     public function incrementDailyQuestionUsage(): void
     {
-        $this->resetDailyQuestionsIfNeeded();
-        $this->increment('daily_questions_used');
-    }
-
-    protected function resetDailyQuestionsIfNeeded(): void
-    {
-        if (!$this->daily_questions_reset_at || $this->daily_questions_reset_at->isPast()) {
-            $this->update([
-                'daily_questions_used' => 0,
-                'daily_questions_reset_at' => now()->addDay(),
-            ]);
+        try {
+            app(\App\Services\QuotaService::class)->consumeQuota($this, 'daily_questions');
+        } catch (\Exception $e) {
         }
     }
 
-    // =========================================================================
-    // INTERNAL HELPERS
-    // =========================================================================
-
-    /**
-     * Reset monthly simulation/essay counters if the billing cycle has turned over.
-     *
-     * BILLING CYCLE:
-     * The cycle is defined by `usage_reset_at`. When it is past, counters are
-     * zeroed and the next reset is scheduled +1 month forward.
-     *
-     * NOTE: essay_credits are also zeroed on cycle reset — purchased credits
-     * do not roll over across billing periods.
-     */
-    protected function resetUsageIfNeeded(): void
-    {
-        if (!$this->usage_reset_at || $this->usage_reset_at->isPast()) {
-            $this->update([
-                'simulations_used_this_month' => 0,
-                'essays_used_this_month' => 0,
-                'essay_credits' => 0,
-                'usage_reset_at' => now()->addMonth(),
-            ]);
-        }
-    }
     // =========================================================================
     // NATIVE EMAIL VERIFICATION OVERRIDE
     // =========================================================================

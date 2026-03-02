@@ -11,6 +11,7 @@ class SubscriptionCycle extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'subscription_id',
         'start_date',
         'end_date',
