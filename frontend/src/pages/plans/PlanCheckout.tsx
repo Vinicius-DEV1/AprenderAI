@@ -7,13 +7,20 @@ import { validateCoupon, processCheckout } from '../../api/subscriptions';
 import { getUser } from '../../api/auth';
 import { IMaskInput } from 'react-imask';
 
-export default function PlanCheckout() {
-    const { planId } = useParams();
+interface PlanCheckoutProps {
+    embeddedPlanId?: string | number;
+    onSuccess?: () => void;
+    onCancel?: () => void;
+}
+
+export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: PlanCheckoutProps) {
+    const { planId: paramPlanId } = useParams();
     const navigate = useNavigate();
     const { plans } = useConfigStore();
     const { setUser } = useAuthStore();
 
-    const plan = plans.find(p => p.id === Number(planId));
+    const resolvedPlanId = embeddedPlanId || paramPlanId;
+    const plan = plans.find((p: any) => p.id === Number(resolvedPlanId) || p.slug === String(resolvedPlanId));
 
     const [method, setMethod] = useState<'credit_card' | 'pix'>('credit_card');
     const [couponCode, setCouponCode] = useState('');
@@ -56,7 +63,11 @@ export default function PlanCheckout() {
                     setUser(freshUser);
                     clearInterval(interval);
                     toast.success('Pagamento confirmado com sucesso!');
-                    navigate(`/checkout/success?planName=${encodeURIComponent(plan?.name || '')}`);
+                    if (onSuccess) {
+                        onSuccess();
+                    } else {
+                        navigate(`/checkout/success?planName=${encodeURIComponent(plan?.name || '')}`);
+                    }
                 }
             } catch (err) {
                 console.error('Falha no polling do pagamento:', err);
@@ -75,7 +86,10 @@ export default function PlanCheckout() {
         return (
             <div className="py-20 text-center">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">Plano não encontrado.</h2>
-                <button onClick={() => navigate('/plans')} className="mt-4 text-blue-600 hover:underline">Voltar para planos</button>
+                <button onClick={() => {
+                    if (onCancel) onCancel();
+                    else navigate('/plans');
+                }} className="mt-4 text-blue-600 hover:underline">Voltar para planos</button>
             </div>
         );
     }
@@ -115,7 +129,11 @@ export default function PlanCheckout() {
                 if (method === 'pix') {
                     setCheckoutResult(response.data);
                 } else {
-                    navigate(`/checkout/success?planName=${encodeURIComponent(plan!.name)}`);
+                    if (onSuccess) {
+                        onSuccess();
+                    } else {
+                        navigate(`/checkout/success?planName=${encodeURIComponent(plan!.name)}`);
+                    }
                 }
             }
         } catch (err: any) {

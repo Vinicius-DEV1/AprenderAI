@@ -20,6 +20,7 @@ class Plan extends Model
         'interval',
         'simulations_limit',
         'essays_limit',
+        'daily_question_limit',
         'features',
         'is_active',
         'max_ai_questions',
@@ -29,6 +30,7 @@ class Plan extends Model
         'price' => 'decimal:2',
         'monthly_price' => 'decimal:2',
         'annual_price' => 'decimal:2',
+        'daily_question_limit' => 'integer',
         'features' => 'array',
         'is_active' => 'boolean',
     ];
@@ -46,10 +48,11 @@ class Plan extends Model
     public function isUnlimited(string $feature): bool
     {
         return match ($feature) {
-                'simulations' => $this->simulations_limit === 0,
-                'essays' => $this->essays_limit === 0,
-                default => false,
-            };
+            'simulations' => $this->simulations_limit === 9999,
+            'essays' => $this->essays_limit === 9999,
+            'daily_questions' => $this->daily_question_limit === 9999,
+            default => false,
+        };
     }
 
     public function hasFeature(string $feature): bool

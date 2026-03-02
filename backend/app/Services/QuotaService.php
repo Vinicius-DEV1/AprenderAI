@@ -44,7 +44,7 @@ class QuotaService
             // Verifica teto máximo de limite da feature no JSON congelado
             $limit = $cycle->limits[$feature] ?? 0;
 
-            if ($limit === null || $limit === 'unlimited') {
+            if ($limit === null || $limit === 'unlimited' || $limit === 9999) {
                 // Ilimitado no ciclo
             } else {
                 $used = UsageLedger::where('subscription_cycle_id', $cycle->id)
@@ -88,7 +88,7 @@ class QuotaService
 
         return [
             'used' => (int) $used,
-            'limit' => $limit === 'unlimited' ? null : (int) $limit
+            'limit' => ($limit === 'unlimited' || $limit === 9999) ? null : (int) $limit
         ];
     }
 
@@ -163,9 +163,9 @@ class QuotaService
                 $oldLimit = $oldLimits[$key] ?? 0;
                 $newLimit = $newPlanLimits[$key] ?? 0;
 
-                // Se algum dos dois diz "unlimited" (ilimitado), a feature fica ilimitada.
-                if ($oldLimit === 'unlimited' || $newLimit === 'unlimited') {
-                    $summedLimits[$key] = 'unlimited';
+                // Se algum dos dois diz "unlimited" (ilimitado) ou 9999, a feature fica ilimitada (conversão para novo padrão numérico).
+                if ($oldLimit === 'unlimited' || $oldLimit === 9999 || $newLimit === 'unlimited' || $newLimit === 9999) {
+                    $summedLimits[$key] = 9999;
                 } else {
                     $summedLimits[$key] = ((int) $oldLimit) + ((int) $newLimit);
                 }

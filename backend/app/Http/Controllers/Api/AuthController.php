@@ -36,6 +36,13 @@ class AuthController extends Controller
                 $request->session()->regenerate();
             }
 
+            \App\Models\UserLog::create([
+                'user_id' => Auth::id(),
+                'action' => 'login',
+                'ip_address' => $request->ip(),
+                'description' => 'Login via e-mail e senha efetuado com sucesso.',
+            ]);
+
             // Retorna o usuário logado para o frontend decidir o redirecionamento (admin vs user)
             return response()->json([
                 'user' => Auth::user()->load('plan')
@@ -73,6 +80,13 @@ class AuthController extends Controller
         event(new Registered($user));
 
         Auth::login($user);
+
+        \App\Models\UserLog::create([
+            'user_id' => $user->id,
+            'action' => 'login',
+            'ip_address' => $request->ip(),
+            'description' => 'Cadastro e primeiro login efetuado com sucesso.',
+        ]);
 
         // Em SPA, guardamos a sessão, redirecionamentos complexos como select_plan 
         // ficam a cargo do frontend no momento adequado
