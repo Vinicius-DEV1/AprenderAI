@@ -399,6 +399,58 @@ class AIService
         ];
     }
 
+    /**
+     * Gera um embedding usando o Gemini text-embedding-004
+     */
+    public function generateEmbedding(string $text): ?array
+    {
+        try {
+            // Busca uma chave com a capacidade específica de embedding
+            $apiKeyModel = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_EMBEDDING, 'gemini');
+
+            if (!$apiKeyModel) {
+                // Fallback para qualquer chave gemini se não houver uma específica
+                $apiKeyModel = ApiKey::getActiveKeyForProvider('gemini');
+            }
+
+            if (!$apiKeyModel) {
+                Log::warning('Nenhuma chave ativa para embeddings.', ['provider' => 'gemini']);
+                return null;
+            }
+
+            $apiKey = $apiKeyModel->decrypted_key;
+            // Usando v1 e o modelo mais estável 'embedding-001'
+            $url = "https://generativelanguage.googleapis.com/v1/models/embedding-001:embedContent?key={$apiKey}";
+
+            $payload = [
+                'content' => [
+                    'parts' => [
+                        ['text' => $text]
+                    ]
+                ]
+            ];
+
+            $response = Http::timeout(5)->post($url, $payload);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['embedding']['values'] ?? null;
+            }
+
+            Log::error('Erro ao chamar API de Embedding.', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'url' => str_replace($apiKey, 'HIDDEN', $url)
+            ]);
+
+            return null;
+
+        } catch (\Exception $e) {
+            Log::error('Exceção ao gerar Embedding.', ['error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
     protected function callGeminiStream(ApiKey $apiKey, string $prompt): \Generator
     {
         $model = $apiKey->preferred_model;
@@ -969,11 +1021,30 @@ class AIService
                 $prompt = $this->promptService->get('ai_search_interpreter', [
                     'user_prompt' => $userPrompt,
                     'filter_options' => json_encode($filterOptions)
-                ], "Você é o {$aiName}, um Agente de Busca moderno e empático. Seu objetivo é minerar o banco de dados para encontrar exatamente o que o aluno precisa.
-DIRETRIZES:
-1. Respostas Curtas: Use no máximo 5 linhas no campo 'suggestion_tip'. Seja encorajador e proativo.
-2. Formato: Retorne APENAS o JSON: { \"type\": \"enem|concurso\", \"subject\": \"...\", \"topic\": \"...\", \"difficulty\": \"...\", \"year\": ..., \"keyword\": \"...\", \"suggestion_tip\": \"...\", \"suggestions\": [ {\"label\": \"Texto do Botão\", \"filters\": {...}} ] }
-3. Sem Resultados: Se não encontrar nada, use 'suggestion_tip' para explicar de forma empática e 'suggestions' para propor caminhos alternativos.
+                ], "Você é o {$aiName}, um Agente de Busca inteligente especializado em questões de estudo.
+
+REGRAS CRÍTICAS E UNIVERSAIS DE FILTRAGEM:
+1. PROIBIDO INVENTAR: Nunca preencha qualquer campo de filtro ('year', 'difficulty', 'status', 'organization', 'institution', 'role') se o usuário não mencionou explicitamente. Se houver dúvida, deixe o campo vazio (\"\").
+2. FIDELIDADE AOS IDS/VALORES: Para TODOS os filtros, você deve usar APENAS os valores exatos (IDs ou strings) presentes nas 'Opções válidas'. Nunca use nomes amigáveis ou sinônimos se não estiverem na lista.
+3. PALAVRAS-CHAVE RESIDUAIS: O campo 'keyword' deve conter APENAS termos que não foram capturados pelos filtros específicos. Se você já selecionou uma matéria, assunto, banca ou ano, NÃO repita esses termos em 'keyword'.
+4. TIPO DE PROVA: Sempre categorize entre 'enem' ou 'concurso'.
+5. SUGESTÕES: Se o pedido for vago, use 'suggestions' para propor temas reais que existem no banco de dados.
+
+FORMATO DE RETORNO (JSON APENAS):
+{
+  \"type\": \"enem|concurso\",
+  \"subject\": \"ID_DA_MATERIA\",
+  \"topic\": \"ID_DO_TOPICO\",
+  \"difficulty\": \"easy|medium|hard\",
+  \"year\": \"YYYY\",
+  \"status\": \"unanswered|answered\",
+  \"organization\": \"NOME_EXATO_DA_BANCA\",
+  \"institution\": \"NOME_EXATO_DO_ORGAO\",
+  \"role\": \"NOME_EXATO_DO_CARGO\",
+  \"keyword\": \"termos residuais\",
+  \"suggestion_tip\": \"Breve frase explicativa\",
+  \"suggestions\": []
+}
 
 Busca do usuário: '{user_prompt}'
 Opções válidas (JSON): {filter_options}");
