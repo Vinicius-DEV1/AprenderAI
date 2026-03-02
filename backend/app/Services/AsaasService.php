@@ -67,7 +67,8 @@ class AsaasService
             if ($cpf) {
                 Http::withHeader('access_token', $this->apiKey)
                     ->post("{$this->baseUrl}/customers/{$customerId}", [
-                        'cpfCnpj' => $cpf
+                        'cpfCnpj' => $cpf,
+                        'notificationDisabled' => true
                     ]);
             }
 
@@ -96,6 +97,7 @@ class AsaasService
             'name' => $user->name,
             'email' => $user->email,
             'externalReference' => (string) $user->id,
+            'notificationDisabled' => true, // 🛑 Desabilita notificações (Email, SMS, WhatsApp)
         ];
 
         if ($cpf) {
@@ -146,6 +148,7 @@ class AsaasService
             'cycle' => $plan->interval === 'yearly' ? 'YEARLY' : 'MONTHLY',
             'description' => "Assinatura Plano {$plan->name}",
             'externalReference' => (string) $plan->id,
+            'notificationDisabled' => true, // 🛑 Desabilita notificações para esta assinatura
         ];
 
         if ($discount) {
@@ -214,6 +217,7 @@ class AsaasService
             'value' => $value,
             'dueDate' => now()->format('Y-m-d'),
             'description' => $description,
+            'notificationDisabled' => true, // 🛑 Desabilita notificações para este pagamento
         ];
 
         if ($paymentMethod === 'credit_card') {

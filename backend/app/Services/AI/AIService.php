@@ -189,16 +189,20 @@ class AIService
                 default => throw new \Exception("Streaming not supported for provider: $provider")
             };
 
+            $usage = ['input_tokens' => 0, 'output_tokens' => 0, 'total_tokens' => 0];
             foreach ($stream as $chunk) {
+                if (is_array($chunk) && isset($chunk['usage'])) {
+                    $usage = $chunk['usage'];
+                    continue;
+                }
                 $fullText .= $chunk;
                 yield $chunk;
             }
 
             $executionTime = microtime(true) - $startTime;
-            // Note: Token count estimation or final check might be needed here
             $this->telemetryService->logRequest($apiKey, $prompt, [
                 'content' => $fullText,
-                'usage' => ['input_tokens' => 0, 'output_tokens' => 0, 'total_tokens' => 0] // Usage usually comes in stream for OpenAI
+                'usage' => $usage
             ], $executionTime, $userId);
 
         } catch (\Exception $e) {
@@ -293,6 +297,7 @@ class AIService
                 'messages' => [['role' => 'user', 'content' => $prompt]],
                 'temperature' => 0.7,
                 'stream' => true,
+                'stream_options' => ['include_usage' => true]
             ],
             'stream' => true,
         ]);
@@ -309,6 +314,16 @@ class AIService
                 $content = $json['choices'][0]['delta']['content'] ?? '';
                 if ($content)
                     yield $content;
+
+                if (isset($json['usage'])) {
+                    yield [
+                        'usage' => [
+                            'input_tokens' => $json['usage']['prompt_tokens'] ?? 0,
+                            'output_tokens' => $json['usage']['completion_tokens'] ?? 0,
+                            'total_tokens' => $json['usage']['total_tokens'] ?? 0,
+                        ]
+                    ];
+                }
             }
         }
     }
@@ -476,6 +491,16 @@ class AIService
                 $content = $json['candidates'][0]['content']['parts'][0]['text'] ?? '';
                 if ($content)
                     yield $content;
+
+                if (isset($json['usageMetadata'])) {
+                    yield [
+                        'usage' => [
+                            'input_tokens' => $json['usageMetadata']['promptTokenCount'] ?? 0,
+                            'output_tokens' => $json['usageMetadata']['candidatesTokenCount'] ?? 0,
+                            'total_tokens' => $json['usageMetadata']['totalTokenCount'] ?? 0,
+                        ]
+                    ];
+                }
             }
         }
     }
