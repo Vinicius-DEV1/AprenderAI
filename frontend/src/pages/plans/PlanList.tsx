@@ -150,7 +150,7 @@ export default function PlanList() {
 
                             {/* Lado Direito: Consumos */}
                             <div className="flex-1 flex flex-col justify-center">
-                                <h5 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Consumo do Período</h5>
+                                <h5 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Consumo Mensal</h5>
                                 <div className="space-y-4">
                                     {/* Simulações */}
                                     <div>
@@ -184,7 +184,8 @@ export default function PlanList() {
                                         </div>
                                     </div>
 
-                                    {/* Questões IA */}
+                                    {/* Questões IA - Oculto Temporariamente a pedido do usuário */}
+                                    {/* 
                                     <div>
                                         <div className="flex justify-between text-[11px] mb-1.5">
                                             <span className="font-bold text-slate-600 dark:text-slate-400">Xavier (Perguntas IA)</span>
@@ -193,12 +194,13 @@ export default function PlanList() {
                                             </span>
                                         </div>
                                         <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                            <div
+                                            <div 
                                                 className="h-full bg-amber-500 rounded-full transition-all duration-500"
                                                 style={{ width: `${Math.min(100, (((user as any).quotas?.ai_questions?.used || 0) / ((user as any).quotas?.ai_questions?.limit || 1)) * 100)}%` }}
                                             ></div>
                                         </div>
                                     </div>
+                                    */}
                                 </div>
                             </div>
                         </div>
