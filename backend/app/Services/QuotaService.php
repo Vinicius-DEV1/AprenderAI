@@ -28,17 +28,10 @@ class QuotaService
         }
 
         DB::transaction(function () use ($user, $feature, $amount) {
-            $cycle = SubscriptionCycle::whereHas('subscription', function ($query) use ($user) {
-                $query->where('user_id', $user->id)
-                    ->where('status', 'active');
-            })
-                ->where('start_date', '<=', now())
-                ->where('end_date', '>=', now())
-                ->lockForUpdate() // Evita leituras de fora simultâneas, previnindo bugs de Double Submissions
-                ->first();
+            $cycle = $this->getOrCreateActiveCycle($user, true); // true = lock for update
 
             if (!$cycle) {
-                abort(403, "Você não possui um plano ativo ou saldo com ciclos válidos para usar esta funcionalidade.");
+                abort(403, "Você não possui um plano ativo para usar esta funcionalidade.");
             }
 
             // Verifica teto máximo de limite da feature no JSON congelado
@@ -74,12 +67,11 @@ class QuotaService
             return ['used' => 0, 'limit' => 'unlimited'];
         }
 
-        $cycle = SubscriptionCycle::whereHas('subscription', function ($query) use ($user) {
-            $query->where('user_id', $user->id)->where('status', 'active');
-        })->where('start_date', '<=', now())->where('end_date', '>=', now())->first();
+        $cycle = $this->getOrCreateActiveCycle($user, false);
 
-        if (!$cycle)
+        if (!$cycle) {
             return ['used' => 0, 'limit' => 0];
+        }
 
         $limit = $cycle->limits[$feature] ?? 0;
         $used = UsageLedger::where('subscription_cycle_id', $cycle->id)
@@ -104,6 +96,7 @@ class QuotaService
         $planLimits = $subscription->plan->default_limits ?? [];
 
         return SubscriptionCycle::create([
+            'user_id' => $subscription->user_id,
             'subscription_id' => $subscription->id,
             'start_date' => now(),
             // O serviço é renovado com "ciclo" de 1 mês, mesmo se o plano contratado for anual
@@ -114,6 +107,48 @@ class QuotaService
     }
 
     /**
+     * Auto-creates a cycle for a user if they have an active plan but no formal cycle
+     * (e.g. Free users, Admins, or gracefully handling missing data).
+     */
+    protected function getOrCreateActiveCycle(User $user, bool $lockForUpdate = false): ?SubscriptionCycle
+    {
+        $query = SubscriptionCycle::where('user_id', $user->id)
+            ->where('start_date', '<=', now())
+            ->where('end_date', '>=', now());
+
+        if ($lockForUpdate) {
+            $query->lockForUpdate();
+        }
+
+        $cycle = $query->first();
+
+        if ($cycle) {
+            return $cycle;
+        }
+
+        // Se não tem ciclo, mas tem um plano, criamos um ciclo sob demanda para o mês atual
+        if (!$user->plan) {
+            return null;
+        }
+
+        $limits = [
+            'simulations' => $user->simulationQuotaLimit() === 0 ? 0 : ($user->simulationQuotaLimit() === 9999 ? 'unlimited' : $user->simulationQuotaLimit()),
+            'essays' => $user->essayQuotaLimit() === 0 ? 0 : ($user->essayQuotaLimit() === 9999 ? 'unlimited' : $user->essayQuotaLimit()),
+            'daily_questions' => $user->dailyQuestionQuotaLimit() === 0 ? 0 : ($user->dailyQuestionQuotaLimit() === 9999 ? 'unlimited' : $user->dailyQuestionQuotaLimit()),
+        ];
+
+        return SubscriptionCycle::create([
+            'user_id' => $user->id,
+            'subscription_id' => null, // No formal subscription
+            'start_date' => now(),
+            'end_date' => now()->addMonth(),
+            'limits' => $limits,
+            'has_used_cumulative_bonus' => false
+        ]);
+    }
+
+
+    /**
      * Efetua o "Upgrade Modelo Acumulativo Real".
      *
      * O teto do ciclo vira a SOMA do contratado do ciclo anterior com os limites do novo plano.
@@ -122,7 +157,7 @@ class QuotaService
     {
         return DB::transaction(function () use ($subscription, $newPlanLimits) {
             // Pega o ciclo ativo deste exato minuto (lockado)
-            $oldCycle = SubscriptionCycle::where('subscription_id', $subscription->id)
+            $oldCycle = SubscriptionCycle::where('user_id', $subscription->user_id)
                 ->where('start_date', '<=', now())
                 ->where('end_date', '>=', now())
                 ->lockForUpdate()
@@ -131,6 +166,7 @@ class QuotaService
             // Se for o primeiro plan do usuário ou não houver ciclo anterior, cria limpo
             if (!$oldCycle) {
                 return SubscriptionCycle::create([
+                    'user_id' => $subscription->user_id,
                     'subscription_id' => $subscription->id,
                     'start_date' => now(),
                     'end_date' => now()->addMonth(),
@@ -144,6 +180,7 @@ class QuotaService
                 // Usuário deu um 2º upgrade no mesmo mês apenas para inflar saldo. 
                 // A punição/trava é simplesmente aplicar os limites do novo plano sem somar de novo.
                 return SubscriptionCycle::create([
+                    'user_id' => $subscription->user_id,
                     'subscription_id' => $subscription->id,
                     'start_date' => now(),
                     'end_date' => now()->addMonth(),
@@ -180,12 +217,14 @@ class QuotaService
             // Neste setup, para manter o teto total limpo na query, migrar os logs é seguro.
 
             $newCycle = SubscriptionCycle::create([
+                'user_id' => $subscription->user_id,
                 'subscription_id' => $subscription->id,
                 'start_date' => now(),
                 'end_date' => now()->addMonth(),
                 'limits' => $summedLimits,
                 'has_used_cumulative_bonus' => true // Trava aplicada!
             ]);
+
 
             // Transporta o Histórico (Ledger) do ciclo anterior fechado para manter a conta coesa
             UsageLedger::where('subscription_cycle_id', $oldCycle->id)

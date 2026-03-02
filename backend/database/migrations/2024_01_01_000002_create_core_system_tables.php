@@ -18,9 +18,6 @@ return new class extends Migration {
                 $table->foreignId('plan_id')->nullable()->constrained('plans')->nullOnDelete();
                 $table->timestamp('plan_started_at')->nullable();
                 $table->timestamp('plan_expires_at')->nullable();
-                $table->integer('simulations_used_this_month')->default(0);
-                $table->integer('essays_used_this_month')->default(0);
-                $table->timestamp('usage_reset_at')->nullable();
                 $table->string('role')->default('user');
                 $table->string('google_id')->nullable();
                 $table->string('avatar_url')->nullable();

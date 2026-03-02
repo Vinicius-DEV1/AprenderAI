@@ -33,10 +33,6 @@ class PlanService
             'plan_id' => $plan->id,
             'plan_started_at' => now(),
             'plan_expires_at' => now()->addMonth(),
-            // Reset counters on plan assignment; new cycle begins now
-            'simulations_used_this_month' => 0,
-            'essays_used_this_month' => 0,
-            'usage_reset_at' => now()->addMonth(),
         ]);
     }
 

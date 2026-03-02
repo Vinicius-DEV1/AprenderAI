@@ -15,9 +15,7 @@ return new class extends Migration {
         });
 
         Schema::table('users', function (Blueprint $table) {
-            $table->integer('daily_questions_used')->default(0)->after('essays_used_this_month');
-            $table->timestamp('daily_questions_reset_at')->nullable()->after('daily_questions_used');
-            $table->integer('max_daily_questions_override')->nullable()->after('daily_questions_reset_at');
+            $table->integer('max_daily_questions_override')->nullable();
         });
 
         // Convert existing '0' values in other limit fields to '9999' (unlimited) for consistency
@@ -37,7 +35,7 @@ return new class extends Migration {
         });
 
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['daily_questions_used', 'daily_questions_reset_at', 'max_daily_questions_override']);
+            $table->dropColumn('max_daily_questions_override');
         });
     }
 };
