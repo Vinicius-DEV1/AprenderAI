@@ -38,7 +38,7 @@ class AuthController extends Controller
 
             // Retorna o usuário logado para o frontend decidir o redirecionamento (admin vs user)
             return response()->json([
-                'user' => Auth::user()
+                'user' => Auth::user()->load('plan')
             ]);
         }
 
@@ -77,7 +77,7 @@ class AuthController extends Controller
         // Em SPA, guardamos a sessão, redirecionamentos complexos como select_plan 
         // ficam a cargo do frontend no momento adequado
         return response()->json([
-            'user' => $user
+            'user' => $user->load('plan')
         ]);
     }
 
@@ -96,7 +96,7 @@ class AuthController extends Controller
     public function user(Request $request)
     {
         return response()->json([
-            'user' => $request->user()
+            'user' => $request->user()->load('plan')
         ]);
     }
 
