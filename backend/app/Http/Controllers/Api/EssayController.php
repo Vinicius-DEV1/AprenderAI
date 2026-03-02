@@ -94,9 +94,7 @@ class EssayController extends Controller
             'started_at' => now(),
         ]);
 
-        // Record usage for limit calculations
-        $user->incrementEssayUsage();
-
+        // Draft created successfully
         return new EssayResource($essay);
     }
 
@@ -165,6 +163,9 @@ class EssayController extends Controller
         $essay->status = 'evaluating';
         $essay->submitted_at = now();
         $essay->save();
+
+        // Record usage for limit calculations upon successful submission
+        $request->user()->incrementEssayUsage();
 
         \App\Jobs\EvaluateEssayJob::dispatch($essay);
 
