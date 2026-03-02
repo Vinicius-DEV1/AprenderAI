@@ -6,6 +6,8 @@ import api from '../../api/axios';
 import ReactMarkdown from 'react-markdown';
 import { AdminPageSkeleton } from './components/AdminSkeletons';
 
+const apiUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
+
 export default function QuestionForm() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -37,7 +39,7 @@ export default function QuestionForm() {
     const { data: supportData, isLoading: isLoadingSupport } = useQuery({
         queryKey: ['admin-questions-support-data'],
         queryFn: async () => {
-            const res = await api.get('/api/v1/admin/questions/support-data'); // You will need to make sure this route exists, returning subjects and topics
+            const res = await api.get('/api/v1/admin/questions/support-data');
             return res.data;
         }
     });
@@ -65,13 +67,15 @@ export default function QuestionForm() {
             setCorrectAnswer(question.correct_answer || '');
             setExplanation(question.explanation || '');
             setTipoQuestao(question.tipo_questao || 'Objetiva');
-            setDiscursiveAnswer(typeof question.discursive_answer === 'object' && question.discursive_answer !== null ? JSON.stringify(question.discursive_answer, null, 2) : (question.discursive_answer || ''));
+            const discAns = question.discursive_answer;
+            setDiscursiveAnswer(typeof discAns === 'object' && discAns !== null ? JSON.stringify(discAns, null, 2) : (discAns || ''));
 
             if (question.format === 'multiple_choice' && question.alternatives) {
                 const alts = question.alternatives;
-                const getAlt = (letter: string) => Array.isArray(alts)
-                    ? alts.find((a: any) => a.label === letter)?.content || ''
-                    : alts[letter] || ''; // Handle both array and object structures just in case
+                const getAlt = (letter: string) => {
+                    const found = alts.find((a: any) => a.label === letter);
+                    return found ? found.content : '';
+                };
 
                 setAltA(getAlt('A'));
                 setAltB(getAlt('B'));
@@ -79,7 +83,6 @@ export default function QuestionForm() {
                 setAltD(getAlt('D'));
                 setAltE(getAlt('E'));
             } else if (question.format === 'true_false') {
-                // Not strictly needed to set state for T/F alternatives as they are fixed, but good to ensure correct_answer is 'C' or 'E'
                 if (!['C', 'E'].includes(question.correct_answer)) {
                     setCorrectAnswer('C');
                 }
@@ -91,21 +94,29 @@ export default function QuestionForm() {
         mutationFn: async (payload: any) => {
             if (isEditing) {
                 return await api.put(`/api/v1/admin/questions/${id}`, payload);
-            } else {
-                return await api.post('/api/v1/admin/questions', payload);
             }
+            return await api.post('/api/v1/admin/questions', payload);
         },
         onSuccess: () => {
+            toast.success(`Questão ${isEditing ? 'atualizada' : 'criada'} com sucesso!`);
             navigate('/admin/questions');
         },
         onError: (error: any) => {
-            if (error.response?.data?.errors) {
+            if (error.response?.status === 422) {
                 setValidationErrors(error.response.data.errors);
+                toast.error('Verifique os campos obrigatórios.');
             } else {
-                toast.error('Erro ao salvar a questão.');
+                toast.error('Erro ao salvar questão.');
             }
         }
     });
+
+    const urlTransform = (uri: string) => {
+        if (uri.startsWith('/storage')) {
+            return `${apiUrl}${uri}`;
+        }
+        return uri;
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -320,8 +331,9 @@ export default function QuestionForm() {
                                     <h4 className="text-[10px] uppercase font-bold text-gray-400 mb-3 tracking-widest">Prévia do Aluno</h4>
                                     <div className="prose prose-indigo max-w-none text-gray-800">
                                         <ReactMarkdown
+                                            urlTransform={urlTransform}
                                             components={{
-                                                img: ({ node, ...props }) => <img {...props} className="max-w-full h-auto rounded-lg my-4 mx-auto block shadow-sm" />
+                                                img: ({ ...props }) => <img {...props} className="max-w-full h-auto rounded-lg my-4 mx-auto block shadow-sm" />
                                             }}>
                                             {statement}
                                         </ReactMarkdown>
@@ -353,7 +365,7 @@ export default function QuestionForm() {
                                             { letter: 'C', val: altC, set: setAltC },
                                             { letter: 'D', val: altD, set: setAltD },
                                             { letter: 'E', val: altE, set: setAltE }
-                                        ].map(item => (
+                                        ].map((item) => (
                                             <div key={item.letter}>
                                                 <label htmlFor={`alt_${item.letter}`} className="block text-sm font-medium text-gray-700">Alternativa {item.letter}</label>
                                                 <div className="flex items-center gap-2 mt-1">
@@ -382,8 +394,9 @@ export default function QuestionForm() {
                                                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Prévia da Imagem Mapeada</span>
                                                                 <div className="prose max-w-none text-gray-800 text-sm">
                                                                     <ReactMarkdown
+                                                                        urlTransform={urlTransform}
                                                                         components={{
-                                                                            img: ({ node, ...props }) => <img {...props} className="max-h-32 h-auto rounded-md shadow-sm" />
+                                                                            img: ({ ...props }) => <img {...props} className="max-h-32 h-auto rounded-md shadow-sm" />
                                                                         }}>
                                                                         {item.val}
                                                                     </ReactMarkdown>
