@@ -114,7 +114,7 @@ services:
     networks:
       - local-network
     deploy:
-      replicas: 50
+      replicas: 2
 
   frontend:
     build:
