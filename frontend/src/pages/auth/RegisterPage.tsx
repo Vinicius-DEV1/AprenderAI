@@ -37,7 +37,17 @@ export default function RegisterPage() {
                 duration: 8000,
             });
 
-            navigate('/dashboard');
+            const searchParams = new URLSearchParams(window.location.search);
+            const planParam = searchParams.get('plan');
+            const intendedPlan = localStorage.getItem('intended_plan');
+
+            const targetPlan = planParam || intendedPlan;
+
+            if (targetPlan && targetPlan !== 'free' && targetPlan !== 'n/a') {
+                navigate(`/plans?autoSelect=${targetPlan}`);
+            } else {
+                navigate('/dashboard');
+            }
         } catch (err: any) {
             if (err.response?.data?.errors) {
                 setErrors(Object.values(err.response.data.errors).flat() as string[]);

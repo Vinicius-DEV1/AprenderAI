@@ -20,7 +20,7 @@ export const CardSkeleton = () => (
 );
 
 export const AdminPageSkeleton = () => (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 space-y-6 w-full">
         <div className="flex justify-between items-end animate-pulse">
             <div className="space-y-2">
                 <div className="h-8 bg-gray-200 dark:bg-slate-700 rounded w-64"></div>

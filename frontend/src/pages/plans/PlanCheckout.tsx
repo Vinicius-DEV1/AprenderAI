@@ -22,7 +22,7 @@ export default function PlanCheckout() {
     const [finalPrice, setFinalPrice] = useState(plan?.price || 0);
 
     const [isLoading, setIsLoading] = useState(false);
-    const [checkoutResult, setCheckoutResult] = useState<any>(null); // To store Pix QR Code or Success data
+    const [checkoutResult, setCheckoutResult] = useState<any>(null);
 
     const [formData, setFormData] = useState({
         card_name: '',
@@ -46,21 +46,17 @@ export default function PlanCheckout() {
         }
     }, [plan]);
 
-    // Polling function for PIX
     useEffect(() => {
         let interval: ReturnType<typeof setInterval>;
-
         const checkPaymentStatus = async () => {
             try {
                 const response = await getUser();
                 const freshUser = response.data.user;
-
-                // If the user's plan_id has updated to the paid plan, payment is successful!
                 if (freshUser && freshUser.plan_id === plan?.id) {
                     setUser(freshUser);
                     clearInterval(interval);
-                    toast.success('Pagamento Pix confirmado com sucesso!');
-                    navigate('/dashboard', { state: { message: 'Assinatura ativada com sucesso!' } });
+                    toast.success('Pagamento confirmado com sucesso!');
+                    navigate(`/checkout/success?planName=${encodeURIComponent(plan?.name || '')}`);
                 }
             } catch (err) {
                 console.error('Falha no polling do pagamento:', err);
@@ -68,10 +64,8 @@ export default function PlanCheckout() {
         };
 
         if (checkoutResult?.pix) {
-            // Poll every 5 seconds waitng for the Webhook to update the DB
             interval = setInterval(checkPaymentStatus, 5000);
         }
-
         return () => {
             if (interval) clearInterval(interval);
         };
@@ -107,10 +101,6 @@ export default function PlanCheckout() {
         }
     };
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
@@ -120,15 +110,12 @@ export default function PlanCheckout() {
                 payment_method: method,
                 coupon_code: couponSuccess ? couponCode : null
             };
-            console.log('DEBUG: Calling processCheckout for plan:', plan!.id);
             const response = await processCheckout(plan!.id, payload);
-            console.log('DEBUG: Checkout response:', response);
             if (response.data.success) {
                 if (method === 'pix') {
                     setCheckoutResult(response.data);
                 } else {
-                    // Success for credit card
-                    navigate('/dashboard', { state: { message: 'Assinatura realizada com sucesso!' } });
+                    navigate(`/checkout/success?planName=${encodeURIComponent(plan!.name)}`);
                 }
             }
         } catch (err: any) {
@@ -138,39 +125,40 @@ export default function PlanCheckout() {
         }
     };
 
-    // Pix View
     if (checkoutResult?.pix) {
         return (
-            <div className="py-12 max-w-2xl mx-auto px-4">
-                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-800">
-                    <div className="bg-green-600 p-8 text-center text-white">
-                        <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="py-8 max-w-lg mx-auto px-4">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800">
+                    <div className="bg-green-600 p-6 text-center text-white rounded-t-2xl">
+                        <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                             </svg>
                         </div>
-                        <h2 className="text-2xl font-bold">Assinatura Quase Pronta!</h2>
-                        <p className="mt-2 opacity-90">Pague via Pix para ativar instantaneamente.</p>
+                        <h2 className="text-xl font-bold">Assinatura Quase Pronta!</h2>
+                        <p className="mt-1 opacity-90 text-sm">Pague via Pix para ativar instantaneamente.</p>
                     </div>
 
-                    <div className="p-8 text-center">
-                        <p className="text-slate-600 dark:text-slate-400 mb-6">Escaneie o QR Code abaixo ou copie a chave Pix:</p>
-
-                        <div className="bg-white p-4 inline-block border-4 border-slate-100 dark:border-slate-800 rounded-xl mb-6">
-                            <img src={`data:image/png;base64,${checkoutResult.pix.image}`} alt="Pix QR Code" className="w-64 h-64" />
+                    <div className="p-6 text-center">
+                        <p className="text-slate-600 dark:text-slate-400 mb-4 text-sm">Escaneie o QR Code abaixo ou copie a chave Pix:</p>
+                        <div className="bg-white p-3 inline-block border-2 border-slate-100 dark:border-slate-800 rounded-xl mb-4">
+                            <img src={`data:image/png;base64,${checkoutResult.pix.image}`} alt="Pix QR Code" className="w-56 h-56 mx-auto" />
                         </div>
 
-                        <div className="mt-4 mb-8">
-                            <div className="text-xs text-slate-400 uppercase font-bold mb-2">Chave Pix (Copia e Cola)</div>
-                            <div className="flex gap-2">
-                                <input readOnly value={checkoutResult.pix.payload} className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-lg text-xs font-mono w-full truncate text-slate-600 dark:text-slate-300" />
-                                <button onClick={() => navigator.clipboard.writeText(checkoutResult.pix.payload)} className="bg-blue-600 text-white px-4 rounded-lg font-bold text-sm">Copiar</button>
+                        <div className="mb-6">
+                            <div className="text-[10px] text-slate-400 uppercase font-bold mb-1.5 flex items-center justify-center gap-1">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                                Chave Pix (Copia e Cola)
+                            </div>
+                            <div className="flex gap-2 relative">
+                                <input readOnly value={checkoutResult.pix.payload} className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 py-2.5 px-3 rounded-lg text-xs font-mono w-full truncate pr-20 text-slate-600 dark:text-slate-300" />
+                                <button onClick={() => navigator.clipboard.writeText(checkoutResult.pix.payload).then(() => toast.success('Copiado!'))} className="absolute right-1 top-1 bottom-1 bg-blue-600 text-white px-3 rounded-md font-bold text-xs hover:bg-blue-700 transition">Copiar</button>
                             </div>
                         </div>
 
-                        <div className="flex flex-col gap-4">
-                            <button onClick={() => window.location.reload()} className="bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 py-3 rounded-xl font-bold">Já paguei, verificar agora</button>
-                            <button onClick={() => navigate('/dashboard')} className="text-slate-500 hover:text-slate-700 text-sm">Voltar ao Dashboard</button>
+                        <div className="flex flex-col gap-3">
+                            <button onClick={() => window.location.reload()} className="bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 py-2.5 rounded-lg font-bold text-sm transition">Já paguei, verificar agora</button>
+                            <button onClick={() => navigate('/dashboard')} className="text-slate-500 hover:text-slate-700 text-xs font-medium">Voltar ao Dashboard</button>
                         </div>
                     </div>
                 </div>
@@ -179,223 +167,222 @@ export default function PlanCheckout() {
     }
 
     return (
-        <div className="py-12 max-w-4xl mx-auto px-4">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-800">
-                <div className="p-8 md:p-10">
-                    <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mb-8">Finalizar Assinatura [v2]</h2>
+        <div className="py-8 max-w-5xl mx-auto px-4 md:px-6">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Finalização da Assinatura</h1>
 
-                    {/* Plan Summary */}
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-2xl mb-10 flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <div>
-                            <span className="text-blue-600 dark:text-blue-400 block text-xs font-bold uppercase tracking-wider mb-1">Você está assinando:</span>
-                            <span className="text-2xl font-black text-blue-900 dark:text-white">{plan.name}</span>
+            <div className="flex flex-col lg:flex-row gap-8">
+                {/* LADO ESQUERDO: RESUMO E CUPOM (Stripe style) */}
+                <div className="w-full lg:w-[400px] flex-shrink-0">
+                    <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 lg:sticky lg:top-8">
+                        <div className="mb-6">
+                            <span className="text-slate-500 dark:text-slate-400 block text-[11px] font-bold uppercase tracking-wider mb-1">Assinatura Escolhida</span>
+                            <h2 className="text-xl font-black text-slate-900 dark:text-white">{plan.name}</h2>
                         </div>
-                        <div className="text-right flex flex-col items-center sm:items-end">
-                            <span className="text-slate-500 dark:text-slate-400 block text-xs font-bold uppercase tracking-wider mb-1">Valor do Investimento:</span>
+
+                        <div className="mb-6 pb-6 border-b border-slate-200 dark:border-slate-700">
+                            <span className="text-slate-500 dark:text-slate-400 block text-[11px] font-bold uppercase tracking-wider mb-1">Total a Pagar</span>
                             <div className="flex items-baseline gap-1">
-                                <span className="text-3xl font-black text-blue-700 dark:text-blue-400">R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(finalPrice)}</span>
+                                <span className="text-3xl font-black text-slate-900 dark:text-white">R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(finalPrice)}</span>
                                 <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">/{plan.interval === 'yearly' ? 'ano' : 'mês'}</span>
                             </div>
-                        </div>
-                    </div>
-
-                    {/* Payment Method Tabs */}
-                    <div>
-                        <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-8">
-                            <button
-                                onClick={() => setMethod('credit_card')}
-                                className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all ${method === 'credit_card' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                            >
-                                Cartão de Crédito
-                            </button>
-                            <button
-                                onClick={() => setMethod('pix')}
-                                className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all ${method === 'pix' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                            >
-                                Pix (Instantâneo)
-                            </button>
+                            {couponSuccess && (
+                                <span className="inline-block mt-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold px-2 py-0.5 rounded">Desconto Aplicado</span>
+                            )}
                         </div>
 
-                        {/* Coupon Section */}
-                        <div className="mb-10 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
-                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 underline decoration-blue-500 decoration-2 underline-offset-4">Possui um cupom de desconto?</label>
-                            <div className="flex gap-3">
+                        {/* Cupom embutido harmoniosamente */}
+                        <div>
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Possui Cupom?</label>
+                            <div className="flex gap-2">
                                 <input
                                     type="text"
                                     value={couponCode}
                                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                                    placeholder="INSIRA SEU CÓDIGO"
-                                    className="flex-1 block w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 font-bold tracking-widest placeholder:font-normal placeholder:tracking-normal"
+                                    placeholder="CÓDIGO"
+                                    className="flex-1 block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white sm:text-sm focus:border-blue-500 focus:ring-blue-500 uppercase"
                                 />
                                 <button
                                     type="button"
                                     onClick={handleValidateCoupon}
-                                    className="px-6 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-black rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+                                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 text-sm font-bold rounded-lg transition-colors"
                                 >
-                                    APLICAR
+                                    Aplicar
                                 </button>
                             </div>
                             {couponMessage && (
-                                <p className={`mt-3 text-sm font-bold ${couponSuccess ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                <p className={`mt-2 text-xs font-semibold ${couponSuccess ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
                                     {couponMessage}
                                 </p>
                             )}
                         </div>
 
-                        <form onSubmit={handleSubmit}>
-                            {/* Credit Card Form */}
-                            {method === 'credit_card' && (
-                                <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-300">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Nome no Cartão</label>
-                                        <input
-                                            type="text" name="card_name" required
-                                            value={formData.card_name} onChange={handleInputChange}
-                                            placeholder="Ex: JOAO A SILVA"
-                                            className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 font-medium"
-                                        />
-                                    </div>
+                        <div className="mt-8 flex items-center justify-start gap-2 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                            <svg className="w-4 h-4 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zM10 5a1 1 0 011 1v3.586l1.707-1.707a1 1 0 111.414 1.414l-3.414 3.414a1 1 0 01-1.414 0l-3.414-3.414a1 1 0 011.414-1.414L9 9.586V6a1 1 0 011-1z" clipRule="evenodd" />
+                            </svg>
+                            Conexão Criptografada e Segura
+                        </div>
+                    </div>
+                </div>
 
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Número do Cartão</label>
-                                        <IMaskInput
-                                            mask="0000 0000 0000 0000" unmask={true}
-                                            type="text" name="card_number" required
-                                            value={formData.card_number} onAccept={(val) => handleMaskChange(val, 'card_number')}
-                                            placeholder="0000 0000 0000 0000"
-                                            className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 font-medium font-mono"
-                                        />
-                                    </div>
+                {/* LADO DIREITO: MÉTODO E FORMULÁRIO */}
+                <div className="flex-1">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm">
 
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-                                        <div className="col-span-2">
-                                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Validade (MM/AA)</label>
-                                            <div className="flex gap-3">
+                        {/* Selector de Método */}
+                        <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-lg mb-8">
+                            <button
+                                type="button"
+                                onClick={() => setMethod('credit_card')}
+                                className={`flex-1 py-2.5 px-3 rounded-md font-bold text-sm transition-all flex items-center justify-center gap-2 ${method === 'credit_card' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                                Cartão de Crédito
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setMethod('pix')}
+                                className={`flex-1 py-2.5 px-3 rounded-md font-bold text-sm transition-all flex items-center justify-center gap-2 ${method === 'pix' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                Pix
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <fieldset disabled={isLoading} className="space-y-6">
+                                {method === 'credit_card' ? (
+                                    <div className="space-y-6 animate-in fade-in duration-300">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="md:col-span-2">
+                                                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Número do Cartão</label>
                                                 <IMaskInput
-                                                    mask="00" unmask={true}
-                                                    type="text" name="card_expiry_month" required
-                                                    value={formData.card_expiry_month} onAccept={(val) => handleMaskChange(val, 'card_expiry_month')}
-                                                    placeholder="MM"
-                                                    className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 text-center font-bold"
+                                                    mask="0000 0000 0000 0000" unmask={true}
+                                                    type="text" name="card_number" required
+                                                    value={formData.card_number} onAccept={(val) => handleMaskChange(val, 'card_number')}
+                                                    placeholder="0000 0000 0000 0000"
+                                                    className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-mono tracking-widest"
                                                 />
+                                            </div>
+                                            <div className="md:col-span-2">
+                                                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Nome impresso no Cartão</label>
+                                                <input
+                                                    type="text" name="card_name" required
+                                                    value={formData.card_name} onChange={(e) => setFormData({ ...formData, card_name: e.target.value.toUpperCase() })}
+                                                    placeholder="JOAO A SILVA"
+                                                    className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold uppercase"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Validade</label>
+                                                <div className="flex gap-2">
+                                                    <IMaskInput
+                                                        mask="00" unmask={true}
+                                                        type="text" name="card_expiry_month" required
+                                                        value={formData.card_expiry_month} onAccept={(val) => handleMaskChange(val, 'card_expiry_month')}
+                                                        placeholder="MM"
+                                                        className="w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm text-center focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                    />
+                                                    <IMaskInput
+                                                        mask="00" unmask={true}
+                                                        type="text" name="card_expiry_year" required
+                                                        value={formData.card_expiry_year} onAccept={(val) => handleMaskChange(val, 'card_expiry_year')}
+                                                        placeholder="AA"
+                                                        className="w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm text-center focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Cód. Segurança</label>
                                                 <IMaskInput
-                                                    mask="00" unmask={true}
-                                                    type="text" name="card_expiry_year" required
-                                                    value={formData.card_expiry_year} onAccept={(val) => handleMaskChange(val, 'card_expiry_year')}
-                                                    placeholder="AA"
-                                                    className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 text-center font-bold"
+                                                    mask="0000" unmask={true}
+                                                    type="text" name="card_ccv" required
+                                                    value={formData.card_ccv} onAccept={(val) => handleMaskChange(val, 'card_ccv')}
+                                                    placeholder="CVC"
+                                                    className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
                                                 />
                                             </div>
                                         </div>
-                                        <div className="col-span-2 sm:col-span-1">
-                                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Cód. Segurança</label>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-6 border border-green-100 dark:border-green-900/30 bg-green-50/50 dark:bg-green-900/10 rounded-xl animate-in fade-in duration-300">
+                                        <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3 text-white shadow-md shadow-green-200 dark:shadow-none">
+                                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        </div>
+                                        <h3 className="text-base font-bold text-slate-800 dark:text-white">Pagamento Instantâneo via Pix</h3>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-[200px] mx-auto">Liberação automática do plano após a confirmação.</p>
+                                    </div>
+                                )}
+
+                                {/* Billing details */}
+                                <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+                                    <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-1.5">
+                                        <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                                        Dados de Cobrança / Segurança
+                                    </h3>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className={method === 'pix' ? 'sm:col-span-2' : ''}>
+                                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">CPF / CNPJ</label>
                                             <IMaskInput
-                                                mask="0000" unmask={true}
-                                                type="text" name="card_ccv" required
-                                                value={formData.card_ccv} onAccept={(val) => handleMaskChange(val, 'card_ccv')}
-                                                placeholder="CVV"
-                                                className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 text-center font-bold"
+                                                mask={[{ mask: '000.000.000-00' }, { mask: '00.000.000/0000-00' }]} unmask={true}
+                                                type="text" name="cpf" required
+                                                value={formData.cpf} onAccept={(val) => handleMaskChange(val, 'cpf')}
+                                                placeholder="000.000.000-00"
+                                                className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
                                             />
                                         </div>
+
+                                        {method === 'credit_card' && (
+                                            <>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Celular</label>
+                                                    <IMaskInput
+                                                        mask="(00) 00000-0000" unmask={true}
+                                                        type="text" name="phone" required={method === 'credit_card'}
+                                                        value={formData.phone} onAccept={(val) => handleMaskChange(val, 'phone')}
+                                                        placeholder="(11) 99999-9999"
+                                                        className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">CEP</label>
+                                                    <IMaskInput
+                                                        mask="00000-000" unmask={true}
+                                                        type="text" name="postal_code" required={method === 'credit_card'}
+                                                        value={formData.postal_code} onAccept={(val) => handleMaskChange(val, 'postal_code')}
+                                                        placeholder="00000-000"
+                                                        className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Nº do Endereço</label>
+                                                    <input
+                                                        type="text" name="address_number" required={method === 'credit_card'}
+                                                        value={formData.address_number} onChange={(e) => setFormData({ ...formData, address_number: e.target.value })}
+                                                        placeholder="Número ou SN"
+                                                        className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Pix Info */}
-                            {method === 'pix' && (
-                                <div className="text-center py-12 px-6 bg-green-50/50 dark:bg-green-900/10 rounded-2xl border border-green-100 dark:border-green-900/30 animate-in zoom-in-95 duration-300">
-                                    <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-200 dark:shadow-none">
-                                        <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                        </svg>
-                                    </div>
-                                    <h3 className="text-xl font-black text-slate-800 dark:text-white mb-2">Simplicidade com Pix</h3>
-                                    <p className="text-slate-600 dark:text-slate-400 max-w-sm mx-auto text-sm leading-relaxed">
-                                        Assinatura liberada instantaneamente após o pagamento. Seguro, rápido e sem burocracia.
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Shared Info (Anti-Fraud) */}
-                            <div className="mt-10 space-y-6 border-t border-slate-100 dark:border-slate-800 pt-8">
-                                <h3 className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-2">
-                                    🛡️ Dados de Cobrança / Anti-Fraude
-                                </h3>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className={method === 'pix' ? 'col-span-1 md:col-span-2' : ''}>
-                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">CPF / CNPJ</label>
-                                        <IMaskInput
-                                            mask={[{ mask: '000.000.000-00' }, { mask: '00.000.000/0000-00' }]} unmask={true}
-                                            type="text" name="cpf" required
-                                            value={formData.cpf} onAccept={(val) => handleMaskChange(val, 'cpf')}
-                                            placeholder="000.000.000-00"
-                                            className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
-                                        />
-                                    </div>
-
-                                    {method === 'credit_card' && (
-                                        <>
-                                            <div className="animate-in fade-in slide-in-from-left-2 duration-300">
-                                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Telefone Celular</label>
-                                                <IMaskInput
-                                                    mask="(00) 00000-0000" unmask={true}
-                                                    type="text" name="phone" required={method === 'credit_card'}
-                                                    value={formData.phone} onAccept={(val) => handleMaskChange(val, 'phone')}
-                                                    placeholder="(11) 99999-9999"
-                                                    className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
-                                                />
-                                            </div>
-
-                                            <div className="animate-in fade-in slide-in-from-right-2 duration-300">
-                                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">CEP</label>
-                                                <IMaskInput
-                                                    mask="00000-000" unmask={true}
-                                                    type="text" name="postal_code" required={method === 'credit_card'}
-                                                    value={formData.postal_code} onAccept={(val) => handleMaskChange(val, 'postal_code')}
-                                                    placeholder="00000-000"
-                                                    className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
-                                                />
-                                            </div>
-
-                                            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Número (Endereço)</label>
-                                                <input
-                                                    type="text" name="address_number" required={method === 'credit_card'}
-                                                    value={formData.address_number} onChange={handleInputChange}
-                                                    placeholder="123"
-                                                    className="mt-1 block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
-                                                />
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                                <p className="mt-2 text-[11px] text-slate-400 font-medium">Os dados acima são obrigatórios pela instituição financeira para prevenir recusas por suspeita de fraude.</p>
-                            </div>
-
-                            <div className="mt-10">
                                 <button
                                     type="submit" disabled={isLoading}
-                                    className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black rounded-2xl shadow-xl shadow-blue-200 dark:shadow-none transition-all duration-300 flex items-center justify-center gap-2 transform active:scale-[0.98] disabled:opacity-50"
+                                    className="mt-8 w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold text-base rounded-xl shadow-sm transition-all flex justify-center items-center gap-2 transform active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed"
                                 >
                                     {isLoading ? (
                                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                                     ) : (
                                         <>
-                                            CONFIRMAR ASSINATURA — R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(finalPrice)}
-                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                                            </svg>
+                                            Confirmar Assinatura — R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(finalPrice)}
+                                            <svg className="w-5 h-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                                         </>
                                     )}
                                 </button>
-                                <div className="mt-6 flex items-center justify-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                                    <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zM10 5a1 1 0 011 1v3.586l1.707-1.707a1 1 0 111.414 1.414l-3.414 3.414a1 1 0 01-1.414 0l-3.414-3.414a1 1 0 011.414-1.414L9 9.586V6a1 1 0 011-1z" clipRule="evenodd" />
-                                    </svg>
-                                    Transação Criptografada & Segura
-                                </div>
-                            </div>
+                            </fieldset>
                         </form>
                     </div>
                 </div>

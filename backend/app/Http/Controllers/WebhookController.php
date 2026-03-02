@@ -28,17 +28,24 @@ class WebhookController extends Controller
     public function handleAsaas(Request $request)
     {
         // ---- 1. Verificação de Autenticidade do Webhook ----------------------
-        $configuredToken = Configuration::get('asaas_webhook_token', '');
+        $productionToken = Configuration::get('asaas_production_webhook_token', '');
+        $sandboxToken = Configuration::get('asaas_sandbox_webhook_token', '');
 
-        if (!empty($configuredToken)) {
-            $receivedToken = $request->header('asaas-access-token', '');
-            if (!hash_equals($configuredToken, $receivedToken)) {
-                Log::warning('[Webhook] Token inválido recebido', [
-                    'ip' => $request->ip(),
-                    'received_token' => substr($receivedToken, 0, 8) . '...', // Não logar o token completo
-                ]);
-                return response()->json(['status' => 'unauthorized'], 403);
-            }
+        $receivedToken = $request->header('asaas-access-token', '');
+
+        $isValid = false;
+        if (!empty($productionToken) && hash_equals($productionToken, $receivedToken)) {
+            $isValid = true;
+        } elseif (!empty($sandboxToken) && hash_equals($sandboxToken, $receivedToken)) {
+            $isValid = true;
+        }
+
+        if (!$isValid && (!empty($productionToken) || !empty($sandboxToken))) {
+            Log::warning('[Webhook] Token inválido recebido', [
+                'ip' => $request->ip(),
+                'received_token' => $receivedToken ? substr($receivedToken, 0, 8) . '...' : null,
+            ]);
+            return response()->json(['status' => 'unauthorized'], 403);
         }
 
         // ---- 2. Extrair dados do payload ------------------------------------
@@ -144,12 +151,12 @@ class WebhookController extends Controller
 
                 // --- NOVO MODELO ACUMULATIVO ---
                 try {
-                    // Se o usuário já tinha um plano diferente do Grátis(1) e agora mudou para um maior
+                    // Se o usuário já tinha um plano ativo, e esse plano NÃO ERA O GRÁTIS (1), e não é uma mera renovação do mesmo plano
                     if ($oldPlanId && $oldPlanId != $plan->id && $oldPlanId != 1) {
-                        Log::info('[Webhook] Detectado UPGRADE. Aplicando Soma Acumulativa!', ['user_id' => $user->id]);
+                        Log::info('[Webhook] Detectado UPGRADE de Plano Pago. Aplicando Soma Acumulativa!', ['user_id' => $user->id]);
                         $this->quotaService->processUpgradeSoma($subscription, $plan->default_limits ?? []);
                     } else {
-                        Log::info('[Webhook] Renovacão normal ou plano original. Criando ciclo base.', ['user_id' => $user->id]);
+                        Log::info('[Webhook] Renovacão normal, compra inicial ou upgrade vindo do Grátis. Criando ciclo limpo.', ['user_id' => $user->id]);
                         $this->quotaService->createOrRenewCycle($subscription);
                     }
                 } catch (\Exception $e) {

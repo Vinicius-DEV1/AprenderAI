@@ -164,7 +164,7 @@ export default function AdminLayout() {
                 </aside>
 
                 {/* Main Content */}
-                <main className="flex-1 p-8 lg:ml-0 ml-64">
+                <main className="flex-1 p-4 md:p-6 lg:ml-0 ml-64">
                     <div className="flex justify-between items-start mb-8">
                         <header>
                             {/* Slot for Header/Title */}

@@ -42,6 +42,9 @@ Route::prefix('v1')->group(function () {
         return response()->json(['message' => 'DEBUG: Hit /api/v1/plans/{plan}/checkout (OLD ROUTE)'], 200);
     });
 
+    // Webhooks
+    Route::post('/webhooks/asaas', [\App\Http\Controllers\WebhookController::class, 'handleAsaas'])->name('api.webhooks.asaas');
+
     // Público
     Route::get('/config', [ConfigController::class, 'index'])->name('api.config');
     Route::post('/login', [AuthController::class, 'login'])->name('api.login');

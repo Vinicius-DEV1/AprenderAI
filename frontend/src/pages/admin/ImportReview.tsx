@@ -91,8 +91,8 @@ export default function ImportReview() {
     const { question, importItem } = data;
 
     return (
-        <div className="py-8">
-            <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div className="py-6 px-4 md:px-6 w-full">
+            <div className="w-full">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-6">
                     <Link to="/admin/import/review" className="text-gray-400 hover:text-gray-600">

@@ -22,6 +22,9 @@ export default function HomePage() {
     };
 
     const trackCTA = (location: string, plan?: string) => {
+        if (plan) {
+            localStorage.setItem('intended_plan', plan);
+        }
         if (typeof (window as any).gtag === 'function') {
             (window as any).gtag('event', 'cta_click', {
                 'button_location': location,
