@@ -105,7 +105,7 @@ class SimulationEngine
                 continue;
 
             // Count real questions available for this subject+type combination
-            $query = Question::whereHas('subjects', fn($q) => $q->where('name', $subject))
+            $query = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subject))
                 ->whereNotIn('id', $excludedIds);
 
             // ENEM: strict type filter; concurso: no type restriction
@@ -158,7 +158,7 @@ class SimulationEngine
             $avoidIds = array_merge($excludedIds, $alreadyPicked);
 
             // 1. Fetch real (human-authored) questions
-            $realQuery = Question::whereHas('subjects', fn($q) => $q->where('name', $subject))
+            $realQuery = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subject))
                 ->where('source', '!=', 'ai_generated')
                 ->whereNotIn('id', $avoidIds);
 
@@ -182,7 +182,7 @@ class SimulationEngine
             $finalQuestions = $finalQuestions->merge($realPool);
 
             // 2. Fetch AI questions from DB (pre-generated) — filter by type too
-            $aiQuery = Question::whereHas('subjects', fn($q) => $q->where('name', $subject))
+            $aiQuery = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subject))
                 ->where('source', 'ai_generated')
                 ->whereNotIn('id', array_merge($avoidIds, $finalQuestions->pluck('id')->toArray()));
 

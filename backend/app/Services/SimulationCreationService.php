@@ -164,7 +164,7 @@ class SimulationCreationService
             // CONCURSO PATH
             // ----------------------------------------------------------------
             if ($type === 'concurso') {
-                $query = Question::whereHas('subjects', function ($q) use ($subject) {
+                $query = Question::published()->whereHas('subjects', function ($q) use ($subject) {
                     $q->where('name', $subject);
                 });
                 // No type restriction for concurso — can mix question types
@@ -249,7 +249,7 @@ class SimulationCreationService
             $ignoredIds = $this->getLastSeenQuestionIds($user);
 
             // 1. Initial Real Questions (honoring ratio)
-            $realQuestions = Question::whereHas('subjects', function ($q) use ($subject) {
+            $realQuestions = Question::published()->whereHas('subjects', function ($q) use ($subject) {
                 $q->where('name', $subject);
             })
                 ->where('type', 'enem')
@@ -265,7 +265,7 @@ class SimulationCreationService
                 ->get();
 
             // 2. Pre-generated AI questions from DB
-            $aiQuestions = Question::whereHas('subjects', function ($q) use ($subject) {
+            $aiQuestions = Question::published()->whereHas('subjects', function ($q) use ($subject) {
                 $q->where('name', $subject);
             })
                 ->where('type', 'enem')
@@ -280,7 +280,7 @@ class SimulationCreationService
             // 3. FALLBACK: If still missing, try to fill with MORE real questions before generating new ones
             $missing = $subjectTotal - $subjectQuestions->count();
             if ($missing > 0) {
-                $extraReal = Question::whereHas('subjects', function ($q) use ($subject) {
+                $extraReal = Question::published()->whereHas('subjects', function ($q) use ($subject) {
                     $q->where('name', $subject);
                 })
                     ->where('type', 'enem')
