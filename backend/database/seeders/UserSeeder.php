@@ -36,14 +36,30 @@ class UserSeeder extends Seeder
         $this->command->info("Plans found: Free({$free->id}), Basic({$basic->id}), Plus({$plus->id})");
 
         // Admin User (email_verified_at = now())
-        User::updateOrCreate(['email' => 'admin@aprenderai.com'], [
+        $admin = User::updateOrCreate(['email' => 'admin@aprenderai.com'], [
             'name' => 'Administrador',
             'password' => $password,
             'role' => 'admin',
             'email_verified_at' => now(),
+            'plan_id' => $plus->id,
+            'plan_started_at' => now(),
+            'plan_expires_at' => now()->addMonth(),
             'ai_questions_count' => 0,
             'last_reset_at' => now(),
         ]);
+
+        // Admin Subscription
+        Subscription::updateOrCreate(
+            ['user_id' => $admin->id],
+            [
+                'plan_id' => $plus->id,
+                'status' => 'active',
+                'gateway' => 'manual',
+                'gateway_id' => 'manual_plus_admin',
+                'current_period_start' => now(),
+                'current_period_end' => now()->addMonth()
+            ]
+        );
         // Gratuito User (email_verified_at = null)
         User::updateOrCreate(['email' => 'gratuito@aprenderai.com'], [
             'name' => 'Usuário Gratuito',
