@@ -21,8 +21,9 @@ class EssayResource extends JsonResource
 
         return [
             'id' => $this->id,
+            'type' => $this->type ?? 'enem',
             'essay_type' => $this->type, // Expose explicitly for denominator calculation
-            'max_score' => $this->type === 'enem' ? 1000 : 100,
+            'max_score' => $this->type === 'concurso' ? 100 : 1000,
             'theme' => $this->theme,
             'status' => $this->status, // 'draft', 'submitted', 'corrected'
             'score' => $this->score,
