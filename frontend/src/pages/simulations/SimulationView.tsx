@@ -3,7 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
 import { useUIStore } from '../../stores/uiStore';
+<<<<<<< HEAD
 // import { marked } from 'marked';
+=======
+>>>>>>> 80e2c283d7ffa406cff95903cf175126502f57c8
 
 // Local API calls just for this view's specific needs (polling/answering)
 const checkSimulationStatus = async (id: string) => {
@@ -180,9 +183,12 @@ export default function SimulationView() {
     };
 
     // UI helpers
+<<<<<<< HEAD
     // UI helpers
 
 
+=======
+>>>>>>> 80e2c283d7ffa406cff95903cf175126502f57c8
 
     const formatTime = (seconds: number) => {
         const h = Math.floor(seconds / 3600);

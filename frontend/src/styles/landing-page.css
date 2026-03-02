@@ -12,6 +12,11 @@
     background: #fff;
 }
 
+.dark .lp-wrapper {
+    color: #cbd5e1;
+    background: transparent;
+}
+
 /* ── Navbar ── */
 .lp-nav {
     position: fixed;
@@ -526,6 +531,27 @@
 .lp-plan-free {
     border: 2px solid #e2e8f0;
     background: #fff;
+}
+
+.dark .lp-plan-free {
+    border-color: #1e293b;
+    background: #0f172a;
+}
+
+.dark .lp-plan-name-free {
+    color: #f8fafc;
+}
+
+.dark .lp-plan-price-free {
+    color: #3b82f6;
+}
+
+.dark .lp-plan-tagline-free {
+    color: #94a3b8;
+}
+
+.dark .lp-plan-list-free {
+    color: #cbd5e1;
 }
 
 .lp-plan-basic {
