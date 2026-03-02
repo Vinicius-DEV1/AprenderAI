@@ -240,6 +240,12 @@ Route::prefix('v1')->group(function () {
                 Route::delete('/{imageId}/image', [AdminImportReviewController::class, 'deleteImage']);
             });
 
+            // Xavier Insights
+            Route::prefix('xavier')->group(function () {
+                Route::get('/insights', [\App\Http\Controllers\Api\Admin\XavierInsightsController::class, 'index']);
+                Route::get('/history', [\App\Http\Controllers\Api\Admin\XavierInsightsController::class, 'history']);
+            });
+
             // Admin Question Import
             Route::prefix('import')->group(function () {
                 Route::get('/', [AdminQuestionImportController::class, 'index']);
