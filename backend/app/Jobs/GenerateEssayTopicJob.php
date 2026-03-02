@@ -67,7 +67,7 @@ class GenerateEssayTopicJob implements ShouldQueue
             // Existing statuses: pending, in_progress, evaluating, completed, error.
             // "in_progress" is fine for now, UI handles "Gerando schema...".
 
-            $topic = $aiService->generateEssayTopic($essay->type);
+            $topic = $aiService->generateEssayTopic($essay->type, $essay->user_id);
 
             $essay->update([
                 'title' => $topic['title'],
