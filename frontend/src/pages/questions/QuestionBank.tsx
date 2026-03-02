@@ -451,6 +451,15 @@ export default function QuestionBank() {
                             placeholder={loadingTopics ? 'Carregando...' : (!filters.subject ? 'Selecione uma matéria...' : 'Todos')}
                             onChange={updateFilter}
                         />
+                        <button type="button" className="qb-filter-toggle" onClick={() => setMoreFilters(!moreFilters)}>
+                            <svg className={`w-4 h-4 transition-transform ${moreFilters ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                            <span>{moreFilters ? 'Menos filtros' : 'Mais filtros'}</span>
+                        </button>
+                    </div>
+
+                    <div className="qb-filter-row">
                         <div className="qb-filter-item flex-[2_1_250px]">
                             <label>Busca</label>
                             <input type="text" name="keyword" value={filters.keyword} onChange={onFilterChange} placeholder="Palavras-chave..." />
@@ -469,12 +478,6 @@ export default function QuestionBank() {
                                 <span className="text-sm font-bold text-slate-600 select-none">Mostrar Discursivas</span>
                             </label>
                         </div>
-                        <button type="button" className="qb-filter-toggle" onClick={() => setMoreFilters(!moreFilters)}>
-                            <svg className={`w-4 h-4 transition-transform ${moreFilters ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                            <span>{moreFilters ? 'Menos filtros' : 'Mais filtros'}</span>
-                        </button>
                     </div>
 
                     {/* Row 2: Advanced filters (toggled) */}
