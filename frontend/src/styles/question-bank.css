@@ -396,25 +396,34 @@
 
 .qb-filter-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 16px;
     align-items: end;
     width: 100%;
 }
 
-/* Specific item widths for better flow */
+/* Specific item grid spans */
 .qb-filter-master {
     grid-column: span 1;
-    min-width: 120px;
 }
 
 .qb-filter-item[class*="flex-[2"] {
-    grid-column: span 2;
+    grid-column: span 3;
+    /* Search takes more space */
 }
 
-@media (max-width: 1200px) {
+/* Checkbox specific span to align next to Search */
+.qb-filter-checkbox {
+    grid-column: span 1;
+}
+
+@media (max-width: 1024px) {
+    .qb-filter-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
     .qb-filter-item[class*="flex-[2"] {
-        grid-column: span 1;
+        grid-column: span 2;
     }
 }
 
@@ -476,8 +485,13 @@
     line-height: 1;
 }
 
-.qb-filter-checkbox label:hover input[type="checkbox"]:not(:checked) {
-    border-color: #94a3b8;
+.qb-filter-checkbox span {
+    color: #475569;
+    font-weight: 700;
+}
+
+.dark .qb-filter-checkbox span {
+    color: #cbd5e1;
 }
 
 .qb-filter-master {
