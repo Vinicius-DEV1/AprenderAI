@@ -125,19 +125,44 @@ class QuestionController extends Controller
     public function answer(Request $request, Question $question)
     {
         $request->validate([
-            'selected_answer' => 'required|string|size:1|in:A,B,C,D,E',
+            'selected_answer' => 'required_without:respostas_discursivas|string|size:1|in:A,B,C,D,E',
+            'respostas_discursivas' => 'array',
+            'time_spent_seconds' => 'nullable|integer|min:0',
         ]);
 
         $feedback = app(\App\Services\QuestionService::class)->answerQuestion(
             $request->user()->id,
             $question,
-            $request->selected_answer
+            $request->selected_answer ?? 'DISCURSIVA'
+        );
+
+        // Record atomic analytics log
+        app(\App\Services\AnalyticsService::class)->logAnswer(
+            $question,
+            $request->user()->id,
+            $feedback['correct'],
+            $request->time_spent_seconds,
+            $request
         );
 
         // Consome a cota diária do usuário
         $request->user()->incrementDailyQuestionUsage();
 
         return response()->json($feedback);
+    }
+
+    /**
+     * Log a question view (Analytics)
+     */
+    public function logView(Request $request, Question $question)
+    {
+        app(\App\Services\AnalyticsService::class)->logView(
+            $question,
+            $request->user()->id,
+            $request
+        );
+
+        return response()->json(['status' => 'logged']);
     }
 
     /**
@@ -273,21 +298,49 @@ class QuestionController extends Controller
             ->get(['role', 'message'])
             ->toArray();
 
-        // 5. Dispatch AI background job
+        // 5. Stream response directly
         $lastAnswer = \App\Models\UserQuestionAnswer::where('user_id', $user->id)
             ->where('question_id', $question->id)
             ->orderByDesc('answered_at')
             ->value('selected_answer') ?? 'Não respondida';
 
-        RespondToStandaloneChatJob::dispatch(
-            $question,
-            $lastAnswer,
-            $request->message,
-            $history,
-            $user->id
-        );
+        $aiService = app(\App\Services\AI\AIService::class);
 
-        return response()->json(['status' => 'queued']);
+        return response()->stream(function () use ($aiService, $question, $lastAnswer, $request, $history, $user) {
+            try {
+                $stream = $aiService->streamChatAboutStandaloneQuestion(
+                    $question,
+                    $lastAnswer,
+                    $request->message,
+                    $history,
+                    $user->id
+                );
+
+                $fullResponse = '';
+                foreach ($stream as $chunk) {
+                    $fullResponse .= $chunk;
+                    echo $chunk;
+                    ob_flush();
+                    flush();
+                }
+
+                QuestionInteraction::create([
+                    'simulation_id' => null,
+                    'question_id' => $question->id,
+                    'user_id' => $user->id,
+                    'role' => 'assistant',
+                    'message' => $fullResponse ?: 'Desculpe, ocorreu um erro na IA.',
+                ]);
+            } catch (\Exception $e) {
+                // If streaming crashes mid-way, just stop and log
+                \Illuminate\Support\Facades\Log::error("Chat streaming aborted: " . $e->getMessage());
+            }
+        }, 200, [
+            'Content-Type' => 'text/plain; charset=utf-8',
+            'Cache-Control' => 'no-cache',
+            'Connection' => 'keep-alive',
+            'X-Accel-Buffering' => 'no',
+        ]);
     }
 
     /**

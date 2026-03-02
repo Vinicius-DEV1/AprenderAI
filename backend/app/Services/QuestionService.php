@@ -63,9 +63,11 @@ class QuestionService
 
             // ── Busca por palavra-chave no enunciado ──
             // Usa LIKE para encontrar trechos no texto da questão.
-            ->when($request->filled('keyword'), fn($q) =>
-        $q->where('statement', 'like', '%' . $request->keyword . '%')
-        )
+            ->when(
+                $request->filled('keyword'),
+                fn($q) =>
+                $q->where('statement', 'like', '%' . $request->keyword . '%')
+            )
 
             // ── Filtro de Tipo (enem | concurso) ──
             ->filterByType($request->type)
@@ -77,43 +79,53 @@ class QuestionService
             ->filterByTopic($request->topic)
 
             // ── Filtro de Ano ──
-            ->when($request->filled('year'), fn($q) =>
-        $q->where('year', $request->year)
-        )
+            ->when(
+                $request->filled('year'),
+                fn($q) =>
+                $q->where('year', $request->year)
+            )
 
             // ── Filtro de Dificuldade ──
-            ->when($request->filled('difficulty'), fn($q) =>
-        $q->where('difficulty', $request->difficulty)
-        )
+            ->when(
+                $request->filled('difficulty'),
+                fn($q) =>
+                $q->where('difficulty', $request->difficulty)
+            )
 
             // ── Filtros exclusivos de Concurso ──
             // Estes campos só existem em questões de concurso.
             // São ignorados automaticamente se type=enem (pela condição &&).
             // Banca examinadora (ex: CESPE, FCC, FGV)
-            ->when($request->filled('organization') && $request->type !== 'enem', fn($q) =>
-        $q->where('organization', $request->organization)
-        )
+            ->when(
+                $request->filled('organization') && $request->type !== 'enem',
+                fn($q) =>
+                $q->where('organization', $request->organization)
+            )
             // Órgão público (ex: TRF, STF, INSS)
-            ->when($request->filled('institution') && $request->type !== 'enem', fn($q) =>
-        $q->where('institution', $request->institution)
-        )
+            ->when(
+                $request->filled('institution') && $request->type !== 'enem',
+                fn($q) =>
+                $q->where('institution', $request->institution)
+            )
             // Cargo (ex: Analista Judiciário, Técnico)
-            ->when($request->filled('role') && $request->type !== 'enem', fn($q) =>
-        $q->where('role', $request->role)
-        )
+            ->when(
+                $request->filled('role') && $request->type !== 'enem',
+                fn($q) =>
+                $q->where('role', $request->role)
+            )
 
             // ── Filtro de Status (requer aluno logado) ──
             // Permite filtrar por questões que o aluno já respondeu,
             // acertou, errou ou ainda não tentou.
             ->when($request->filled('status') && $userId, function ($q) use ($request, $userId) {
-            match ($request->status) {
+                match ($request->status) {
                     'unanswered' => $q->whereDoesntHave('userAnswers', fn($r) => $r->where('user_id', $userId)),
                     'correct' => $q->whereHas('userAnswers', fn($r) => $r->where('user_id', $userId)->where('is_correct', true)),
                     'incorrect' => $q->whereHas('userAnswers', fn($r) => $r->where('user_id', $userId)->where('is_correct', false)),
                     'answered' => $q->whereHas('userAnswers', fn($r) => $r->where('user_id', $userId)),
                     default => null,
                 };
-        })
+            })
 
             // ── Ordenação padrão: mais recentes primeiro ──
             ->orderByDesc('id');
@@ -144,34 +156,34 @@ class QuestionService
             'subjects' => \App\Models\Subject::orderBy('name')->select('id', 'name')->get(),
 
             // Lista de temas (ENEM) - Buscados da tabela Topics via relacionamento N:N
-            'themes' => \App\Models\Topic::whereHas('questions', function($q) {
+            'themes' => \App\Models\Topic::whereHas('questions', function ($q) {
                 $q->where('type', 'enem');
             })->orderBy('name')->select('id', 'name')->get(),
 
             // Lista de assuntos (Concurso) - Buscados da tabela Topics via relacionamento N:N
-            'topics' => \App\Models\Topic::whereHas('questions', function($q) {
+            'topics' => \App\Models\Topic::whereHas('questions', function ($q) {
                 $q->where('type', 'concurso');
             })->orderBy('name')->select('id', 'name')->get(),
 
             // Lista de anos disponíveis (ordem decrescente: mais recente primeiro)
             'years' => Question::select('year')
-            ->whereNotNull('year')
-            ->distinct()->orderByDesc('year')->pluck('year'),
+                ->whereNotNull('year')
+                ->distinct()->orderByDesc('year')->pluck('year'),
 
             // Lista de bancas examinadoras (só existem em questões de concurso)
             'organizations' => Question::select('organization')
-            ->whereNotNull('organization')->where('organization', '!=', '')
-            ->distinct()->orderBy('organization')->pluck('organization'),
+                ->whereNotNull('organization')->where('organization', '!=', '')
+                ->distinct()->orderBy('organization')->pluck('organization'),
 
             // Lista de órgãos públicos
             'institutions' => Question::select('institution')
-            ->whereNotNull('institution')->where('institution', '!=', '')
-            ->distinct()->orderBy('institution')->pluck('institution'),
+                ->whereNotNull('institution')->where('institution', '!=', '')
+                ->distinct()->orderBy('institution')->pluck('institution'),
 
             // Lista de cargos
             'roles' => Question::select('role')
-            ->whereNotNull('role')->where('role', '!=', '')
-            ->distinct()->orderBy('role')->pluck('role'),
+                ->whereNotNull('role')->where('role', '!=', '')
+                ->distinct()->orderBy('role')->pluck('role'),
         ];
     }
 
@@ -202,6 +214,12 @@ class QuestionService
             'is_correct' => $isCorrect,
             'answered_at' => now(),
         ]);
+
+        // Invalida cache de estatísticas do aluno para exibir dados atualizados no dashboard
+        \Illuminate\Support\Facades\Cache::forget("stats_overview_{$userId}");
+        \Illuminate\Support\Facades\Cache::forget("stats_subject_{$userId}");
+        \Illuminate\Support\Facades\Cache::forget("stats_temporal_{$userId}_30");
+        \Illuminate\Support\Facades\Cache::forget("stats_difficulty_{$userId}");
 
         // Retorna os dados para exibição de feedback na interface
         return [

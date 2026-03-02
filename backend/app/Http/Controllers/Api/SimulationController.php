@@ -223,12 +223,25 @@ class SimulationController extends Controller
             return response()->json(['error' => 'Question not found in this simulation'], 404);
         }
 
+        $isCorrect = $answer->question->isCorrect($validated['answer'] ?? '');
         $answer->update([
             'user_answer' => $validated['answer'] ?? null,
             'marked_for_review' => $validated['marked_for_review'] ?? $answer->marked_for_review,
             'time_spent' => $validated['time_spent'] ?? 0,
-            'is_correct' => $answer->question->isCorrect($validated['answer'] ?? ''),
+            'is_correct' => $isCorrect,
         ]);
+
+        // Record atomic analytics log (Simulation Context)
+        if ($validated['answer']) {
+            app(\App\Services\AnalyticsService::class)->logAnswer(
+                $answer->question,
+                $request->user()->id,
+                $isCorrect,
+                $validated['time_spent'] ?? 0,
+                $request,
+                'simulado'
+            );
+        }
 
         return response()->json(['success' => true]);
     }
@@ -328,15 +341,41 @@ class SimulationController extends Controller
             ->get(['role', 'message'])
             ->toArray();
 
-        // 5. Dispatch job
-        RespondToChatJob::dispatch(
-            $simulation,
-            $question,
-            $request->message,
-            $history,
-            $user->id
-        );
+        // 5. Stream response directly
+        $aiService = app(\App\Services\AI\AIService::class);
 
-        return response()->json(['status' => 'queued']);
+        return response()->stream(function () use ($aiService, $question, $simulation, $request, $history, $user) {
+            try {
+                $stream = $aiService->streamChatAboutQuestion(
+                    $question,
+                    $simulation,
+                    $request->message,
+                    $history
+                );
+
+                $fullResponse = '';
+                foreach ($stream as $chunk) {
+                    $fullResponse .= $chunk;
+                    echo $chunk;
+                    ob_flush();
+                    flush();
+                }
+
+                QuestionInteraction::create([
+                    'simulation_id' => $simulation->id,
+                    'question_id' => $question->id,
+                    'user_id' => $user->id,
+                    'role' => 'assistant',
+                    'message' => $fullResponse ?: 'Desculpe, ocorreu um erro na IA.',
+                ]);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Simulation Chat streaming aborted: " . $e->getMessage());
+            }
+        }, 200, [
+            'Content-Type' => 'text/plain; charset=utf-8',
+            'Cache-Control' => 'no-cache',
+            'Connection' => 'keep-alive',
+            'X-Accel-Buffering' => 'no',
+        ]);
     }
 }

@@ -21,9 +21,17 @@ class AITelemetryService
             $calculator = app(PriceCalculatorService::class);
             $cost = $calculator->calculateCost($apiKey->provider, $modelName, $inputTokens, $outputTokens);
 
+            // Force casting to avoid Eloquent silently dropping it on nullable fields
+            $safeUserId = $userId !== null ? (int) $userId : null;
+            $safeQuestionId = $questionId !== null ? (int) $questionId : null;
+
+            if ($safeUserId === null) {
+                Log::warning("AITelemetryService: logRequest called without user_id.", ['provider' => $apiKey->provider, 'prompt' => substr($prompt, 0, 50)]);
+            }
+
             AiRequestLog::create([
-                'user_id' => $userId,
-                'question_id' => $questionId,
+                'user_id' => $safeUserId,
+                'question_id' => $safeQuestionId,
                 'api_key_id' => $apiKey->id,
                 'api_key_name' => substr($apiKey->key, -4), // Optional hint
                 'provider' => $apiKey->provider,
@@ -37,7 +45,7 @@ class AITelemetryService
                 'estimated_cost' => $cost,
             ]);
         } catch (\Exception $e) {
-            Log::warning("Telemetry Error: " . $e->getMessage());
+            Log::warning("Telemetry Error: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
         }
     }
 
