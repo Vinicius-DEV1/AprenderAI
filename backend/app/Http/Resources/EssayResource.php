@@ -19,12 +19,20 @@ class EssayResource extends JsonResource
             ? json_decode($this->feedback_json, true)
             : ($this->feedback_json ?? []);
 
+        if (is_null($this->type)) {
+            \Log::warning("Essay #{$this->id} (User #{$this->user_id}) has NULL type. Falling back to 'enem'.");
+        }
+
+        if (is_null($this->title)) {
+            \Log::warning("Essay #{$this->id} (User #{$this->user_id}) has NULL title (theme).");
+        }
+
         return [
             'id' => $this->id,
             'type' => $this->type ?? 'enem',
             'essay_type' => $this->type, // Expose explicitly for denominator calculation
             'max_score' => $this->type === 'concurso' ? 100 : 1000,
-            'theme' => $this->theme,
+            'theme' => $this->title ?? $this->theme ?? $this->topic ?? null,
             'status' => $this->status, // 'draft', 'submitted', 'corrected'
             'score' => $this->score,
             'content' => $this->content,
@@ -33,6 +41,7 @@ class EssayResource extends JsonResource
             'ocr_error' => $this->ocr_error,
             'feedback' => $this->feedback, // Kept for legacy compatibility if needed somewhere
             'feedback_json' => $feedbackJson, // Fix for blank tabs (Bug #1)
+            'ai_suggestions' => is_string($this->ai_suggestions) ? json_decode($this->ai_suggestions, true) : ($this->ai_suggestions ?? []),
             'competency_details' => $this->resolveCompetencyDetails($feedbackJson), // Premium C1-C5
             'off_topic' => $this->off_topic ?? false,
             'off_topic_reason' => $this->off_topic_reason ?? null,

@@ -15,11 +15,19 @@ class EssayController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
+        $user->loadMissing('plan');
+
+        // Orphan plan protection
+        if ($user->plan_id && !$user->plan) {
+            \Log::warning("User #{$user->id} has orphan plan_id #{$user->plan_id}. Plan record not found.");
+        }
+
         $essays = $user->essays()->latest()->paginate(10);
 
-        // Chart Datasets
-        $chartEssays = Essay::where('user_id', $user->id)
-            ->where('status', 'completed')
+        // Chart Datasets - Improved Filtering as per request
+        // Using statuses: completed, corrigida, finished
+        $chartEssays = $user->essays()
+            ->whereNotNull('score')
             ->orderBy('created_at', 'desc')
             ->take(24)
             ->get()
@@ -37,10 +45,22 @@ class EssayController extends Controller
         $hasEnem = $chartEssays->where('type', 'enem')->isNotEmpty();
         $hasConcursos = $chartEssays->where('type', 'concurso')->isNotEmpty();
 
-        // Empty state fallback - just to make sure graphs show correctly when there's only 1 type
-        if (!$hasEnem && $hasConcursos) {
-            $hasEnem = false;
-        }
+        // Monthly Limit Calculation (Direct from DB as requested)
+        $monthlyUsed = Essay::where('user_id', $user->id)
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->count();
+
+        $limit = $user->essayQuotaLimit();
+        $used = $user->monthlyEssayUsed();
+
+        \Log::info('[EssayController::index] quota', [
+            'user_id' => $user->id,
+            'plan_id' => $user->plan_id,
+            'plan_slug' => $user->plan?->slug,
+            'limit' => $limit,
+            'used' => $used,
+        ]);
 
         return response()->json([
             'data' => EssayResource::collection($essays),
@@ -52,13 +72,34 @@ class EssayController extends Controller
                     'enemSeries' => $enemSeries,
                     'concursosSeries' => $concursosSeries,
                     'hasEnem' => $hasEnem,
-                    'hasConcursos' => $hasConcursos
+                    'hasConcursos' => $hasConcursos,
+                    'enemStats' => $hasEnem ? [
+                        'last' => $chartEssays->where('type', 'enem')->last()?->score ?? 0,
+                        'prev' => $chartEssays->where('type', 'enem')->slice(-2, 1)->first()?->score ?? 0,
+                        'mean' => round($chartEssays->where('type', 'enem')->avg('score') ?? 0),
+                        'best' => $chartEssays->where('type', 'enem')->max('score') ?? 0,
+                        'total' => $user->essays()->where('type', 'enem')->whereIn('status', ['completed', 'corrigida', 'finished'])->count(),
+                    ] : null,
+                    'concursoStats' => $hasConcursos ? [
+                        'last' => $chartEssays->where('type', 'concurso')->last()?->score ?? 0,
+                        'prev' => $chartEssays->where('type', 'concurso')->slice(-2, 1)->first()?->score ?? 0,
+                        'mean' => round($chartEssays->where('type', 'concurso')->avg('score') ?? 0),
+                        'best' => $chartEssays->where('type', 'concurso')->max('score') ?? 0,
+                        'total' => $user->essays()->where('type', 'concurso')->whereIn('status', ['completed', 'corrigida', 'finished'])->count(),
+                    ] : null,
                 ],
+                // ── Single Source of Truth ────────────────────────────────────
+                // Keys: total / used / remaining / can_create / plan_name / plan_slug
+                // EssayWrite (Wizard) reads: essayLimit.remaining + essayLimit.total
+                // EssayList (Dashboard) reads: essayLimit.total + essayLimit.used
                 'essayLimit' => [
-                    'can_create' => $user->canCreateEssay(),
-                    'total' => $user->essayQuotaLimit(),
-                    'remaining' => max(0, $user->essayQuotaLimit() - $user->monthlyEssayUsed()),
-                ]
+                    'total' => $limit,
+                    'used' => $used,
+                    'remaining' => max(0, $limit - $used),
+                    'can_create' => $limit === 0 ? false : ($used < $limit),
+                    'plan_name' => optional($user->plan)->name,
+                    'plan_slug' => optional($user->plan)->slug,
+                ],
             ]
         ]);
     }
@@ -184,26 +225,65 @@ class EssayController extends Controller
             'image' => 'required_without:content|image|mimes:jpeg,png,jpg,webp|max:8192',
         ]);
 
-        if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('essays', 'public');
-            $essay->input_type = 'image';
-            $essay->image_path = $path;
-            // The job will do the OCR
-        } else {
-            $essay->input_type = 'text';
-            $essay->content = $request->input('content');
+        $user = $request->user();
+
+        try {
+            return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $essay, $user) {
+                // Check if can consume (avoid race conditions)
+                if (!$user->canCreateEssay()) {
+                    return response()->json([
+                        'code' => 'QUOTA_EXCEEDED',
+                        'message' => 'Você atingiu o limite mensal de redações.'
+                    ], 403);
+                }
+
+                if ($request->hasFile('image')) {
+                    $path = $request->file('image')->store('essays', 'public');
+                    $essay->input_type = 'image';
+                    $essay->image_path = $path;
+                } else {
+                    $essay->input_type = 'text';
+                    $essay->content = $request->input('content');
+                }
+
+                // Save theme if provided from UI
+                if ($request->filled('theme')) {
+                    $essay->title = $request->input('theme');
+                }
+
+                $essay->status = 'evaluating';
+                $essay->submitted_at = now();
+                $essay->save();
+
+                // Record usage for limit calculations upon successful submission
+                $user->incrementEssayUsage();
+
+                \App\Jobs\EvaluateEssayJob::dispatch($essay);
+
+                $updatedUsage = app(\App\Services\QuotaService::class)->getUsage($user, 'essays');
+                $limit = $updatedUsage['limit'] ?? $user->essayQuotaLimit();
+                $used = $updatedUsage['used'] ?? 0;
+
+                return (new EssayResource($essay))->additional([
+                    'meta' => [
+                        'monthly_limit_total' => $limit,
+                        'monthly_used' => $used,
+                        'monthly_remaining' => max(0, ($limit ?? 0) - $used),
+                    ]
+                ]);
+            });
+        } catch (\Throwable $e) {
+            Log::error('[EssayController::submit] Erro ao enviar redação', [
+                'user_id' => $user->id,
+                'essay_id' => $essay->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'code' => 'SUBMIT_FAILED',
+                'message' => 'Falha interna ao enviar sua redação. Tente novamente.',
+            ], 500);
         }
-
-        $essay->status = 'evaluating';
-        $essay->submitted_at = now();
-        $essay->save();
-
-        // Record usage for limit calculations upon successful submission
-        $request->user()->incrementEssayUsage();
-
-        \App\Jobs\EvaluateEssayJob::dispatch($essay);
-
-        return new EssayResource($essay);
     }
 
     public function retryEvaluation(Request $request, Essay $essay)

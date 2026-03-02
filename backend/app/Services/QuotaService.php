@@ -128,7 +128,12 @@ class QuotaService
 
         // Se não tem ciclo, mas tem um plano, criamos um ciclo sob demanda para o mês atual
         if (!$user->plan) {
+            Log::info("QuotaService: No active cycle and no plan loaded for User #{$user->id}. returning NULL.");
             return null;
+        }
+
+        if ($user->plan->essays_limit === 0 && ($user->essay_credits ?? 0) === 0) {
+            Log::info("QuotaService: User #{$user->id} has plan '{$user->plan->slug}' with 0 essay limit and no credits.");
         }
 
         $limits = [
@@ -136,6 +141,8 @@ class QuotaService
             'essays' => $user->essayQuotaLimit() === 0 ? 0 : ($user->essayQuotaLimit() === 9999 ? 'unlimited' : $user->essayQuotaLimit()),
             'daily_questions' => $user->dailyQuestionQuotaLimit() === 0 ? 0 : ($user->dailyQuestionQuotaLimit() === 9999 ? 'unlimited' : $user->dailyQuestionQuotaLimit()),
         ];
+
+        Log::info("QuotaService: Creating on-demand cycle for User #{$user->id} (Plan: {$user->plan->slug}). Limits: " . json_encode($limits));
 
         return SubscriptionCycle::create([
             'user_id' => $user->id,

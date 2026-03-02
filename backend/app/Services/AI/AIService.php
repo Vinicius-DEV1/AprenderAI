@@ -455,7 +455,23 @@ class AIService
         return $this->executeWithFailover(ApiKey::CAPABILITY_ESSAYS, function ($apiKey) use ($type, $userId) {
             $provider = $apiKey->provider;
 
+            $recentTitles = [];
+            if ($userId) {
+                $recentTitles = \App\Models\Essay::where('user_id', $userId)
+                    ->whereNotNull('title')
+                    ->latest()
+                    ->take(5)
+                    ->pluck('title')
+                    ->filter()
+                    ->toArray();
+            }
+
             $rules = "";
+            if (!empty($recentTitles)) {
+                $rules .= "- MÁXIMA IMPORTÂNCIA: O usuário já fez redações sobre estes temas recentes: [" . implode(" | ", $recentTitles) . "].\n";
+                $rules .= "- É OBRIGATÓRIO escolher um tema COMPLETAMENTE DIFERENTE dos listados acima.\n\n";
+            }
+
             if ($type === 'enem') {
                 $rules .= "- Estilo ENEM: Um problema social/ambiental/cultural brasileiro.\n";
                 $rules .= "- Inclua um 'Texto Motivador 1' (max 2 frases).\n";
@@ -471,15 +487,35 @@ class AIService
                 'rules' => $rules
             ]);
 
-            $result = $this->callAI($provider, $apiKey, $prompt, $userId);
-            $apiKey->incrementUsage();
+            $maxAttempts = 2;
+            $content = null;
 
-            $content = $result['content'];
-            if (isset($content['error'])) {
-                throw new \Exception($content['error']);
-            }
-            if (!isset($content['title']) || !isset($content['description'])) {
-                throw new \Exception('Formato de resposta inválido do Xavier.');
+            for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                $result = $this->callAI($provider, $apiKey, $prompt, $userId);
+                $apiKey->incrementUsage();
+
+                $content = $result['content'];
+                if (isset($content['error'])) {
+                    throw new \Exception($content['error']);
+                }
+                if (!isset($content['title']) || !isset($content['description'])) {
+                    throw new \Exception('Formato de resposta inválido do Xavier.');
+                }
+
+                // Test Similarity against recents
+                $isTooSimilar = false;
+                foreach ($recentTitles as $recent) {
+                    similar_text(strtolower($content['title']), strtolower($recent), $percent);
+                    if ($percent > 70) {
+                        $isTooSimilar = true;
+                        \Log::info("Theme too similar ({$percent}%) to recent '{$recent}', retrying...");
+                        break;
+                    }
+                }
+
+                if (!$isTooSimilar || $attempt === $maxAttempts) {
+                    break;
+                }
             }
 
             return $content;
