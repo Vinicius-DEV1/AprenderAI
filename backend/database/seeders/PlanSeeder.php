@@ -34,7 +34,7 @@ class PlanSeeder extends Seeder
                 'discount_percentage' => 0,
                 'interval' => 'monthly',
                 'simulations_limit' => 10,
-                'essays_limit' => 2,
+                'essays_limit' => 5,
                 'features' => [
                     'detailed_correction',
                     'improvement_points',
@@ -72,7 +72,7 @@ class PlanSeeder extends Seeder
                 'discount_percentage' => 20,
                 'interval' => 'yearly',
                 'simulations_limit' => 10,
-                'essays_limit' => 2,
+                'essays_limit' => 5,
                 'features' => [
                     'detailed_correction',
                     'improvement_points',

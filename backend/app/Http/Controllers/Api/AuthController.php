@@ -95,8 +95,9 @@ class AuthController extends Controller
 
     public function user(Request $request)
     {
+        $user = $request->user()->loadMissing(['plan', 'stats']);
         return response()->json([
-            'user' => $request->user()->load('plan')
+            'user' => (new \App\Http\Resources\UserResource($user))->resolve()
         ]);
     }
 

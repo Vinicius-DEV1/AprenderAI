@@ -35,12 +35,6 @@ export default function WelcomePlans() {
 
     return (
         <div className="lp-wrapper bg-white min-h-screen">
-            {/* Header simplificado para conversão */}
-            <nav className="lp-nav relative">
-                <div className="lp-nav-inner justify-center">
-                    <div className="lp-logo">Aprender<span>AI</span></div>
-                </div>
-            </nav>
 
             <section className="lp-plans py-16">
                 <div style={{ maxWidth: '980px', margin: '0 auto' }}>
@@ -113,7 +107,7 @@ export default function WelcomePlans() {
                                     <li><span className="lp-check-paid">✓</span> Redação com Nota por Competência</li>
                                     <li><span className="lp-check-paid">✓</span> Radar de concursos</li>
                                     <li><span className="lp-check-paid">✓</span> 10 provas/mês</li>
-                                    <li><span className="lp-check-paid">✓</span> +200 mil questões</li>
+                                    <li><span className="lp-check-paid">✓</span> +200 mil questões para praticar</li>
                                     <li><span className="lp-check-paid">✓</span> Acesso ilimitado às questões</li>
                                 </ul>
                             </div>
@@ -155,7 +149,7 @@ export default function WelcomePlans() {
                                     <li><span className="lp-check-paid">✓</span> <strong>15 redações/mês</strong></li>
                                     <li><span className="lp-check-paid">✓</span> Xavier Tutor Ilimitado</li>
                                     <li><span className="lp-check-paid">✓</span> Tira-Dúvidas Instantâneo AI</li>
-                                    <li><span className="lp-check-paid">✓</span> +200 mil questões</li>
+                                    <li><span className="lp-check-paid">✓</span> +200 mil questões para praticar</li>
                                     <li><span className="lp-check-paid">✓</span> Acesso ilimitado às questões</li>
                                 </ul>
                             </div>
@@ -188,6 +182,7 @@ export default function WelcomePlans() {
                                     <li><span className="lp-check-free">✓</span> Estatísticas simples</li>
                                     <li><span className="lp-check-free">✓</span> Acesso ilimitado às questões</li>
                                     <li><span className="lp-check-free">✓</span> Gabarito Comentado</li>
+                                    <li><span className="lp-check-free">✓</span> 30 questões todos os dias para praticar</li>
                                     <li><span className="lp-check-free">✓</span> Modo noturno</li>
                                 </ul>
                             </div>
@@ -201,11 +196,6 @@ export default function WelcomePlans() {
                         </div>
                     </div>
 
-                    <div className="text-center mt-12">
-                        <p className="text-gray-500 text-sm">
-                            Precisa de ajuda? <a href="#" className="text-blue-600 font-bold underline">Fale com o suporte</a>
-                        </p>
-                    </div>
                 </div>
             </section>
         </div>
