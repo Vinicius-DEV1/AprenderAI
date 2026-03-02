@@ -200,7 +200,7 @@ export default function HomePage() {
                                 <li><span className="lp-check-free">✓</span> 5 provas/mês</li>
                                 <li><span className="lp-check-free">✓</span> Correção básica</li>
                                 <li><span className="lp-check-free">✓</span> Estatísticas simples</li>
-                                <li><span className="lp-check-free">✓</span> Acesso ilimitado a todas as questões</li>
+                                <li><span className="lp-check-free">✓</span> 30 questões para praticar todos os dias</li>
 
                                 {/* Extras */}
                                 <li className="lp-plan-extras lp-plan-extras-free">
@@ -248,7 +248,7 @@ export default function HomePage() {
                                 <li><span className="lp-check-paid">✓</span> Redação com Nota por Competência (C1–C5)</li>
                                 <li><span className="lp-check-paid">✓</span> Radar de concursos</li>
                                 <li><span className="lp-check-paid">✓</span> 10 provas/mês</li>
-                                <li><span className="lp-check-paid">✓</span> +200 mil questões</li>
+                                <li><span className="lp-check-paid">✓</span> +200 mil questões para praticar</li>
                                 <li><span className="lp-check-paid">✓</span> Acesso ilimitado a todas as questões</li>
 
                                 {/* Extras */}
@@ -310,7 +310,7 @@ export default function HomePage() {
                                 <li><span className="lp-check-paid">✓</span> Redação com Nota por Competência (C1–C5)</li>
                                 <li><span className="lp-check-paid">✓</span> Estatísticas completas</li>
                                 <li><span className="lp-check-paid">✓</span> Radar de concursos</li>
-                                <li><span className="lp-check-paid">✓</span> +200 mil questões</li>
+                                <li><span className="lp-check-paid">✓</span> +200 mil questões para praticar</li>
                                 <li><span className="lp-check-paid">✓</span> Acesso ilimitado a todas as questões</li>
 
                                 {/* Extras */}
