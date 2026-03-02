@@ -377,6 +377,19 @@ export default function QuestionForm() {
                                                             rows={2}
                                                             required={tipoQuestao === 'Objetiva' || item.val !== ''}
                                                         />
+                                                        {/<img|!\[.*?\]\(.*?\)/i.test(item.val) && (
+                                                            <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg shadow-sm">
+                                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Prévia da Imagem Mapeada</span>
+                                                                <div className="prose max-w-none text-gray-800 text-sm">
+                                                                    <ReactMarkdown
+                                                                        components={{
+                                                                            img: ({ node, ...props }) => <img {...props} className="max-h-32 h-auto rounded-md shadow-sm" />
+                                                                        }}>
+                                                                        {item.val}
+                                                                    </ReactMarkdown>
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                         {getError(`alternatives.${item.letter}`) && <span className="text-red-500 text-xs">{getError(`alternatives.${item.letter}`)}</span>}
                                                     </div>
                                                 </div>
