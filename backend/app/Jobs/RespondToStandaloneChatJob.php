@@ -19,14 +19,18 @@ class RespondToStandaloneChatJob implements ShouldQueue
     public int $tries = 2;
     public int $timeout = 120;
 
-    public function __construct(protected
-        Question $question, protected
-        string $userAnswer, protected
-        string $message, protected
-        array $history, protected
+    public function __construct(
+        protected
+        Question $question,
+        protected
+        string $userAnswer,
+        protected
+        string $message,
+        protected
+        array $history,
+        protected
         int $userId
-        )
-    {
+    ) {
     }
 
     /**
@@ -44,7 +48,8 @@ class RespondToStandaloneChatJob implements ShouldQueue
                 $this->question,
                 $this->userAnswer,
                 $this->message,
-                $this->history
+                $this->history,
+                $this->userId
             );
 
             // Save AI response to the interaction table
@@ -56,8 +61,7 @@ class RespondToStandaloneChatJob implements ShouldQueue
                 'message' => $response ?? 'Desculpe, não consegui processar sua dúvida.',
             ]);
 
-        }
-        catch (\Throwable $e) {
+        } catch (\Throwable $e) {
             // 1. Log to Laravel Log for debugging
             Log::error("RespondToStandaloneChatJob Critical Failure", [
                 'question_id' => $this->question->id,
@@ -78,8 +82,7 @@ class RespondToStandaloneChatJob implements ShouldQueue
                     'message' => "Job Failure: " . substr($e->getMessage(), 0, 200),
                     'payload' => ['trace' => substr($e->getTraceAsString(), 0, 1000)]
                 ]);
-            }
-            catch (\Exception $logEx) {
+            } catch (\Exception $logEx) {
                 Log::error("Failed to persist SRE log: " . $logEx->getMessage());
             }
 

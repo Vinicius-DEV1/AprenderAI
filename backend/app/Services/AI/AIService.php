@@ -453,13 +453,13 @@ class AIService
             'data' => json_encode($questionsAndAnswers)
         ]);
     }
-    public function generateEssayTopic(string $type): array
+    public function generateEssayTopic(string $type, ?int $userId = null): array
     {
         if (!$this->hasActiveKey(ApiKey::CAPABILITY_ESSAYS)) {
             throw new \Exception('Avaliador Xavier indisponível no momento (Key)');
         }
 
-        return $this->executeWithFailover(ApiKey::CAPABILITY_ESSAYS, function ($apiKey) use ($type) {
+        return $this->executeWithFailover(ApiKey::CAPABILITY_ESSAYS, function ($apiKey) use ($type, $userId) {
             $provider = $apiKey->provider;
 
             $rules = "";
@@ -478,7 +478,7 @@ class AIService
                 'rules' => $rules
             ]);
 
-            $result = $this->callAI($provider, $apiKey, $prompt);
+            $result = $this->callAI($provider, $apiKey, $prompt, $userId);
             $apiKey->incrementUsage();
 
             $content = $result['content'];
@@ -493,17 +493,17 @@ class AIService
         });
     }
 
-    public function detectOffTopic(string $title, string $content, string $type): array
+    public function detectOffTopic(string $title, string $content, string $type, ?int $userId = null): array
     {
         if (!$this->hasActiveKey(ApiKey::CAPABILITY_ESSAYS))
             return ['off_topic' => false, 'reason' => 'API não disponível'];
 
         try {
-            return $this->executeWithFailover(ApiKey::CAPABILITY_ESSAYS, function ($apiKey) use ($title, $content, $type) {
+            return $this->executeWithFailover(ApiKey::CAPABILITY_ESSAYS, function ($apiKey) use ($title, $content, $type, $userId) {
                 $provider = $apiKey->provider;
                 $prompt = $this->buildOffTopicPrompt($title, $content, $type);
 
-                $result = $this->callAI($provider, $apiKey, $prompt);
+                $result = $this->callAI($provider, $apiKey, $prompt, $userId);
                 $apiKey->incrementUsage();
 
                 $responseContent = $result['content'];
@@ -520,17 +520,17 @@ class AIService
         }
     }
 
-    public function evaluateEssay(string $title, string $content, string $type): ?array
+    public function evaluateEssay(string $title, string $content, string $type, ?int $userId = null): ?array
     {
         if (!$this->hasActiveKey(ApiKey::CAPABILITY_ESSAYS))
             return null;
 
         try {
-            return $this->executeWithFailover(ApiKey::CAPABILITY_ESSAYS, function ($apiKey) use ($title, $content, $type) {
+            return $this->executeWithFailover(ApiKey::CAPABILITY_ESSAYS, function ($apiKey) use ($title, $content, $type, $userId) {
                 $provider = $apiKey->provider;
                 $prompt = $this->buildXavierEvaluationPrompt($title, $content, $type);
 
-                $result = $this->callAI($provider, $apiKey, $prompt);
+                $result = $this->callAI($provider, $apiKey, $prompt, $userId);
                 $apiKey->incrementUsage();
 
                 $responseContent = $result['content'];
@@ -716,14 +716,14 @@ class AIService
      * @param array $history
      * @return string|null
      */
-    public function chatAboutStandaloneQuestion(Question $question, string $userAnswer, string $userMessage, array $history): ?string
+    public function chatAboutStandaloneQuestion(Question $question, string $userAnswer, string $userMessage, array $history, ?int $userId = null): ?string
     {
         if (!$this->hasActiveKey(ApiKey::CAPABILITY_QUESTIONS)) {
             return "Desculpe, o sistema de IA está offline no momento.";
         }
 
         try {
-            return $this->executeWithFailover(ApiKey::CAPABILITY_QUESTIONS, function ($apiKey) use ($question, $userAnswer, $userMessage, $history) {
+            return $this->executeWithFailover(ApiKey::CAPABILITY_QUESTIONS, function ($apiKey) use ($question, $userAnswer, $userMessage, $history, $userId) {
                 $provider = $apiKey->provider;
 
                 $questionText = $question->statement;
@@ -737,7 +737,7 @@ class AIService
                     'user_answer' => $userAnswer,
                     'chat_history' => $this->formatChatHistory($history),
                     'user_message' => $userMessage
-                ]));
+                ]), $userId);
                 $apiKey->incrementUsage();
 
                 $content = $result['content'];
@@ -757,7 +757,7 @@ class AIService
         }
     }
 
-    public function streamChatAboutStandaloneQuestion(Question $question, string $userAnswer, string $userMessage, array $history): \Generator
+    public function streamChatAboutStandaloneQuestion(Question $question, string $userAnswer, string $userMessage, array $history, ?int $userId = null): \Generator
     {
         if (!$this->hasActiveKey(ApiKey::CAPABILITY_QUESTIONS)) {
             yield "Desculpe, o sistema de IA está offline no momento.";
@@ -783,7 +783,7 @@ class AIService
         foreach ($keys as $apiKey) {
             try {
                 $provider = $apiKey->provider;
-                $stream = $this->callAIStream($provider, $apiKey, $prompt);
+                $stream = $this->callAIStream($provider, $apiKey, $prompt, $userId);
 
                 yield from $stream;
 

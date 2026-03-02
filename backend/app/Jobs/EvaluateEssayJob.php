@@ -53,7 +53,8 @@ class EvaluateEssayJob implements ShouldQueue
             $offTopicResult = $aiService->detectOffTopic(
                 $this->essay->title,
                 $evalContent,
-                $this->essay->type
+                $this->essay->type,
+                $this->essay->user_id
             );
 
             if ($offTopicResult['off_topic'] === true) {
@@ -84,7 +85,8 @@ class EvaluateEssayJob implements ShouldQueue
             $result = $aiService->evaluateEssay(
                 $this->essay->title,
                 $evalContent,
-                $this->essay->type
+                $this->essay->type,
+                $this->essay->user_id
             );
 
             if ($result && isset($result['response'])) {
