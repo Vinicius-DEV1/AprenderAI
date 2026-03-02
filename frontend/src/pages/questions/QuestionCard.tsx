@@ -46,6 +46,18 @@ export default function QuestionCard({ question: q }: { question: Question }) {
     const [difficultyReasoning, setDifficultyReasoning] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
+    // NEW FOR ANALYTICS
+    const viewingLoggedRef = useRef(false);
+    const startTimeRef = useRef<number>(Date.now());
+
+    useEffect(() => {
+        if (!viewingLoggedRef.current) {
+            viewingLoggedRef.current = true;
+            // Send view event
+            api.post(`/api/v1/questions/${q.id}/view`).catch(() => { });
+        }
+    }, [q.id]);
+
     const [activeTab, setActiveTab] = useState<'feedback' | 'chat' | 'history' | null>(null);
 
     const [chatMessages, setChatMessages] = useState<any[]>([]);
@@ -105,6 +117,10 @@ export default function QuestionCard({ question: q }: { question: Question }) {
             if (isDiscursive) {
                 payload = { respostas_discursivas: discursiveAnswers };
             }
+
+            // Calc time spent
+            const timeSpent = Math.floor((Date.now() - startTimeRef.current) / 1000);
+            payload.time_spent_seconds = timeSpent;
 
             const res = await api.post(`/api/v1/questions/${q.id}/answer`, payload);
             const data = res.data;
@@ -173,42 +189,57 @@ export default function QuestionCard({ question: q }: { question: Question }) {
         setTimeout(scrollToBottom, 50);
 
         try {
-            const res = await api.post(`/api/v1/questions/${q.id}/chat`, { message: msg });
-            const data = res.data;
-            if (data.status === 'quota_exceeded') {
-                setChatMessages(prev => [...prev, { role: 'system', message: data.message, upgrade_url: data.upgrade_url, id: Date.now() }]);
-                setChatTyping(false);
-                return;
+            // Using standard fetch to consume the ReadableStream instead of axios buffer waiting
+            const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token'); // Get auth token dynamically
+
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/v1/questions/${q.id}/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ message: msg })
+            });
+
+            const contentType = res.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const data = await res.json();
+                if (data.status === 'quota_exceeded') {
+                    setChatMessages(prev => [...prev, { role: 'system', message: data.message, upgrade_url: data.upgrade_url, id: Date.now() }]);
+                    setChatTyping(false);
+                    return;
+                }
             }
-            // Simple polling for non-streaming
-            pollChat();
+
+            // Prepare a placeholder for the streamed reply
+            const replyId = Date.now();
+            setChatMessages(prev => [...prev, { role: 'assistant', message: '', id: replyId }]);
+
+            const reader = res.body?.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let done = false;
+
+            while (reader && !done) {
+                const { value, done: doneReading } = await reader.read();
+                done = doneReading;
+                if (value) {
+                    const chunkText = decoder.decode(value, { stream: true });
+                    setChatMessages(prev =>
+                        prev.map(m => m.id === replyId ? { ...m, message: m.message + chunkText } : m)
+                    );
+                    scrollToBottom();
+                }
+            }
+
+            setChatTyping(false);
         } catch (e) {
             setChatTyping(false);
-            setChatMessages(prev => [...prev, { role: 'assistant', message: 'Erro ao processar.', id: Date.now() }]);
+            setChatMessages(prev => [...prev, { role: 'assistant', message: 'Erro de comunicação ao conectar à IA.', id: Date.now() }]);
         }
     };
 
-    const pollChat = () => {
-        let attempts = 0;
-        const poller = setInterval(async () => {
-            attempts++;
-            try {
-                const res = await api.get(`/api/v1/questions/${q.id}/chat`);
-                const history = res.data;
-                const last = history[history.length - 1];
-                if (last && last.role === 'assistant') {
-                    setChatMessages(history);
-                    setChatTyping(false);
-                    clearInterval(poller);
-                    setTimeout(scrollToBottom, 50);
-                }
-            } catch (e) { }
-            if (attempts >= 30) {
-                clearInterval(poller);
-                setChatTyping(false);
-            }
-        }, 2000);
-    };
+    // `pollChat` has been removed as we are now streaming fully
+
 
     const toggleHistory = async () => {
         const nextState = activeTab !== 'history';

@@ -112,6 +112,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/filter-options', [QuestionController::class, 'filterOptions']);
             Route::get('/stats', [QuestionController::class, 'stats']);
             Route::get('/{question}/history', [QuestionController::class, 'history']);
+            Route::post('/{question}/view', [QuestionController::class, 'logView']);
             Route::post('/{question}/answer', [QuestionController::class, 'answer'])
                 ->middleware('check.plan.limits:daily_question');
 
@@ -147,6 +148,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('users/{user}/toggle-status', [AdminUserController::class, 'toggleStatus']);
             Route::post('users/{user}/reset-password', [AdminUserController::class, 'resetPassword']);
             Route::post('users/{user}/refund', [AdminUserController::class, 'refundAndCancel']);
+            Route::get('users/{user}/stats', [AdminUserController::class, 'stats']);
             Route::apiResource('users', AdminUserController::class);
             Route::apiResource('plans', AdminPlanController::class);
             Route::apiResource('coupons', AdminCouponController::class);

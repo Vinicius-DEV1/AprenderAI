@@ -296,33 +296,19 @@ function ChatInterface({ questionId, aiName }: { questionId: number, aiName: str
 
             const reader = response.body?.getReader();
             const decoder = new TextDecoder();
-            let accumulatedMessage = '';
+            let done = false;
 
             if (reader) {
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    const chunk = decoder.decode(value);
-                    const lines = chunk.split('\n');
-
-                    for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            const dataStr = line.substring(6);
-                            if (dataStr === '[DONE]') continue;
-
-                            try {
-                                const data = JSON.parse(dataStr);
-                                if (data.text) {
-                                    accumulatedMessage += data.text;
-                                    setMessages(prev => {
-                                        const updated = [...prev];
-                                        updated[currentMsgIndex] = { role: 'assistant', message: accumulatedMessage };
-                                        return updated;
-                                    });
-                                }
-                            } catch (e) { }
-                        }
+                while (!done) {
+                    const { done: doneReading, value } = await reader.read();
+                    done = doneReading;
+                    if (value) {
+                        const chunk = decoder.decode(value, { stream: true });
+                        setMessages(prev => {
+                            const updated = [...prev];
+                            updated[currentMsgIndex] = { role: 'assistant', message: (updated[currentMsgIndex]?.message || '') + chunk };
+                            return updated;
+                        });
                     }
                 }
             }

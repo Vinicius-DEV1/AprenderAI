@@ -188,4 +188,20 @@ class UserController extends Controller
             'user' => $user->load('plan')
         ]);
     }
+
+    /**
+     * Get specific user academic stats.
+     */
+    public function stats(User $user)
+    {
+        $statsService = app(\App\Services\StatsService::class);
+        $userId = $user->id;
+
+        return response()->json([
+            'overview' => $statsService->getOverview($userId),
+            'bySubject' => $statsService->getPerformanceBySubject($userId),
+            'temporal' => $statsService->getTemporalEvolution($userId),
+            'byDifficulty' => $statsService->getDifficultyHeatmap($userId),
+        ]);
+    }
 }

@@ -33,16 +33,17 @@ class EvaluateQuestionDifficultyJob implements ShouldQueue
         Log::info("Starting Individual AI Difficulty Evaluation Job for Question ID: {$this->question->id}");
 
         try {
-            $result = $aiService->evaluateQuestionDifficulty($this->question);
+            // Get user_id if this question was created by a specific user (optional but good for tracking)
+            $userId = $this->question->user_id ?? null;
 
-            if ($result) {
+            $aiResponse = $aiService->evaluateQuestionDifficulty($this->question, $userId);
+
+            if ($aiResponse) {
                 Log::info("Successfully evaluated Question ID: {$this->question->id} via Job.");
-            }
-            else {
+            } else {
                 Log::warning("AI Service returned no result for Question ID: {$this->question->id} in Job.");
             }
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             Log::error("Failed to evaluate question {$this->question->id} in Job: " . $e->getMessage());
             throw $e; // Rethrow to allow queue retry if configured
         }

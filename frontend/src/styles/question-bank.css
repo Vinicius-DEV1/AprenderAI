@@ -615,6 +615,11 @@
     font-weight: 600;
     letter-spacing: 0.3px;
     text-transform: uppercase;
+    white-space: normal;
+    word-break: break-word;
+    text-align: center;
+    line-height: 1.4;
+    display: inline-block;
 }
 
 .qb-badge-easy {
@@ -794,6 +799,38 @@
     color: #cbd5e1;
 }
 
+@media (max-width: 768px) {
+    .qb-filter-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .qb-filter-item,
+    .qb-filter-master,
+    .qb-filter-checkbox,
+    .qb-filter-toggle {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+
+    .qb-filter-toggle {
+        justify-content: center;
+        margin-top: 8px;
+    }
+
+    .qb-filter-checkbox {
+        padding-left: 0;
+        padding-right: 0;
+        justify-content: flex-start;
+    }
+
+    .qb-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
 .qb-action-btn.primary {
     background: #6366f1;
     color: white;
@@ -957,14 +994,16 @@
 
 .qb-slideover {
     position: fixed;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 450px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 95vw;
+    max-width: 1200px;
+    height: 90vh;
     background: white;
     z-index: 101;
-    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1);
-    border-left: 1px solid #e2e8f0;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     display: flex;
     flex-direction: column;
 }
@@ -974,9 +1013,11 @@
     border-color: rgba(255, 255, 255, 0.08);
 }
 
-@media (max-width: 500px) {
+@media (max-width: 768px) {
     .qb-slideover {
-        width: 100%;
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
     }
 }
 
@@ -1107,15 +1148,17 @@
 }
 
 .animate-slide-in-right {
-    animation: slide-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: slide-in-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes slide-in-right {
+@keyframes slide-in-bottom {
     from {
-        transform: translateX(100%);
+        opacity: 0;
+        transform: translate(-50%, -40%);
     }
 
     to {
-        transform: translateX(0);
+        opacity: 1;
+        transform: translate(-50%, -50%);
     }
 }

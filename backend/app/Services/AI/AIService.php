@@ -50,14 +50,14 @@ class AIService
     /**
      * Evaluates question difficulty using the best available provider with failover.
      */
-    public function evaluateQuestionDifficulty(\App\Models\Question $question): ?array
+    public function evaluateQuestionDifficulty(\App\Models\Question $question, ?int $userId = null): ?array
     {
         if (!$this->hasActiveKey(ApiKey::CAPABILITY_TRIAGE)) {
             Log::warning('AI Difficulty Evaluation failed: No active API key for Triage.');
             return null;
         }
 
-        return $this->executeWithFailover(ApiKey::CAPABILITY_TRIAGE, function ($apiKey) use ($question) {
+        return $this->executeWithFailover(ApiKey::CAPABILITY_TRIAGE, function ($apiKey) use ($question, $userId) {
             $provider = $apiKey->provider;
 
             $prompt = $this->promptService->get('question_difficulty_evaluator', [
@@ -68,7 +68,7 @@ class AIService
                 'alternatives' => json_encode($question->alternativesAsMap())
             ]);
 
-            $result = $this->callAI($provider, $apiKey, $prompt);
+            $result = $this->callAI($provider, $apiKey, $prompt, $userId);
             $apiKey->incrementUsage();
 
             $content = $result['content'];
@@ -571,17 +571,17 @@ class AIService
         ]);
     }
 
-    public function generateQuestions(string $subject, int $quantity = 1, array $context = []): array
+    public function generateQuestions(string $subject, int $quantity = 1, array $context = [], ?int $userId = null): array
     {
         if (!$this->hasActiveKey(ApiKey::CAPABILITY_QUESTIONS)) {
             return [];
         }
 
         try {
-            return $this->executeWithFailover(ApiKey::CAPABILITY_QUESTIONS, function ($apiKey) use ($subject, $quantity, $context) {
+            return $this->executeWithFailover(ApiKey::CAPABILITY_QUESTIONS, function ($apiKey) use ($subject, $quantity, $context, $userId) {
                 $provider = $apiKey->provider;
                 $prompt = $this->buildQuestionGenerationPrompt($subject, $quantity, $context);
-                $result = $this->callAI($provider, $apiKey, $prompt);
+                $result = $this->callAI($provider, $apiKey, $prompt, $userId);
                 $apiKey->incrementUsage();
 
                 $content = $result['content'];
@@ -827,17 +827,17 @@ class AIService
         }
     }
 
-    public function generateJson(string $prompt, ?string $model = null): array
+    public function generateJson(string $prompt, ?string $model = null, ?int $userId = null): array
     {
         $provider = $model ? $this->getProviderForModel($model) : null;
 
-        return $this->executeWithFailover(ApiKey::CAPABILITY_GENERAL, function ($apiKey) use ($prompt, $model) {
+        return $this->executeWithFailover(ApiKey::CAPABILITY_GENERAL, function ($apiKey) use ($prompt, $model, $userId) {
             $provider = $apiKey->provider;
             if ($model) {
                 $apiKey->preferred_model = $model;
             }
 
-            $result = $this->callAI($provider, $apiKey, $prompt);
+            $result = $this->callAI($provider, $apiKey, $prompt, $userId);
             return ['data' => $result['content']];
         }, $provider);
     }
@@ -851,21 +851,21 @@ class AIService
         return null;
     }
 
-    public function generateStudyPlan(array $stats, array $input): ?array
+    public function generateStudyPlan(array $stats, array $input, ?int $userId = null): ?array
     {
         if (!$this->hasActiveKey(ApiKey::CAPABILITY_STUDY_PLANS)) {
             return null;
         }
 
         try {
-            return $this->executeWithFailover(ApiKey::CAPABILITY_STUDY_PLANS, function ($apiKey) use ($stats, $input) {
+            return $this->executeWithFailover(ApiKey::CAPABILITY_STUDY_PLANS, function ($apiKey) use ($stats, $input, $userId) {
                 $provider = $apiKey->effective_provider;
                 $prompt = $this->promptService->get('study_plan_generator', [
                     'stats' => json_encode($stats),
                     'input' => json_encode($input)
                 ]);
 
-                $result = $this->callAI($provider, $apiKey, $prompt);
+                $result = $this->callAI($provider, $apiKey, $prompt, $userId);
                 $apiKey->incrementUsage();
 
                 return $result['content'];
@@ -958,14 +958,14 @@ class AIService
         Cache::put('api_key_blacklist', $bannedIds, now()->addMinutes(60));
     }
 
-    public function interpretSearchPrompt(string $userPrompt, array $filterOptions): ?array
+    public function interpretSearchPrompt(string $userPrompt, array $filterOptions, ?int $userId = null): ?array
     {
         if (!$this->hasActiveKey(ApiKey::CAPABILITY_SEARCH)) {
             return null;
         }
 
         try {
-            return $this->executeWithFailover(ApiKey::CAPABILITY_SEARCH, function ($apiKey) use ($userPrompt, $filterOptions) {
+            return $this->executeWithFailover(ApiKey::CAPABILITY_SEARCH, function ($apiKey) use ($userPrompt, $filterOptions, $userId) {
                 $provider = $apiKey->provider;
                 $aiName = \App\Models\Setting::where('key', 'ai_name')->value('value') ?? 'Xavier';
 
@@ -985,7 +985,7 @@ DIRETRIZES:
 Busca do usuário: '{user_prompt}'
 Opções válidas (JSON): {filter_options}");
 
-                $result = $this->callAI($provider, $apiKey, $prompt);
+                $result = $this->callAI($provider, $apiKey, $prompt, $userId);
                 $apiKey->incrementUsage();
 
                 $content = $result['content'];

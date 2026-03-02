@@ -57,6 +57,7 @@ export default function StatsSlideOver({ stats, open, onClose }: { stats: Stats 
                 </div>
                 {stats ? (
                     <div className="qb-slideover-body">
+                        {/* LINE 1: KPIs */}
                         <div className="qb-overview-grid">
                             <div className="qb-overview-card"><div className="val">{overview.total}</div><div className="lbl">Respondidas</div></div>
                             <div className="qb-overview-card"><div className="val" style={{ color: '#10b981' }}>{overview.accuracy}%</div><div className="lbl">Taxa de Acerto</div></div>
@@ -64,25 +65,10 @@ export default function StatsSlideOver({ stats, open, onClose }: { stats: Stats 
                             <div className="qb-overview-card"><div className="val" style={{ color: '#ef4444' }}>{overview.incorrect}</div><div className="lbl">Erros</div></div>
                         </div>
 
-                        <div className="qb-chart-section">
-                            <h3>Acerto por Matéria</h3>
-                            <div className="h-44">
-                                <Bar
-                                    data={{
-                                        labels: bySubject.map(d => d.subject),
-                                        datasets: [
-                                            { label: 'Acertos', data: bySubject.map(d => d.correct), backgroundColor: '#10b981', borderRadius: 5 },
-                                            { label: 'Total', data: bySubject.map(d => d.total), backgroundColor: '#e2e8f0', borderRadius: 5 }
-                                        ]
-                                    }}
-                                    options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }}
-                                />
-                            </div>
-                        </div>
-
+                        {/* LINE 2: Line Chart (Wide) */}
                         <div className="qb-chart-section">
                             <h3>Evolução (30 dias)</h3>
-                            <div className="h-40">
+                            <div className="h-64">
                                 <Line
                                     data={{
                                         labels: temporal.map(d => d.date),
@@ -96,19 +82,38 @@ export default function StatsSlideOver({ stats, open, onClose }: { stats: Stats 
                             </div>
                         </div>
 
-                        <div className="qb-chart-section">
-                            <h3>Heatmap de Dificuldade</h3>
-                            <div className="h-40 flex justify-center">
-                                <Doughnut
-                                    data={{
-                                        labels: byDifficulty.map(d => d.difficulty === 'easy' ? 'Fácil' : d.difficulty === 'medium' ? 'Média' : 'Difícil'),
-                                        datasets: [{
-                                            data: byDifficulty.map(d => d.accuracy),
-                                            backgroundColor: byDifficulty.map(d => d.difficulty === 'easy' ? '#10b981' : d.difficulty === 'medium' ? '#f59e0b' : '#ef4444')
-                                        }]
-                                    }}
-                                    options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }}
-                                />
+                        {/* LINE 3: Secondary Charts (Side by side grid) */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div className="qb-chart-section m-0 mb-0">
+                                <h3>Acerto por Matéria</h3>
+                                <div className="h-64">
+                                    <Bar
+                                        data={{
+                                            labels: bySubject.map(d => d.subject),
+                                            datasets: [
+                                                { label: 'Acertos', data: bySubject.map(d => d.correct), backgroundColor: '#10b981', borderRadius: 4 },
+                                                { label: 'Total', data: bySubject.map(d => d.total), backgroundColor: '#e2e8f0', borderRadius: 4 }
+                                            ]
+                                        }}
+                                        options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="qb-chart-section m-0 mb-0 h-full flex flex-col">
+                                <h3 className="text-center">Taxa de Acerto por Dificuldade</h3>
+                                <div className="flex-1 flex justify-center items-center min-h-[200px]">
+                                    <Doughnut
+                                        data={{
+                                            labels: byDifficulty.map(d => d.difficulty === 'easy' ? 'Fácil' : d.difficulty === 'medium' ? 'Média' : 'Difícil'),
+                                            datasets: [{
+                                                data: byDifficulty.map(d => d.accuracy),
+                                                backgroundColor: byDifficulty.map(d => d.difficulty === 'easy' ? '#10b981' : d.difficulty === 'medium' ? '#f59e0b' : '#ef4444')
+                                            }]
+                                        }}
+                                        options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }}
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
