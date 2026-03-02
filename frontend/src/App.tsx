@@ -72,8 +72,8 @@ import AdminIntegrations from './pages/admin/Integrations';
 import AdminChatLogs from './pages/admin/AdminChatLogs';
 import AdminApiPricing from './pages/admin/ApiPricing';
 import AdminSimulationBuilder from './pages/admin/SimulationBuilder';
+import AdminSubscriptions from './pages/admin/AdminSubscriptions';
 import AdminXavierInsights from './pages/admin/XavierInsights';
-
 
 function App() {
     const { isLoading: configLoading, error: configError } = useConfig();
@@ -216,6 +216,7 @@ function App() {
                         <Route path="integrations" element={<><MetaTags title="Admin: Integrações" /><AdminIntegrations /></>} />
                         <Route path="chat-logs/:id" element={<><MetaTags title="Admin: Auditoria IA" /><AdminChatLogs /></>} />
                         <Route path="api-pricing" element={<><MetaTags title="Admin: Custos de API" /><AdminApiPricing /></>} />
+                        <Route path="subscriptions" element={<><MetaTags title="Admin: Assinaturas" /><AdminSubscriptions /></>} />
                         <Route path="simulations/builder" element={<><MetaTags title="Admin: Motor de Simulados" /><AdminSimulationBuilder /></>} />
                         <Route path="xavier/insights" element={<><MetaTags title="Admin: Xavier Insights" /><AdminXavierInsights /></>} />
 

@@ -171,4 +171,69 @@ class AdminAnalyticsController extends Controller
 
         return response()->json($data);
     }
+
+    /**
+     * Assinaturas - Admin Subscriptions Dashboard
+     */
+    public function subscriptions()
+    {
+        $totalUsers = \App\Models\User::count();
+        $activeSubscriptions = \App\Models\Subscription::with('plan')->where('status', 'active')->get();
+        $paidSubscriptionsCount = $activeSubscriptions->filter(function ($sub) {
+            return $sub->plan && $sub->plan->price > 0;
+        })->count();
+
+        // MRR
+        $mrr = $activeSubscriptions->reduce(function ($carry, $sub) {
+            if ($sub->plan) {
+                if ($sub->plan->interval === 'yearly') {
+                    return $carry + ($sub->plan->price / 12);
+                }
+                return $carry + $sub->plan->price;
+            }
+            return $carry;
+        }, 0);
+
+        // Users per plan
+        $usersPerPlanRaw = \App\Models\User::with('plan')->get()->groupBy('plan_id');
+        $usersPerPlan = [];
+        $plans = \App\Models\Plan::all();
+        foreach ($plans as $plan) {
+            $count = isset($usersPerPlanRaw[$plan->id]) ? $usersPerPlanRaw[$plan->id]->count() : 0;
+            $usersPerPlan[] = [
+                'name' => $plan->name,
+                'count' => $count,
+                'color' => str_contains(strtolower($plan->name), 'plus') ? '#f59e0b' : (str_contains(strtolower($plan->name), 'básico') ? '#3b82f6' : '#94a3b8')
+            ];
+        }
+
+        // Conversion Rate
+        $conversionRate = $totalUsers > 0 ? round(($paidSubscriptionsCount / $totalUsers) * 100, 2) : 0;
+
+        // Recent Subscriptions
+        $recentSubscriptions = \App\Models\Subscription::with(['user', 'plan'])
+            ->orderBy('created_at', 'desc')
+            ->take(10)
+            ->get()
+            ->map(function ($sub) {
+                return [
+                    'id' => $sub->id,
+                    'user_name' => $sub->user->name ?? 'Desconhecido',
+                    'user_email' => $sub->user->email ?? '',
+                    'plan_name' => $sub->plan->name ?? 'N/A',
+                    'status' => $sub->status,
+                    'created_at' => $sub->created_at->format('Y-m-d H:i:s'),
+                    'amount' => $sub->plan->price ?? 0,
+                ];
+            });
+
+        return response()->json([
+            'total_users' => $totalUsers,
+            'paid_subscriptions' => $paidSubscriptionsCount,
+            'conversion_rate' => $conversionRate,
+            'mrr' => round($mrr, 2),
+            'users_per_plan' => $usersPerPlan,
+            'recent_subscriptions' => $recentSubscriptions,
+        ]);
+    }
 }

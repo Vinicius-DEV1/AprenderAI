@@ -18,6 +18,29 @@ export default function PlanList() {
     const userPlanId = user?.plan_id || (user?.plan as any)?.id;
     const currentPlan = plans?.find((p: any) => String(p.id) === String(userPlanId));
 
+    const getPlanLevel = (name?: string) => {
+        if (!name) return 0;
+        const low = name.toLowerCase();
+        if (low.includes('plus')) return 3;
+        if (low.includes('básico') || low.includes('basico')) return 2;
+        if (low.includes('gratuito')) return 1;
+        return 0;
+    };
+
+    const currentPlanLevel = getPlanLevel(currentPlan?.name);
+
+    const getButtonLabel = (cardPlan: any) => {
+        if (!cardPlan) return 'Assinar';
+        if (String(cardPlan.id) === String(getPlanBySlug('gratuito')?.id)) {
+            return String(userPlanId) === String(cardPlan.id) ? 'Plano Ativo' : 'Disponível';
+        }
+        if (String(userPlanId) === String(cardPlan.id)) return 'Seu Plano Atual';
+        const cardLevel = getPlanLevel(cardPlan.name);
+        if (currentPlanLevel > cardLevel && currentPlanLevel > 0) return 'Fazer Downgrade';
+        if (currentPlanLevel < cardLevel && currentPlanLevel > 0) return 'Fazer Upgrade';
+        return 'Assinar';
+    };
+
     const handlePlanClick = (plan: any) => {
         if (!plan) return;
 
@@ -80,6 +103,26 @@ export default function PlanList() {
                     <p className="text-slate-500 dark:text-slate-400">Escolha o plano que melhor se adapta aos seus objetivos.</p>
                 </div>
 
+                {userPlanId && (
+                    <div className="mb-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 text-xl shadow-inner">
+                                ⭐️
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Minha Assinatura</p>
+                                <h4 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                    Plano {currentPlan?.name || 'Gratuito'}
+                                    <span className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full uppercase tracking-widest font-black">Ativo</span>
+                                </h4>
+                            </div>
+                        </div>
+                        <div className="text-left md:text-right">
+                            <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">Você tem acesso aos recursos do plano atual.</p>
+                        </div>
+                    </div>
+                )}
+
                 <div className="lp-plans-toggle-wrap mb-10">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#f1f5f9', borderRadius: '50px', padding: '.35rem .75rem' }}>
                         <span
@@ -139,7 +182,7 @@ export default function PlanList() {
                             </div>
                         </div>
                         <button disabled className="lp-plan-btn-free bg-gray-300 text-gray-600 cursor-not-allowed">
-                            {String(userPlanId) === String(getPlanBySlug('gratuito')?.id) ? 'Plano Ativo' : 'Disponível'}
+                            {getButtonLabel(getPlanBySlug('gratuito'))}
                         </button>
                     </div>
 
@@ -177,7 +220,7 @@ export default function PlanList() {
                             disabled={String(userPlanId) === String(getPlanBySlug('básico')?.id)}
                             className={`lp-plan-btn-basic ${String(userPlanId) === String(getPlanBySlug('básico')?.id) ? 'bg-blue-400 opacity-50 cursor-not-allowed' : 'hover:scale-105 transition-transform'}`}
                         >
-                            {String(userPlanId) === String(getPlanBySlug('básico')?.id) ? 'Seu Plano Atual' : 'Fazer Upgrade'}
+                            {getButtonLabel(getPlanBySlug('básico'))}
                         </button>
                     </div>
 
@@ -219,7 +262,7 @@ export default function PlanList() {
                             disabled={String(userPlanId) === String(getPlanBySlug('plus')?.id)}
                             className={`lp-plan-btn-plus ${String(userPlanId) === String(getPlanBySlug('plus')?.id) ? 'bg-amber-400 opacity-50 cursor-not-allowed' : 'hover:scale-105 transition-transform'}`}
                         >
-                            {String(userPlanId) === String(getPlanBySlug('plus')?.id) ? 'Seu Plano Atual' : 'Acessar Plus'}
+                            {getButtonLabel(getPlanBySlug('plus'))}
                         </button>
                     </div>
                 </div>
