@@ -67,7 +67,14 @@ class AIBatchTriageJob implements ShouldQueue
 
             $result = $batchService->processBatch($questions, $this->type, $this->model, $this->batchId, $this->reprocess);
 
-            $this->updateProgress($result['applied'], count($result['errors']), null, $result['errors'] ?? []);
+            $this->updateProgress(
+                $result['applied'],
+                count($result['errors']),
+                null,
+                $result['errors'] ?? [],
+                $result['usage']['input_tokens'] ?? 0,
+                $result['usage']['output_tokens'] ?? 0
+            );
 
             Log::info("[AIBATCH] Batch job finished", [
                 'batch_id' => $this->batchId,
@@ -85,19 +92,27 @@ class AIBatchTriageJob implements ShouldQueue
         }
     }
 
-    protected function updateProgress(int $applied, int $errors, ?string $errorMessage = null, array $detailedErrors = []): void
-    {
+    protected function updateProgress(
+        int $applied,
+        int $errors,
+        ?string $errorMessage = null,
+        array $detailedErrors = [],
+        int $inputTokens = 0,
+        int $outputTokens = 0
+    ): void {
         $key = "batch_progress_{$this->batchId}";
-        $lock = Cache::lock($key . "_lock", 10);
+        $lock = \Illuminate\Support\Facades\Cache::lock($key . "_lock", 10);
 
         try {
             $lock->block(5); // Wait up to 5s for lock
 
             // 1. Atualiza o Cache (para o SSE em tempo real ser rápido)
-            $data = Cache::get($key, [
+            $data = \Illuminate\Support\Facades\Cache::get($key, [
                 'total' => 0,
                 'processed' => 0,
                 'errors' => 0,
+                'input_tokens' => 0,
+                'output_tokens' => 0,
                 'status' => 'processing',
                 'last_error' => null,
                 'errors_log' => []
@@ -105,11 +120,14 @@ class AIBatchTriageJob implements ShouldQueue
 
             $data['processed'] += $applied;
             $data['errors'] += $errors;
+            $data['input_tokens'] = ($data['input_tokens'] ?? 0) + $inputTokens;
+            $data['output_tokens'] = ($data['output_tokens'] ?? 0) + $outputTokens;
 
             if (!empty($detailedErrors) || $errorMessage) {
                 if ($errorMessage) {
                     $entry = ['time' => now()->toDateTimeString(), 'error' => $errorMessage, 'type' => 'fatal'];
                     $data['last_error'] = $errorMessage;
+                    $data['message'] = "Erro Fatal: " . $errorMessage;
                     $data['status'] = 'failed';
                     $data['errors_log'][] = $entry;
                 }
@@ -121,13 +139,15 @@ class AIBatchTriageJob implements ShouldQueue
                 $data['status'] = 'completed';
             }
 
-            Cache::put($key, $data, now()->addHours(2));
+            \Illuminate\Support\Facades\Cache::put($key, $data, now()->addHours(2));
 
             // 2. Atualiza o Banco de Dados (Persistência para o Histórico)
             $dbBatch = \App\Models\AiProcessingBatch::where('batch_id', $this->batchId)->first();
             if ($dbBatch) {
                 $dbBatch->processed_count += $applied;
                 $dbBatch->error_count += $errors;
+                $dbBatch->input_tokens += $inputTokens;
+                $dbBatch->output_tokens += $outputTokens;
                 $dbBatch->status = $data['status'];
 
                 if (!empty($detailedErrors) || $errorMessage) {
@@ -153,7 +173,7 @@ class AIBatchTriageJob implements ShouldQueue
             }
 
         } catch (\Exception $e) {
-            Log::error("[AIBATCH] Failed to update progress: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("[AIBATCH] Failed to update progress: " . $e->getMessage());
         } finally {
             $lock->release();
         }
@@ -165,7 +185,7 @@ class AIBatchTriageJob implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
-        Log::error("[AIBATCH] Fatal Worker Error: " . $exception->getMessage(), [
+        \Illuminate\Support\Facades\Log::error("[AIBATCH] Fatal Worker Error: " . $exception->getMessage(), [
             'batch_id' => $this->batchId,
             'trace' => $exception->getTraceAsString()
         ]);

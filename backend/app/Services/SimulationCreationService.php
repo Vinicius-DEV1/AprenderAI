@@ -64,9 +64,11 @@ class SimulationCreationService
                 throw new \Exception("Quantidade insuficiente de quest\u00f5es dispon\u00edveis para este tipo de simulado.");
             }
             // Partial result: reject to avoid a broken simulation
+            $reason = "Dica: Caso o simulado exija muitas quest\u00f5es novas, os limites das suas chaves de API da IA podem ter sido atingidos. Tente um simulado menor ou aguarde alguns minutos.";
+            \Illuminate\Support\Facades\Log::warning("Simulation generation failed. Total found: {$questions->count()} / $total. ");
             throw new \Exception(
                 "Quantidade insuficiente de quest\u00f5es dispon\u00edveis para este tipo de simulado. "
-                . "Solicitado: $total | Encontrado: {$questions->count()}."
+                . "Solicitado: $total | Encontrado: {$questions->count()}. $reason"
             );
         }
 
@@ -139,7 +141,24 @@ class SimulationCreationService
             if ($subjectTotal <= 0)
                 continue;
 
-            \Illuminate\Support\Facades\Log::info("Processing Subject: $subject | Total Needed: $subjectTotal | Type: $type");
+            // Normalization of common subject names to match Database exactly (Resiliency)
+            $subjectOrig = $subject;
+            $subjectUpper = mb_strtoupper(trim($subject), 'UTF-8');
+            // Remove accents for comparison
+            $subjectSanitized = str_replace(
+                ['Á', 'À', 'Â', 'Ã', 'É', 'Ê', 'Í', 'Ó', 'Ô', 'Õ', 'Ú', 'Ç'],
+                ['A', 'A', 'A', 'A', 'E', 'E', 'I', 'O', 'O', 'O', 'U', 'C'],
+                $subjectUpper
+            );
+
+            if (str_contains($subjectSanitized, 'PORTUGU'))
+                $subject = "LINGUA PORTUGUESA";
+            elseif (str_contains($subjectSanitized, 'MATEM'))
+                $subject = "MATEMATICA";
+            else
+                $subject = $subjectSanitized;
+
+            \Illuminate\Support\Facades\Log::info("Processing Subject: $subject (Orig: $subjectOrig) | Total Needed: $subjectTotal | Type: $type");
 
             // ----------------------------------------------------------------
             // CONCURSO PATH
@@ -225,11 +244,11 @@ class SimulationCreationService
             }
 
             $countGenTarget = (int) ceil($subjectTotal * $aiRatio);
-            $countRealTarget = $subjectTotal - $countGenTarget;
+            $countRealInitial = $subjectTotal - $countGenTarget;
 
             $ignoredIds = $this->getLastSeenQuestionIds($user);
 
-            // Real ENEM questions only
+            // 1. Initial Real Questions (honoring ratio)
             $realQuestions = Question::whereHas('subjects', function ($q) use ($subject) {
                 $q->where('name', $subject);
             })
@@ -237,14 +256,15 @@ class SimulationCreationService
                 ->where(function ($q) {
                     $q->where('source', 'enem_real_2009_2023')
                         ->orWhere('source', 'manual')
-                        ->orWhere('source', 'enem_api');
+                        ->orWhere('source', 'enem_api')
+                        ->orWhere('source', 'api');
                 })
                 ->whereNotIn('id', $ignoredIds)
                 ->inRandomOrder()
-                ->limit($countRealTarget)
+                ->limit($countRealInitial)
                 ->get();
 
-            // Pre-generated AI ENEM questions from DB
+            // 2. Pre-generated AI questions from DB
             $aiQuestions = Question::whereHas('subjects', function ($q) use ($subject) {
                 $q->where('name', $subject);
             })
@@ -257,7 +277,28 @@ class SimulationCreationService
 
             $subjectQuestions = $realQuestions->merge($aiQuestions);
 
-            // If still missing — trigger AI generation (chunked)
+            // 3. FALLBACK: If still missing, try to fill with MORE real questions before generating new ones
+            $missing = $subjectTotal - $subjectQuestions->count();
+            if ($missing > 0) {
+                $extraReal = Question::whereHas('subjects', function ($q) use ($subject) {
+                    $q->where('name', $subject);
+                })
+                    ->where('type', 'enem')
+                    ->where(function ($q) {
+                        $q->where('source', 'enem_real_2009_2023')
+                            ->orWhere('source', 'manual')
+                            ->orWhere('source', 'enem_api')
+                            ->orWhere('source', 'api');
+                    })
+                    ->whereNotIn('id', array_merge($ignoredIds, $subjectQuestions->pluck('id')->toArray()))
+                    ->inRandomOrder()
+                    ->limit($missing)
+                    ->get();
+
+                $subjectQuestions = $subjectQuestions->merge($extraReal);
+            }
+
+            // 4. Final attempt: trigger AI generation if still missing
             $missing = $subjectTotal - $subjectQuestions->count();
             if ($missing > 0) {
                 try {

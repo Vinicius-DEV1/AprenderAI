@@ -222,6 +222,10 @@ class ApiKeyController extends Controller
             'last_error_message' => $result['error'] ?? null
         ]);
 
+        if ($result['is_valid']) {
+            ApiKey::clearBlacklist($apiKey->id);
+        }
+
         return response()->json($result);
     }
 
@@ -240,7 +244,17 @@ class ApiKeyController extends Controller
      */
     public function toggle(ApiKey $apiKey)
     {
-        $apiKey->update(['is_active' => !$apiKey->is_active]);
+        $newActive = !$apiKey->is_active;
+        $update = ['is_active' => $newActive];
+
+        // Se ativando, força o status para online para limpar erros antigos
+        if ($newActive) {
+            $update['status'] = 'online';
+            ApiKey::clearBlacklist($apiKey->id);
+        }
+
+        $apiKey->update($update);
+
         return response()->json(['message' => 'Status atualizado!', 'is_active' => $apiKey->is_active]);
     }
 }

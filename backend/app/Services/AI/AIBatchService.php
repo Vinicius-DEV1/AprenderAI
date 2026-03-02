@@ -26,7 +26,10 @@ class AIBatchService
         try {
             $result = $this->aiService->generateJson($prompt, $model);
             $data = $result['data'] ?? [];
+            $usage = $result['usage'] ?? ['input_tokens' => 0, 'output_tokens' => 0];
             $appliedData = $this->applyResults($questions, $data, $type, $reprocess);
+            $appliedData['usage'] = $usage;
+
             \Illuminate\Support\Facades\DB::flushQueryLog();
             if (gc_enabled())
                 gc_collect_cycles();

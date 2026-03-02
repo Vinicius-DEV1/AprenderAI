@@ -116,6 +116,40 @@ services:
     deploy:
       replicas: 2
 
+  ai-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.local
+    restart: unless-stopped
+    volumes:
+      - ./backend:/var/www
+      - /var/www/vendor
+      - /proc:/host_proc:ro
+    environment:
+      - APP_NAME=aprenderAI
+      - APP_ENV=local
+      - APP_KEY=base64:cwLoa7etFk8s4DQ8goS72l6OyFF41/Qwy84zfacp5xs=
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=aprenderai
+      - DB_USERNAME=admin
+      - DB_PASSWORD=secret
+      - REDIS_HOST=redis
+      - SESSION_DRIVER=redis
+      - CACHE_STORE=redis
+      - QUEUE_CONNECTION=database
+    command: php artisan queue:work --queue=ai-batches --sleep=3 --tries=3 --timeout=120
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+    networks:
+      - local-network
+    deploy:
+      replicas: 1
+
   frontend:
     build:
       context: ./frontend

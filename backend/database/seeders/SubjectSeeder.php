@@ -11,16 +11,16 @@ class SubjectSeeder extends Seeder
     public function run(): void
     {
         $subjects = [
-            ['name' => 'Língua Portuguesa', 'type' => 'shared'],
-            ['name' => 'Matemática', 'type' => 'shared'],
-            ['name' => 'História', 'type' => 'shared'],
+            ['name' => 'Lingua Portuguesa', 'type' => 'shared'],
+            ['name' => 'Matematica', 'type' => 'shared'],
+            ['name' => 'Historia', 'type' => 'shared'],
             ['name' => 'Geografia', 'type' => 'shared'],
             ['name' => 'Biologia', 'type' => 'shared'],
-            ['name' => 'Física', 'type' => 'shared'],
-            ['name' => 'Química', 'type' => 'shared'],
+            ['name' => 'Fisica', 'type' => 'shared'],
+            ['name' => 'Quimica', 'type' => 'shared'],
             ['name' => 'Direito Administrativo', 'type' => 'concurso'],
             ['name' => 'Direito Constitucional', 'type' => 'concurso'],
-            ['name' => 'Raciocínio Lógico', 'type' => 'concurso'],
+            ['name' => 'Raciocinio Logico', 'type' => 'concurso'],
         ];
 
         foreach ($subjects as $subject) {

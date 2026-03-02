@@ -21,6 +21,7 @@ class UserResource extends JsonResource
             'email_verified_at' => $this->email_verified_at,
             'phone' => $this->phone,
             'role' => $this->role,
+            'plan_id' => $this->plan_id,
             'avatar' => $this->avatar_url ?? null,
             'plan' => $this->plan ? new PlanResource($this->plan) : null,
             'subscription_active' => $this->hasActiveSubscription(),

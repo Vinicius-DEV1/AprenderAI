@@ -122,19 +122,33 @@ class ApiKey extends Model
         $query = static::where('is_active', true)
             ->where('status', 'online')
             ->whereNotIn('id', $cacheKeys); // Filtra chaves na blacklist temporária
-        
+
         if ($provider) {
             $query->where('provider', $provider);
         }
 
         // Tentar buscar as chaves com a nova arquitetura M:N ordenadas pela prioridade
         $keys = (clone $query)
-            ->whereHas('capabilitiesList', function ($q) use ($capability) {
-                $q->where('capability', $capability);
+            ->where(function ($q) use ($capability) {
+                $q->whereHas('capabilitiesList', function ($sq) use ($capability) {
+                    $sq->where('capability', $capability);
+                });
+
+                // Fallback: Se for 'general', aceita chaves que NÃO tem capacidades definidas (Retrocompatibilidade)
+                if ($capability === self::CAPABILITY_GENERAL) {
+                    $q->orWhereDoesntHave('capabilitiesList')
+                        ->where(function ($sq) {
+                            $sq->whereNull('capabilities')
+                                ->orWhere('capabilities', '[]')
+                                ->orWhere('capabilities', '');
+                        });
+                }
             })
-            ->with(['capabilitiesList' => function ($q) use ($capability) {
-                $q->where('capability', $capability);
-            }])
+            ->with([
+                'capabilitiesList' => function ($q) use ($capability) {
+                    $q->where('capability', $capability);
+                }
+            ])
             ->get()
             ->sortBy(function ($key) {
                 return $key->capabilitiesList->first()->priority ?? 999;
@@ -146,30 +160,58 @@ class ApiKey extends Model
         }
 
         // --- Fallback para arquitetura legada (coluna JSON) até a migração de dados estar completa ---
-        
+
         $legacyKeys = collect();
 
         // 1. Prioridade Máxima: Chave exata para a Capabillity requerida
         $key1 = (clone $query)
-            ->whereJsonContains('capabilities', $capability)
+            ->where(function ($q) use ($capability) {
+                $q->whereJsonContains('capabilities', $capability);
+                if ($capability === self::CAPABILITY_GENERAL) {
+                    $q->orWhereNull('capabilities')
+                        ->orWhere('capabilities', '[]')
+                        ->orWhere('capabilities', '');
+                }
+            })
             ->orderBy('is_primary', 'desc')
             ->orderBy('last_used_at', 'asc')
             ->first();
 
-        if ($key1) $legacyKeys->push($key1);
+        if ($key1)
+            $legacyKeys->push($key1);
 
         // 2. Fallback Inteligente: Tentar uma chave de Uso Geral ('general')
         if (!$key1 && $capability !== self::CAPABILITY_GENERAL) {
             $key2 = (clone $query)
-                ->whereJsonContains('capabilities', self::CAPABILITY_GENERAL)
+                ->where(function ($q) {
+                    $q->whereJsonContains('capabilities', self::CAPABILITY_GENERAL)
+                        ->orWhereNull('capabilities')
+                        ->orWhere('capabilities', '[]')
+                        ->orWhere('capabilities', '');
+                })
                 ->orderBy('is_primary', 'desc')
                 ->orderBy('last_used_at', 'asc')
                 ->first();
-            
-            if ($key2) $legacyKeys->push($key2);
+
+            if ($key2)
+                $legacyKeys->push($key2);
         }
 
         // 3. Removido Fallback Absoluto que causava exibição em todas as rotas
         return $legacyKeys;
+    }
+
+    /**
+     * Limpa o cache de blacklist para esta chave ou globalmente.
+     */
+    public static function clearBlacklist(?int $id = null): void
+    {
+        if ($id) {
+            $bannedIds = \Illuminate\Support\Facades\Cache::get('api_key_blacklist', []);
+            $bannedIds = array_filter($bannedIds, fn($val) => $val != $id);
+            \Illuminate\Support\Facades\Cache::put('api_key_blacklist', array_values($bannedIds), now()->addMinutes(60));
+        } else {
+            \Illuminate\Support\Facades\Cache::forget('api_key_blacklist');
+        }
     }
 }

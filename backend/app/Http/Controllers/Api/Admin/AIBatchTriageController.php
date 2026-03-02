@@ -58,7 +58,7 @@ class AIBatchTriageController extends Controller
                 return [
                     'id' => $q->id,
                     'statement' => Str::limit(strip_tags($q->statement), 150),
-                    'status' => $q->incomplete() ? 'Incompleta' : 'Completa',
+                    'status' => ($q->incomplete ?? true) ? 'Incompleta' : 'Completa',
                     'subject' => $q->subjects->first()?->name ?? 'N/A',
                     'organization' => $q->organization ?? 'N/A',
                 ];
@@ -134,6 +134,8 @@ class AIBatchTriageController extends Controller
             'total' => $total,
             'processed' => 0,
             'errors' => 0,
+            'input_tokens' => 0, // Novo campo
+            'output_tokens' => 0, // Novo campo
             'status' => 'processing',
             'message' => "Iniciando processamento de {$total} questões...",
             'last_error' => null
@@ -141,15 +143,25 @@ class AIBatchTriageController extends Controller
 
         $chunkSize = $validated['chunk_size'] ?? 5;
         $reprocess = $validated['reprocess'] ?? false;
+        $delaySeconds = $request->input('delay_seconds', 0);
 
-        $questions->chunk($chunkSize)->each(function ($chunk) use ($batchId, $validated, $reprocess) {
-            AIBatchTriageJob::dispatch(
+        $questions->chunk($chunkSize)->each(function ($chunk, $index) use ($batchId, $validated, $reprocess, $delaySeconds) {
+            $job = new AIBatchTriageJob(
                 $batchId,
                 $chunk->pluck('id')->toArray(),
                 $validated['type'],
                 $validated['model'] ?? 'gpt-4o',
                 $reprocess
             );
+
+            // Envia para a fila dedicada e aplica o delay progressivo
+            $job->onQueue('ai-batches');
+
+            if ($delaySeconds > 0) {
+                $job->delay(now()->addSeconds($index * $delaySeconds));
+            }
+
+            dispatch($job);
         });
 
         return response()->json([
@@ -185,11 +197,16 @@ class AIBatchTriageController extends Controller
         if (!$data) {
             $batch = AiProcessingBatch::where('batch_id', $batchId)->first();
             if ($batch) {
+                $logs = $batch->errors_log ?? [];
+                $lastError = count($logs) > 0 ? end($logs)['error'] : null;
+
                 return response()->json([
                     'total' => $batch->total_count,
                     'processed' => $batch->processed_count,
                     'errors' => $batch->error_count,
                     'status' => $batch->status,
+                    'last_error' => $lastError,
+                    'message' => $lastError ? "Finalizado com Erros" : "Concluído",
                 ]);
             }
             return response()->json(['message' => 'Lote não encontrado.'], 404);
