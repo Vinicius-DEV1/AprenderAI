@@ -419,8 +419,8 @@ class AIService
             }
 
             $apiKey = $apiKeyModel->decrypted_key;
-            // Usando v1 e o modelo mais estável 'embedding-001'
-            $url = "https://generativelanguage.googleapis.com/v1/models/embedding-001:embedContent?key={$apiKey}";
+            // Usando v1beta e o modelo retornado pela discovery da API
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key={$apiKey}";
 
             $payload = [
                 'content' => [
@@ -1021,33 +1021,37 @@ class AIService
                 $prompt = $this->promptService->get('ai_search_interpreter', [
                     'user_prompt' => $userPrompt,
                     'filter_options' => json_encode($filterOptions)
-                ], "Você é o {$aiName}, um Agente de Busca inteligente especializado em questões de estudo.
+                ], "Você é o {$aiName}, um Agente de Busca de alta precisão. Sua missão é converter a frase do usuário em um JSON de filtros ESTRITAMENTE baseados nas opções fornecidas.
 
-REGRAS CRÍTICAS E UNIVERSAIS DE FILTRAGEM:
-1. PROIBIDO INVENTAR: Nunca preencha qualquer campo de filtro ('year', 'difficulty', 'status', 'organization', 'institution', 'role') se o usuário não mencionou explicitamente. Se houver dúvida, deixe o campo vazio (\"\").
-2. FIDELIDADE AOS IDS/VALORES: Para TODOS os filtros, você deve usar APENAS os valores exatos (IDs ou strings) presentes nas 'Opções válidas'. Nunca use nomes amigáveis ou sinônimos se não estiverem na lista.
-3. PALAVRAS-CHAVE RESIDUAIS: O campo 'keyword' deve conter APENAS termos que não foram capturados pelos filtros específicos. Se você já selecionou uma matéria, assunto, banca ou ano, NÃO repita esses termos em 'keyword'.
-4. TIPO DE PROVA: Sempre categorize entre 'enem' ou 'concurso'.
-5. SUGESTÕES: Se o pedido for vago, use 'suggestions' para propor temas reais que existem no banco de dados.
+### REGRAS DE OURO (NÃO NEGOCIÁVEIS):
+1. **USO OBRIGATÓRIO DE IDS**: Para os campos 'subject' e 'topic', você DEVE retornar o ID (número ou string curta) encontrado no JSON de opções válidas. NUNCA retorne o nome amigável (ex: retornar '12' em vez de 'Geografia').
+2. **PROIBIDO FILTROS FANTASMAS**: Se o usuário não mencionou o ANO, o campo 'year' DEVE ser string vazia (\"\"). Se ele não mencionou a dificuldade, 'difficulty' DEVE ser \"\". NUNCA invente '2024' ou qualquer outro valor por conta própria.
+3. **ECONOMIA DE KEYWORDS**: O campo 'keyword' deve conter APENAS termos que não foram capturados como matéria ou assunto. Se já mapeou o assunto, deixe 'keyword' vazio (\"\").
+4. **VALORES TÉCNICOS**:
+   - Tipo DEVE ser: \"enem\", \"concurso\" ou vazio (\"\") se o usuário não especificar.
+   - Dificuldade DEVE ser: \"easy\", \"medium\" ou \"hard\".
+   - Status DEVE ser: \"unanswered\" ou \"answered\".
 
-FORMATO DE RETORNO (JSON APENAS):
+### EXEMPLO DE SUCESSO:
+**Input do Usuário:** \"questões de geografia\"
+**Opções Válidas:** {\"subjects\":[{\"id\":45, \"name\":\"Geografia\"}], ...}
+**Output Correto:**
 {
-  \"type\": \"enem|concurso\",
-  \"subject\": \"ID_DA_MATERIA\",
-  \"topic\": \"ID_DO_TOPICO\",
-  \"difficulty\": \"easy|medium|hard\",
-  \"year\": \"YYYY\",
-  \"status\": \"unanswered|answered\",
-  \"organization\": \"NOME_EXATO_DA_BANCA\",
-  \"institution\": \"NOME_EXATO_DO_ORGAO\",
-  \"role\": \"NOME_EXATO_DO_CARGO\",
-  \"keyword\": \"termos residuais\",
-  \"suggestion_tip\": \"Breve frase explicativa\",
+  \"type\": \"\",
+  \"subject\": \"45\",
+  \"topic\": \"\",
+  \"difficulty\": \"\",
+  \"year\": \"\",
+  \"keyword\": \"\",
+  \"suggestion_tip\": \"Encontrei questões de Geografia para você.\",
   \"suggestions\": []
 }
 
-Busca do usuário: '{user_prompt}'
-Opções válidas (JSON): {filter_options}");
+### DADOS PARA PROCESSAR AGORA:
+Busca do aluno: '{user_prompt}'
+Opções válidas (JSON): {filter_options}
+
+RETORNE APENAS O JSON:");
 
                 $result = $this->callAI($provider, $apiKey, $prompt, $userId);
                 $apiKey->incrementUsage();

@@ -43,7 +43,6 @@ export default function QuestionCard({ question: q }: { question: Question }) {
     const [isCorrect, setIsCorrect] = useState<boolean | null>(q.was_correct ?? null);
     const [correctAnswer, setCorrectAnswer] = useState<string | null>(null);
     const [explanation, setExplanation] = useState<string | null>(null);
-    const [difficultyReasoning, setDifficultyReasoning] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
     // NEW FOR ANALYTICS
@@ -139,7 +138,6 @@ export default function QuestionCard({ question: q }: { question: Question }) {
             setIsCorrect(data.correct ?? null);
             setCorrectAnswer(data.correct_answer ?? null);
             setExplanation(data.explanation || '');
-            setDifficultyReasoning(data.difficulty_reasoning || '');
             setActiveTab('gabarito');
         } catch (e) {
             toast.error('Erro ao enviar resposta.');
@@ -155,7 +153,6 @@ export default function QuestionCard({ question: q }: { question: Question }) {
         setIsCorrect(null);
         setCorrectAnswer(null);
         setExplanation(null);
-        setDifficultyReasoning(null);
         setActiveTab(null);
     };
 
@@ -296,9 +293,6 @@ export default function QuestionCard({ question: q }: { question: Question }) {
             setChatMessages(prev => [...prev, { role: 'assistant', message: 'Erro de comunicação ao conectar à IA.', id: Date.now() }]);
         }
     };
-
-    // `pollChat` has been removed as we are now streaming fully
-
 
     const toggleHistory = async () => {
         const nextState = activeTab !== 'history';
