@@ -78,36 +78,51 @@ export default function PlanList() {
                                     <span className="text-gray-500 dark:text-slate-400 ml-1">/mês</span>
                                 </div>
 
-                                <ul className="space-y-4 text-gray-600 dark:text-slate-300 mb-8">
-                                    <li className="flex items-center">
-                                        <svg className="h-5 w-5 text-green-500 dark:text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                                        </svg>
-                                        {plan.simulations_limit > 0 ? `${plan.simulations_limit} provas mensais` : 'Provas Ilimitadas'}
-                                    </li>
-                                    <li className="flex items-center">
-                                        <svg className="h-5 w-5 text-green-500 dark:text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                                        </svg>
-                                        {plan.essays_limit > 0 ? `${plan.essays_limit} redações mensais` : 'Redações Ilimitadas'}
-                                    </li>
-                                    {plan.features?.includes('ai_correction_detailed') && (
-                                        <li className="flex items-center">
-                                            <svg className="h-5 w-5 text-green-500 dark:text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                                            </svg>
-                                            Correção detalhada por IA
-                                        </li>
-                                    )}
-                                    {plan.features?.includes('study_plan') && (
-                                        <li className="flex items-center">
-                                            <svg className="h-5 w-5 text-green-500 dark:text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                                            </svg>
-                                            Plano de estudos personalizado
-                                        </li>
-                                    )}
-                                </ul>
+                                {plan.name.toLowerCase().includes('gratuito') && (
+                                    <>
+                                        <div className="text-sm font-semibold text-slate-500 mb-3 tracking-widest uppercase">Para Testar</div>
+                                        <ul className="space-y-3 text-sm text-gray-600 dark:text-slate-300 mb-8 font-medium">
+                                            <li className="flex items-center"><svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> {plan.simulations_limit} provas/mês</li>
+                                            <li className="flex items-center"><svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Correção básica</li>
+                                            <li className="flex items-center"><svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Estatísticas simples</li>
+                                            <li className="flex items-center"><svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Acesso ilimitado às questões</li>
+                                            <li className="mt-4 mb-2 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">+ Benefícios</li>
+                                            <li className="flex items-center"><svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Gabarito Comentado</li>
+                                            <li className="flex items-center"><svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Modo noturno</li>
+                                        </ul>
+                                    </>
+                                )}
+
+                                {(plan.name.toLowerCase().includes('básico') || plan.name.toLowerCase().includes('basico')) && (
+                                    <>
+                                        <div className="text-sm font-semibold text-blue-500 mb-3 tracking-widest uppercase">Para Evoluir</div>
+                                        <ul className="space-y-3 text-sm text-gray-600 dark:text-slate-300 mb-8 font-medium">
+                                            <li className="flex items-center"><svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Correção detalhada (IA)</li>
+                                            <li className="flex items-center"><svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> {plan.essays_limit} redações/mês</li>
+                                            <li className="flex items-center"><svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Redação com Nota C1-C5</li>
+                                            <li className="flex items-center"><svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Radar de concursos</li>
+                                            <li className="flex items-center"><svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> {plan.simulations_limit} provas/mês</li>
+                                            <li className="flex items-center"><svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> +200 mil questões</li>
+                                            <li className="mt-4 mb-2 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">+ Benefícios</li>
+                                            <li className="flex items-center"><svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Estatísticas e Gabaritos</li>
+                                        </ul>
+                                    </>
+                                )}
+
+                                {plan.name.toLowerCase().includes('plus') && (
+                                    <>
+                                        <div className="text-sm font-semibold text-amber-500 mb-3 tracking-widest uppercase">Para Acelerar (Popular)</div>
+                                        <ul className="space-y-3 text-sm text-gray-600 dark:text-slate-300 mb-8 font-medium">
+                                            <li className="flex items-center text-slate-900 dark:text-white font-bold"><svg className="h-5 w-5 text-amber-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Plano de estudos gerado por IA</li>
+                                            <li className="flex items-center"><svg className="h-5 w-5 text-amber-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Provas Ilimitadas</li>
+                                            <li className="flex items-center"><svg className="h-5 w-5 text-amber-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Redações Ilimitadas</li>
+                                            <li className="flex items-center"><svg className="h-5 w-5 text-amber-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> ChatBot Tutor Xavier Ilimitado</li>
+                                            <li className="flex items-center"><svg className="h-5 w-5 text-amber-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Tira-Dúvidas Instantâneo AI</li>
+                                            <li className="mt-4 mb-2 text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">Tudo do Básico E +</li>
+                                            <li className="flex items-center"><svg className="h-5 w-5 text-amber-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Resolução Passo a Passo</li>
+                                        </ul>
+                                    </>
+                                )}
                             </div>
 
                             <div className="p-8 bg-gray-50 dark:bg-slate-800 border-t border-gray-100 dark:border-slate-700">

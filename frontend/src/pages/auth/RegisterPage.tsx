@@ -43,6 +43,10 @@ export default function RegisterPage() {
 
             const targetPlan = planParam || intendedPlan;
 
+            if (intendedPlan) {
+                localStorage.removeItem('intended_plan');
+            }
+
             if (targetPlan && targetPlan !== 'free' && targetPlan !== 'n/a') {
                 navigate(`/plans?autoSelect=${targetPlan}`);
             } else {
