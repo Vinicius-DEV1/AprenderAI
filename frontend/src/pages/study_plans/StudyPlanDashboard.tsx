@@ -24,13 +24,21 @@ export default function StudyPlanDashboard() {
 
     if (isLoading) return <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>;
 
-    if (data?.view_state === 'paywall') {
+    if (data?.code === 'PAYWALL' || data?.view_state === 'paywall') {
         return (
-            <div className="py-20 text-center">
-                <div className="bg-purple-50 dark:bg-purple-900/20 border-l-4 border-purple-500 p-8 rounded-xl max-w-2xl mx-auto shadow-sm">
-                    <h2 className="text-2xl font-bold text-purple-800 dark:text-purple-300 mb-4">Plano Plus Necessário 🚀</h2>
-                    <p className="text-purple-600 dark:text-purple-400 mb-6">A geração de Planos de Estudo personalizados via IA é uma funcionalidade exclusiva para membros Plus.</p>
-                    <button onClick={() => window.location.href = '/plans'} className="px-6 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition">Ver Planos</button>
+            <div className="py-20 text-center px-4">
+                <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/10 dark:to-indigo-900/10 border border-purple-100 dark:border-purple-800 p-10 rounded-[2.5rem] max-w-2xl mx-auto shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-4 opacity-10">
+                        <svg className="w-24 h-24 text-purple-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                    </div>
+                    <div className="relative z-10 text-center">
+                        <div className="w-20 h-20 bg-purple-600 text-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-purple-500/40 transform -rotate-3 hover:rotate-0 transition-transform">
+                            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+                        </div>
+                        <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">Evolua para o Plano Plus 🚀</h2>
+                        <p className="text-slate-600 dark:text-slate-400 mb-8 text-lg leading-relaxed">O <strong>Plano de Estudos Premium</strong> do Xavier analisa suas fraquezas reais e cria um cronograma dinâmico de alta performance.</p>
+                        <button onClick={() => window.location.href = '/plans'} className="px-10 py-4 bg-purple-600 hover:bg-purple-700 text-white font-black rounded-2xl transition-all shadow-xl shadow-purple-500/30 active:scale-95">QUERO SER PLUS</button>
+                    </div>
                 </div>
             </div>
         );
@@ -112,19 +120,21 @@ export default function StudyPlanDashboard() {
                 </div>
             )}
 
-            {/* Introductory Message */}
-            {plan?.plan_json?.overview && (
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-8 shadow-xl shadow-slate-200/50 dark:shadow-none">
-                    <p className="text-slate-800 dark:text-slate-200 leading-relaxed text-lg font-medium italic">
-                        "{plan.plan_json.overview.startsWith('Olá') ? plan.plan_json.overview : 'Olá! ' + plan.plan_json.overview}"
+            {/* Introductory Message & Diagnostic Summary */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-8 shadow-xl shadow-slate-200/50 dark:shadow-none">
+                <h4 className="text-[10px] uppercase font-black text-blue-600 mb-4 tracking-[0.2em] flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+                    Análise do Xavier
+                </h4>
+                <p className="text-slate-800 dark:text-slate-200 leading-relaxed text-lg font-medium italic">
+                    {plan?.plan_json?.diagnostic_summary || plan?.plan_json?.overview || 'Bem-vindo ao seu plano premium! Estou analisando seu desempenho para otimizar sua jornada.'}
+                </p>
+                {motivation && (
+                    <p className="mt-4 text-sm font-bold text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20 p-4 rounded-2xl border-l-4 border-blue-500">
+                        {motivation}
                     </p>
-                    {motivation && (
-                        <p className="mt-4 text-sm font-bold text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20 p-4 rounded-2xl border-l-4 border-blue-500">
-                            {motivation}
-                        </p>
-                    )}
-                </div>
-            )}
+                )}
+            </div>
 
             {/* Diagnóstico */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden shadow-sm">
@@ -377,13 +387,40 @@ export default function StudyPlanDashboard() {
                                 <span className="text-xl">{getDayIcon(day)}</span>
                                 {day}
                             </h4>
-                            <ul className="space-y-3">
-                                {tasks.map((task: string, i: number) => (
-                                    <li key={i} className="text-sm text-slate-600 dark:text-slate-400 flex gap-3 leading-snug">
-                                        <span className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 shrink-0 shadow-sm animate-pulse shadow-blue-500/50"></span>
-                                        <span className="font-medium">{task}</span>
+                            <ul className="space-y-4">
+                                {Array.isArray(tasks) ? tasks.map((task: any, i: number) => (
+                                    <li key={i} className="group/task">
+                                        {typeof task === 'object' ? (
+                                            <div className="flex gap-3">
+                                                <div className="flex flex-col items-center gap-1 mt-1 shrink-0">
+                                                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full group-hover/task:scale-150 transition-transform"></span>
+                                                    <div className="w-px h-full bg-slate-200 dark:bg-slate-700"></div>
+                                                </div>
+                                                <div className="space-y-1 pb-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded leading-none">{task.time || 'Bloco'}</span>
+                                                        <span className="text-sm font-extrabold text-slate-800 dark:text-slate-200 leading-tight">{task.activity}</span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug">{task.reason}</p>
+                                                    <div className="flex flex-wrap gap-2 pt-1">
+                                                        <span className="text-[9px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full uppercase">{task.method}</span>
+                                                        <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full uppercase">Meta: {task.goal}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex gap-3">
+                                                <span className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 shrink-0"></span>
+                                                <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{task}</span>
+                                            </div>
+                                        )}
                                     </li>
-                                ))}
+                                )) : (
+                                    <li className="p-4 text-center bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/20">
+                                        <p className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">🛋️ Rest Day</p>
+                                        <p className="text-[10px] text-blue-400 mt-1">{tasks}</p>
+                                    </li>
+                                )}
                             </ul>
                         </div>
                     ))}

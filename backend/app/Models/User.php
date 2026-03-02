@@ -165,8 +165,35 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function hasPlusPlan(): bool
     {
+        if (!$this->relationLoaded('plan')) {
+            $this->loadMissing('plan');
+        }
+
         $plan = $this->activePlan();
-        return $plan && str_contains(strtolower($plan->name), 'plus');
+        if (!$plan) {
+            return false;
+        }
+
+        return strtolower($plan->slug ?? '') === 'plus' || str_contains(strtolower($plan->name), 'plus');
+    }
+
+    public function totalQuestionsAnswered(): int
+    {
+        // Counts actual answers (not just opened questions)
+        return $this->questionAnswers()->count();
+    }
+
+    public function hasStudyPlanPrerequisites(): bool
+    {
+        // Regra: 50 questões resolvidas OU 1 simulado com 50+ questões
+        if ($this->totalQuestionsAnswered() >= 50) {
+            return true;
+        }
+
+        return $this->simulations()
+            ->whereIn('status', ['finished', 'corrected'])
+            ->has('answers', '>=', 50)
+            ->exists();
     }
 
     public function hasActiveSubscription(): bool
@@ -187,7 +214,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function canAccessStudyPlan(): bool
     {
-        return $this->hasPlusPlan() && $this->hasCompletedSimulation();
+        return $this->hasPlusPlan() && $this->hasStudyPlanPrerequisites();
     }
 
     // =========================================================================
