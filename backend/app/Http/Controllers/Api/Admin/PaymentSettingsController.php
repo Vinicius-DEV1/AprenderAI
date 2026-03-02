@@ -15,8 +15,10 @@ class PaymentSettingsController extends Controller
     public function index()
     {
         return response()->json([
-            'asaas_api_key' => Configuration::get('asaas_api_key', ''),
-            'asaas_webhook_token' => Configuration::get('asaas_webhook_token', ''),
+            'asaas_production_api_key' => Configuration::get('asaas_production_api_key', ''),
+            'asaas_production_webhook_token' => Configuration::get('asaas_production_webhook_token', ''),
+            'asaas_sandbox_api_key' => Configuration::get('asaas_sandbox_api_key', ''),
+            'asaas_sandbox_webhook_token' => Configuration::get('asaas_sandbox_webhook_token', ''),
             'asaas_sandbox' => filter_var(Configuration::get('asaas_sandbox', false), FILTER_VALIDATE_BOOLEAN),
             'payment_active' => filter_var(Configuration::get('payment_active', false), FILTER_VALIDATE_BOOLEAN),
         ]);
@@ -28,8 +30,10 @@ class PaymentSettingsController extends Controller
     public function update(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'asaas_api_key' => 'nullable|string',
-            'asaas_webhook_token' => 'nullable|string|max:255',
+            'asaas_production_api_key' => 'nullable|string',
+            'asaas_production_webhook_token' => 'nullable|string|max:255',
+            'asaas_sandbox_api_key' => 'nullable|string',
+            'asaas_sandbox_webhook_token' => 'nullable|string|max:255',
             'asaas_sandbox' => 'boolean',
             'payment_active' => 'boolean',
         ]);

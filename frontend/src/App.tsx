@@ -38,6 +38,7 @@ import EssayReview from './pages/essays/EssayReview';
 import QuestionBank from './pages/questions/QuestionBank';
 import PlanList from './pages/plans/PlanList';
 import PlanCheckout from './pages/plans/PlanCheckout';
+import PlanSuccess from './pages/plans/PlanSuccess';
 
 // Admin Pages
 import AdminLayout from './layouts/AdminLayout';
@@ -162,6 +163,7 @@ function App() {
                         {/* Plans */}
                         <Route path="/plans" element={<><MetaTags title="Planos e Preços" /><PlanList /></>} />
                         <Route path="/plans/:planId/checkout" element={<><MetaTags title="Checkout" /><PlanCheckout /></>} />
+                        <Route path="/checkout/success" element={<><MetaTags title="Pagamento Confirmado" /><PlanSuccess /></>} />
 
                         {/* Profile */}
                         <Route path="/profile" element={<><MetaTags title="Meu Perfil" /><Profile /></>} />

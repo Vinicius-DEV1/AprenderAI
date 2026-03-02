@@ -28,17 +28,24 @@ class WebhookController extends Controller
     public function handleAsaas(Request $request)
     {
         // ---- 1. Verificação de Autenticidade do Webhook ----------------------
-        $configuredToken = Configuration::get('asaas_webhook_token', '');
+        $productionToken = Configuration::get('asaas_production_webhook_token', '');
+        $sandboxToken = Configuration::get('asaas_sandbox_webhook_token', '');
 
-        if (!empty($configuredToken)) {
-            $receivedToken = $request->header('asaas-access-token', '');
-            if (!hash_equals($configuredToken, $receivedToken)) {
-                Log::warning('[Webhook] Token inválido recebido', [
-                    'ip' => $request->ip(),
-                    'received_token' => substr($receivedToken, 0, 8) . '...', // Não logar o token completo
-                ]);
-                return response()->json(['status' => 'unauthorized'], 403);
-            }
+        $receivedToken = $request->header('asaas-access-token', '');
+
+        $isValid = false;
+        if (!empty($productionToken) && hash_equals($productionToken, $receivedToken)) {
+            $isValid = true;
+        } elseif (!empty($sandboxToken) && hash_equals($sandboxToken, $receivedToken)) {
+            $isValid = true;
+        }
+
+        if (!$isValid && (!empty($productionToken) || !empty($sandboxToken))) {
+            Log::warning('[Webhook] Token inválido recebido', [
+                'ip' => $request->ip(),
+                'received_token' => $receivedToken ? substr($receivedToken, 0, 8) . '...' : null,
+            ]);
+            return response()->json(['status' => 'unauthorized'], 403);
         }
 
         // ---- 2. Extrair dados do payload ------------------------------------
