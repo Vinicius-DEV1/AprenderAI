@@ -162,7 +162,7 @@ class SimulationController extends Controller
         if ($legacyType === 'enem' && !empty($legacyDist)) {
             foreach ($legacyDist as $subject => $qty) {
                 $realNeeded = $qty - (int) ceil($qty * $legacyAiRatio);
-                $available = \App\Models\Question::where('type', 'enem')
+                $available = \App\Models\Question::published()->where('type', 'enem')
                     ->whereHas('subjects', fn($q) => $q->where('name', $subject))
                     ->count();
 

@@ -208,10 +208,15 @@ class Question extends Model
      * Exclui questões importadas que ainda estão pendentes de revisão.
      * Questões sem review_status (criadas manualmente) são sempre visíveis.
      */
+    /**
+     * Scope: filtra questões visíveis para os alunos no banco público.
+     * Exclui questões importadas que ainda estão pendentes de revisão.
+     * Também exclui questões que não passaram na validação de preenchimento (incomplete).
+     */
     public function scopePublished($query)
     {
-        return $query->where(function ($q) {
-            $q->whereNull('review_status')       // Questões manuais (pré-importador)
+        return $query->complete()->where(function ($q) {
+            $q->whereNull('review_status')       // Questões manuais
                 ->orWhere('review_status', 'approved'); // Questões importadas e aprovadas
         });
     }
