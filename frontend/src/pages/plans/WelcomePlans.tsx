@@ -23,14 +23,26 @@ export default function WelcomePlans() {
     }, [searchParams]);
 
     const handlePlanSelect = (planName: string, interval: 'monthly' | 'yearly') => {
-        const matchedPlan = plans.find(p =>
-            p.name.toLowerCase().includes(planName.toLowerCase()) &&
-            p.interval === interval
-        );
+        if (!plans || plans.length === 0) {
+            console.warn('Plans not loaded yet');
+            return;
+        }
+
+        const matchedPlan = plans.find(p => {
+            const name = p.name.toLowerCase();
+            const target = planName.toLowerCase();
+            // Handle both Básico and Basico
+            const nameMatches = name.includes(target) || (target === 'básico' && name.includes('basico'));
+            return nameMatches && p.interval === interval;
+        });
 
         if (matchedPlan) {
             localStorage.removeItem('intended_plan');
             setSelectedPlanId(matchedPlan.id);
+            // Move scroll to top to see checkout
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            console.error('Plan not found:', planName, interval);
         }
     };
 
