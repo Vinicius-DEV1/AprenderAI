@@ -39,7 +39,7 @@ export default function Coupons() {
     const meta = data?.meta || { last_page: 1, current_page: 1 };
 
     return (
-        <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto animate-in fade-in duration-500">
+        <div className="py-6 px-4 md:px-6 w-full animate-in fade-in duration-500">
             <div className="mb-8 flex justify-between items-center text-left">
                 <div>
                     <h1 className="text-3xl font-black text-gray-900 mb-2 tracking-tighter uppercase">Cupons de Desconto</h1>

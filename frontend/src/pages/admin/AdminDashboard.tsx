@@ -80,8 +80,8 @@ export default function AdminDashboard() {
     };
 
     return (
-        <div className="p-4 md:p-8 max-w-7xl mx-auto">
-            <header className="mb-10 flex justify-between items-end">
+        <div className="p-4 md:p-6 w-full">
+            <header className="mb-6 flex justify-between items-end">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Dashboard Analítico 🚀</h1>
                     <p className="text-gray-600 dark:text-slate-400">Visão geral da performance do sistema</p>

@@ -16,8 +16,8 @@ export default function Curadoria() {
     const recentImports = data?.recent_imports || [];
 
     return (
-        <div className="py-12">
-            <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div className="py-6 px-4 md:px-6 w-full">
+            <div className="w-full">
 
                 {/* Header (Originalmente injetado via x-slot no Blade) */}
                 <div className="mb-6">

@@ -76,7 +76,7 @@ export default function AdminQuestions() {
     ];
 
     return (
-        <div className="p-6 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500 bg-gray-50/30 min-h-screen">
+        <div className="p-4 md:p-6 w-full space-y-6 animate-in fade-in duration-500 bg-gray-50/30 min-h-screen">
             {/* Header */}
             <div className="flex justify-between items-end">
                 <div>

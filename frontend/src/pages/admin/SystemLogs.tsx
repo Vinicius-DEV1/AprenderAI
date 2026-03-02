@@ -24,7 +24,7 @@ export default function SystemLogs() {
     const alternatives = question?.alternatives ? Object.entries(question.alternatives) : [];
 
     return (
-        <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="py-6 px-4 md:px-6 w-full">
             <div className="mb-6 flex items-center gap-4">
                 <Link to={`/admin/users/${log.user_id}`} className="p-2 bg-white rounded-lg shadow-sm hover:shadow-md transition-all text-gray-600">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>

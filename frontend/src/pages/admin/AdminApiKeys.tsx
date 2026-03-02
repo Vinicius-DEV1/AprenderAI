@@ -195,7 +195,7 @@ export default function AdminApiKeys() {
     const events: ApiEvent[] = data?.logs || [];
 
     return (
-        <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 bg-slate-50/30 min-h-screen">
+        <div className="p-4 md:p-6 w-full space-y-6 bg-slate-50/30 min-h-screen">
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                 <div>
