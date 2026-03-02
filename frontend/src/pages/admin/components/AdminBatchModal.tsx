@@ -10,11 +10,12 @@ interface BatchModalProps {
 }
 
 export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatchStarted }: BatchModalProps) {
-    const [step, setStep] = useState<'config' | 'preview'>('config');
+    const [step, setStep] = useState<'config' | 'preview' | 'processing'>('config');
     const [quantity, setQuantity] = useState(10);
     const [type, setType] = useState('complete');
     const [model, setModel] = useState('gpt-4o');
-    const [chunkSize, setChunkSize] = useState(5);
+    const [chunkSize, setChunkSize] = useState(20);
+    const [delaySeconds, setDelaySeconds] = useState(15);
     const [reprocess, setReprocess] = useState(false);
     const [previewQuestions, setPreviewQuestions] = useState<any[]>([]);
 
@@ -75,6 +76,7 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                 type: type === 'complete' ? 'both' : type,
                 model,
                 chunk_size: chunkSize,
+                delay_seconds: delaySeconds,
                 reprocess,
                 question_ids: previewQuestions.map(q => q.id)
             });
@@ -94,14 +96,18 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                 try {
                     const res = await api.get(`/api/v1/admin/triage/${batchId}/status`);
                     setProgress(res.data);
-                    if (res.data.status === 'completed' || res.data.status === 'failed' || res.data.status === 'cancelled') {
+
+                    const isDone = res.data.status === 'completed' || res.data.status === 'failed' || res.data.status === 'cancelled';
+
+                    if (isDone) {
                         clearInterval(interval);
-                        setTimeout(() => {
-                            onClose();
-                            setBatchId(null);
-                            setProgress(null);
-                            setStep('config');
-                        }, 3000);
+
+                        // Somente fecha automático se for SUCESSO total (sem erros)
+                        if (res.data.status === 'completed' && res.data.errors === 0) {
+                            setTimeout(() => {
+                                handleFinalize();
+                            }, 3000);
+                        }
                     }
                 } catch (e) {
                     clearInterval(interval);
@@ -109,7 +115,14 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
             }, 2000);
         }
         return () => clearInterval(interval);
-    }, [batchId, onClose]);
+    }, [batchId]);
+
+    const handleFinalize = () => {
+        onClose();
+        setBatchId(null);
+        setProgress(null);
+        setStep('config');
+    };
 
     if (!isOpen) return null;
 
@@ -135,20 +148,46 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                     <div className="p-6 overflow-y-auto flex-grow">
                         {batchId ? (
                             <div className="flex flex-col items-center justify-center py-10 space-y-6">
-                                <div className="text-6xl animate-bounce">🚀</div>
+                                <div className={`text-6xl ${progress?.status === 'failed' ? '' : 'animate-bounce'}`}>
+                                    {progress?.status === 'failed' ? '❌' : '🚀'}
+                                </div>
                                 <div className="w-full max-w-md bg-gray-100 h-4 rounded-full overflow-hidden">
                                     <div
-                                        className="bg-indigo-600 h-full transition-all duration-500"
+                                        className={`h-full transition-all duration-500 ${progress?.status === 'failed' ? 'bg-red-500' : 'bg-indigo-600'}`}
                                         style={{ width: `${progress ? (progress.processed / progress.total) * 100 : 0}%` }}
                                     ></div>
                                 </div>
-                                <div className="text-center">
-                                    <p className="font-black text-gray-900 text-lg">
+                                <div className="text-center w-full">
+                                    <p className={`font-black text-3xl mb-1 ${progress?.status === 'failed' ? 'text-red-600' : 'text-gray-900'}`}>
                                         {progress ? `${progress.processed} / ${progress.total}` : 'Iniciando...'}
                                     </p>
-                                    <p className="text-sm text-gray-500 font-bold uppercase tracking-wider mt-1">
-                                        {progress?.message || 'Aguardando servidor...'}
-                                    </p>
+
+                                    {/* Contador de Tokens */}
+                                    {progress && (progress.input_tokens > 0 || progress.output_tokens > 0) && (
+                                        <div className="flex justify-center gap-3 mb-4">
+                                            <div className="bg-blue-50 border border-blue-100 px-3 py-1 rounded-full flex items-center gap-2 shadow-sm">
+                                                <span className="text-[10px] font-black text-blue-400 uppercase">Input</span>
+                                                <span className="text-xs font-black text-blue-600">{progress.input_tokens.toLocaleString()}</span>
+                                            </div>
+                                            <div className="bg-purple-50 border border-purple-100 px-3 py-1 rounded-full flex items-center gap-2 shadow-sm">
+                                                <span className="text-[10px] font-black text-purple-400 uppercase">Output</span>
+                                                <span className="text-xs font-black text-purple-600">{progress.output_tokens.toLocaleString()}</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="flex flex-col items-center gap-1">
+                                        <p className={`text-xs font-bold uppercase tracking-widest ${progress?.status === 'failed' ? 'text-red-500' : 'text-indigo-500'}`}>
+                                            {progress?.message || 'Aguardando servidor...'}
+                                        </p>
+                                        {progress?.last_error && (
+                                            <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded-xl max-w-md mx-auto">
+                                                <p className="text-[10px] text-red-600 font-bold leading-relaxed">
+                                                    {progress.last_error}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ) : step === 'config' ? (
@@ -206,6 +245,29 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                             <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                                             <span className="ml-3 text-xs font-black uppercase text-gray-400">Forçar Sobrescrita</span>
                                         </label>
+                                    </div>
+                                    <div className="sm:col-span-2 space-y-2 mt-2">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                            <span>⏱️ Intervalo entre Blocos (segundos)</span>
+                                            <span className="normal-case font-bold text-[9px] text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">Seguro p/ Gemini Free: 15s+</span>
+                                        </label>
+                                        <div className="flex items-center gap-4 bg-gray-50/50 p-3 rounded-2xl border border-gray-100">
+                                            <input
+                                                type="range"
+                                                min="0"
+                                                max="60"
+                                                step="5"
+                                                value={delaySeconds}
+                                                onChange={(e) => setDelaySeconds(parseInt(e.target.value))}
+                                                className="flex-grow accent-indigo-600 h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer"
+                                            />
+                                            <div className="w-14 text-center py-1.5 bg-white border border-gray-100 rounded-xl font-black text-indigo-600 text-sm shadow-sm">
+                                                {delaySeconds}s
+                                            </div>
+                                        </div>
+                                        <p className="text-[9px] text-gray-400 font-bold italic leading-tight">
+                                            Atrasa o início de cada bloco para evitar bloqueios de quota do Google.
+                                        </p>
                                     </div>
                                 </div>
 
@@ -274,7 +336,18 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                     </div>
 
                     {/* Footer */}
-                    {!batchId && (
+                    {batchId ? (
+                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+                            {(progress?.status === 'completed' || progress?.status === 'failed' || progress?.status === 'cancelled') && (
+                                <button
+                                    onClick={handleFinalize}
+                                    className="px-8 py-2.5 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-black transition shadow-lg"
+                                >
+                                    Fechar Lote
+                                </button>
+                            )}
+                        </div>
+                    ) : (
                         <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
                             <button
                                 onClick={onClose}
