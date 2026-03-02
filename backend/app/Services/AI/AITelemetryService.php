@@ -56,9 +56,10 @@ class AITelemetryService
                 'provider' => $provider,
                 'key_id' => $keyId,
                 'status' => $status,
+                'type' => 'error', // Required by database constraint
                 'message' => substr($message, 0, 255),
                 'status_code' => $code,
-                'details' => json_encode($details),
+                'payload' => $details, // Field name in model is payload, but using details array
             ]);
         } catch (\Exception $e) {
             Log::warning("ApiLog Error: " . $e->getMessage());
