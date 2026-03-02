@@ -3,20 +3,34 @@ import { useState, useEffect } from 'react';
 import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
 import PlanConfirmationModal from '../../components/PlanConfirmationModal';
+import '../../styles/landing-page.css';
 
 export default function PlanList() {
     const navigate = useNavigate();
     const { plans } = useConfigStore();
     const { user } = useAuthStore();
+    const [periodo, setPeriodo] = useState<'mensal' | 'anual'>('mensal');
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedPlanForModal, setSelectedPlanForModal] = useState<any>(null);
 
     const userPlanId = user?.plan_id;
+    const currentPlan = plans?.find((p: any) => p.id === userPlanId);
 
     const handlePlanClick = (plan: any) => {
-        setSelectedPlanForModal(plan);
-        setIsModalOpen(true);
+        // Se o plano atual for o novo plano, não faz nada
+        if (userPlanId === plan.id) return;
+
+        // Regra Especial: De Gratuito (Preço 0) para qualquer Pago -> Checkout Direto
+        // Se for de Pago para Pago -> Abre Modal para explicar que é ACUMULATIVO
+        const isCurrentFree = !currentPlan || currentPlan.price === 0;
+
+        if (isCurrentFree) {
+            navigate(`/plans/${plan.id}/checkout`);
+        } else {
+            setSelectedPlanForModal(plan);
+            setIsModalOpen(true);
+        }
     };
 
     const handleConfirm = () => {
@@ -28,130 +42,169 @@ export default function PlanList() {
     useEffect(() => {
         const searchParams = new URLSearchParams(window.location.search);
         const autoSelect = searchParams.get('autoSelect');
+
         if (autoSelect && plans?.length > 0) {
-            let targetGroup = plans.filter((p: any) => p.price > 0);
+            if (autoSelect.includes('annual')) setPeriodo('anual');
 
             let matchedPlan = null;
             if (autoSelect.includes('basic')) {
-                matchedPlan = targetGroup.find((p: any) => p.name.toLowerCase().includes('básico') || p.name.toLowerCase().includes('basico'));
+                matchedPlan = plans.find((p: any) => (p.name.toLowerCase().includes('básico') || p.name.toLowerCase().includes('basico')) && (autoSelect.includes('annual') ? p.interval === 'yearly' : p.interval === 'monthly'));
             } else if (autoSelect.includes('plus')) {
-                matchedPlan = targetGroup.find((p: any) => p.name.toLowerCase().includes('plus'));
+                matchedPlan = plans.find((p: any) => p.name.toLowerCase().includes('plus') && (autoSelect.includes('annual') ? p.interval === 'yearly' : p.interval === 'monthly'));
             }
 
             if (matchedPlan) {
-                const isAnnual = autoSelect.includes('annual');
-                const finalPlan = targetGroup.find((p: any) => p.name === matchedPlan.name && (isAnnual ? p.interval === 'yearly' : p.interval === 'monthly')) || matchedPlan;
-
-                handlePlanClick(finalPlan);
+                handlePlanClick(matchedPlan);
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         }
-    }, [plans]);
+    }, [plans, currentPlan]);
+
+    const getPlanPrice = (name: string) => {
+        const p = plans?.find(p => p.name.toLowerCase().includes(name.toLowerCase()) && (periodo === 'anual' ? p.interval === 'yearly' : p.interval === 'monthly'));
+        return p?.price || 0;
+    };
+
+    const getPlanBySlug = (slug: string) => {
+        return plans?.find(p => p.name.toLowerCase().includes(slug.toLowerCase()) && (periodo === 'anual' ? p.interval === 'yearly' : p.interval === 'monthly'));
+    };
 
     return (
-        <div className="py-12">
-            <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-
+        <div className="lp-wrapper bg-transparent py-8">
+            <div className="max-w-7xl mx-auto px-4">
                 <div className="text-center mb-10">
-                    <h3 className="text-3xl font-bold text-gray-900 dark:text-slate-100">Escolha o plano ideal para sua aprovação</h3>
-                    <p className="mt-2 text-gray-600 dark:text-slate-400">Faça upgrade e desbloqueie correção detalhada por IA e planos de estudo.</p>
+                    <h3 className="text-3xl font-black text-slate-800 dark:text-white mb-2 uppercase tracking-tighter">Sua Aprovação Começa Aqui</h3>
+                    <p className="text-slate-500 dark:text-slate-400">Escolha o plano que melhor se adapta aos seus objetivos.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {plans?.map((plan: any) => (
-                        <div
-                            key={plan.id}
-                            className={`bg-white dark:bg-slate-900 rounded-lg shadow-lg dark:shadow-none dark:border dark:border-slate-700 overflow-hidden flex flex-col ${userPlanId === plan.id ? 'border-2 border-blue-500 ring-2 ring-blue-200 dark:ring-blue-900' : ''}`}
+                <div className="lp-plans-toggle-wrap mb-10">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#f1f5f9', borderRadius: '50px', padding: '.35rem .75rem' }}>
+                        <span
+                            style={{ fontSize: '.85rem', fontWeight: 600, cursor: 'pointer', transition: 'color .2s', color: periodo === 'mensal' ? '#0f2b6e' : '#94a3b8' }}
+                            onClick={() => setPeriodo('mensal')}
                         >
-                            {userPlanId === plan.id && (
-                                <div className="bg-blue-500 text-white text-xs font-bold uppercase py-1 text-center">
-                                    Seu Plano Atual
-                                </div>
-                            )}
+                            Mensal
+                        </span>
 
-                            <div className="p-8 flex-1">
-                                <h4 className="text-2xl font-bold text-gray-900 dark:text-slate-100 text-center mb-4">{plan.name}</h4>
-                                <div className="text-center mb-6">
-                                    <span className="text-4xl font-extrabold text-blue-600 dark:text-blue-400">
-                                        R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(plan.price)}
-                                    </span>
-                                    <span className="text-gray-500 dark:text-slate-400 ml-1">/mês</span>
-                                </div>
+                        <button
+                            type="button"
+                            onClick={() => setPeriodo(periodo === 'mensal' ? 'anual' : 'mensal')}
+                            className="relative inline-flex h-6 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none"
+                            style={{ background: periodo === 'anual' ? '#1d4ed8' : '#cbd5e1' }}
+                            role="switch"
+                            aria-checked={periodo === 'anual' ? 'true' : 'false'}
+                        >
+                            <span
+                                className="pointer-events-none inline-block h-4 w-4 mt-px ml-px transform rounded-full bg-white shadow ring-0 transition-transform duration-300"
+                                style={{ transform: periodo === 'anual' ? 'translateX(1.25rem)' : 'translateX(0)' }}
+                            ></span>
+                        </button>
 
-                                {plan.name.toLowerCase().includes('gratuito') && (
-                                    <>
-                                        <div className="text-sm font-semibold text-slate-500 mb-3 tracking-widest uppercase">Para Testar</div>
-                                        <ul className="space-y-3 text-sm text-gray-600 dark:text-slate-300 mb-8 font-medium">
-                                            <li className="flex items-center"><svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> {plan.simulations_limit} provas/mês</li>
-                                            <li className="flex items-center"><svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Correção básica</li>
-                                            <li className="flex items-center"><svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Estatísticas simples</li>
-                                            <li className="flex items-center"><svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Acesso ilimitado às questões</li>
-                                            <li className="mt-4 mb-2 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">+ Benefícios</li>
-                                            <li className="flex items-center"><svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Gabarito Comentado</li>
-                                            <li className="flex items-center"><svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Modo noturno</li>
-                                        </ul>
-                                    </>
-                                )}
-
-                                {(plan.name.toLowerCase().includes('básico') || plan.name.toLowerCase().includes('basico')) && (
-                                    <>
-                                        <div className="text-sm font-semibold text-blue-500 mb-3 tracking-widest uppercase">Para Evoluir</div>
-                                        <ul className="space-y-3 text-sm text-gray-600 dark:text-slate-300 mb-8 font-medium">
-                                            <li className="flex items-center"><svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Correção detalhada (IA)</li>
-                                            <li className="flex items-center"><svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> {plan.essays_limit} redações/mês</li>
-                                            <li className="flex items-center"><svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Redação com Nota C1-C5</li>
-                                            <li className="flex items-center"><svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Radar de concursos</li>
-                                            <li className="flex items-center"><svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> {plan.simulations_limit} provas/mês</li>
-                                            <li className="flex items-center"><svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> +200 mil questões</li>
-                                            <li className="mt-4 mb-2 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">+ Benefícios</li>
-                                            <li className="flex items-center"><svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Estatísticas e Gabaritos</li>
-                                        </ul>
-                                    </>
-                                )}
-
-                                {plan.name.toLowerCase().includes('plus') && (
-                                    <>
-                                        <div className="text-sm font-semibold text-amber-500 mb-3 tracking-widest uppercase">Para Acelerar (Popular)</div>
-                                        <ul className="space-y-3 text-sm text-gray-600 dark:text-slate-300 mb-8 font-medium">
-                                            <li className="flex items-center text-slate-900 dark:text-white font-bold"><svg className="h-5 w-5 text-amber-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Plano de estudos gerado por IA</li>
-                                            <li className="flex items-center"><svg className="h-5 w-5 text-amber-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Provas Ilimitadas</li>
-                                            <li className="flex items-center"><svg className="h-5 w-5 text-amber-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Redações Ilimitadas</li>
-                                            <li className="flex items-center"><svg className="h-5 w-5 text-amber-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> ChatBot Tutor Xavier Ilimitado</li>
-                                            <li className="flex items-center"><svg className="h-5 w-5 text-amber-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Tira-Dúvidas Instantâneo AI</li>
-                                            <li className="mt-4 mb-2 text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">Tudo do Básico E +</li>
-                                            <li className="flex items-center"><svg className="h-5 w-5 text-amber-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg> Resolução Passo a Passo</li>
-                                        </ul>
-                                    </>
-                                )}
-                            </div>
-
-                            <div className="p-8 bg-gray-50 dark:bg-slate-800 border-t border-gray-100 dark:border-slate-700">
-                                {userPlanId === plan.id ? (
-                                    <button disabled className="w-full block text-center bg-gray-300 dark:bg-slate-600 text-gray-600 dark:text-slate-400 font-bold py-3 px-4 rounded cursor-not-allowed">
-                                        Plano Atual
-                                    </button>
-                                ) : (
-                                    <button
-                                        onClick={() => handlePlanClick(plan)}
-                                        className="w-full block text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded transition duration-200"
-                                    >
-                                        {plan.price > 0 ? 'Assinar Agora' : 'Mudar para Gratuito'}
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    ))}
+                        <span
+                            style={{ fontSize: '.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '.4rem', transition: 'color .2s', color: periodo === 'anual' ? '#0f2b6e' : '#94a3b8' }}
+                            onClick={() => setPeriodo('anual')}
+                        >
+                            Anual
+                            <span style={{ background: '#dcfce7', color: '#15803d', fontSize: '.7rem', fontWeight: 800, padding: '.15rem .5rem', borderRadius: '99px' }}>-20% OFF</span>
+                        </span>
+                    </div>
                 </div>
 
-                <div className="mt-12 text-center text-gray-500 dark:text-slate-400 text-sm">
-                    <p>Pagamento seguro via Mercado Pago. Cancele quando quiser.</p>
+                <div className="lp-plans-grid">
+                    {/* FREE */}
+                    <div className={`lp-plan-free flex flex-col justify-between border-2 ${userPlanId === getPlanBySlug('gratuito')?.id ? 'border-green-500 bg-green-50/30' : 'border-gray-100'}`}>
+                        <div>
+                            <div className="lp-plan-name-free">Gratuito</div>
+                            <div className="lp-plan-tagline-free">Ideal para começar e testar.</div>
+                            <div className="mb-2">
+                                <span className="lp-plan-price-free">R$ 0</span>
+                                <span className="lp-plan-price-unit lp-plan-price-unit-free">/mês</span>
+                            </div>
+                            <ul className="lp-plan-list lp-plan-list-free">
+                                <li><span className="lp-check-free">✓</span> 5 provas/mês</li>
+                                <li><span className="lp-check-free">✓</span> Correção básica IA</li>
+                                <li><span className="lp-check-free">✓</span> Acesso total às questões</li>
+                                <li className="lp-plan-extras lp-plan-extras-free">
+                                    <span style={{ fontWeight: 800, color: '#0f2b6e' }}>+ Benefícios</span>
+                                </li>
+                                <li><span className="lp-check-free">✓</span> Gabarito Comentado</li>
+                                <li><span className="lp-check-free">✓</span> Modo noturno</li>
+                            </ul>
+                        </div>
+                        <button disabled className="lp-plan-btn-free bg-gray-300 text-gray-600 cursor-not-allowed">
+                            {userPlanId === getPlanBySlug('gratuito')?.id ? 'Plano Ativo' : 'Disponível'}
+                        </button>
+                    </div>
+
+                    {/* BÁSICO */}
+                    <div className={`lp-plan-basic flex flex-col justify-between ${userPlanId === getPlanBySlug('básico')?.id ? 'ring-4 ring-blue-400' : ''}`}>
+                        <div>
+                            <div className="lp-plan-name-paid">Básico</div>
+                            <div className="lp-plan-tagline-paid">Para evoluir com correção completa e IA.</div>
+                            <div className="mb-2">
+                                <span className="lp-plan-price-paid">R$&nbsp;{new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(getPlanPrice('básico'))}</span>
+                                <span className="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
+                            </div>
+                            <ul className="lp-plan-list lp-plan-list-paid">
+                                <li><span className="lp-check-paid">✓</span> Correção detalhada (IA)</li>
+                                <li><span className="lp-check-paid">✓</span> 5 redações/mês</li>
+                                <li><span className="lp-check-paid">✓</span> Radar de concursos</li>
+                                <li><span className="lp-check-paid">✓</span> 10 provas/mês</li>
+                                <li className="lp-plan-extras">
+                                    <span style={{ fontWeight: 800, color: '#fff' }}>+ Benefícios</span>
+                                </li>
+                                <li><span className="lp-check-paid">✓</span> Estatísticas e Gabaritos</li>
+                                <li><span className="lp-check-paid">✓</span> Modo noturno</li>
+                            </ul>
+                        </div>
+                        <button
+                            onClick={() => handlePlanClick(getPlanBySlug('básico'))}
+                            disabled={userPlanId === getPlanBySlug('básico')?.id}
+                            className={`lp-plan-btn-basic ${userPlanId === getPlanBySlug('básico')?.id ? 'bg-blue-400 opacity-50 cursor-not-allowed' : 'hover:scale-105 transition-transform'}`}
+                        >
+                            {userPlanId === getPlanBySlug('básico')?.id ? 'Seu Plano Atual' : 'Fazer Upgrade'}
+                        </button>
+                    </div>
+
+                    {/* PLUS */}
+                    <div className={`lp-plan-plus flex flex-col justify-between relative overflow-hidden ${userPlanId === getPlanBySlug('plus')?.id ? 'ring-4 ring-amber-400' : ''}`}>
+                        <div className="absolute top-4 right-[-35px] bg-amber-500 text-blue-900 text-[10px] font-black px-10 py-1 rotate-45 shadow-sm">
+                            POPULAR
+                        </div>
+                        <div>
+                            <div className="lp-plan-name-paid">Plus</div>
+                            <div className="lp-plan-tagline-paid">A estratégia definitiva de aprovação.</div>
+                            <div className="mb-2">
+                                <span className="lp-plan-price-paid">R$&nbsp;{new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(getPlanPrice('plus'))}</span>
+                                <span className="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
+                            </div>
+                            <ul className="lp-plan-list lp-plan-list-paid">
+                                <li><span className="lp-check-paid">✓</span> <strong>Simulados ilimitados</strong></li>
+                                <li><span className="lp-check-paid">✓</span> <strong>15 redações/mês</strong></li>
+                                <li><span className="lp-check-paid">✓</span> Cronograma IA Personalizado</li>
+                                <li><span className="lp-check-paid">✓</span> Xavier Tutor Ilimitado</li>
+                                <li className="lp-plan-extras">
+                                    <span style={{ fontWeight: 800, color: '#fff' }}>+ Benefícios</span>
+                                </li>
+                                <li><span className="lp-check-paid">✓</span> Tira-Dúvidas AI em tempo real</li>
+                                <li><span className="lp-check-paid">✓</span> Modo noturno</li>
+                            </ul>
+                        </div>
+                        <button
+                            onClick={() => handlePlanClick(getPlanBySlug('plus'))}
+                            disabled={userPlanId === getPlanBySlug('plus')?.id}
+                            className={`lp-plan-btn-plus ${userPlanId === getPlanBySlug('plus')?.id ? 'bg-amber-400 opacity-50 cursor-not-allowed' : 'hover:scale-105 transition-transform'}`}
+                        >
+                            {userPlanId === getPlanBySlug('plus')?.id ? 'Seu Plano Atual' : 'Acessar Plus'}
+                        </button>
+                    </div>
                 </div>
 
                 <PlanConfirmationModal
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
                     onConfirm={handleConfirm}
-                    currentPlan={plans?.find((p: any) => p.id === userPlanId)}
+                    currentPlan={currentPlan}
                     selectedPlan={selectedPlanForModal}
                 />
             </div>
