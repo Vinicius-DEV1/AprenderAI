@@ -25,11 +25,31 @@ class UserResource extends JsonResource
             'avatar' => $this->avatar_url ?? null,
             'plan' => $this->activePlan() ? new PlanResource($this->activePlan()) : null,
             'subscription_active' => $this->hasActiveSubscription(),
+            'subscription_start' => $this->plan_started_at,
+            'subscription_end' => $this->plan_expires_at,
             'created_at' => $this->created_at,
             'stats' => [
                 'simulations_completed' => $this->stats->simulations_completed ?? 0,
                 'essays_submitted' => $this->stats->essays_submitted ?? 0,
                 'questions_answered' => $this->stats->questions_answered ?? 0,
+            ],
+            'quotas' => [
+                'simulations' => [
+                    'limit' => $this->simulationQuotaLimit(),
+                    'used' => $this->monthlySimulationUsed(),
+                ],
+                'essays' => [
+                    'limit' => $this->essayQuotaLimit(),
+                    'used' => $this->monthlyEssayUsed(),
+                ],
+                'daily_questions' => [
+                    'limit' => $this->dailyQuestionQuotaLimit(),
+                    'used' => $this->dailyQuestionUsed(),
+                ],
+                'ai_questions' => [
+                    'limit' => $this->aiQuotaLimit(),
+                    'used' => $this->ai_questions_count,
+                ]
             ]
         ];
     }
