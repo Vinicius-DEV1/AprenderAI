@@ -30,6 +30,10 @@ class Question extends Model
         'number',
         'arquivo_origem',
         'discursive_answer',
+        'pdf_page',
+        'origin',
+        'source_url',
+        'extracted_at',
     ];
 
     protected $casts = [

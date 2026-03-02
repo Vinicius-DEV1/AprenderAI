@@ -263,6 +263,9 @@ class QuestionImportService
                 e.year,
                 e.institution,
                 e.role,
+                e.origin,
+                e.source_url,
+                e.extracted_at,
                 (SELECT GROUP_CONCAT(s.name) 
                  FROM question_subject qs 
                  JOIN subjects s ON s.id = qs.subject_id 
@@ -333,6 +336,10 @@ class QuestionImportService
                         'number' => $qData['number'] ?? null,
                         'arquivo_origem' => $qData['arquivo_origem'] ?? null,
                         'discursive_answer' => $discursiveAnswer,
+                        'pdf_page' => $qData['pdf_page'] ?? null,
+                        'origin' => $qData['origin'] ?? null,
+                        'source_url' => $qData['source_url'] ?? null,
+                        'extracted_at' => $qData['extracted_at'] ?? null,
                     ]);
 
                     // Insere instâncias de imagem iterativamente para a relação 1:N
