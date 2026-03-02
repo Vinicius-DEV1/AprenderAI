@@ -112,7 +112,7 @@ export default function PlanList() {
                             <div>
                                 <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Minha Assinatura</p>
                                 <h4 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                                    Plano {currentPlan?.name || 'Gratuito'}
+                                    Plano {currentPlan?.name || (user?.role === 'admin' ? 'Administrador' : 'Gratuito')}
                                     <span className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full uppercase tracking-widest font-black">Ativo</span>
                                 </h4>
                             </div>
