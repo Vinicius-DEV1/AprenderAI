@@ -17,6 +17,7 @@ class ApiKey extends Model
     public const CAPABILITY_SEARCH = 'search';
     public const CAPABILITY_STUDY_PLANS = 'study_plans';
     public const CAPABILITY_GENERAL = 'general';
+    public const CAPABILITY_EMBEDDING = 'embedding';
 
     protected $fillable = [
         'vault_id',
@@ -50,6 +51,7 @@ class ApiKey extends Model
             self::CAPABILITY_TRIAGE => 'Triagem e Moderação',
             self::CAPABILITY_SEARCH => 'Busca Inteligente (Xavier)',
             self::CAPABILITY_STUDY_PLANS => 'Geração de Plano de Estudos',
+            self::CAPABILITY_EMBEDDING => 'Gerador de Vetores (Embeddings)',
             self::CAPABILITY_GENERAL => 'Uso Geral / Fallback',
         ];
     }
