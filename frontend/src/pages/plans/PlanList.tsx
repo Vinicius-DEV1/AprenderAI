@@ -87,13 +87,20 @@ export default function PlanList() {
     }, [plans, currentPlan]);
 
     const getPlanPrice = (slugKeyword: string) => {
-        const p = plans?.find(p => p.slug.includes(slugKeyword) && (periodo === 'anual' ? p.interval === 'yearly' : p.interval === 'monthly'));
+        const p = plans?.find(p => p.slug?.includes(slugKeyword) && (periodo === 'anual' ? p.interval === 'yearly' : p.interval === 'monthly'));
         return p?.price || 0;
     };
 
     const getPlanBySlug = (slugKeyword: string) => {
-        return plans?.find(p => p.slug.includes(slugKeyword) && (periodo === 'anual' ? p.interval === 'yearly' : p.interval === 'monthly'));
+        if (!plans || plans.length === 0) return null;
+        return plans.find(p => p.slug?.includes(slugKeyword) && (periodo === 'anual' ? p.interval === 'yearly' : p.interval === 'monthly'));
     };
+
+    useEffect(() => {
+        if (plans?.length > 0) {
+            console.log('Available Plans:', plans.map(p => ({ id: p.id, name: p.name, slug: p.slug, interval: p.interval })));
+        }
+    }, [plans]);
 
     return (
         <div className="lp-wrapper bg-transparent py-8">
