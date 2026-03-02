@@ -1,14 +1,30 @@
+import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
+import { getUser } from '../../api/auth';
 
 export default function PlanSuccess() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { user } = useAuthStore();
+    const { user, setUser } = useAuthStore();
 
     // Attempt to extract planName from the query string (e.g. ?planName=Premium)
     const queryParams = new URLSearchParams(location.search);
     const planName = queryParams.get('planName') || 'Premium';
+
+    useEffect(() => {
+        const refreshUser = async () => {
+            try {
+                const response = await getUser();
+                if (response.data.user) {
+                    setUser(response.data.user);
+                }
+            } catch (error) {
+                console.error("Failed to refresh user data after checkout");
+            }
+        };
+        refreshUser();
+    }, [setUser]);
 
     return (
         <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 py-16">

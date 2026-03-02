@@ -250,137 +250,139 @@ export default function PlanCheckout() {
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            {method === 'credit_card' ? (
-                                <div className="space-y-6 animate-in fade-in duration-300">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="md:col-span-2">
-                                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Número do Cartão</label>
-                                            <IMaskInput
-                                                mask="0000 0000 0000 0000" unmask={true}
-                                                type="text" name="card_number" required
-                                                value={formData.card_number} onAccept={(val) => handleMaskChange(val, 'card_number')}
-                                                placeholder="0000 0000 0000 0000"
-                                                className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-mono tracking-widest"
-                                            />
-                                        </div>
-                                        <div className="md:col-span-2">
-                                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Nome impresso no Cartão</label>
-                                            <input
-                                                type="text" name="card_name" required
-                                                value={formData.card_name} onChange={(e) => setFormData({ ...formData, card_name: e.target.value.toUpperCase() })}
-                                                placeholder="JOAO A SILVA"
-                                                className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold uppercase"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Validade</label>
-                                            <div className="flex gap-2">
+                            <fieldset disabled={isLoading} className="space-y-6">
+                                {method === 'credit_card' ? (
+                                    <div className="space-y-6 animate-in fade-in duration-300">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="md:col-span-2">
+                                                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Número do Cartão</label>
                                                 <IMaskInput
-                                                    mask="00" unmask={true}
-                                                    type="text" name="card_expiry_month" required
-                                                    value={formData.card_expiry_month} onAccept={(val) => handleMaskChange(val, 'card_expiry_month')}
-                                                    placeholder="MM"
-                                                    className="w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm text-center focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                    mask="0000 0000 0000 0000" unmask={true}
+                                                    type="text" name="card_number" required
+                                                    value={formData.card_number} onAccept={(val) => handleMaskChange(val, 'card_number')}
+                                                    placeholder="0000 0000 0000 0000"
+                                                    className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-mono tracking-widest"
                                                 />
+                                            </div>
+                                            <div className="md:col-span-2">
+                                                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Nome impresso no Cartão</label>
+                                                <input
+                                                    type="text" name="card_name" required
+                                                    value={formData.card_name} onChange={(e) => setFormData({ ...formData, card_name: e.target.value.toUpperCase() })}
+                                                    placeholder="JOAO A SILVA"
+                                                    className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold uppercase"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Validade</label>
+                                                <div className="flex gap-2">
+                                                    <IMaskInput
+                                                        mask="00" unmask={true}
+                                                        type="text" name="card_expiry_month" required
+                                                        value={formData.card_expiry_month} onAccept={(val) => handleMaskChange(val, 'card_expiry_month')}
+                                                        placeholder="MM"
+                                                        className="w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm text-center focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                    />
+                                                    <IMaskInput
+                                                        mask="00" unmask={true}
+                                                        type="text" name="card_expiry_year" required
+                                                        value={formData.card_expiry_year} onAccept={(val) => handleMaskChange(val, 'card_expiry_year')}
+                                                        placeholder="AA"
+                                                        className="w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm text-center focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Cód. Segurança</label>
                                                 <IMaskInput
-                                                    mask="00" unmask={true}
-                                                    type="text" name="card_expiry_year" required
-                                                    value={formData.card_expiry_year} onAccept={(val) => handleMaskChange(val, 'card_expiry_year')}
-                                                    placeholder="AA"
-                                                    className="w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm text-center focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                    mask="0000" unmask={true}
+                                                    type="text" name="card_ccv" required
+                                                    value={formData.card_ccv} onAccept={(val) => handleMaskChange(val, 'card_ccv')}
+                                                    placeholder="CVC"
+                                                    className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
                                                 />
                                             </div>
                                         </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Cód. Segurança</label>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-6 border border-green-100 dark:border-green-900/30 bg-green-50/50 dark:bg-green-900/10 rounded-xl animate-in fade-in duration-300">
+                                        <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3 text-white shadow-md shadow-green-200 dark:shadow-none">
+                                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        </div>
+                                        <h3 className="text-base font-bold text-slate-800 dark:text-white">Pagamento Instantâneo via Pix</h3>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-[200px] mx-auto">Liberação automática do plano após a confirmação.</p>
+                                    </div>
+                                )}
+
+                                {/* Billing details */}
+                                <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+                                    <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-1.5">
+                                        <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                                        Dados de Cobrança / Segurança
+                                    </h3>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className={method === 'pix' ? 'sm:col-span-2' : ''}>
+                                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">CPF / CNPJ</label>
                                             <IMaskInput
-                                                mask="0000" unmask={true}
-                                                type="text" name="card_ccv" required
-                                                value={formData.card_ccv} onAccept={(val) => handleMaskChange(val, 'card_ccv')}
-                                                placeholder="CVC"
+                                                mask={[{ mask: '000.000.000-00' }, { mask: '00.000.000/0000-00' }]} unmask={true}
+                                                type="text" name="cpf" required
+                                                value={formData.cpf} onAccept={(val) => handleMaskChange(val, 'cpf')}
+                                                placeholder="000.000.000-00"
                                                 className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
                                             />
                                         </div>
+
+                                        {method === 'credit_card' && (
+                                            <>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Celular</label>
+                                                    <IMaskInput
+                                                        mask="(00) 00000-0000" unmask={true}
+                                                        type="text" name="phone" required={method === 'credit_card'}
+                                                        value={formData.phone} onAccept={(val) => handleMaskChange(val, 'phone')}
+                                                        placeholder="(11) 99999-9999"
+                                                        className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">CEP</label>
+                                                    <IMaskInput
+                                                        mask="00000-000" unmask={true}
+                                                        type="text" name="postal_code" required={method === 'credit_card'}
+                                                        value={formData.postal_code} onAccept={(val) => handleMaskChange(val, 'postal_code')}
+                                                        placeholder="00000-000"
+                                                        className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Nº do Endereço</label>
+                                                    <input
+                                                        type="text" name="address_number" required={method === 'credit_card'}
+                                                        value={formData.address_number} onChange={(e) => setFormData({ ...formData, address_number: e.target.value })}
+                                                        placeholder="Número ou SN"
+                                                        className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
-                            ) : (
-                                <div className="text-center py-6 border border-green-100 dark:border-green-900/30 bg-green-50/50 dark:bg-green-900/10 rounded-xl animate-in fade-in duration-300">
-                                    <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3 text-white shadow-md shadow-green-200 dark:shadow-none">
-                                        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    </div>
-                                    <h3 className="text-base font-bold text-slate-800 dark:text-white">Pagamento Instantâneo via Pix</h3>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-[200px] mx-auto">Liberação automática do plano após a confirmação.</p>
-                                </div>
-                            )}
 
-                            {/* Billing details */}
-                            <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
-                                <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-1.5">
-                                    <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                                    Dados de Cobrança / Segurança
-                                </h3>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className={method === 'pix' ? 'sm:col-span-2' : ''}>
-                                        <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">CPF / CNPJ</label>
-                                        <IMaskInput
-                                            mask={[{ mask: '000.000.000-00' }, { mask: '00.000.000/0000-00' }]} unmask={true}
-                                            type="text" name="cpf" required
-                                            value={formData.cpf} onAccept={(val) => handleMaskChange(val, 'cpf')}
-                                            placeholder="000.000.000-00"
-                                            className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
-                                        />
-                                    </div>
-
-                                    {method === 'credit_card' && (
+                                <button
+                                    type="submit" disabled={isLoading}
+                                    className="mt-8 w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold text-base rounded-xl shadow-sm transition-all flex justify-center items-center gap-2 transform active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed"
+                                >
+                                    {isLoading ? (
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                    ) : (
                                         <>
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Celular</label>
-                                                <IMaskInput
-                                                    mask="(00) 00000-0000" unmask={true}
-                                                    type="text" name="phone" required={method === 'credit_card'}
-                                                    value={formData.phone} onAccept={(val) => handleMaskChange(val, 'phone')}
-                                                    placeholder="(11) 99999-9999"
-                                                    className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">CEP</label>
-                                                <IMaskInput
-                                                    mask="00000-000" unmask={true}
-                                                    type="text" name="postal_code" required={method === 'credit_card'}
-                                                    value={formData.postal_code} onAccept={(val) => handleMaskChange(val, 'postal_code')}
-                                                    placeholder="00000-000"
-                                                    className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Nº do Endereço</label>
-                                                <input
-                                                    type="text" name="address_number" required={method === 'credit_card'}
-                                                    value={formData.address_number} onChange={(e) => setFormData({ ...formData, address_number: e.target.value })}
-                                                    placeholder="Número ou SN"
-                                                    className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
-                                                />
-                                            </div>
+                                            Confirmar Assinatura — R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(finalPrice)}
+                                            <svg className="w-5 h-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                                         </>
                                     )}
-                                </div>
-                            </div>
-
-                            <button
-                                type="submit" disabled={isLoading}
-                                className="mt-8 w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold text-base rounded-xl shadow-sm transition-all flex justify-center items-center gap-2 transform active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed"
-                            >
-                                {isLoading ? (
-                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                                ) : (
-                                    <>
-                                        Confirmar Assinatura — R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(finalPrice)}
-                                        <svg className="w-5 h-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                                    </>
-                                )}
-                            </button>
+                                </button>
+                            </fieldset>
                         </form>
                     </div>
                 </div>
