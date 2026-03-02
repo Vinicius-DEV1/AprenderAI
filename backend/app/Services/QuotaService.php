@@ -22,6 +22,11 @@ class QuotaService
      */
     public function consumeQuota(User $user, string $feature, int $amount = 1): void
     {
+        // Admin bypass QA
+        if ($user->isAdmin()) {
+            return;
+        }
+
         DB::transaction(function () use ($user, $feature, $amount) {
             $cycle = SubscriptionCycle::whereHas('subscription', function ($query) use ($user) {
                 $query->where('user_id', $user->id)
@@ -33,7 +38,7 @@ class QuotaService
                 ->first();
 
             if (!$cycle) {
-                throw new Exception("Nenhum ciclo de assinatura ativo encontrado para este usuário.");
+                abort(403, "Você não possui um plano ativo ou saldo com ciclos válidos para usar esta funcionalidade.");
             }
 
             // Verifica teto máximo de limite da feature no JSON congelado
@@ -47,7 +52,7 @@ class QuotaService
                     ->sum('amount');
 
                 if (($used + $amount) > $limit) {
-                    throw new Exception("Limite da quota de {$feature} atingido para este mês.");
+                    abort(403, "Limite da quota de {$feature} atingido para este mês.");
                 }
             }
 
@@ -65,6 +70,10 @@ class QuotaService
      */
     public function getUsage(User $user, string $feature): array
     {
+        if ($user->isAdmin()) {
+            return ['used' => 0, 'limit' => 'unlimited'];
+        }
+
         $cycle = SubscriptionCycle::whereHas('subscription', function ($query) use ($user) {
             $query->where('user_id', $user->id)->where('status', 'active');
         })->where('start_date', '<=', now())->where('end_date', '>=', now())->first();
