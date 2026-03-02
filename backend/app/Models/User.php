@@ -145,9 +145,28 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->role === 'admin';
     }
 
+    public function activePlan()
+    {
+        // Try to get from active subscription first (the source of truth)
+        $activeSub = $this->subscriptions()
+            ->where('status', 'active')
+            ->where('current_period_end', '>', now())
+            ->with('plan')
+            ->latest()
+            ->first();
+
+        if ($activeSub && $activeSub->plan) {
+            return $activeSub->plan;
+        }
+
+        // Fallback to the plan_id on user table
+        return $this->plan;
+    }
+
     public function hasPlusPlan(): bool
     {
-        return $this->plan && str_contains(strtolower($this->plan->name), 'plus');
+        $plan = $this->activePlan();
+        return $plan && str_contains(strtolower($plan->name), 'plus');
     }
 
     public function hasActiveSubscription(): bool

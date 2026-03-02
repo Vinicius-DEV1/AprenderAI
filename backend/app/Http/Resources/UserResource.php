@@ -23,7 +23,7 @@ class UserResource extends JsonResource
             'role' => $this->role,
             'plan_id' => $this->plan_id,
             'avatar' => $this->avatar_url ?? null,
-            'plan' => $this->plan ? new PlanResource($this->plan) : null,
+            'plan' => $this->activePlan() ? new PlanResource($this->activePlan()) : null,
             'subscription_active' => $this->hasActiveSubscription(),
             'created_at' => $this->created_at,
             'stats' => [
