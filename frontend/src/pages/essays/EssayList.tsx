@@ -21,10 +21,10 @@ export default function EssayList() {
     const essays = data?.data || [];
     const meta = data?.meta || {};
     const chartData = meta.charts || {};
-    const canCreate = data?.essayLimit?.can_create ?? true;
-    const limit = data?.essayLimit?.total ?? 0;
-    const used = data?.essayLimit?.remaining !== undefined && data?.essayLimit?.total !== undefined
-        ? data.essayLimit.total - data.essayLimit.remaining
+    const canCreate = meta?.essayLimit?.can_create ?? true;
+    const limit = meta?.essayLimit?.total ?? 0;
+    const used = meta?.essayLimit?.remaining !== undefined && meta?.essayLimit?.total !== undefined
+        ? meta.essayLimit.total - meta.essayLimit.remaining
         : 0;
 
     const handlePageChange = (newPage: number) => {

@@ -75,7 +75,7 @@ class EssayController extends Controller
     public function store(Request $request)
     {
         $user = $request->user();
-        
+
         if (!$user->canCreateEssay()) {
             return response()->json(['message' => 'Você atingiu o limite de redações do seu plano.'], 403);
         }
@@ -95,7 +95,7 @@ class EssayController extends Controller
         ]);
 
         // Record usage for limit calculations
-        $user->recordEssayUsage();
+        $user->incrementEssayUsage();
 
         return new EssayResource($essay);
     }
@@ -199,7 +199,7 @@ class EssayController extends Controller
     public function getRule(Request $request, string $type)
     {
         $rule = \App\Models\WritingRule::where('type', $type)->first();
-        
+
         return response()->json([
             'min_chars' => $rule?->min_chars ?? 1500,
             'max_chars' => $rule?->max_chars ?? ($type === 'enem' ? 3000 : 4000),
