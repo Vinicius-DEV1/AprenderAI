@@ -361,9 +361,26 @@ class SimulationController extends Controller
                 );
 
                 $fullResponse = '';
+                $chunkBuffer = "";
+                $chunkCounter = 0;
                 foreach ($stream as $chunk) {
                     $fullResponse .= $chunk;
-                    echo "data: " . $chunk . "\n\n";
+                    $chunkBuffer .= $chunk;
+                    $chunkCounter++;
+
+                    // Send first chunk immediately, then every 3 chunks
+                    if ($chunkCounter === 1 || $chunkCounter % 3 === 0 || str_contains($chunk, "\n")) {
+                        echo "data: " . $chunkBuffer . "\n\n";
+                        $chunkBuffer = "";
+                        if (ob_get_level() > 0)
+                            ob_flush();
+                        flush();
+                    }
+                }
+
+                // Final flush
+                if ($chunkBuffer !== "") {
+                    echo "data: " . $chunkBuffer . "\n\n";
                     if (ob_get_level() > 0)
                         ob_flush();
                     flush();
