@@ -162,7 +162,7 @@ export default function SimulationBuilder() {
     // Render
     // ─────────────────────────────────────────────────────────────────────────
     return (
-        <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 bg-slate-50/30 min-h-screen">
+        <div className="p-4 md:p-6 w-full space-y-6 bg-slate-50/30 min-h-screen">
             {/* Header */}
             <header>
                 <h1 className="text-3xl font-black text-slate-800 tracking-tight">Motor de Simulados ⚙️</h1>

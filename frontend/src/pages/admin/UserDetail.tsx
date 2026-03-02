@@ -164,7 +164,7 @@ export default function UserDetail() {
     ];
 
     return (
-        <div className="p-4 md:p-8 max-w-7xl mx-auto">
+        <div className="p-4 md:p-6 w-full">
             {/* Header section */}
             <div className="mb-6 flex items-center gap-4">
                 <Link to="/admin/users" className="p-2 bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all text-gray-600 hover:text-gray-900">
@@ -221,8 +221,8 @@ export default function UserDetail() {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as any)}
                                 className={`flex items-center justify-center px-5 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all flex-1 ${activeTab === tab.id
-                                        ? 'bg-indigo-50 text-indigo-700 shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                                    ? 'bg-indigo-50 text-indigo-700 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
                                     }`}
                             >
                                 {tab.icon}

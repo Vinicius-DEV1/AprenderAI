@@ -57,8 +57,8 @@ export default function UserManagement() {
     if (isLoading) return <div className="p-8">Carregando usuários...</div>;
 
     return (
-        <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-            <div className="mb-8 flex justify-between items-center">
+        <div className="py-6 px-4 md:px-6 w-full">
+            <div className="mb-6 flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-800 mb-2">Gerenciar Usuários</h1>
                     <p className="text-gray-600">Listagem completa e gestão de usuários do sistema</p>

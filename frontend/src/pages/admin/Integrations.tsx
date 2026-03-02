@@ -81,7 +81,7 @@ export default function Integrations() {
     if (isLoading) return <div className="p-8">Carregando integrações...</div>;
 
     return (
-        <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="py-6 px-4 md:px-6 w-full">
             <div className="mb-8">
                 <h1 className="text-2xl font-bold text-gray-800">Integrações</h1>
                 <p className="text-gray-600">Gerencie as integrações externas do sistema.</p>

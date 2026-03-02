@@ -36,9 +36,9 @@ export default function Analytics() {
     const sessionsPct = yesterdayData.sessions > 0 ? ((todayData.sessions - yesterdayData.sessions) / yesterdayData.sessions) * 100 : 0;
 
     return (
-        <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="py-6 px-4 md:px-6 w-full">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Analytics: Visão Geral</h1>
                     <p className="text-gray-500 text-sm mt-1">Métricas diárias e consolidado dos acessos ao sistema.</p>

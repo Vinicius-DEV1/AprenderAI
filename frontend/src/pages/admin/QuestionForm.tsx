@@ -166,7 +166,7 @@ export default function QuestionForm() {
     const getError = (field: string) => validationErrors[field] ? validationErrors[field][0] : null;
 
     return (
-        <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="py-6 px-4 md:px-6 w-full">
             <h2 className="font-semibold text-xl text-gray-800 leading-tight mb-6">
                 {isEditing ? `Editar Questão #${id}` : 'Nova Questão'}
             </h2>

@@ -82,7 +82,7 @@ export default function PaymentSettings() {
     };
 
     return (
-        <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
+        <div className="py-6 px-4 md:px-6 w-full space-y-8">
             {/* Header */}
             <div>
                 <div className="flex items-center gap-4">
@@ -106,7 +106,7 @@ export default function PaymentSettings() {
             </div>
 
             {/* ENVIRONMENT TOGGLE (GIGANTE) */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col md:flex-row items-center justify-between gap-6">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800 mb-2">Ambiente de Operação Atual</h2>
                     <p className="text-gray-500 max-w-xl">
