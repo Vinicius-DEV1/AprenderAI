@@ -41,11 +41,15 @@ class SettingController extends Controller
             case 'config':
                 Artisan::call('config:clear');
                 break;
-            default:
+            case 'cache':
                 Artisan::call('cache:clear');
+                break;
+            case 'all':
+            default:
+                Artisan::call('optimize:clear');
                 break;
         }
 
-        return response()->json(['message' => "Cache ($type) limpo com sucesso!"]);
+        return response()->json(['message' => "Higiene de Cache ($type) concluída com sucesso!"]);
     }
 }

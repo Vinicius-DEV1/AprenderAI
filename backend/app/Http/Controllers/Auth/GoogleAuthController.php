@@ -118,6 +118,13 @@ class GoogleAuthController extends Controller
         // Log in the user
         Auth::login($user);
 
+        \App\Models\UserLog::create([
+            'user_id' => $user->id,
+            'action' => 'login',
+            'ip_address' => request()->ip(),
+            'description' => 'Login via Google SSO efetuado com sucesso.',
+        ]);
+
         // CRO: Redirect new or free users to onboarding (only once per login)
         if ((!$user->plan || $user->plan->slug === 'free') && !session('onboarding_shown')) {
             session(['onboarding_shown' => true]);

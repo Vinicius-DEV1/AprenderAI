@@ -55,6 +55,8 @@ class User extends Authenticatable implements MustVerifyEmail
         // Individual quota overrides (set by admin per user)
         'max_simulations_override',
         'max_essays_override',
+        'max_daily_questions_override',
+        'daily_questions_used',
         // Asaas gateway customer reference — used to avoid duplicate customers
         'asaas_customer_id',
     ];
@@ -84,6 +86,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'is_banned' => 'boolean',
             'usage_reset_at' => 'datetime',
             'last_reset_at' => 'datetime',
+            'daily_questions_reset_at' => 'datetime',
         ];
     }
 
@@ -215,8 +218,8 @@ class User extends Authenticatable implements MustVerifyEmail
 
         $limit = $this->simulationQuotaLimit();
 
-        // 0 = unlimited (plan-level OR override-level)
-        if ($limit === 0) {
+        // 9999 = unlimited (plan-level OR override-level)
+        if ($limit === 9999) {
             return true;
         }
 
@@ -299,7 +302,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
         // --- PATH A: Admin override is active ---
         if (!is_null($this->max_essays_override)) {
-            if ($this->max_essays_override === 0)
+            if ($this->max_essays_override === 9999)
                 return true; // unlimited
             return $this->monthlyEssayUsed() < $this->max_essays_override;
         }
@@ -325,7 +328,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function hasEssayAccess(): bool
     {
-        return $this->plan && ($this->plan->essays_limit !== 0 || ($this->essay_credits ?? 0) > 0);
+        return $this->plan && ($this->plan->essays_limit > 0 || ($this->essay_credits ?? 0) > 0);
     }
 
     /**
@@ -364,7 +367,11 @@ class User extends Authenticatable implements MustVerifyEmail
             return false;
         }
 
-        return $this->ai_questions_count < $this->aiQuotaLimit();
+        $limit = $this->aiQuotaLimit();
+        if ($limit === 9999)
+            return true;
+
+        return $this->ai_questions_count < $limit;
     }
 
     /**
@@ -373,6 +380,53 @@ class User extends Authenticatable implements MustVerifyEmail
     public function incrementAiUsage(): void
     {
         $this->increment('ai_questions_count');
+    }
+
+    // =========================================================================
+    // DAILY QUESTIONS QUOTA
+    // =========================================================================
+
+    public function dailyQuestionQuotaLimit(): int
+    {
+        if (!is_null($this->max_daily_questions_override)) {
+            return $this->max_daily_questions_override;
+        }
+        return $this->plan?->daily_question_limit ?? 0;
+    }
+
+    public function dailyQuestionUsed(): int
+    {
+        $this->resetDailyQuestionsIfNeeded();
+        return $this->daily_questions_used ?? 0;
+    }
+
+    public function canAnswerDailyQuestion(): bool
+    {
+        if (!$this->plan)
+            return false;
+
+        $limit = $this->dailyQuestionQuotaLimit();
+        if ($limit === 9999)
+            return true;
+
+        $this->resetDailyQuestionsIfNeeded();
+        return $this->daily_questions_used < $limit;
+    }
+
+    public function incrementDailyQuestionUsage(): void
+    {
+        $this->resetDailyQuestionsIfNeeded();
+        $this->increment('daily_questions_used');
+    }
+
+    protected function resetDailyQuestionsIfNeeded(): void
+    {
+        if (!$this->daily_questions_reset_at || $this->daily_questions_reset_at->isPast()) {
+            $this->update([
+                'daily_questions_used' => 0,
+                'daily_questions_reset_at' => now()->addDay(),
+            ]);
+        }
     }
 
     // =========================================================================
