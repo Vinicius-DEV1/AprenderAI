@@ -189,26 +189,38 @@ export default function QuestionCard({ question: q }: { question: Question }) {
         setTimeout(scrollToBottom, 50);
 
         try {
-            // Using standard fetch to consume the ReadableStream instead of axios buffer waiting
-            const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token'); // Get auth token dynamically
+            const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token') || localStorage.getItem('token');
+            const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
 
-            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/v1/questions/${q.id}/chat`, {
+            const res = await fetch(`${baseUrl}/api/v1/questions/${q.id}/chat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Accept': 'text/event-stream',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 },
+                credentials: 'include',
                 body: JSON.stringify({ message: msg })
             });
 
-            const contentType = res.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                const data = await res.json();
-                if (data.status === 'quota_exceeded') {
-                    setChatMessages(prev => [...prev, { role: 'system', message: data.message, upgrade_url: data.upgrade_url, id: Date.now() }]);
-                    setChatTyping(false);
-                    return;
+            if (!res.ok) {
+                const errorText = await res.text();
+                let errorMessage = 'Erro ao conectar à IA.';
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    if (errorJson.status === 'quota_exceeded') {
+                        setChatMessages(prev => [...prev, { role: 'system', message: errorJson.message, upgrade_url: errorJson.upgrade_url, id: Date.now() }]);
+                        setChatTyping(false);
+                        return;
+                    }
+                    errorMessage = errorJson.message || errorMessage;
+                } catch (e) {
+                    errorMessage = `Erro ${res.status}: Não foi possível processar sua solicitação agora.`;
                 }
+
+                setChatMessages(prev => [...prev, { role: 'assistant', message: errorMessage, id: Date.now() }]);
+                setChatTyping(false);
+                return;
             }
 
             // Prepare a placeholder for the streamed reply
@@ -218,14 +230,38 @@ export default function QuestionCard({ question: q }: { question: Question }) {
             const reader = res.body?.getReader();
             const decoder = new TextDecoder('utf-8');
             let done = false;
+            let buffer = '';
 
             while (reader && !done) {
                 const { value, done: doneReading } = await reader.read();
                 done = doneReading;
                 if (value) {
-                    const chunkText = decoder.decode(value, { stream: true });
+                    buffer += decoder.decode(value, { stream: true });
+
+                    // SSE format: data: <content>\n\n
+                    const parts = buffer.split('\n\n');
+                    buffer = parts.pop() || ''; // Keep the last incomplete part in the buffer
+
+                    for (const part of parts) {
+                        if (part.startsWith('data: ')) {
+                            const content = part.substring(6);
+                            if (content) {
+                                setChatMessages(prev =>
+                                    prev.map(m => m.id === replyId ? { ...m, message: m.message + content } : m)
+                                );
+                                scrollToBottom();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Flush remaining buffer if any (though usually SSE ends with \n\n)
+            if (buffer.startsWith('data: ')) {
+                const finalContent = buffer.substring(6);
+                if (finalContent) {
                     setChatMessages(prev =>
-                        prev.map(m => m.id === replyId ? { ...m, message: m.message + chunkText } : m)
+                        prev.map(m => m.id === replyId ? { ...m, message: m.message + finalContent } : m)
                     );
                     scrollToBottom();
                 }

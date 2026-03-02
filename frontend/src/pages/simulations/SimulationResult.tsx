@@ -123,7 +123,7 @@ export default function SimulationResult() {
                     <div className="text-center py-10 text-slate-500">Nenhuma questão encontrada com este filtro.</div>
                 ) : (
                     filteredAnswers.map((ans: any) => (
-                        <AnswerCard key={ans.question_id} answer={ans} index={answers.indexOf(ans)} aiName={aiName} />
+                        <AnswerCard key={ans.question_id} answer={ans} index={answers.indexOf(ans)} aiName={aiName} simulationId={simulation.id} />
                     ))
                 )}
             </div>
@@ -141,7 +141,7 @@ export default function SimulationResult() {
     );
 }
 
-function AnswerCard({ answer, index, aiName }: { answer: any, index: number, aiName: string }) {
+function AnswerCard({ answer, index, aiName, simulationId }: { answer: any, index: number, aiName: string, simulationId: number }) {
     const q = answer.question;
     const [showChat, setShowChat] = useState(false);
 
@@ -222,7 +222,7 @@ function AnswerCard({ answer, index, aiName }: { answer: any, index: number, aiN
 
                 {showChat && (
                     <div className="mt-3 animate-xavier-pop">
-                        <ChatInterface questionId={q.id} aiName={aiName} />
+                        <ChatInterface questionId={q.id} simulationId={simulationId} aiName={aiName} />
                     </div>
                 )}
             </div>
@@ -230,7 +230,7 @@ function AnswerCard({ answer, index, aiName }: { answer: any, index: number, aiN
     );
 }
 
-function ChatInterface({ questionId, aiName }: { questionId: number, aiName: string }) {
+function ChatInterface({ questionId, simulationId, aiName }: { questionId: number, simulationId: number, aiName: string }) {
     const [messages, setMessages] = useState<any[]>([]);
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
@@ -269,27 +269,45 @@ function ChatInterface({ questionId, aiName }: { questionId: number, aiName: str
         setMessages(prev => [...prev, { role: 'assistant', message: '' }]);
 
         try {
-            const response = await fetch(`${api.defaults.baseURL}/api/v1/questions/${questionId}/chat`, {
+            const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token') || localStorage.getItem('token');
+            const baseUrl = api.defaults.baseURL || '';
+
+            const response = await fetch(`${baseUrl}/api/v1/questions/${questionId}/chat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                    'Accept': 'text/event-stream'
+                    'Accept': 'text/event-stream',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 },
-                body: JSON.stringify({ message: userMsg, stream: true })
+                credentials: 'include',
+                body: JSON.stringify({ message: userMsg, simulation_id: simulationId })
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                if (errorData.status === 'quota_exceeded') {
-                    setMessages(prev => {
-                        const updated = [...prev];
-                        updated[currentMsgIndex] = { role: 'system', message: errorData.message, upgrade_url: errorData.upgrade_url };
-                        return updated;
-                    });
-                } else {
-                    throw new Error('Chat error');
+                const errorText = await response.text();
+                let errorMessage = 'Desculpe, ocorreu um erro ao processar sua dúvida.';
+
+                try {
+                    const errorData = JSON.parse(errorText);
+                    if (errorData.status === 'quota_exceeded') {
+                        setMessages(prev => {
+                            const updated = [...prev];
+                            updated[currentMsgIndex] = { role: 'system', message: errorData.message, upgrade_url: errorData.upgrade_url };
+                            return updated;
+                        });
+                        setIsTyping(false);
+                        return;
+                    }
+                    errorMessage = errorData.message || errorMessage;
+                } catch (e) {
+                    errorMessage = `Erro ${response.status}: Não foi possível falar com a IA agora.`;
                 }
+
+                setMessages(prev => {
+                    const updated = [...prev];
+                    updated[currentMsgIndex] = { role: 'assistant', message: errorMessage };
+                    return updated;
+                });
                 setIsTyping(false);
                 return;
             }
@@ -299,14 +317,44 @@ function ChatInterface({ questionId, aiName }: { questionId: number, aiName: str
             let done = false;
 
             if (reader) {
+                let buffer = '';
                 while (!done) {
                     const { done: doneReading, value } = await reader.read();
                     done = doneReading;
                     if (value) {
-                        const chunk = decoder.decode(value, { stream: true });
+                        buffer += decoder.decode(value, { stream: true });
+
+                        const parts = buffer.split('\n\n');
+                        buffer = parts.pop() || ''; // Keep last incomplete chunk
+
+                        for (const part of parts) {
+                            if (part.startsWith('data: ')) {
+                                const content = part.substring(6);
+                                if (content) {
+                                    setMessages(prev => {
+                                        const updated = [...prev];
+                                        updated[currentMsgIndex] = {
+                                            role: 'assistant',
+                                            message: (updated[currentMsgIndex]?.message || '') + content
+                                        };
+                                        return updated;
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Final flush if anything left in buffer starting with data:
+                if (buffer.startsWith('data: ')) {
+                    const finalContent = buffer.substring(6);
+                    if (finalContent) {
                         setMessages(prev => {
                             const updated = [...prev];
-                            updated[currentMsgIndex] = { role: 'assistant', message: (updated[currentMsgIndex]?.message || '') + chunk };
+                            updated[currentMsgIndex] = {
+                                role: 'assistant',
+                                message: (updated[currentMsgIndex]?.message || '') + finalContent
+                            };
                             return updated;
                         });
                     }
