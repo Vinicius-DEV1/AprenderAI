@@ -56,7 +56,7 @@ export default function EssayReview() {
         statusMessage = 'Redação Corrigida';
     } else if (essay.status === 'evaluating') {
         statusClasses = 'bg-purple-100 text-purple-800 border-purple-200 animate-pulse';
-        statusMessage = 'Avaliando... A inteligência artificial está lendo seu texto.';
+        statusMessage = 'Avaliando... Xavier está lendo sua redação.';
     } else if (essay.status === 'error') {
         statusClasses = 'bg-red-100 text-red-800 border-red-200';
         statusMessage = 'Erro na Correção';
@@ -69,8 +69,7 @@ export default function EssayReview() {
     const renderCompetencies = () => {
         if (essay.status !== 'completed') return null;
 
-        const essayType = essay.type;
-        const totalScore = parseInt(essay.score || '0');
+        const essayType = essay.type === 'concurso' ? 'concurso' : 'enem';
         const aiCompetencies = feedback.competencies;
 
         let competencies: any[] = [];
@@ -120,50 +119,57 @@ export default function EssayReview() {
             }));
         }
 
-        return (
-            <div className="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg mb-6 border border-gray-100 dark:border-gray-700 overflow-hidden">
-                <div className="flex items-center justify-between px-6 py-4">
-                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 tracking-wide">
-                        Nota por Competência
-                    </span>
-                    <button
-                        type="button"
-                        onClick={() => setCompetenciesOpen(!competenciesOpen)}
-                        className="text-xs font-medium text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-500 transition-colors duration-150 cursor-pointer select-none focus:outline-none"
-                    >
-                        {competenciesOpen ? 'ver menos' : 'ver mais'}
-                    </button>
-                </div>
-
-                {competenciesOpen && (
-                    <div className="border-t border-gray-100 dark:border-gray-700 px-6 py-4 space-y-3 animate-fade-in-up">
-                        {competencies.map((comp, idx) => (
-                            <div key={idx} className="flex items-start gap-3">
-                                <div className="flex-shrink-0 flex items-center gap-2 min-w-[110px]">
-                                    <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                                        {comp.code}
-                                    </span>
-                                    <span className="inline-flex items-center bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-semibold px-2 py-0.5 rounded-full">
-                                        {comp.score}<span className="text-blue-300 dark:text-blue-600 font-normal">/{comp.max}</span>
-                                    </span>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-200 leading-snug">
-                                        {comp.label}
-                                    </p>
-                                    {comp.justification && (
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
-                                            {comp.justification}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
+        return {
+            component: (
+                <div className="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg mb-6 border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div className="flex items-center justify-between px-6 py-4">
+                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 tracking-wide">
+                            Nota por Competência
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setCompetenciesOpen(!competenciesOpen)}
+                            className="text-xs font-medium text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-500 transition-colors duration-150 cursor-pointer select-none focus:outline-none"
+                        >
+                            {competenciesOpen ? 'ver menos' : 'ver mais'}
+                        </button>
                     </div>
-                )}
-            </div>
-        );
+
+                    {competenciesOpen && (
+                        <div className="border-t border-gray-100 dark:border-gray-700 px-6 py-4 space-y-3 animate-fade-in-up">
+                            {competencies.map((comp, idx) => (
+                                <div key={idx} className="flex items-start gap-3">
+                                    <div className="flex-shrink-0 flex items-center gap-2 min-w-[110px]">
+                                        <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                                            {comp.code}
+                                        </span>
+                                        <span className="inline-flex items-center bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-semibold px-2 py-0.5 rounded-full">
+                                            {comp.score}<span className="text-blue-300 dark:text-blue-600 font-normal">/{essayType === 'enem' ? 200 : 20}</span>
+                                        </span>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-200 leading-snug">
+                                            {comp.label}
+                                        </p>
+                                        {comp.justification && (
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+                                                {comp.justification}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            ),
+            computedTotal: competencies.reduce((acc, c) => acc + (parseInt(c.score) || 0), 0)
+        };
     };
+
+    const competenciesData = renderCompetencies();
+    const displayScore = essay.status === 'completed' ? (competenciesData?.computedTotal ?? (essay.score || 0)) : (essay.score || 0);
+    const scoreMaxDenominator = (essay.type === 'concurso') ? 100 : 1000;
 
     return (
         <div className="py-12">
@@ -218,16 +224,16 @@ export default function EssayReview() {
                             <div className="p-6 text-gray-900 dark:text-gray-100 text-center">
                                 <h3 className="text-sm uppercase tracking-widest text-gray-500 font-bold mb-2">Nota {aiName}</h3>
                                 <div className="text-6xl font-extrabold text-blue-600 dark:text-blue-400">
-                                    {essay.score || 0}
+                                    {displayScore}
                                     <span className="text-2xl text-gray-400 font-normal">
-                                        /{essay.type === 'enem' ? '1000' : '100'}
+                                        /{scoreMaxDenominator}
                                     </span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Competencies */}
-                        {renderCompetencies()}
+                        {competenciesData?.component}
 
                         {/* Tabs Navigation */}
                         <div className="flex space-x-2 mb-6 overflow-x-auto pb-2">
