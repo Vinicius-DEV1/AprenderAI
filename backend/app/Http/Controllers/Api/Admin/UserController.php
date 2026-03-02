@@ -44,27 +44,35 @@ class UserController extends Controller
     public function show(User $user)
     {
         try {
-            $user->load(['plan', 'subscriptions.plan', 'logs' => fn($q) => $q->latest()->take(20)]);
+            // Eager load only standard relations with no limit closures to avoid hydration clipping
+            $user->load(['plan', 'subscriptions.plan']);
             $user->loadCount(['simulations', 'essays', 'promptLogs']);
 
+            // Get logs separately to avoid Eloquent closure take() issues on hydration
+            $user->setRelation('logs', $user->logs()->latest()->take(20)->get());
+
+            // Prepare prompt history 
+            $promptHistory = $user->promptLogs()->latest()->paginate(10);
+
             $stats = [
-                'simulations' => $user->simulations_count,
-                'essays' => $user->essays_count,
+                'simulations' => $user->simulations_count ?? 0,
+                'essays' => $user->essays_count ?? 0,
                 'ai' => [
-                    'request_count' => $user->prompt_logs_count,
+                    'request_count' => $user->prompt_logs_count ?? 0,
                     'total_cost' => $user->promptLogs()->sum('estimated_cost') ?? 0,
-                    'success_rate' => $user->prompt_logs_count > 0
+                    'success_rate' => ($user->prompt_logs_count ?? 0) > 0
                         ? ($user->promptLogs()->whereNotNull('response_text')->count() / $user->prompt_logs_count) * 100
                         : 100,
                     'peak_hour' => 'N/A',
                 ],
-                'investment' => $user->subscriptions()->where('status', 'active')->get()->sum(fn($s) => $s->plan?->price ?? 0)
+                // Utilize the eager loaded collection directly via property to avoid an N+1 DB hit
+                'investment' => $user->subscriptions->where('status', 'active')->sum(fn($s) => $s->plan?->price ?? 0)
             ];
 
             return response()->json([
                 'user' => $user,
                 'stats' => $stats,
-                'promptHistory' => $user->promptLogs()->latest()->paginate(10),
+                'promptHistory' => $promptHistory,
                 'monthly_simulation_used' => $user->monthlySimulationUsed(),
                 'monthly_essay_used' => $user->monthlyEssayUsed(),
             ]);

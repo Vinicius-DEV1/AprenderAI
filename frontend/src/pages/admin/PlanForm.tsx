@@ -15,6 +15,7 @@ export default function PlanForm() {
         interval: 'month',
         simulations_limit: '',
         essays_limit: '',
+        daily_question_limit: '',
         max_ai_questions: 10,
         is_active: true
     });
@@ -38,6 +39,7 @@ export default function PlanForm() {
                 interval: planData.interval || 'month',
                 simulations_limit: planData.simulations_limit !== null && planData.simulations_limit !== undefined ? String(planData.simulations_limit) : '',
                 essays_limit: planData.essays_limit !== null && planData.essays_limit !== undefined ? String(planData.essays_limit) : '',
+                daily_question_limit: planData.daily_question_limit !== null && planData.daily_question_limit !== undefined ? String(planData.daily_question_limit) : '',
                 max_ai_questions: planData.max_ai_questions !== null && planData.max_ai_questions !== undefined ? Number(planData.max_ai_questions) : 10,
                 is_active: planData.is_active ?? true
             });
@@ -74,6 +76,7 @@ export default function PlanForm() {
             price: Number(formState.price),
             simulations_limit: Number(formState.simulations_limit),
             essays_limit: Number(formState.essays_limit),
+            daily_question_limit: Number(formState.daily_question_limit),
             max_ai_questions: Number(formState.max_ai_questions),
             is_active: formState.is_active ? 1 : 0
         };
@@ -177,9 +180,9 @@ export default function PlanForm() {
                         <div className="bg-white rounded-2xl shadow-sm p-6">
                             <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
                                 <svg className="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
-                                Limites e Quotas (Mensal)
+                                Limites e Quotas (Mensal/Diário)
                             </h3>
-                            <p className="text-sm text-gray-500 mb-4">Defina "0" para ilimitado.</p>
+                            <p className="text-sm text-gray-500 mb-4">Atenção à regra: <strong>9999</strong> = Ilimitado, <strong>0</strong> = Bloqueado (Sem acesso).</p>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
@@ -206,6 +209,19 @@ export default function PlanForm() {
                                         required
                                     />
                                     {getError('essays_limit') && <span className="text-xs text-red-500">{getError('essays_limit')}</span>}
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Questões / Dia</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={formState.daily_question_limit}
+                                        onChange={(e) => setFormState({ ...formState, daily_question_limit: e.target.value })}
+                                        className={`w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 ${getError('daily_question_limit') ? 'border-red-300' : ''}`}
+                                        required
+                                    />
+                                    {getError('daily_question_limit') && <span className="text-xs text-red-500">{getError('daily_question_limit')}</span>}
                                 </div>
 
                                 <div className="md:col-span-2 border-t pt-4 mt-2">

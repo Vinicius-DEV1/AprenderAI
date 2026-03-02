@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
+import Accordion from '../../components/Accordion';
 
 // Interfaces based on expected data
 
@@ -103,18 +104,20 @@ export default function OnboardingWelcome() {
                                         </span>
                                     </div>
 
-                                    <ul className="space-y-4 mb-10 flex-1">
-                                        {((cycle === 'monthly' ? basicM?.features : basicY?.features) || []).map((feature: string, idx: number) => (
-                                            <li key={idx} className="flex items-start gap-4 text-base font-medium text-slate-700">
-                                                <div className="rounded-full bg-green-100 p-1 flex-shrink-0 mt-0.5">
-                                                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
-                                                    </svg>
-                                                </div>
-                                                <span className="leading-tight">{feature}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
+                                    <Accordion title="Ver Todos os Recursos" defaultExpanded={true} className="mb-10 w-full flex-1">
+                                        <ul className="space-y-4 pt-2">
+                                            {((cycle === 'monthly' ? basicM?.features : basicY?.features) || []).map((feature: string, idx: number) => (
+                                                <li key={idx} className="flex items-start gap-3 text-[15px] font-medium text-slate-700">
+                                                    <div className="rounded-full bg-blue-100 p-1 flex-shrink-0 mt-0.5">
+                                                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                                        </svg>
+                                                    </div>
+                                                    <span className="leading-tight">{feature}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </Accordion>
 
                                     <Link
                                         to={`/checkout/${cycle === 'monthly' ? basicM?.slug : basicY?.slug}`}
@@ -149,18 +152,20 @@ export default function OnboardingWelcome() {
                                         </span>
                                     </div>
 
-                                    <ul className="space-y-4 mb-10 flex-1">
-                                        {((cycle === 'monthly' ? plusM?.features : plusY?.features) || []).map((feature: string, idx: number) => (
-                                            <li key={idx} className="flex items-start gap-4 text-base font-medium text-slate-700">
-                                                <div className="rounded-full bg-green-100 p-1 flex-shrink-0 mt-0.5">
-                                                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
-                                                    </svg>
-                                                </div>
-                                                <span className="leading-tight">{feature}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
+                                    <Accordion title="Ver Todos os Recursos" defaultExpanded={true} className="mb-10 w-full flex-1 shadow-sm border-blue-200">
+                                        <ul className="space-y-4 pt-2">
+                                            {((cycle === 'monthly' ? plusM?.features : plusY?.features) || []).map((feature: string, idx: number) => (
+                                                <li key={idx} className="flex items-start gap-3 text-[15px] font-medium text-slate-700">
+                                                    <div className="rounded-full bg-indigo-100 p-1 flex-shrink-0 mt-0.5">
+                                                        <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                                        </svg>
+                                                    </div>
+                                                    <span className="leading-tight">{feature}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </Accordion>
 
                                     <Link
                                         to={`/checkout/${cycle === 'monthly' ? plusM?.slug : plusY?.slug}`}

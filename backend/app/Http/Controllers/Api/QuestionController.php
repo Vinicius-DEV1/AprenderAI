@@ -134,6 +134,9 @@ class QuestionController extends Controller
             $request->selected_answer
         );
 
+        // Consome a cota diária do usuário
+        $request->user()->incrementDailyQuestionUsage();
+
         return response()->json($feedback);
     }
 

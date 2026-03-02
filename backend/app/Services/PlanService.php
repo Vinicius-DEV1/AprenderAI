@@ -59,7 +59,7 @@ class PlanService
 
         $limit = $user->simulationQuotaLimit();
         $used = $user->monthlySimulationUsed();
-        $remaining = ($limit === 0) ? 'ilimitado' : max(0, $limit - $used);
+        $remaining = ($limit === 9999) ? 'ilimitado' : max(0, $limit - $used);
 
         if (!$user->plan) {
             return [
@@ -110,7 +110,7 @@ class PlanService
 
         $limit = $user->essayQuotaLimit();
         $used = $user->monthlyEssayUsed();
-        $remaining = ($limit === 0) ? 'ilimitado' : max(0, $limit - $used);
+        $remaining = ($limit === 9999) ? 'ilimitado' : max(0, $limit - $used);
 
         if (!$user->plan) {
             return [
@@ -133,6 +133,55 @@ class PlanService
                 'message' => $limit === 0
                     ? "Redações não estão disponíveis no plano {$planName}. Faça upgrade!"
                     : "Você atingiu o limite de {$limit} redações no plano {$planName}. Faça upgrade para continuar!",
+            ];
+        }
+
+        return [
+            'can_create' => true,
+            'limit' => $limit,
+            'used' => $used,
+            'remaining' => $remaining,
+        ];
+    }
+
+    // =========================================================================
+    // DAILY QUESTION LIMIT CHECK
+    // =========================================================================
+
+    /**
+     * Check whether a user can answer a new daily question.
+     *
+     * @return array{can_create: bool, message?: string, remaining?: int|string, limit?: int, used?: int}
+     */
+    public function checkDailyQuestionLimit(User $user): array
+    {
+        $user->loadMissing('plan');
+
+        $limit = $user->dailyQuestionQuotaLimit();
+        $used = $user->dailyQuestionUsed();
+        $remaining = ($limit === 9999) ? 'ilimitado' : max(0, $limit - $used);
+
+        if (!$user->plan) {
+            return [
+                'can_create' => false,
+                'limit' => 0,
+                'used' => 0,
+                'remaining' => 0,
+                'message' => 'Você precisa de um plano ativo para responder questões.',
+            ];
+        }
+
+        if (!$user->canAnswerDailyQuestion()) {
+            $planName = $user->plan->name;
+
+            return [
+                'can_create' => false,
+                'limit' => $limit,
+                'used' => $used,
+                'remaining' => 0,
+                'message' => $limit === 0
+                    ? "Questões não estão disponíveis no plano {$planName}. Faça upgrade!"
+                    : "Você atingiu o limite de {$limit} questões por dia no plano {$planName}. Faça upgrade para continuar!",
             ];
         }
 
