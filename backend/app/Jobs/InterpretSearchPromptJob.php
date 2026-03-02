@@ -61,11 +61,6 @@ class InterpretSearchPromptJob implements ShouldQueue
             $hasSuggestions = !empty($filters['suggestions']);
 
             if ($filters && ($hasRealFilters || $hasSuggestions)) {
-                // Guarda o pensamento genial do Xavier para os próximos alunos economizando IA.
-                if ($vector && $hasRealFilters && empty($filters['suggestions'])) {
-                    // Evita cachear sugestoes ou 'não achei' pra evitar problemas futuros.
-                    $cacheService->storeInCache($userPrompt, $vector, $filters);
-                }
 
                 // === VALIDAÇÃO NO BANCO DE DADOS ===
                 $query = \App\Models\Question::published();
@@ -156,6 +151,10 @@ class InterpretSearchPromptJob implements ShouldQueue
                     if ($fallbackTopics->isEmpty()) {
                         $filters['subject'] = '';
                     }
+                } else if ($count > 0 && $vector && empty($filters['suggestions'])) {
+                    // Guarda o pensamento genial do Xavier APENAS se houverem resultados reais!
+                    // Evita cachear alucinações vazias para próximos alunos.
+                    $cacheService->storeInCache($userPrompt, $vector, $filters);
                 }
 
                 $this->searchRequest->update([

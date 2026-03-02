@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
 import { useUIStore } from '../../stores/uiStore';
-import { marked } from 'marked';
 
 // Local API calls just for this view's specific needs (polling/answering)
 const checkSimulationStatus = async (id: string) => {
@@ -180,25 +179,6 @@ export default function SimulationView() {
     };
 
     // UI helpers
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
-
-    const renderMd = (text: string) => {
-        if (!text) return { __html: '' };
-
-        let processedText = text;
-        if (processedText.includes('](/storage/')) {
-            processedText = processedText.replace(/\]\(\/storage\//g, `](${apiUrl}/storage/`);
-        }
-        if (processedText.includes('src="/storage/')) {
-            processedText = processedText.replace(/src="\/storage\//g, `src="${apiUrl}/storage/`);
-        }
-
-        try {
-            return { __html: marked.parse(processedText) as string };
-        } catch (e) {
-            return { __html: processedText };
-        }
-    };
 
     const formatTime = (seconds: number) => {
         const h = Math.floor(seconds / 3600);

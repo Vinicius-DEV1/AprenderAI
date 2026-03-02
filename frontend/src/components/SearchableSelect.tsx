@@ -60,14 +60,14 @@ export default function SearchableSelect({ label, name, value, options, placehol
                 className={`flex items-center justify-between p-2.5 bg-white dark:bg-slate-900 border rounded-xl cursor-pointer transition-all duration-200 ${isOpen ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'}`}
                 onClick={() => setIsOpen(!isOpen)}
             >
-                <span className={`text-[13px] truncate ${value ? 'text-slate-900 dark:text-white font-medium' : 'text-slate-400'}`}>
+                <span className={`text-[13px] truncate ${value && value.toString() !== '' ? 'text-slate-900 dark:text-white font-medium' : 'text-slate-400'}`}>
                     {selectedOption ? selectedOption.name : placeholder}
                 </span>
                 <div className="flex items-center gap-1">
                     {loading && (
                         <div className="w-3 h-3 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin mr-1"></div>
                     )}
-                    {value && (
+                    {value && value.toString() !== '' && (
                         <button
                             onClick={handleClear}
                             className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 hover:text-red-500 transition-colors"
