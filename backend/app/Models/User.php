@@ -188,6 +188,10 @@ class User extends Authenticatable implements MustVerifyEmail
             return $this->max_simulations_override;
         }
 
+        if ($this->isAdmin()) {
+            return 9999;
+        }
+
         // Fall back to the plan's default limit
         return $this->plan?->simulations_limit ?? 0;
     }
@@ -208,6 +212,10 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function canCreateSimulation(): bool
     {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
         if (!$this->plan) {
             return false;
         }
@@ -256,6 +264,10 @@ class User extends Authenticatable implements MustVerifyEmail
             return $this->max_essays_override;
         }
 
+        if ($this->isAdmin()) {
+            return 9999;
+        }
+
         // Plan limit + any purchased essay credits
         return ($this->plan?->essays_limit ?? 0) + ($this->essay_credits ?? 0);
     }
@@ -285,6 +297,10 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function canCreateEssay(): bool
     {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
         if (!$this->plan)
             return false;
 
@@ -316,6 +332,10 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function hasEssayAccess(): bool
     {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
         return $this->plan && ($this->plan->essays_limit > 0 || ($this->essay_credits ?? 0) > 0);
     }
 
@@ -337,6 +357,9 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function aiQuotaLimit(): int
     {
+        if ($this->isAdmin()) {
+            return 9999;
+        }
         return $this->max_ai_questions_override ?? $this->plan?->max_ai_questions ?? 0;
     }
 
@@ -345,6 +368,10 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function hasAiQuota(): bool
     {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
         if (!$this->plan) {
             return false;
         }
@@ -370,6 +397,9 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function dailyQuestionQuotaLimit(): int
     {
+        if ($this->isAdmin()) {
+            return 9999;
+        }
         if (!is_null($this->max_daily_questions_override)) {
             return $this->max_daily_questions_override;
         }
@@ -387,6 +417,10 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function canAnswerDailyQuestion(): bool
     {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
         if (!$this->plan)
             return false;
 
