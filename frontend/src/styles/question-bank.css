@@ -1097,7 +1097,13 @@
 .qb-slideover-body {
     flex: 1;
     overflow-y: auto;
-    padding: 24px;
+    padding: 32px;
+}
+
+@media (max-width: 768px) {
+    .qb-slideover-body {
+        padding: 16px;
+    }
 }
 
 .qb-overview-grid {
@@ -1138,9 +1144,11 @@
     background: white;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 16px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    display: flex;
+    flex-direction: column;
 }
 
 .dark .qb-chart-section {
@@ -1149,14 +1157,44 @@
 }
 
 .qb-chart-section h3 {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 700;
-    color: #475569;
-    margin-bottom: 16px;
+    color: #334155;
+    margin-bottom: 20px;
+    text-align: center;
 }
 
 .dark .qb-chart-section h3 {
-    color: #cbd5e1;
+    color: #e2e8f0;
+}
+
+/* ── Empty State ── */
+.qb-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+    text-align: center;
+    height: 100%;
+    min-height: 200px;
+    color: #64748b;
+}
+
+.dark .qb-empty-state {
+    color: #94a3b8;
+}
+
+.qb-empty-state svg {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.qb-empty-state p {
+    font-size: 14px;
+    font-weight: 500;
 }
 
 /* ── Animations ── */
