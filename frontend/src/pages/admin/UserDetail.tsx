@@ -429,7 +429,7 @@ export default function UserDetail() {
                                         <svg className="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
                                         Ciclos de Assinatura
                                     </h3>
-                                    {(!user.subscriptions || user.subscriptions.length === 0) ? (
+                                    {(!userData.user?.subscriptions || userData.user.subscriptions.length === 0) ? (
                                         <EmptyState title="Nenhuma assinatura" message="O histórico de compras premium está vazio." icon={<svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
                                     ) : (
                                         <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
@@ -443,7 +443,7 @@ export default function UserDetail() {
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-100">
-                                                    {user.subscriptions.map((sub: any) => (
+                                                    {userData.user.subscriptions.map((sub: any) => (
                                                         <tr key={sub.id} className="hover:bg-gray-50 transition-colors">
                                                             <td className="px-4 py-3 font-semibold text-gray-800">{sub.plan?.name || 'Desconhecido'}</td>
                                                             <td className="px-4 py-3">
@@ -467,7 +467,7 @@ export default function UserDetail() {
                                         <svg className="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
                                         Auditoria Sistêmica
                                     </h3>
-                                    {(!user.logs || user.logs.length === 0) ? (
+                                    {(!userData.user?.logs || userData.user.logs.length === 0) ? (
                                         <EmptyState title="Auditoria Limpa" message="Sem eventos críticos para exibir no perfil deste aluno." icon={<svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>} />
                                     ) : (
                                         <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
@@ -480,7 +480,7 @@ export default function UserDetail() {
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-100">
-                                                    {user.logs.map((log: any) => (
+                                                    {userData.user.logs.map((log: any) => (
                                                         <tr key={log.id} className="hover:bg-gray-50 transition-colors">
                                                             <td className="px-4 py-3 font-semibold text-indigo-700 text-[11px] uppercase tracking-wide">
                                                                 {log.action}
