@@ -56,7 +56,12 @@ class EnemImportService
         }
 
         // 3. Processar Enunciado e Imagens
-        $statement = $this->formatStatement($context, $apiQuestion['alternativesIntroduction'] ?? '', $year);
+        $statement = $this->formatStatement(
+            $context,
+            $apiQuestion['alternativesIntroduction'] ?? '',
+            $year,
+            $apiQuestion['files'] ?? []
+        );
 
         // 4. Resolver grande área do conhecimento (knowledge_area) e matéria (subject)
         // Correção de mapeamento: 'discipline' = grande área -> knowledge_area
@@ -108,14 +113,19 @@ class EnemImportService
 
                 foreach ($apiQuestion['alternatives'] as $altData) {
                     $imagePath = null;
+                    $content = $altData['text'] ?? '';
+
                     if (!empty($altData['file'])) {
                         $imagePath = $this->downloadImage($altData['file'], $year);
+                        if ($imagePath) {
+                            $content .= "\n\n![Imagem da Alternativa]({$imagePath})";
+                        }
                     }
 
                     \App\Models\QuestionAlternative::create([
                         'question_id' => $question->id,
                         'label' => $altData['letter'] ?? '?',
-                        'content' => $altData['text'] ?? '',
+                        'content' => trim($content),
                         'image_path' => $imagePath,
                         'is_correct' => $altData['isCorrect'] ?? false,
                     ]);
@@ -141,9 +151,9 @@ class EnemImportService
 
     /**
      * Formata o statement juntando o contexto com a introdução.
-     * E baixa localmente as imagens do markdown.
+     * E baixa localmente as imagens do markdown e anexos extras.
      */
-    protected function formatStatement(?string $context, ?string $introduction, int $year): string
+    protected function formatStatement(?string $context, ?string $introduction, int $year, array $files = []): string
     {
         $statement = $context ?? '';
 
@@ -165,7 +175,17 @@ class EnemImportService
             $statement .= "\n\n**" . trim($introduction) . "**";
         }
 
-        return $statement;
+        // Processar imagens anexas (files[]) que a API Enem envia
+        foreach ($files as $fileUrl) {
+            if (!empty($fileUrl)) {
+                $localUrl = $this->downloadImage($fileUrl, $year);
+                if ($localUrl) {
+                    $statement .= "\n\n![Imagem de Apoio]({$localUrl})";
+                }
+            }
+        }
+
+        return trim($statement);
     }
 
     /**

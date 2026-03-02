@@ -90,6 +90,11 @@ export default function ImportReview() {
 
     const { question, importItem } = data;
 
+    const hasImageModels = question?.images?.length > 0;
+    const hasEmbeddedImages = /<img|!\[.*?\]\(.*?\)/i.test(question?.statement || '') ||
+        /<img/i.test(question?.statement_html || '') ||
+        question?.alternatives?.some((a: any) => /<img|!\[.*?\]\(.*?\)/i.test(a.content || ''));
+
     return (
         <div className="py-6 px-4 md:px-6 w-full">
             <div className="w-full">
@@ -106,9 +111,9 @@ export default function ImportReview() {
                     </span>
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* LEFT COLUMN */}
-                    <div className="xl:col-span-2 space-y-4">
+                    <div className="space-y-4">
                         {/* Metadados */}
                         <div className="bg-white rounded-lg shadow-sm p-5">
                             <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Metadados</h3>
@@ -152,7 +157,7 @@ export default function ImportReview() {
                             <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Enunciado</h3>
                             <div className="text-gray-800 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: question.statement_html || question.statement }}></div>
 
-                            {question.images?.length > 0 ? (
+                            {hasImageModels ? (
                                 <div className="mt-4 pt-4 border-t border-gray-100">
                                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">🖼️ Imagens do Enunciado</p>
                                     <div className="space-y-3">
@@ -241,8 +246,8 @@ export default function ImportReview() {
                     </div>
 
                     {/* RIGHT COLUMN */}
-                    <div className="xl:col-span-3">
-                        {question.images?.length > 0 ? (
+                    <div>
+                        {hasImageModels ? (
                             <div className="space-y-6">
                                 {question.images.map((img: any) => (
                                     <div key={img.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -318,11 +323,22 @@ export default function ImportReview() {
                                     </div>
                                 ))}
                             </div>
+                        ) : hasEmbeddedImages || question.image_path ? (
+                            <div className="bg-white rounded-lg shadow-sm p-8 text-center border-2 border-dashed border-green-200">
+                                <div className="text-5xl mb-4">🖼️</div>
+                                <h3 className="text-lg font-semibold text-gray-700 mb-2">Imagens Processadas Automaticamente</h3>
+                                <p className="text-sm text-gray-500 mb-4">O novo importador estruturado (ENEM API) detectou imagens anexas e as tratou inserindo o Markdown correspondente dentro do fluxo do enunciado e alternativas. Verifique se a renderização final e o gabarito fazem sentido.</p>
+                                <button
+                                    onClick={() => approveMutation.mutate()}
+                                    className="px-6 py-2.5 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium">
+                                    ✅ Aprovar e Publicar Questão
+                                </button>
+                            </div>
                         ) : (
                             <div className="bg-white rounded-lg shadow-sm p-8 text-center">
                                 <div className="text-5xl mb-4">📝</div>
-                                <h3 className="text-lg font-semibold text-gray-700 mb-2">Questão sem imagem</h3>
-                                <p className="text-sm text-gray-500 mb-4">Revise o enunciado e as alternativas, e aprove se estiver correta.</p>
+                                <h3 className="text-lg font-semibold text-gray-700 mb-2">Questão Sem Imagens</h3>
+                                <p className="text-sm text-gray-500 mb-4">Revise o texto do enunciado e as alternativas. Se a transcrição estiver certa, clique em aprovar.</p>
                                 <button
                                     onClick={() => approveMutation.mutate()}
                                     className="px-6 py-2.5 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium">
