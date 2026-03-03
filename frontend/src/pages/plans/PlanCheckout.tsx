@@ -26,7 +26,7 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
     const [couponCode, setCouponCode] = useState('');
     const [couponMessage, setCouponMessage] = useState('');
     const [couponSuccess, setCouponSuccess] = useState(false);
-    const [finalPrice, setFinalPrice] = useState(plan?.price || 0);
+    const [finalPrice, setFinalPrice] = useState<number>(Number(plan?.price) || 0);
 
     const [isLoading, setIsLoading] = useState(false);
     const [checkoutResult, setCheckoutResult] = useState<any>(null);
@@ -49,7 +49,7 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
 
     useEffect(() => {
         if (plan) {
-            setFinalPrice(plan.price);
+            setFinalPrice(Number(plan.price) || 0);
         }
     }, [plan]);
 
@@ -106,12 +106,12 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
             setCouponMessage(response.data.message);
             setCouponSuccess(response.data.valid);
             if (response.data.valid) {
-                setFinalPrice(response.data.new_price);
+                setFinalPrice(Number(response.data.new_price) || 0);
             }
         } catch (err: any) {
             setCouponMessage(err.response?.data?.message || 'Erro ao validar cupom.');
             setCouponSuccess(false);
-            setFinalPrice(plan!.price);
+            setFinalPrice(Number(plan!.price) || 0);
         }
     };
 
@@ -137,7 +137,9 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                 }
             }
         } catch (err: any) {
-            toast.info(err.response?.data?.message || 'Erro ao processar checkout. Verifique os dados.');
+            const message = err.response?.data?.message || err.response?.data?.errors?.[0]?.description || 'Erro ao processar checkout. Verifique os dados.';
+            toast.error(message);
+            console.error('[PlanCheckout] Erro:', err.response?.data || err.message);
         } finally {
             setIsLoading(false);
         }

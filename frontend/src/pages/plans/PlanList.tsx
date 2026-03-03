@@ -1,10 +1,148 @@
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
+import { getSubscriptions, getPaymentReceipt } from '../../api/subscriptions';
+import { toast } from 'sonner';
 import PlanConfirmationModal from '../../components/PlanConfirmationModal';
 import Accordion from '../../components/Accordion';
 import '../../styles/landing-page.css';
+
+// ───────────────────────────────────────────────────────
+// Sub-component: Pix Countdown Modal
+// ───────────────────────────────────────────────────────
+function PixCountdownModal({ pix, onClose }: {
+    pix: { payload: string; image: string; expiresAt: string | null; };
+    onClose: () => void;
+}) {
+    const [secondsLeft, setSecondsLeft] = useState<number>(() => {
+        if (!pix.expiresAt) return 30 * 60; // fallback 30min
+        const diff = Math.floor((new Date(pix.expiresAt).getTime() - Date.now()) / 1000);
+        return Math.max(0, diff);
+    });
+    const [copied, setCopied] = useState(false);
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    useEffect(() => {
+        intervalRef.current = setInterval(() => {
+            setSecondsLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(intervalRef.current!);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(intervalRef.current!);
+    }, []);
+
+    const handleCopy = useCallback(() => {
+        navigator.clipboard.writeText(pix.payload).then(() => {
+            setCopied(true);
+            toast.success('Chave Pix copiada!');
+            setTimeout(() => setCopied(false), 2500);
+        });
+    }, [pix.payload]);
+
+    const minutes = Math.floor(secondsLeft / 60).toString().padStart(2, '0');
+    const seconds = (secondsLeft % 60).toString().padStart(2, '0');
+    const isExpired = secondsLeft === 0;
+    const urgency = secondsLeft < 300; // últimos 5 min
+    const progress = pix.expiresAt
+        ? Math.max(0, (secondsLeft / ((new Date(pix.expiresAt).getTime() - Date.now() + secondsLeft * 1000) / 1000)) * 100)
+        : (secondsLeft / (30 * 60)) * 100;
+
+    return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-200">
+                {/* Header */}
+                <div className={`p-5 text-center transition-colors duration-700 ${isExpired ? 'bg-red-600' : urgency ? 'bg-amber-500' : 'bg-blue-600'
+                    }`}>
+                    <div className="text-white/80 text-[10px] font-black uppercase tracking-widest mb-1">Pagar via Pix</div>
+                    <h2 className="text-white text-xl font-black leading-none">QR Code Gerado</h2>
+                    {isExpired ? (
+                        <p className="text-white/90 text-xs mt-1">⚠️ QR Code expirado. Gere uma nova assinatura.</p>
+                    ) : (
+                        <p className="text-white/90 text-xs mt-1">Escaneie ou copie a chave Pix abaixo</p>
+                    )}
+                </div>
+
+                {/* Countdown bar */}
+                <div className="relative h-1.5 bg-slate-100 dark:bg-slate-800">
+                    <div
+                        className={`h-full transition-all duration-1000 ease-linear ${isExpired ? 'bg-red-500 w-0' : urgency ? 'bg-amber-400' : 'bg-blue-500'
+                            }`}
+                        style={{ width: isExpired ? '0%' : `${progress}%` }}
+                    />
+                </div>
+
+                <div className="p-6">
+                    {/* Timer */}
+                    <div className={`text-center mb-4 py-2 rounded-xl ${isExpired ? 'bg-red-50 dark:bg-red-900/20' : urgency ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-slate-50 dark:bg-slate-800/50'
+                        }`}>
+                        <span className={`text-3xl font-black tabular-nums ${isExpired ? 'text-red-600 dark:text-red-400' : urgency ? 'text-amber-600 dark:text-amber-400' : 'text-slate-700 dark:text-slate-200'
+                            }`}>
+                            {minutes}:{seconds}
+                        </span>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
+                            {isExpired ? 'Expirado' : 'Tempo restante'}
+                        </p>
+                    </div>
+
+                    {!isExpired ? (
+                        <>
+                            {/* QR Code */}
+                            <div className="flex justify-center mb-4">
+                                <div className="bg-white p-2 border-2 border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm">
+                                    <img
+                                        src={`data:image/png;base64,${pix.image}`}
+                                        alt="QR Code Pix"
+                                        className="w-44 h-44"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Copy field */}
+                            <div className="relative mb-4">
+                                <input
+                                    readOnly
+                                    value={pix.payload}
+                                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 pl-3 pr-24 text-[10px] font-mono text-slate-600 dark:text-slate-300 truncate focus:outline-none"
+                                />
+                                <button
+                                    onClick={handleCopy}
+                                    className={`absolute right-1.5 top-1.5 bottom-1.5 px-3 rounded-lg text-xs font-black transition-all duration-200 ${copied
+                                            ? 'bg-green-500 text-white'
+                                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                        }`}
+                                >
+                                    {copied ? '✓ Copiado' : 'Copiar'}
+                                </button>
+                            </div>
+
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mb-4">
+                                Após o pagamento, sua conta será ativada automaticamente em alguns minutos.
+                            </p>
+                        </>
+                    ) : (
+                        <div className="text-center mb-5">
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                                O QR Code expirou. Por favor, inicie uma nova assinatura para gerar um novo código.
+                            </p>
+                        </div>
+                    )}
+
+                    <button
+                        onClick={onClose}
+                        className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 py-3 rounded-xl font-bold text-sm transition"
+                    >
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 export default function PlanList() {
     const navigate = useNavigate();
@@ -14,6 +152,10 @@ export default function PlanList() {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedPlanForModal, setSelectedPlanForModal] = useState<any>(null);
+    const [history, setHistory] = useState<any[]>([]);
+    const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+    const [loadingReceiptId, setLoadingReceiptId] = useState<number | null>(null);
+    const [selectedPix, setSelectedPix] = useState<{ payload: string; image: string; expiresAt: string | null } | null>(null);
 
     const userPlanId = user?.plan_id || (user?.plan as any)?.id;
     const currentPlan = plans?.find((p: any) => String(p.id) === String(userPlanId));
@@ -66,6 +208,23 @@ export default function PlanList() {
     };
 
     useEffect(() => {
+        const fetchHistory = async () => {
+            if (!user) return;
+            setIsLoadingHistory(true);
+            try {
+                const response = await getSubscriptions();
+                setHistory(response.data);
+            } catch (err) {
+                console.error('Erro ao buscar histórico:', err);
+            } finally {
+                setIsLoadingHistory(false);
+            }
+        };
+
+        fetchHistory();
+    }, [user]);
+
+    useEffect(() => {
         const searchParams = new URLSearchParams(window.location.search);
         const autoSelect = searchParams.get('autoSelect');
 
@@ -98,7 +257,9 @@ export default function PlanList() {
 
     useEffect(() => {
         if (plans?.length > 0) {
-            console.log('Available Plans:', plans.map(p => ({ id: p.id, name: p.name, slug: p.slug, interval: p.interval })));
+            if (import.meta.env.DEV) {
+                console.log('Available Plans:', plans.map(p => ({ id: p.id, name: p.name, slug: p.slug, interval: p.interval })));
+            }
         }
     }, [plans]);
 
@@ -206,27 +367,108 @@ export default function PlanList() {
                                             ></div>
                                         </div>
                                     </div>
-
-                                    {/* Questões IA - Oculto Temporariamente a pedido do usuário */}
-                                    {/* 
-                                    <div>
-                                        <div className="flex justify-between text-[11px] mb-1.5">
-                                            <span className="font-bold text-slate-600 dark:text-slate-400">Xavier (Perguntas IA)</span>
-                                            <span className="font-black text-amber-600 dark:text-amber-400">
-                                                {(user as any).quotas?.ai_questions?.used || 0} / {(user as any).quotas?.ai_questions?.limit === 9999 ? '∞' : (user as any).quotas?.ai_questions?.limit || 0}
-                                            </span>
-                                        </div>
-                                        <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                            <div 
-                                                className="h-full bg-amber-500 rounded-full transition-all duration-500"
-                                                style={{ width: `${Math.min(100, (((user as any).quotas?.ai_questions?.used || 0) / ((user as any).quotas?.ai_questions?.limit || 1)) * 100)}%` }}
-                                            ></div>
-                                        </div>
-                                    </div>
-                                    */}
                                 </div>
                             </div>
                         </div>
+
+                        {/* HISTÓRICO DE PAGAMENTOS */}
+                        {isLoadingHistory && (
+                            <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center text-sm text-slate-400 animate-pulse">
+                                Carregando histórico de pagamentos...
+                            </div>
+                        )}
+                        {!isLoadingHistory && history.length > 0 && (
+                            <div className="mt-10 pt-8 border-t border-slate-100 dark:border-slate-800">
+                                <h5 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-6">Histórico de Pedidos</h5>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+                                                <th className="pb-3 px-2">Data</th>
+                                                <th className="pb-3 px-2">Plano</th>
+                                                <th className="pb-3 px-2">Método</th>
+                                                <th className="pb-3 px-2">Valor</th>
+                                                <th className="pb-3 px-2">Status</th>
+                                                <th className="pb-3 px-2 text-right">Ação</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                                            {history.map((item) => {
+                                                const isExpired = item.status === 'pending' && new Date(item.created_at).getTime() < Date.now() - 24 * 60 * 60 * 1000;
+                                                return (
+                                                    <tr key={item.id} className="text-sm">
+                                                        <td className="py-4 px-2 font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                                                            {new Date(item.created_at).toLocaleDateString()}
+                                                        </td>
+                                                        <td className="py-4 px-2 font-bold text-slate-900 dark:text-white">
+                                                            {item.plan?.name}
+                                                        </td>
+                                                        <td className="py-4 px-2 text-slate-500 dark:text-slate-400 capitalize">
+                                                            {item.billing_type === 'pix' ? 'Pix' : (item.billing_type === 'credit_card' ? 'Cartão' : 'Gateway')}
+                                                        </td>
+                                                        <td className="py-4 px-2 font-bold text-slate-800 dark:text-slate-200">
+                                                            {item.amount ? `R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(Number(item.amount))}` : '--'}
+                                                        </td>
+                                                        <td className="py-4 px-2">
+                                                            {isExpired ? (
+                                                                <span className="inline-block bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Expirado</span>
+                                                            ) : item.status === 'active' ? (
+                                                                <span className="inline-block bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Confirmado</span>
+                                                            ) : item.status === 'pending' ? (
+                                                                <span className="inline-block bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Pendente</span>
+                                                            ) : (
+                                                                <span className="inline-block bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">{item.status}</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="py-4 px-2 text-right">
+                                                            {/* Pix pending */}
+                                                            {item.status === 'pending' && !isExpired && item.pix_payload && (
+                                                                <button
+                                                                    onClick={() => setSelectedPix({
+                                                                        payload: item.pix_payload,
+                                                                        image: item.pix_image,
+                                                                        expiresAt: item.pix_expires_at ?? null,
+                                                                    })}
+                                                                    className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline"
+                                                                >
+                                                                    <span>📲</span> Ver QR Pix
+                                                                </button>
+                                                            )}
+                                                            {item.status === 'active' && (
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        setLoadingReceiptId(item.id);
+                                                                        try {
+                                                                            const res = await getPaymentReceipt(item.id);
+                                                                            const url = res.data.receipt_url || res.data.invoice_url;
+                                                                            if (url) window.open(url, '_blank');
+                                                                            else toast.info('Comprovante ainda não disponível.');
+                                                                        } catch {
+                                                                            toast.error('Não foi possível obter o comprovante.');
+                                                                        } finally {
+                                                                            setLoadingReceiptId(null);
+                                                                        }
+                                                                    }}
+                                                                    disabled={loadingReceiptId === item.id}
+                                                                    className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 underline disabled:opacity-50"
+                                                                >
+                                                                    {loadingReceiptId === item.id ? 'Buscando...' : '↓ Comprovante'}
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                        {!isLoadingHistory && history.length === 0 && userPlanId && String(userPlanId) !== '1' && (
+                            <div className="mt-10 pt-8 border-t border-slate-100 dark:border-slate-800 text-center">
+                                <p className="text-sm text-slate-500 italic">Nenhum registro de pagamento encontrado nesta conta.</p>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -365,6 +607,14 @@ export default function PlanList() {
                     currentPlan={currentPlan}
                     selectedPlan={selectedPlanForModal}
                 />
+
+                {/* MODAL Pix com countdown */}
+                {selectedPix && (
+                    <PixCountdownModal
+                        pix={selectedPix}
+                        onClose={() => setSelectedPix(null)}
+                    />
+                )}
             </div>
         </div>
     );

@@ -21,6 +21,19 @@ class SubscriptionController extends Controller
     }
 
     /**
+     * Retorna o histórico de assinaturas do usuário.
+     */
+    public function index()
+    {
+        $subscriptions = Subscription::with('plan')
+            ->where('user_id', Auth::id())
+            ->latest()
+            ->get();
+
+        return response()->json($subscriptions);
+    }
+
+    /**
      * Valida um cupom de desconto.
      */
     public function validateCoupon(Request $request, Plan $plan)
@@ -119,6 +132,7 @@ class SubscriptionController extends Controller
                 'status' => 'pending',
                 'gateway' => 'asaas',
                 'gateway_id' => $asaasSubscription['id'],
+                'amount' => $plan->price,
                 'current_period_start' => now(),
                 'current_period_end' => $plan->interval === 'yearly' ? now()->addYear() : now()->addMonth(),
             ]);
@@ -148,12 +162,24 @@ class SubscriptionController extends Controller
                 if ($payment) {
                     $pixData = $this->asaasService->getPixQrCode($payment['id']);
                     if ($pixData) {
+                        $pixExpiresAt = now()->addMinutes(30); // QR Code válido por 30 minutos
+
+                        $subscription->update([
+                            'billing_type' => 'pix',
+                            'pix_payload' => $pixData['payload'],
+                            'pix_image' => $pixData['encodedImage'],
+                            'pix_expires_at' => $pixExpiresAt,
+                        ]);
+
                         $responseData['pix'] = [
                             'payload' => $pixData['payload'],
                             'image' => $pixData['encodedImage'],
+                            'expires_at' => $pixExpiresAt->toISOString(),
                         ];
                     }
                 }
+            } else {
+                $subscription->update(['billing_type' => 'credit_card']);
             }
 
             return response()->json($responseData);
@@ -174,6 +200,40 @@ class SubscriptionController extends Controller
             ]);
 
             return response()->json(['message' => 'Erro ao processar pagamento: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Gera a URL de comprovante de um pagamento confirmado.
+     */
+    public function receiptUrl(Subscription $subscription)
+    {
+        if ($subscription->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Acesso negado.'], 403);
+        }
+
+        if (!$subscription->gateway_id) {
+            return response()->json(['message' => 'Assinatura sem ID no gateway.'], 422);
+        }
+
+        try {
+            // Busca o primeiro pagamento CONFIRMADO desta assinatura
+            $response = $this->asaasService->getConfirmedPaymentForSubscription($subscription->gateway_id);
+
+            if (!$response) {
+                return response()->json(['message' => 'Nenhum pagamento confirmado encontrado para esta assinatura.'], 404);
+            }
+
+            return response()->json([
+                'receipt_url' => $response['transactionReceiptUrl'] ?? null,
+                'invoice_url' => $response['invoiceUrl'] ?? null,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('[API receiptUrl] Erro ao buscar comprovante', [
+                'subscription_id' => $subscription->id,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['message' => 'Erro ao obter comprovante.'], 500);
         }
     }
 
