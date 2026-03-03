@@ -74,6 +74,7 @@ import AdminApiPricing from './pages/admin/ApiPricing';
 import AdminSimulationBuilder from './pages/admin/SimulationBuilder';
 import AdminSubscriptions from './pages/admin/AdminSubscriptions';
 import AdminXavierInsights from './pages/admin/XavierInsights';
+import Analytics from './components/Analytics';
 
 function App() {
     const { isLoading: configLoading, error: configError } = useConfig();
@@ -126,6 +127,7 @@ function App() {
 
     return (
         <BrowserRouter>
+            <Analytics />
             <Toaster position="top-right" richColors />
             <Routes>
                 {/* Public / Auth Routes */}

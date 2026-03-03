@@ -30,6 +30,8 @@ class ConfigController extends Controller
                 'simulations_enabled',
                 'study_plan_enabled',
                 'question_bank_enabled',
+                'analytics_enabled',
+                'analytics_measurement_id',
             ])->pluck('value', 'key');
         });
 
@@ -45,6 +47,10 @@ class ConfigController extends Controller
                 $configurations['google_login_enabled'] ?? false,
                 FILTER_VALIDATE_BOOLEAN
             ),
+            'analytics' => [
+                'enabled' => filter_var($configurations['analytics_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                'measurement_id' => $configurations['analytics_measurement_id'] ?? null,
+            ],
             'features' => [
                 'essays' => filter_var($configurations['essays_enabled'] ?? true, FILTER_VALIDATE_BOOLEAN),
                 'simulations' => filter_var($configurations['simulations_enabled'] ?? true, FILTER_VALIDATE_BOOLEAN),

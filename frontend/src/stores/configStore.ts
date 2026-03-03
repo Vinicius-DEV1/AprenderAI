@@ -12,6 +12,10 @@ interface ConfigState {
         questionBank: boolean;
     };
     plans: any[];
+    analytics: {
+        enabled: boolean;
+        measurementId: string | null;
+    };
     isLoaded: boolean;
     setConfig: (data: any) => void;
 }
@@ -30,6 +34,10 @@ export const useConfigStore = create<ConfigState>((set) => ({
         questionBank: false,
     },
     plans: [],
+    analytics: {
+        enabled: false,
+        measurementId: null,
+    },
     isLoaded: false,
     setConfig: (data) => set({
         appName: data.app_name ?? '',
@@ -43,6 +51,10 @@ export const useConfigStore = create<ConfigState>((set) => ({
             questionBank: !!data.features?.question_bank,
         },
         plans: data.plans ?? [],
+        analytics: {
+            enabled: !!data.analytics?.enabled,
+            measurementId: data.analytics?.measurement_id ?? null,
+        },
         isLoaded: true,
     }),
 }));
