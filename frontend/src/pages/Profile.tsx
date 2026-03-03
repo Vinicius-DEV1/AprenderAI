@@ -158,7 +158,7 @@ export default function Profile() {
                 }
             `}</style>
 
-            <div className="wrap">
+            <div className="wrap -mt-[10px]">
                 <div className="hero">
                     <div>
                         <h1 className="text-xl font-bold">Configurações de Perfil</h1>
