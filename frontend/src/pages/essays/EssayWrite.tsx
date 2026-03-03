@@ -439,7 +439,7 @@ export default function EssayWrite() {
                 />
             )}
 
-            <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto sm:px-6 lg:px-8 -mt-[25px]">
 
                 <div className="mb-6 flex justify-between items-center">
                     <Link to="/essays" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
