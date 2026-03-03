@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
-import { getSubscriptions } from '../../api/subscriptions';
+import { getSubscriptions, getPaymentReceipt } from '../../api/subscriptions';
 import { toast } from 'sonner';
 import PlanConfirmationModal from '../../components/PlanConfirmationModal';
 import Accordion from '../../components/Accordion';
@@ -18,6 +18,7 @@ export default function PlanList() {
     const [selectedPlanForModal, setSelectedPlanForModal] = useState<any>(null);
     const [history, setHistory] = useState<any[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+    const [loadingReceiptId, setLoadingReceiptId] = useState<number | null>(null);
     const [selectedPix, setSelectedPix] = useState<{ payload: string, image: string } | null>(null);
 
     const userPlanId = user?.plan_id || (user?.plan as any)?.id;
@@ -120,7 +121,9 @@ export default function PlanList() {
 
     useEffect(() => {
         if (plans?.length > 0) {
-            console.log('Available Plans:', plans.map(p => ({ id: p.id, name: p.name, slug: p.slug, interval: p.interval })));
+            if (import.meta.env.DEV) {
+                console.log('Available Plans:', plans.map(p => ({ id: p.id, name: p.name, slug: p.slug, interval: p.interval })));
+            }
         }
     }, [plans]);
 
@@ -233,7 +236,12 @@ export default function PlanList() {
                         </div>
 
                         {/* HISTÓRICO DE PAGAMENTOS */}
-                        {history.length > 0 && (
+                        {isLoadingHistory && (
+                            <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center text-sm text-slate-400 animate-pulse">
+                                Carregando histórico de pagamentos...
+                            </div>
+                        )}
+                        {!isLoadingHistory && history.length > 0 && (
                             <div className="mt-10 pt-8 border-t border-slate-100 dark:border-slate-800">
                                 <h5 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-6">Histórico de Pedidos</h5>
                                 <div className="overflow-x-auto">
@@ -243,6 +251,7 @@ export default function PlanList() {
                                                 <th className="pb-3 px-2">Data</th>
                                                 <th className="pb-3 px-2">Plano</th>
                                                 <th className="pb-3 px-2">Método</th>
+                                                <th className="pb-3 px-2">Valor</th>
                                                 <th className="pb-3 px-2">Status</th>
                                                 <th className="pb-3 px-2 text-right">Ação</th>
                                             </tr>
@@ -260,6 +269,9 @@ export default function PlanList() {
                                                         </td>
                                                         <td className="py-4 px-2 text-slate-500 dark:text-slate-400 capitalize">
                                                             {item.billing_type === 'pix' ? 'Pix' : (item.billing_type === 'credit_card' ? 'Cartão' : 'Gateway')}
+                                                        </td>
+                                                        <td className="py-4 px-2 font-bold text-slate-800 dark:text-slate-200">
+                                                            {item.amount ? `R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(Number(item.amount))}` : '--'}
                                                         </td>
                                                         <td className="py-4 px-2">
                                                             {isExpired ? (
@@ -279,6 +291,27 @@ export default function PlanList() {
                                                                     className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline"
                                                                 >
                                                                     Pagar via Pix
+                                                                </button>
+                                                            )}
+                                                            {item.status === 'active' && (
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        setLoadingReceiptId(item.id);
+                                                                        try {
+                                                                            const res = await getPaymentReceipt(item.id);
+                                                                            const url = res.data.receipt_url || res.data.invoice_url;
+                                                                            if (url) window.open(url, '_blank');
+                                                                            else toast.info('Comprovante ainda não disponível.');
+                                                                        } catch {
+                                                                            toast.error('Não foi possível obter o comprovante.');
+                                                                        } finally {
+                                                                            setLoadingReceiptId(null);
+                                                                        }
+                                                                    }}
+                                                                    disabled={loadingReceiptId === item.id}
+                                                                    className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 underline disabled:opacity-50"
+                                                                >
+                                                                    {loadingReceiptId === item.id ? 'Buscando...' : '↓ Comprovante'}
                                                                 </button>
                                                             )}
                                                         </td>

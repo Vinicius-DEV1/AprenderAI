@@ -282,6 +282,31 @@ class AsaasService
     }
 
     /**
+     * Busca o primeiro pagamento CONFIRMADO de uma assinatura.
+     * Útil para obter a URL de comprovante.
+     *
+     * @param string $subscriptionId ID da assinatura no Asaas
+     * @return array|null Dados da cobrança ou null
+     */
+    public function getConfirmedPaymentForSubscription(string $subscriptionId): ?array
+    {
+        $response = Http::withHeader('access_token', $this->apiKey)
+            ->get("{$this->baseUrl}/subscriptions/{$subscriptionId}/payments", [
+                'status' => 'RECEIVED',
+                'limit' => 1,
+            ]);
+
+        if ($response->successful()) {
+            $data = $response->json();
+            if (!empty($data['data'])) {
+                return $data['data'][0];
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Obtém o Payload e Imagem do QR Code Pix para um pagamento.
      *
      * @param string $paymentId ID da cobrança

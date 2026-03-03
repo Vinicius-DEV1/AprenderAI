@@ -18,7 +18,7 @@ api.interceptors.response.use(
         if (error.response) {
             const { status, data } = error.response;
 
-            if (status === 401) {
+            if (status === 401 && !error.config?._quiet) {
                 toast.error('Sessão expirada ou não autorizada. Faça login novamente.');
                 // Optionally trigger a logout event here if needed
             } else if (status === 403) {

@@ -102,6 +102,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/{plan}/validate-coupon', [SubscriptionController::class, 'validateCoupon']);
             Route::post('/{plan}/checkout', [SubscriptionController::class, 'store']);
             Route::get('/check-status', [SubscriptionController::class, 'checkStatus']);
+            Route::get('/{subscription}/receipt', [SubscriptionController::class, 'receiptUrl']);
         });
 
         // Question Bank
