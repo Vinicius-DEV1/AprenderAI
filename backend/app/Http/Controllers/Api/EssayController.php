@@ -205,16 +205,37 @@ class EssayController extends Controller
             abort(403);
         }
 
+        // If status is error, attempt to retrieve structured payload
+        $errorPayload = null;
+        if ($essay->status === 'error') {
+            // 1) Read from Cache
+            $cachedError = \Illuminate\Support\Facades\Cache::get("essay:topic:error:{$essay->id}");
+            if ($cachedError) {
+                $errorPayload = $cachedError;
+            }
+            // 2) Read from fallback column
+            elseif (str_starts_with($essay->topic_description ?? '', '__AI_ERROR__:')) {
+                $rawJson = substr($essay->topic_description, 13);
+                $decoded = json_decode($rawJson, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $errorPayload = $decoded;
+                }
+            }
+        }
+
         return response()->json([
             'status' => $essay->status,
             'title' => $essay->title,
-            'topic_description' => $essay->topic_description,
+            'topic_description' => $essay->topic_description && !str_starts_with($essay->topic_description, '__AI_ERROR__:') ? $essay->topic_description : null,
             'theme' => $essay->theme,
+            'error_details' => $errorPayload
         ]);
     }
 
     public function submit(Request $request, Essay $essay)
     {
+        $requestId = (string) \Illuminate\Support\Str::uuid();
+
         if ($essay->user_id !== $request->user()->id) {
             abort(403);
         }
@@ -226,14 +247,21 @@ class EssayController extends Controller
         ]);
 
         $user = $request->user();
+        Log::info('[EssayController::submit] Submission start', [
+            'request_id' => $requestId,
+            'user_id' => $user->id,
+            'essay_id' => $essay->id,
+            'type' => $essay->type
+        ]);
 
         try {
-            return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $essay, $user) {
+            return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $essay, $user, $requestId) {
                 // Check if can consume (avoid race conditions)
                 if (!$user->canCreateEssay()) {
                     return response()->json([
                         'code' => 'QUOTA_EXCEEDED',
-                        'message' => 'Você atingiu o limite mensal de redações.'
+                        'message' => 'Você atingiu o limite mensal de redações.',
+                        'request_id' => $requestId
                     ], 403);
                 }
 
@@ -261,29 +289,52 @@ class EssayController extends Controller
                 \App\Jobs\EvaluateEssayJob::dispatch($essay);
 
                 $updatedUsage = app(\App\Services\QuotaService::class)->getUsage($user, 'essays');
-                $limit = $updatedUsage['limit'] ?? $user->essayQuotaLimit();
-                $used = $updatedUsage['used'] ?? 0;
+                $limitRaw = $updatedUsage['limit'] ?? $user->essayQuotaLimit();
+                $limit = $this->normalizeLimit($limitRaw);
+                $used = (int) ($updatedUsage['used'] ?? 0);
+
+                $monthly_remaining = is_null($limit) ? null : max($limit - $used, 0);
 
                 return (new EssayResource($essay))->additional([
                     'meta' => [
-                        'monthly_limit_total' => $limit,
+                        'monthly_limit_total' => $limitRaw,
                         'monthly_used' => $used,
-                        'monthly_remaining' => max(0, ($limit ?? 0) - $used),
+                        'monthly_remaining' => $monthly_remaining,
+                        'request_id' => $requestId,
                     ]
                 ]);
             });
         } catch (\Throwable $e) {
-            Log::error('[EssayController::submit] Erro ao enviar redação', [
+            Log::error('[EssayController::submit] Erro fatal ao enviar redação', [
+                'request_id' => $requestId,
                 'user_id' => $user->id,
                 'essay_id' => $essay->id,
                 'exception' => $e->getMessage(),
+                'type' => get_class($e),
                 'trace' => $e->getTraceAsString(),
             ]);
             return response()->json([
                 'code' => 'SUBMIT_FAILED',
-                'message' => 'Falha interna ao enviar sua redação. Tente novamente.',
+                'message' => 'Erro interno no servidor. Nossa equipe já foi notificada.',
+                'request_id' => $requestId,
             ], 500);
         }
+    }
+
+    /**
+     * Normalizes a quota limit to an integer or null (unlimited).
+     */
+    private function normalizeLimit($limit): ?int
+    {
+        if (is_null($limit) || $limit === 'unlimited' || $limit === '∞' || $limit === 9999) {
+            return null;
+        }
+
+        if (is_numeric($limit)) {
+            return (int) $limit;
+        }
+
+        return null;
     }
 
     public function retryEvaluation(Request $request, Essay $essay)

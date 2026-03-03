@@ -75,6 +75,7 @@ export default function AdminApiKeys() {
     const [showModelModal, setShowModelModal] = useState(false);
     const [showLogModal, setShowLogModal] = useState(false);
     const [activeLog, setActiveLog] = useState<AiLog | null>(null);
+    const [showRawResponse, setShowRawResponse] = useState(false);
     const [discoveredModels, setDiscoveredModels] = useState<any[]>([]);
 
     // Form States
@@ -491,6 +492,7 @@ export default function AdminApiKeys() {
                                         <thead className="bg-slate-50 text-slate-400 uppercase font-bold">
                                             <tr>
                                                 <th className="px-6 py-4">Usuário</th>
+                                                <th className="px-6 py-4">Horário</th>
                                                 <th className="px-6 py-4">Provedor/Modelo</th>
                                                 <th className="px-6 py-4">Tokens (I/O)</th>
                                                 <th className="px-6 py-4">Tempo</th>
@@ -502,6 +504,11 @@ export default function AdminApiKeys() {
                                             {aiLogs.map(log => (
                                                 <tr key={log.id} className="hover:bg-slate-50 transition-colors">
                                                     <td className="px-6 py-4 font-bold text-slate-700">{log.user?.name || 'Sistema/Job'}</td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded-md uppercase tracking-tighter">
+                                                            {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                                        </span>
+                                                    </td>
                                                     <td className="px-6 py-4">
                                                         <p className="font-bold text-slate-800">{log.provider}</p>
                                                         <p className="text-[10px] text-slate-400 font-mono">{log.model}</p>
@@ -616,8 +623,9 @@ export default function AdminApiKeys() {
                             <button onClick={() => setShowLogModal(false)} className="p-2 hover:bg-slate-100 rounded-full">✕</button>
                         </div>
                         <div className="flex-1 overflow-y-auto p-8 space-y-8 font-sans">
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+                            <div className="grid grid-cols-2 md:grid-cols-6 gap-6">
                                 <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Usuário</p><p className="font-bold text-slate-800">{activeLog.user?.name || 'Sistema'}</p></div>
+                                <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Horário Exato</p><p className="font-bold text-slate-800">{new Date(activeLog.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p></div>
                                 <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Provedor / Modelo</p><p className="font-bold text-slate-800">{activeLog.provider} / {activeLog.model}</p></div>
                                 <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Tokens (I/O)</p><p className="font-bold text-slate-800">{activeLog.tokens_used_input} / {activeLog.tokens_used_output}</p></div>
                                 <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Tempo Execução</p><p className="font-bold text-slate-800">{(Number(activeLog.execution_time) || 0).toFixed(3)}s</p></div>
@@ -630,10 +638,46 @@ export default function AdminApiKeys() {
                                         {activeLog.prompt_text}
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest pl-2 border-l-4 border-purple-500">Resposta da IA</h4>
-                                    <div className="bg-indigo-50/50 p-6 rounded-2xl text-slate-700 font-medium text-xs whitespace-pre-wrap shadow-inner border border-indigo-100 italic">
-                                        {activeLog.response_text}
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest pl-2 border-l-4 border-purple-500">Resposta da IA</h4>
+                                        <div className="flex bg-slate-100 p-1 rounded-lg">
+                                            <button
+                                                onClick={() => setShowRawResponse(false)}
+                                                className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${!showRawResponse ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                                                Formatado
+                                            </button>
+                                            <button
+                                                onClick={() => setShowRawResponse(true)}
+                                                className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${showRawResponse ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                                                Bruto
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className={`p-6 rounded-2xl font-mono text-xs shadow-inner border transition-all ${showRawResponse
+                                        ? 'bg-slate-900 text-emerald-400 border-slate-800 whitespace-pre-wrap overflow-x-auto'
+                                        : 'bg-indigo-50/50 text-slate-700 border-indigo-100 whitespace-pre-wrap'
+                                        }`}>
+                                        {showRawResponse ? (
+                                            activeLog.response_text
+                                        ) : (
+                                            (() => {
+                                                try {
+                                                    // Tenta encontrar JSON em blocos markdown ou limpo
+                                                    let cleanText = activeLog.response_text.trim();
+                                                    if (cleanText.startsWith('```json')) {
+                                                        cleanText = cleanText.replace(/```json\n?|\n?```/g, '');
+                                                    } else if (cleanText.startsWith('```')) {
+                                                        cleanText = cleanText.replace(/```\n?|\n?```/g, '');
+                                                    }
+                                                    const parsed = JSON.parse(cleanText);
+                                                    return JSON.stringify(parsed, null, 2);
+                                                } catch (e) {
+                                                    // Fallback para texto original se não for JSON
+                                                    return activeLog.response_text;
+                                                }
+                                            })()
+                                        )}
                                     </div>
                                 </div>
                             </div>

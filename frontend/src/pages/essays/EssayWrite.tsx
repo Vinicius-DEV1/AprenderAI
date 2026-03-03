@@ -263,7 +263,12 @@ export default function EssayWrite() {
                 } else if (data.status === 'error') {
                     clearInterval(interval);
                     setIsGenerating(false);
-                    setError('A IA falhou ao gerar o tema. Tente novamente ou pesquise um tema existente.');
+
+                    if (data.error_details) {
+                        setError(`${data.error_details.message || 'A IA falhou ao gerar o tema.'} (ID: ${data.error_details.request_id || 'N/A'}) - Tente novamente ou pesquise um tema existente.`);
+                    } else {
+                        setError('A IA falhou ao gerar o tema. Tente novamente ou pesquise um tema existente.');
+                    }
                 }
             } catch (err) {
                 // Keep polling unless fatal

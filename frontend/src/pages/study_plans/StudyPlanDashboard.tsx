@@ -10,7 +10,7 @@ const getStudyPlanData = async () => {
 
 export default function StudyPlanDashboard() {
     const queryClient = useQueryClient();
-    const { data, isLoading } = useQuery({
+    const { data, isLoading, isError } = useQuery({
         queryKey: ['studyPlanDashboard'],
         queryFn: getStudyPlanData
     });
@@ -23,6 +23,10 @@ export default function StudyPlanDashboard() {
     });
 
     if (isLoading) return <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>;
+
+    // Guard defensivo: nunca quebrar a tela se a API retornar erro (403/422/5xx)
+    // isError = axios lançou exceção (status >= 400); !data = resposta vazia inesperada
+    if (isError || !data) return <StudyPlanEmpty />;
 
     if (data?.code === 'PAYWALL' || data?.view_state === 'paywall') {
         return (
@@ -44,10 +48,11 @@ export default function StudyPlanDashboard() {
         );
     }
 
-    if (data?.view_state === 'empty') return <StudyPlanEmpty />;
+    if (data?.view_state === 'empty' || data?.code === 'INSUFFICIENT_DATA') return <StudyPlanEmpty />;
     if (data?.view_state === 'wizard') return <StudyPlanWizard />;
 
-    // Main Dashboard
+    // Main Dashboard — só chegamos aqui se view_state === 'dashboard' e data está garantida
+    if (data?.view_state !== 'dashboard') return <StudyPlanEmpty />;
     const { confidence, diagnostics, projection, weak_strong, recommendations, exam_strategy, plan, can_update, next_update_at, days_until_update, motivation } = data;
 
     const dayIcons: Record<string, string> = {
