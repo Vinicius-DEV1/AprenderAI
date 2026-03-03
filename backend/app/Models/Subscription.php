@@ -19,6 +19,7 @@ class Subscription extends Model
         'amount',
         'pix_payload',
         'pix_image',
+        'pix_expires_at',
         'current_period_start',
         'current_period_end',
         'canceled_at',
@@ -26,6 +27,7 @@ class Subscription extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'pix_expires_at' => 'datetime',
         'current_period_start' => 'datetime',
         'current_period_end' => 'datetime',
         'canceled_at' => 'datetime',
