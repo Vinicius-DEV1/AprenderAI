@@ -4,8 +4,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getEssay, retryEssayEvaluation } from '../../api/essays';
 import { useConfigStore } from '../../stores/configStore';
 
-export default function EssayReview() {
-    const { id } = useParams<{ id: string }>();
+export default function EssayReview({
+    essayId: propEssayId,
+    isEmbedded = false
+}: {
+    essayId?: string | number,
+    isEmbedded?: boolean
+}) {
+    const { id: paramId } = useParams<{ id: string }>();
+    const id = propEssayId?.toString() || paramId;
     const queryClient = useQueryClient();
     const [tab, setTab] = useState<'general' | 'points' | 'corrections' | 'improved'>('general');
     const [competenciesOpen, setCompetenciesOpen] = useState(false);
@@ -212,11 +219,13 @@ export default function EssayReview() {
                     </div>
                 )}
 
-                <div className="mb-4 text-center">
-                    <Link to="/essays" className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
-                        &larr; Voltar para minhas redações
-                    </Link>
-                </div>
+                {!isEmbedded && (
+                    <div className="mb-4 text-center">
+                        <Link to="/essays" className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
+                            &larr; Voltar para minhas redações
+                        </Link>
+                    </div>
+                )}
 
                 {essay.status === 'completed' && (
                     <>
