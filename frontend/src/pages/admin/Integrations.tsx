@@ -53,8 +53,9 @@ export default function Integrations() {
             queryClient.invalidateQueries({ queryKey: ['admin-integrations'] });
             toast.success('Configurações atualizadas com sucesso!');
         },
-        onError: () => {
-            toast.error('Erro ao atualizar integrações.');
+        onError: (error: any) => {
+            const message = error.response?.data?.message || 'Erro ao atualizar integrações.';
+            toast.error(message);
         }
     });
 

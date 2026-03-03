@@ -68,12 +68,22 @@ class IntegrationController extends Controller
 
         // Service Account JSON
         if ($request->hasFile('analytics_service_account_json')) {
-            $path = $request->file('analytics_service_account_json')->storeAs(
-                'google',
-                'service-account.json',
-                'local'
-            );
-            Configuration::set('analytics_service_account_path', $path);
+            try {
+                // Ensure directory exists
+                if (!Storage::disk('local')->exists('google')) {
+                    Storage::disk('local')->makeDirectory('google');
+                }
+
+                $path = $request->file('analytics_service_account_json')->storeAs(
+                    'google',
+                    'service-account.json',
+                    'local'
+                );
+                Configuration::set('analytics_service_account_path', $path);
+            } catch (\Exception $e) {
+                \Log::error('Falha ao salvar conta de serviço Google: ' . $e->getMessage());
+                return response()->json(['message' => 'Erro ao salvar o arquivo JSON. Verifique as permissões da pasta storage.'], 500);
+            }
         }
 
         return response()->json([

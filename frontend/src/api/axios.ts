@@ -19,20 +19,32 @@ api.interceptors.response.use(
         if (error.response) {
             const { status, data } = error.response;
 
+            // Handle 401 - Unauthorized/Session Expired
             if (status === 401 && !error.config?._quiet) {
-                toast.error('Sessão expirada ou não autorizada. Faça login novamente.');
-
-                // Reset auth state and redirect
-                const { logout } = useAuthStore.getState();
-                logout();
-
+                // Check if we are already on login to avoid loops
                 if (window.location.pathname !== '/login') {
+                    toast.error('Sessão expirada. Faça login novamente.');
+
+                    // Reset auth state and redirect
+                    const { logout } = useAuthStore.getState();
+                    logout();
                     window.location.href = '/login';
                 }
-            } else if (status === 403) {
+            }
+            // Handle 422 - Validation Errors
+            else if (status === 422) {
+                const message = data.message || 'Dados inválidos.';
+                // Only show errors if they exist as an object
+                const errors = data.errors ? Object.values(data.errors).flat().join(' ') : '';
+                toast.error(`${message} ${errors}`);
+            }
+            // Handle 403 - Forbidden
+            else if (status === 403) {
                 toast.error(data.message || 'Acesso negado.');
-            } else if (status >= 500) {
-                toast.error('Erro interno no servidor. Nossa equipe já foi notificada.');
+            }
+            // Handle 500+ - Server Errors
+            else if (status >= 500) {
+                toast.error(data.message || 'Erro interno no servidor. Nossa equipe já foi notificada.');
             }
         } else if (!error.response && error.message === 'Network Error') {
             toast.error('Falha na conexão de rede. Verifique sua internet.');
