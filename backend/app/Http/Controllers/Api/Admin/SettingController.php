@@ -42,10 +42,14 @@ class SettingController extends Controller
                 Artisan::call('config:clear');
                 break;
             case 'cache':
+                Cache::forget('app_configurations');
+                Cache::forget('site_settings');
                 Artisan::call('cache:clear');
                 break;
             case 'all':
             default:
+                Cache::forget('app_configurations');
+                Cache::forget('site_settings');
                 Artisan::call('optimize:clear');
                 break;
         }

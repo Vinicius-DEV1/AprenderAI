@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Configuration;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -34,6 +35,9 @@ class IntegrationController extends Controller
      */
     public function update(Request $request)
     {
+        // Invalidar cache de configurações para que as mudanças reflitam instantaneamente no frontend
+        Cache::forget('app_configurations');
+
         $validator = Validator::make($request->all(), [
             'google_login_enabled' => 'required|in:0,1',
             'google_client_id' => 'nullable|string',
