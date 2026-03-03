@@ -37,11 +37,6 @@ use App\Http\Controllers\Api\Admin\PaymentSettingsController;
 */
 
 Route::prefix('v1')->group(function () {
-    // DEBUG: Catch any strays
-    Route::post('/plans/{plan}/checkout', function () {
-        return response()->json(['message' => 'DEBUG: Hit /api/v1/plans/{plan}/checkout (OLD ROUTE)'], 200);
-    });
-
     // Webhooks
     Route::post('/webhooks/asaas', [\App\Http\Controllers\WebhookController::class, 'handleAsaas'])->name('api.webhooks.asaas');
 
@@ -170,6 +165,8 @@ Route::prefix('v1')->group(function () {
             // Settings & Cache
             Route::get('/settings', [AdminSettingController::class, 'index']);
             Route::post('/settings', [AdminSettingController::class, 'update']);
+            Route::get('/integrations', [\App\Http\Controllers\Api\Admin\IntegrationController::class, 'index']);
+            Route::post('/integrations', [\App\Http\Controllers\Api\Admin\IntegrationController::class, 'update']);
             Route::get('/payment-settings', [PaymentSettingsController::class, 'index']);
             Route::put('/payment-settings', [PaymentSettingsController::class, 'update']);
             Route::post('/settings/clear-cache', [AdminSettingController::class, 'clearCache']);
