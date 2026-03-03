@@ -11,3 +11,7 @@ export const processCheckout = (planId: number | string, data: any) => {
 export const checkSubscriptionStatus = () => {
     return axios.get('/api/v1/subscriptions/check-status');
 };
+
+export const getSubscriptions = () => {
+    return axios.get('/api/v1/subscriptions');
+};

@@ -71,24 +71,28 @@ class EnemImportService
 
         // 5. Iniciar transação
         try {
-            $question = \Illuminate\Support\Facades\DB::transaction(function () use ($apiQuestion, $externalId, $year, $statement, $subjectId, $knowledgeArea, $organization, $institution, $role) {
+            $question = \Illuminate\Support\Facades\DB::transaction(function () use ($apiQuestion, $externalId, $year, $statement, $subjectId, $knowledgeArea, $organization, $institution, $role, $context) {
 
                 $theme = ($apiQuestion['language'] ?? null) ? 'Língua Estrangeira: ' . ucfirst($apiQuestion['language']) : null;
 
-                // Image Detection: Use ONLY structured API fields, never markdown heuristics.
-                // If the API declares files at question-level or alternative-level, the question
-                // requires human review to verify image rendering and context correctness.
-                $hasQuestionImages = !empty($apiQuestion['files']);
-                $hasAlternativeImages = collect($apiQuestion['alternatives'] ?? [])->contains(
-                    function ($alt) {
-                        return !empty($alt['file']);
-                    }
+                // Image Detection: Comprehensive check across all possible sources.
+                // 1. Explicitly attached files array at question level.
+                $hasQuestionFiles = !empty($apiQuestion['files']) && collect($apiQuestion['files'])->filter()->isNotEmpty();
+
+                // 2. Explicitly attached files at alternative level.
+                $hasAlternativeFiles = collect($apiQuestion['alternatives'] ?? [])->contains(
+                    fn($alt) => !empty($alt['file'])
                 );
-                $hasImage = $hasQuestionImages || $hasAlternativeImages;
+
+                // 3. Inline images in context/introduction via Markdown or URL.
+                // We use the same logic as formatStatement to check for presence.
+                $hasInlineImages = preg_match('/!\[.*?\]\(.*?\)|https?:\/\/[^\s"\')]+?\.(?:png|jpg|jpeg|gif|webp|svg)/i', $context . ($apiQuestion['alternativesIntroduction'] ?? ''));
+
+                $hasImage = $hasQuestionFiles || $hasAlternativeFiles || $hasInlineImages;
 
                 // review_status semantics:
-                //   'review'  → "Has images, requires manual human validation"
-                //   'approved' → "No images, can proceed to public question bank"
+                //   'review'   → "Contains images, needs manual layout/context check"
+                //   'approved' → "Pure text question, safe for public bank"
                 $initialStatus = $hasImage ? 'review' : 'approved';
 
                 $question = \App\Models\Question::create([
@@ -100,7 +104,7 @@ class EnemImportService
                     'statement' => $statement,
                     'source' => 'api',
                     'theme' => $theme,
-                    'knowledge_area' => $knowledgeArea,  // CORRETO: Grande área (ex: linguagens)
+                    'knowledge_area' => $knowledgeArea,
                     'organization' => $organization,
                     'institution' => $institution,
                     'role' => $role,
@@ -118,14 +122,17 @@ class EnemImportService
                     if (!empty($altData['file'])) {
                         $imagePath = $this->downloadImage($altData['file'], $year);
                         if ($imagePath) {
-                            $content .= "\n\n![Imagem da Alternativa]({$imagePath})";
+                            // Ensure the image is rendered in the UI by appending markdown if not present
+                            if (!str_contains($content, $imagePath)) {
+                                $content = trim($content . "\n\n![Imagem da Alternativa]({$imagePath})");
+                            }
                         }
                     }
 
                     \App\Models\QuestionAlternative::create([
                         'question_id' => $question->id,
                         'label' => $altData['letter'] ?? '?',
-                        'content' => trim($content),
+                        'content' => $content,
                         'image_path' => $imagePath,
                         'is_correct' => $altData['isCorrect'] ?? false,
                     ]);
@@ -157,27 +164,29 @@ class EnemImportService
     {
         $statement = $context ?? '';
 
-        // Processar Markdown Imagens: ![](https://...)
-        // Fazer download das imagens e trocar a URL para a local Storage
-        $statement = preg_replace_callback('/!\[(.*?)\]\((.*?)\)/', function ($matches) use ($year) {
-            $alt = $matches[1];
-            $url = $matches[2];
+        // 1. Processar Markdown Imagens e URLs diretas no texto
+        // Regex robusto para capturar links de imagem comuns inclusive sem markdown
+        $statement = preg_replace_callback('/(!\[.*?\]\((https?:\/\/.*?)\))|(https?:\/\/[^\s"\')]+?\.(?:png|jpg|jpeg|gif|webp|svg))/i', function ($matches) use ($year) {
+            // Se for Markdown ![](), a URL está no index 2. Se for URL direta, está no index 3.
+            $url = !empty($matches[2]) ? $matches[2] : $matches[3];
+            $alt = !empty($matches[1]) && str_starts_with($matches[1], '!') ? 'Imagem do enunciado' : '';
 
             $localUrl = $this->downloadImage($url, $year);
             if ($localUrl) {
                 return "![{$alt}]({$localUrl})";
             }
 
-            return $matches[0]; // Manter original se falhar
+            return $matches[0];
         }, $statement);
 
         if (!empty($introduction)) {
             $statement .= "\n\n**" . trim($introduction) . "**";
         }
 
-        // Processar imagens anexas (files[]) que a API Enem envia
+        // 2. Processar imagens anexas (files[]) da API ENEM Dev
+        // Evita duplicar se a imagem já foi processada via Regex no passo 1 (check via MD5 seria ideal, mas aqui fazemos simples)
         foreach ($files as $fileUrl) {
-            if (!empty($fileUrl)) {
+            if (!empty($fileUrl) && !str_contains($statement, md5($fileUrl))) {
                 $localUrl = $this->downloadImage($fileUrl, $year);
                 if ($localUrl) {
                     $statement .= "\n\n![Imagem de Apoio]({$localUrl})";
@@ -189,46 +198,40 @@ class EnemImportService
     }
 
     /**
-     * Faz o download de uma imagem externa e a salva no storage local seguindo o padrão unificado.
+     * Faz o download de uma imagem externa e a salva no storage local.
      * 
-     * O padrão de armazenamento é: /storage/questions/images/{year}/enem_{year}_{md5(url)}.{ext}
-     * Isso garante que a mesma imagem (pela URL original) tenha sempre o mesmo caminho local,
-     * evitando duplicatas e garantindo consistência com outros importadores (ex: Command).
-     * 
-     * @param string $url URL original da imagem na API.
-     * @param int $year Ano da prova (usado na organização das pastas).
-     * @return string|null Retorna a URL pública local (/storage/...) ou null em caso de falha.
+     * @param string $url URL original da imagem.
+     * @param int $year Ano da prova.
+     * @return string|null Retorna a URL pública local ou null.
      */
     protected function downloadImage(string $url, int $year): ?string
     {
         try {
-            // 1. Definir extensão (fallback para jpg se não detectada)
-            $extension = pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION);
-            if (empty($extension))
-                $extension = 'jpg';
+            $url = trim($url);
+            if (empty($url))
+                return null;
 
-            // 2. Gerar nome de arquivo determinístico baseado no MD5 da URL original.
-            // Isso permite que o sistema saiba se já baixou essa imagem anteriormente.
+            // 1. Gerar nome determinístico
+            $extension = pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION) ?: 'jpg';
             $filename = 'enem_' . $year . '_' . md5($url) . '.' . $extension;
             $path = "questions/images/{$year}/{$filename}";
 
-            // 3. Verificar existência prévia para economizar banda e tempo de processamento.
+            // 2. Cache local
             if (\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
                 return \Illuminate\Support\Facades\Storage::url($path);
             }
 
-            // 4. Realizar o download da imagem via HTTP
-            $response = \Illuminate\Support\Facades\Http::timeout(15)->get($url);
+            // 3. Download com User-Agent para evitar bloqueios criminosos da CDN
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'User-Agent' => 'AprovadoAI-Importer/2.0'
+            ])->timeout(20)->get($url);
 
             if ($response->successful()) {
-                // 5. Salvar o binário no disco 'public' (storage/app/public)
                 \Illuminate\Support\Facades\Storage::disk('public')->put($path, $response->body());
-
-                // Retornar a URL final pronta para uso no Markdown/Banco
                 return \Illuminate\Support\Facades\Storage::url($path);
             }
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::warning("Falha ao baixar imagem ENEM Dev: {$url} - " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning("Falha ao baixar imagem ENEM: {$url} - " . $e->getMessage());
         }
 
         return null;
