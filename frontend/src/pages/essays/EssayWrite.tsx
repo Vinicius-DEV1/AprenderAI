@@ -161,28 +161,51 @@ function ThemeSearchModal({
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function EssayWrite() {
+interface EssayWriteProps {
+    isSimulationMode?: boolean;
+    simulationEssayId?: number;
+    initialTheme?: string;
+    initialThemeDescription?: string;
+    initialType?: string;
+    initialContent?: string;
+    onBack?: () => void;
+    onSubmitSimulationEssay?: (formData: FormData) => void;
+    onDraftUpdate?: (content: string) => void;
+}
+
+export default function EssayWrite({
+    isSimulationMode = false,
+    simulationEssayId,
+    initialTheme,
+    initialThemeDescription,
+    initialType,
+    initialContent,
+    onBack,
+    onSubmitSimulationEssay,
+    onDraftUpdate
+}: EssayWriteProps) {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
     // Wizard State
-    const [step, setStep] = useState<1 | 2 | 3>(1);
-    const [essayId, setEssayId] = useState<number | null>(null);
+    // Bypass step 1 and 2 if simulation mode
+    const [step, setStep] = useState<1 | 2 | 3>(isSimulationMode ? 3 : 1);
+    const [essayId, setEssayId] = useState<number | null>(isSimulationMode ? (simulationEssayId || null) : null);
 
     // Step 1 State
-    const [type, setType] = useState('enem');
+    const [type, setType] = useState(initialType || 'enem');
     const [timeLimit, setTimeLimit] = useState(60);
 
     // Step 2 State
-    const [theme, setTheme] = useState('');
-    const [themeDescription, setThemeDescription] = useState('');
+    const [theme, setTheme] = useState(initialTheme || '');
+    const [themeDescription, setThemeDescription] = useState(initialThemeDescription || '');
     const [isGenerating, setIsGenerating] = useState(false);
     const [regenCount, setRegenCount] = useState(0);
     const [showThemeModal, setShowThemeModal] = useState(false);
 
     // Step 3 State
     const [inputType, setInputType] = useState<'text' | 'image'>('text');
-    const [content, setContent] = useState('');
+    const [content, setContent] = useState(initialContent || '');
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [charWarning, setCharWarning] = useState('');
@@ -249,6 +272,14 @@ export default function EssayWrite() {
         },
         onError: (err: any) => setError(err.response?.data?.message || 'Erro ao iniciar geração.'),
     });
+
+    // Auto generate theme if needed on simulation mode
+    useEffect(() => {
+        if (isSimulationMode && essayId && !initialTheme && !isGenerating && !theme) {
+            generateMutation.mutate();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isSimulationMode, essayId, initialTheme]);
 
     const pollTopicStatus = useCallback(() => {
         const interval = setInterval(async () => {
@@ -339,6 +370,9 @@ export default function EssayWrite() {
         }
 
         setContent(text);
+        if (onDraftUpdate) {
+            onDraftUpdate(text);
+        }
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -382,13 +416,17 @@ export default function EssayWrite() {
             formData.append('image', imageFile);
         }
 
-        if (essayLimit && essayLimit.remaining <= 0) {
+        if (!isSimulationMode && essayLimit && essayLimit.remaining <= 0) {
             setError('Você atingiu o limite mensal de redações.');
             return;
         }
 
-        if (window.confirm('Tem certeza que deseja enviar sua redação para correção?')) {
-            submitMutation.mutate(formData);
+        if (window.confirm(isSimulationMode ? 'Este texto será usado como sua redação. Tem certeza?' : 'Tem certeza que deseja enviar sua redação para correção?')) {
+            if (isSimulationMode && onSubmitSimulationEssay) {
+                onSubmitSimulationEssay(formData);
+            } else {
+                submitMutation.mutate(formData);
+            }
         }
     };
 
@@ -423,6 +461,18 @@ export default function EssayWrite() {
     const timerDisplay = `${h}:${m}:${s}`;
     const timerCritical = remainingSeconds <= 300;
 
+    // Se estiver em modo simulado e não tiver tema (esperando gerar)
+    if (isSimulationMode && isGenerating) {
+        return (
+            <div className="flex flex-col items-center justify-center space-y-4 py-20 min-h-[400px]">
+                <div className="animate-spin rounded-full h-14 w-14 border-b-2 border-blue-600" />
+                <p className="font-semibold text-gray-600 dark:text-gray-300 transform animate-pulse transition-all">Sorteando tema exclusivo da redação...</p>
+                <p className="text-sm text-gray-400">Isso pode levar alguns segundos.</p>
+                {error && <p className="text-red-500 mt-4 text-sm font-bold bg-white p-3 rounded">{error}</p>}
+            </div>
+        );
+    }
+
     // ── Render ────────────────────────────────────────────────────────────
     return (
         <div className="py-12">
@@ -441,30 +491,34 @@ export default function EssayWrite() {
 
             <div className="max-w-4xl mx-auto sm:px-6 lg:px-8 -mt-[25px]">
 
-                <div className="mb-6 flex justify-between items-center">
-                    <Link to="/essays" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                        Voltar
-                    </Link>
-                    {step === 3 && (
-                        <div className={`px-4 py-2 rounded-full font-mono font-bold shadow-sm border transition-colors ${timerCritical ? 'bg-red-50 border-red-200 text-red-600 animate-pulse dark:bg-red-900/30 dark:border-red-700 dark:text-red-400' : 'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300'}`}>
-                            {timerDisplay}
-                            {timerCritical && <span className="ml-2 text-xs">⚠ Menos de 5 min!</span>}
-                        </div>
-                    )}
-                </div>
+                {!isSimulationMode && (
+                    <div className="mb-6 flex justify-between items-center">
+                        <Link to="/essays" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                            Voltar
+                        </Link>
+                        {step === 3 && (
+                            <div className={`px-4 py-2 rounded-full font-mono font-bold shadow-sm border transition-colors ${timerCritical ? 'bg-red-50 border-red-200 text-red-600 animate-pulse dark:bg-red-900/30 dark:border-red-700 dark:text-red-400' : 'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300'}`}>
+                                {timerDisplay}
+                                {timerCritical && <span className="ml-2 text-xs">⚠ Menos de 5 min!</span>}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                     {/* Steps Indicator */}
-                    <div className="border-b border-gray-200 dark:border-gray-700 p-4">
-                        <div className="flex items-center justify-center space-x-8">
-                            <div className={`font-bold ${step >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>1. Tipo e Tempo</div>
-                            <div className={`w-12 h-0.5 ${step >= 2 ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                            <div className={`font-bold ${step >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>2. Tema</div>
-                            <div className={`w-12 h-0.5 ${step >= 3 ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                            <div className={`font-bold ${step >= 3 ? 'text-blue-600' : 'text-gray-400'}`}>3. Escrita</div>
+                    {!isSimulationMode && (
+                        <div className="border-b border-gray-200 dark:border-gray-700 p-4">
+                            <div className="flex items-center justify-center space-x-8">
+                                <div className={`font-bold ${step >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>1. Tipo e Tempo</div>
+                                <div className={`w-12 h-0.5 ${step >= 2 ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                                <div className={`font-bold ${step >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>2. Tema</div>
+                                <div className={`w-12 h-0.5 ${step >= 3 ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                                <div className={`font-bold ${step >= 3 ? 'text-blue-600' : 'text-gray-400'}`}>3. Escrita</div>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     <div className="p-6 text-gray-900 dark:text-gray-100">
                         {error && (
@@ -740,14 +794,25 @@ export default function EssayWrite() {
 
                                 {/* Submit */}
                                 <div className="flex justify-between items-center mt-6">
-                                    <button
-                                        type="button"
-                                        onClick={() => setStep(2)}
-                                        disabled={submitMutation.isPending}
-                                        className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 font-medium"
-                                    >
-                                        ← Voltar ao Tema
-                                    </button>
+                                    {isSimulationMode && onBack ? (
+                                        <button
+                                            type="button"
+                                            onClick={onBack}
+                                            disabled={submitMutation.isPending}
+                                            className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 font-medium"
+                                        >
+                                            ← Voltar para Questões
+                                        </button>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => setStep(2)}
+                                            disabled={submitMutation.isPending}
+                                            className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 font-medium"
+                                        >
+                                            ← Voltar ao Tema
+                                        </button>
+                                    )}
                                     <button
                                         type="submit"
                                         disabled={submitMutation.isPending}
