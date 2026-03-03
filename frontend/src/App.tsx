@@ -87,11 +87,8 @@ function App() {
 
     useEffect(() => {
         const checkAuthStatus = async () => {
-            // BUG FIX: Sinaliza que estamos no bootstrap para o interceptor 401
-            // NÃO disparar um window.location.href durante este check inicial.
-            // Sem isso, um 401 no boot causava redirect ANTES de setUser(null),
-            // deixando isLoading=true para sempre (tela branca).
-            setBootstrapping(true);
+            // BUG FIX: A flag bootstrapping agora começa como true no axios.ts
+            // para cobrir o carregamento da config também.
             try {
                 const response = await getUser();
                 if (response.data && response.data.user) {
@@ -100,7 +97,6 @@ function App() {
                     setUser(null);
                 }
             } catch {
-                // 401 esperado quando não autenticado — swallow silenciosamente
                 setUser(null);
             } finally {
                 setBootstrapping(false);

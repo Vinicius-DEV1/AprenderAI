@@ -3,10 +3,9 @@ import { toast } from 'sonner';
 import { useAuthStore } from '../stores/authStore';
 
 // BUG FIX: Flag de bootstrap para evitar que o interceptor 401
-// dispare window.location.href durante a verificação inicial de sessão.
-// Sem esta flag, o 401 no boot causava redirect ANTES de setUser(null),
-// deixando isLoading=true para sempre (tela branca).
-let _isBootstrapping = false;
+// dispare window.location.href durante a verificação inicial de sessão ou config.
+// Começa como true para cobrir o primeiro render de App.tsx (useConfig).
+let _isBootstrapping = true;
 export const setBootstrapping = (value: boolean) => { _isBootstrapping = value; };
 
 const api = axios.create({
@@ -28,15 +27,16 @@ api.interceptors.response.use(
 
             // Handle 401 - Unauthorized/Session Expired
             if (status === 401) {
-                // Durante o bootstrap (verificação inicial de sessão),
-                // apenas deixa o caller tratar o erro — NÃO redireciona via window.location,
-                // pois o App.tsx já vai chamar setUser(null) e o PrivateRoute
-                // vai redirecionar via React Router corretamente.
+                // Durante o bootstrap (verificação inicial), não redireciona.
                 if (_isBootstrapping) {
                     return Promise.reject(error);
                 }
-                // Pós-bootstrap: usuário estava logado mas sessão expirou
-                if (window.location.pathname !== '/login') {
+
+                // Normaliza path para evitar loops (ex: /login/ com barra no final)
+                const currentPath = window.location.pathname.replace(/\/$/, '') || '/';
+                const authPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
+
+                if (!authPaths.includes(currentPath)) {
                     toast.error('Sessão expirada. Faça login novamente.');
                     const { logout } = useAuthStore.getState();
                     logout();
