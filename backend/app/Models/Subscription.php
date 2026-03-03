@@ -15,12 +15,19 @@ class Subscription extends Model
         'status',
         'gateway',
         'gateway_id',
+        'billing_type',
+        'amount',
+        'pix_payload',
+        'pix_image',
+        'pix_expires_at',
         'current_period_start',
         'current_period_end',
         'canceled_at',
     ];
 
     protected $casts = [
+        'amount' => 'decimal:2',
+        'pix_expires_at' => 'datetime',
         'current_period_start' => 'datetime',
         'current_period_end' => 'datetime',
         'canceled_at' => 'datetime',

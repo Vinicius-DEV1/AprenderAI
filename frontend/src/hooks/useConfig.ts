@@ -9,7 +9,7 @@ export function useConfig() {
     const query = useQuery({
         queryKey: ['systemConfig'],
         queryFn: async () => {
-            const response = await api.get('/api/v1/config');
+            const response = await api.get('/api/v1/config', { _quiet: true } as any);
             return response.data.data;
         },
         staleTime: 1000 * 60 * 60, // 1 hour
