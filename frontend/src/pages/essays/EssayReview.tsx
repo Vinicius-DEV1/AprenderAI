@@ -343,6 +343,20 @@ export default function EssayReview() {
                                         })()}
                                     </>
                                 )}
+
+                                {/* Improved */}
+                                {tab === 'improved' && (
+                                    <div>
+                                        <h3 className="text-xl font-bold mb-4">Versão Melhorada</h3>
+
+                                        <div className="prose dark:prose-invert max-w-none whitespace-pre-line text-gray-700 dark:text-gray-300 font-serif text-lg leading-relaxed">
+                                            {feedback.improved_version
+                                                || (essay as any).improved_version
+                                                || (essay as any).improvedVersion
+                                                || 'Sem versão melhorada disponível.'}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </>

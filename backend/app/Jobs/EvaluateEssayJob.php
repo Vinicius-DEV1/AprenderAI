@@ -57,27 +57,45 @@ class EvaluateEssayJob implements ShouldQueue
                 $this->essay->user_id
             );
 
-            if ($offTopicResult['off_topic'] === true) {
+            $isOffTopic = (
+                data_get($offTopicResult, 'off_topic') === true
+                || data_get($offTopicResult, 'offtopic') === true
+                || data_get($offTopicResult, 'is_offtopic') === true
+                || data_get($offTopicResult, 'on_topic') === false
+                || (is_array(data_get($offTopicResult, 'labels')) && in_array('offtopic', data_get($offTopicResult, 'labels'), true))
+            );
+
+            // Fail-closed: if detectOffTopic result is empty or invalid
+            if (empty($offTopicResult)) {
+                $isOffTopic = true;
+            }
+
+            if ($isOffTopic) {
+                $fallbackFixes = "Não foram identificadas correções pontuais relevantes neste texto. Confira os comentários gerais e a versão melhorada para aprimorar estrutura e clareza.";
+                $fallbackMsg = $aiService->generateImprovedEssayForTopic($this->essay->title, $this->essay->type);
+
                 $this->essay->update([
                     'status' => 'completed',
                     'score' => 0,
-                    'competencies' => [], // Ensure API/Resource uses 0s
+                    'competencies' => [],
                     'off_topic' => true,
                     'off_topic_reason' => $offTopicResult['reason'] ?? 'Você fugiu do tema proposto.',
                     'final_score_locked' => true,
                     'evaluated_at' => now(),
+                    'ai_suggestions' => $fallbackFixes,
                     'feedback_json' => [
                         'score' => 0,
                         'summary' => 'Fuga do tema: nota 0.',
                         'strengths' => [],
-                        'weaknesses' => ['Fuga do tema propoto.'],
+                        'weaknesses' => ['Fuga do tema proposto.'],
                         'corrections' => [],
-                        'improved_version' => '',
+                        'correcoes_pontuais' => $fallbackFixes,
+                        'improved_version' => $fallbackMsg,
                         'competencies' => []
                     ],
                 ]);
 
-                Log::info("Essay ID: {$this->essay->id} detected as OFF-TOPIC. Score locked to 0.");
+                Log::info("[EvaluateEssayJob] Essay ID: {$this->essay->id} detected as OFF-TOPIC. User ID: {$this->essay->user_id}, Score: 0");
                 return; // LOCK - Stop processing
             }
             // --- END OFF-TOPIC GATE ---
@@ -92,15 +110,120 @@ class EvaluateEssayJob implements ShouldQueue
             if ($result && isset($result['response'])) {
                 $response = $result['response'];
 
+                // Regra A: JSON inválido ou parse falhou
+                // Consideramos falha se as chaves principais não existirem
+                if (!isset($response['overall_score']) && !isset($response['improved_version']) && !isset($response['competence_scores'])) {
+                    $response['off_topic'] = true;
+                    $response['off_topic_reason'] = 'Falha na formatação da resposta da IA (JSON inválido).';
+                }
+
+                // Robust Off-topic check in the normal path
+                $isOffTopicNormalPath = (
+                    data_get($response, 'off_topic') === true
+                    || data_get($response, 'offtopic') === true
+                    || data_get($response, 'is_offtopic') === true
+                    || data_get($response, 'on_topic') === false
+                    || (is_array(data_get($response, 'labels')) && in_array('offtopic', data_get($response, 'labels'), true))
+                );
+
+                if ($isOffTopicNormalPath) {
+                    $finalFields = ['score', 'overall_score', 'final_score', 'total_score', 'grade'];
+                    foreach ($finalFields as $field) {
+                        if (array_key_exists($field, $response)) {
+                            $response[$field] = 0;
+                        }
+                    }
+                    $response['score'] = 0;
+
+                    // Regra B: Forçar c1..c5 a 0
+                    if (isset($response['competence_scores']) && is_array($response['competence_scores'])) {
+                        foreach ($response['competence_scores'] as $key => $val) {
+                            $response['competence_scores'][$key] = 0;
+                        }
+                    }
+
+                    // Se usar o formato antigo competencies
+                    if (isset($response['competencies']) && is_array($response['competencies'])) {
+                        foreach ($response['competencies'] as &$comp) {
+                            if (is_array($comp) && isset($comp['score'])) {
+                                $comp['score'] = 0;
+                            }
+                        }
+                    }
+                }
+
+                // Improved Version Fallback
+                $improved = trim((string) ($response['improved_version'] ?? ''));
+                if ($improved === '') {
+                    $improved = trim((string) (
+                        $response['rewrite']
+                        ?? $response['improved_text']
+                        ?? $response['suggested_paragraph']
+                        ?? ''
+                    ));
+                }
+
+                // Regra C: Validar se o texto gerado não é curto demais
+                $isTooShort = false;
+                $len = mb_strlen($improved);
+                if ($len < 200) {
+                    $isTooShort = true;
+                }
+                if ($this->essay->type === 'enem' && $len < 1200) {
+                    $isTooShort = true;
+                }
+
+                if ($isOffTopicNormalPath || $improved === '' || $isTooShort) {
+                    $improved = $aiService->generateImprovedEssayForTopic($this->essay->title, $this->essay->type);
+                }
+                $response['improved_version'] = $improved;
+
+                // Correções Pontuais Fallback
+                $fixes = $response['correcoes_pontuais'] ?? $response['ai_suggestions'] ?? $response['corrections'] ?? '';
+                if (is_array($fixes) && empty($fixes)) {
+                    $fixes = '';
+                } elseif (!is_array($fixes)) {
+                    $fixes = trim((string) $fixes);
+                }
+
+                if ($fixes === '') {
+                    $fixes = trim((string) ($response['bullet_fixes'] ?? $response['line_edits'] ?? ''));
+                }
+
+                if ($fixes === '') {
+                    $fixes = "Não foram identificadas correções pontuais relevantes neste texto. Confira os comentários gerais e a versão melhorada para aprimorar estrutura e clareza.";
+                }
+                $response['correcoes_pontuais'] = $fixes;
+
+                // --- FAIL-CLOSED GATE FINAL (MODEL LEVEL) ---
+                if ($isOffTopicNormalPath) {
+                    $this->essay->score = 0;
+
+                    // Zero any other score-related attributes if they exist
+                    $attributes = $this->essay->getAttributes();
+                    foreach (['overall_score', 'final_score', 'total_score', 'grade'] as $field) {
+                        if (array_key_exists($field, $attributes)) {
+                            $this->essay->{$field} = 0;
+                        }
+                    }
+                } else {
+                    // If not off-topic, ensure model score is updated from response if it was null
+                    if ($this->essay->score === null) {
+                        $this->essay->score = $response['score'] ?? $response['overall_score'] ?? 0;
+                    }
+                }
+
                 $this->essay->update([
                     'status' => 'completed',
-                    'score' => $response['score'] ?? 0,
+                    'score' => $this->essay->score, // Use the value set in the model
+                    'off_topic' => $isOffTopicNormalPath,
                     'feedback_json' => $response,
                     'evaluated_at' => now(),
-                    'ai_suggestions' => $response['corrections'] ?? [],
+                    'ai_suggestions' => $fixes,
+                    'improved_version' => $improved, // Ensure model field is updated too if it exists
                 ]);
 
-                Log::info("Essay ID: {$this->essay->id} evaluated successfully. Score: {$this->essay->score}");
+                Log::info("[EvaluateEssayJob] Essay ID: {$this->essay->id} evaluated. User ID: {$this->essay->user_id}, isOffTopic: " . ($isOffTopicNormalPath ? 'true' : 'false') . ", final score: " . ($this->essay->score));
             } else {
                 Log::error("Essay ID: {$this->essay->id} evaluation returned empty result.");
                 throw new \Exception("Empty result from AI Service (Provider: " . ($result['provider'] ?? 'unknown') . ")");

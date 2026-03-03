@@ -10,14 +10,15 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class GenerateEssayTopicJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $essayId;
-    public $tries = 3;
-    public $timeout = 90;
+    public $tries = 2; // Reduced to 2 to avoid infinite polling delay of 3+20s
+    public $timeout = 60;
 
     /**
      * Create a new job instance.
@@ -32,7 +33,7 @@ class GenerateEssayTopicJob implements ShouldQueue
      */
     public function backoff(): array
     {
-        return [3, 10, 20];
+        return [3, 10];
     }
 
     /**
@@ -49,7 +50,7 @@ class GenerateEssayTopicJob implements ShouldQueue
 
         try {
             // Idempotency check
-            if (!empty($essay->topic_description)) {
+            if (!empty($essay->topic_description) && !str_starts_with($essay->topic_description, '__AI_ERROR__:')) {
                 return;
             }
 
@@ -60,13 +61,6 @@ class GenerateEssayTopicJob implements ShouldQueue
                 return;
             }
 
-            // Update status to indicate processing (if not already)
-            // $essay->update(['status' => 'generating_topic']); 
-            // User requested "ready_to_write" on success. 
-            // "generating_topic" is not a standard status in the enum maybe? 
-            // Existing statuses: pending, in_progress, evaluating, completed, error.
-            // "in_progress" is fine for now, UI handles "Gerando schema...".
-
             $topic = $aiService->generateEssayTopic($essay->type, $essay->user_id);
 
             $essay->update([
@@ -76,15 +70,35 @@ class GenerateEssayTopicJob implements ShouldQueue
                 'status' => 'in_progress', // Ready to write
             ]);
 
+            // Clear any previous error cache
+            Cache::forget("essay:topic:error:{$essay->id}");
+
             Log::info("Topic generated successfully for Essay {$essay->id}");
 
         } catch (\Throwable $e) {
             Log::error("GenerateEssayTopicJob Failed for Essay {$essay->id}: " . $e->getMessage());
 
-            // Mark as error so UI can show retry button
+            // Check if it's our standardized JSON error
+            $decodedError = json_decode($e->getMessage(), true);
+
+            if (json_last_error() === JSON_ERROR_NONE && isset($decodedError['code']) && $decodedError['code'] === 'AI_TOPIC_GENERATION_FAILED') {
+                // Store error gracefully in Cache
+                Cache::put("essay:topic:error:{$essay->id}", $decodedError, now()->addMinutes(10));
+
+                // Fallback if Cache fails for some reason (using topic_description as sentinela without breaking migrations)
+                $essay->update([
+                    'status' => 'error',
+                    'topic_description' => '__AI_ERROR__:' . json_encode($decodedError)
+                ]);
+
+                // Do not rethrow standardized errors (we already tried with backoff inside AIService)
+                return;
+            }
+
+            // Mark as error so UI can show retry button. For other types of errors, let Laravel retry once if tries < 2
             $essay->update(['status' => 'error']);
 
-            throw $e; // Trigger retry
+            throw $e;
         }
     }
 }

@@ -16,6 +16,128 @@ use App\Services\AI\AITelemetryService;
  */
 class AIService
 {
+    private const SYSTEM_PROMPT_ESSAY_EVALUATOR = <<<EOT
+Você é um avaliador técnico e reescritor profissional de redações (ENEM e Concurso Público).
+
+⚠️ REGRA ABSOLUTA:
+Você DEVE responder exclusivamente com UM JSON válido.
+Não escreva comentários.
+Não escreva markdown.
+Não escreva texto fora do JSON.
+Não inclua explicações antes ou depois.
+
+========================
+OBJETIVO DO SISTEMA
+========================
+1) Avaliar a redação conforme o TEMA_OFICIAL.
+2) Detectar fuga ao tema com rigor máximo.
+3) Garantir que "improved_version" NUNCA esteja vazio.
+4) Se houver fuga ao tema, a nota final DEVE ser 0 obrigatoriamente.
+
+========================
+ENTRADAS (fornecidas pelo sistema)
+========================
+TIPO: {type}
+TEMA_OFICIAL: {topic}
+REDACAO_USUARIO: {essay}
+
+========================
+DEFINIÇÃO DETERMINÍSTICA DE FUGA AO TEMA
+========================
+off_topic = true se ocorrer QUALQUER condição:
+
+1) O assunto central da redação for diferente do TEMA_OFICIAL.
+2) O tema oficial for apenas citado superficialmente.
+3) A tese não responder diretamente ao recorte do tema.
+4) Os argumentos desenvolvidos não sustentarem o eixo temático central.
+5) O texto poderia ser usado para outro tema diferente do fornecido.
+
+Se houver qualquer dúvida, considere off_topic = true.
+Prefira marcar como fuga ao tema em caso de incerteza.
+
+========================
+REGRAS OBRIGATÓRIAS
+========================
+
+SE off_topic = true:
+- overall_score = 0
+- c1 = 0
+- c2 = 0
+- c3 = 0
+- c4 = 0
+- c5 = 0
+- "improved_version" deve ser uma NOVA redação escrita DO ZERO
+- NÃO reutilize trechos do texto do usuário
+- Baseie-se EXCLUSIVAMENTE no TEMA_OFICIAL
+- ENEM: entre 1500 e 3000 caracteres, com proposta de intervenção completa
+- CONCURSO: texto formal, coeso e completo
+
+SE off_topic = false:
+- Avalie normalmente
+- ENEM: cada competência 0 a 200
+- overall_score = soma exata das competências
+- Deve ser múltiplo de 40
+- "improved_version" deve ser uma versão MELHORADA do texto do usuário
+- Corrigir gramática, coesão e aprofundar argumentos
+
+========================
+REGRA CRÍTICA DE NÃO-VAZIO
+========================
+"improved_version" NUNCA pode ser:
+- null
+- ""
+- texto com menos de 200 caracteres
+- texto irrelevante
+
+Se por qualquer motivo não conseguir melhorar o texto,
+você DEVE gerar uma redação nova adequada ao TEMA_OFICIAL.
+
+Para ENEM:
+- Mínimo recomendado: 1500 caracteres.
+Se ficar menor que isso, reescreva até atingir extensão adequada.
+
+========================
+VALIDAÇÃO INTERNA OBRIGATÓRIA
+========================
+Antes de finalizar o JSON:
+1) Confirme se a tese responde diretamente ao TEMA_OFICIAL.
+2) Confirme se improved_version está preenchido e coerente.
+3) Confirme se overall_score é coerente com as competências.
+4) Se off_topic=true, confirme que todos os scores são 0.
+
+Somente então gere o JSON final.
+
+========================
+FORMATO DE SAÍDA (EXATO)
+========================
+
+{
+  "type": "ENEM|CONCURSO",
+  "off_topic": true|false,
+  "off_topic_reason": "explicação objetiva",
+  "overall_score": number,
+  "competence_scores": {
+    "c1": number,
+    "c2": number,
+    "c3": number,
+    "c4": number,
+    "c5": number
+  },
+  "strengths": ["item1", "item2", "item3"],
+  "weaknesses": ["item1", "item2", "item3"],
+  "actionable_feedback": [
+    "ação prática 1",
+    "ação prática 2",
+    "ação prática 3"
+  ],
+  "improved_version": "texto completo aqui"
+}
+
+Não adicione nenhuma chave extra.
+Não omita nenhuma chave.
+Não escreva nada fora desse JSON.
+EOT;
+
     protected $providers = ['openai', 'gemini', 'grok'];
     protected $promptService;
     protected $responseSanitizer;
@@ -564,34 +686,76 @@ class AIService
                 'rules' => $rules
             ]);
 
+            if (blank($prompt)) {
+                \Log::warning('System prompt missing for essay_topic_generator. Using fallback.');
+                $prompt = "Você é um especialista em elaboração de temas de redação no padrão ENEM e concursos públicos brasileiros. Gere um tema atual, relevante, claro e desafiador. Retorne APENAS um objeto JSON válido com: { \"title\": \"Titulo\", \"description\": \"Texto\" }.";
+            }
+
             $maxAttempts = 2;
             $content = null;
+            $requestUuid = \Illuminate\Support\Str::uuid()->toString();
 
             for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
-                $result = $this->callAI($provider, $apiKey, $prompt, $userId);
-                $apiKey->incrementUsage();
+                try {
+                    $result = $this->callAI($provider, $apiKey, $prompt, $userId);
+                    $apiKey->incrementUsage();
 
-                $content = $result['content'];
-                if (isset($content['error'])) {
-                    throw new \Exception($content['error']);
-                }
-                if (!isset($content['title']) || !isset($content['description'])) {
-                    throw new \Exception('Formato de resposta inválido do Xavier.');
-                }
+                    $content = $result['content'];
+                    if (isset($content['error'])) {
+                        throw new \Exception($content['error']);
+                    }
+                    if (!isset($content['title']) || !isset($content['description'])) {
+                        throw new \Exception('Formato de resposta inválido do Xavier.');
+                    }
 
-                // Test Similarity against recents
-                $isTooSimilar = false;
-                foreach ($recentTitles as $recent) {
-                    similar_text(strtolower($content['title']), strtolower($recent), $percent);
-                    if ($percent > 70) {
-                        $isTooSimilar = true;
-                        \Log::info("Theme too similar ({$percent}%) to recent '{$recent}', retrying...");
+                    // Test Similarity against recents
+                    $isTooSimilar = false;
+                    foreach ($recentTitles as $recent) {
+                        similar_text(strtolower($content['title']), strtolower($recent), $percent);
+                        if ($percent > 70) {
+                            $isTooSimilar = true;
+                            \Log::info("Theme too similar ({$percent}%) to recent '{$recent}', retrying...");
+                            break;
+                        }
+                    }
+
+                    if (!$isTooSimilar || $attempt === $maxAttempts) {
                         break;
                     }
-                }
+                } catch (\Exception $e) {
+                    $errorMessage = $e->getMessage();
+                    $isRetryable = str_contains($errorMessage, '429') ||
+                        str_contains($errorMessage, 'timeout') ||
+                        str_contains($errorMessage, 'Status Code: 5') ||
+                        str_contains($errorMessage, 'Connection timed out');
 
-                if (!$isTooSimilar || $attempt === $maxAttempts) {
-                    break;
+                    Log::warning("[GenerateEssayTopic] Attempt {$attempt} failed", [
+                        'request_id' => $requestUuid,
+                        'user_id' => $userId,
+                        'provider' => $provider,
+                        'error' => $errorMessage,
+                        'retryable' => $isRetryable
+                    ]);
+
+                    if ($isRetryable && $attempt < $maxAttempts) {
+                        // Backoff curto
+                        usleep($attempt === 1 ? 300000 : 800000); // 300ms, 800ms
+                        continue;
+                    }
+
+                    // Falha definitiva
+                    Log::error("[GenerateEssayTopic] Final failure", [
+                        'request_id' => $requestUuid,
+                        'user_id' => $userId,
+                        'provider' => $provider,
+                        'error' => $errorMessage
+                    ]);
+
+                    throw new \Exception(json_encode([
+                        'code' => 'AI_TOPIC_GENERATION_FAILED',
+                        'message' => 'Não foi possível gerar um tema agora. Tente novamente em instantes.',
+                        'request_id' => $requestUuid
+                    ]));
                 }
             }
 
@@ -601,8 +765,9 @@ class AIService
 
     public function detectOffTopic(string $title, string $content, string $type, ?int $userId = null): array
     {
-        if (!$this->hasActiveKey(ApiKey::CAPABILITY_ESSAYS))
-            return ['off_topic' => false, 'reason' => 'API não disponível'];
+        if (!$this->hasActiveKey(ApiKey::CAPABILITY_ESSAYS)) {
+            return ['off_topic' => true, 'reason' => 'API não disponível (Fail-Closed)'];
+        }
 
         try {
             return $this->executeWithFailover(ApiKey::CAPABILITY_ESSAYS, function ($apiKey) use ($title, $content, $type, $userId) {
@@ -614,15 +779,22 @@ class AIService
 
                 $responseContent = $result['content'];
 
+                // Explicit strict boolean conversion
+                $isOffTopic = isset($responseContent['off_topic']) && (
+                    $responseContent['off_topic'] === true || 
+                    $responseContent['off_topic'] === 'true' || 
+                    $responseContent['off_topic'] === 1
+                );
+
                 return [
-                    'off_topic' => isset($responseContent['off_topic']) ? (bool) $responseContent['off_topic'] : false,
-                    'reason' => $responseContent['reason'] ?? 'Indeterminado'
+                    'off_topic' => $isOffTopic,
+                    'reason' => $responseContent['reason'] ?? ($isOffTopic ? 'Fuga ao tema detectada pela IA.' : 'Indeterminado')
                 ];
             });
         } catch (\Exception $e) {
-            Log::error('OffTopic Detection failed', ['error' => $e->getMessage(), 'title' => $title]);
-            // Fail open
-            return ['off_topic' => false, 'reason' => 'Falha na detecção'];
+            Log::error('OffTopic Detection failed (Fail-Closed applied)', ['error' => $e->getMessage(), 'title' => $title]);
+            // Fail closed: if error, it's off-topic
+            return ['off_topic' => true, 'reason' => 'Erro técnico na verificação de tema. Por segurança, a redação foi marcada como fora do tema.'];
         }
     }
 
@@ -658,14 +830,12 @@ class AIService
 
     protected function buildXavierEvaluationPrompt(string $title, string $content, string $type): string
     {
-        $maxScore = ($type === 'enem') ? 1000 : 100;
+        $prompt = self::SYSTEM_PROMPT_ESSAY_EVALUATOR;
+        $prompt = str_replace('{type}', strtoupper($type), $prompt);
+        $prompt = str_replace('{topic}', $title, $prompt);
+        $prompt = str_replace('{essay}', $content, $prompt);
 
-        return $this->promptService->get('essay_evaluator', [
-            'essay_type' => $type,
-            'essay_title' => $title,
-            'essay_content' => $content,
-            'max_score' => $maxScore
-        ]);
+        return $prompt;
     }
 
     protected function buildOffTopicPrompt(string $title, string $content, string $type): string
@@ -675,6 +845,47 @@ class AIService
             'essay_title' => $title,
             'essay_content' => $content,
         ]);
+    }
+
+    public function generateImprovedEssayForTopic(string $topic, string $type): string
+    {
+        $fallbackPremium = "O tema '{$topic}' exige uma abordagem estruturada. Comece com uma tese clara na introdução, desenvolva argumentos sólidos baseados em fatos ou citações nos parágrafos de desenvolvimento e, no caso do ENEM, finalize com uma proposta de intervenção detalhada que combata a causa do problema respeitando os direitos humanos.";
+
+        if (!$this->hasActiveKey(ApiKey::CAPABILITY_ESSAYS)) {
+            return $fallbackPremium;
+        }
+
+        try {
+            return $this->executeWithFailover(ApiKey::CAPABILITY_ESSAYS, function ($apiKey) use ($topic, $type, $fallbackPremium) {
+                $provider = $apiKey->provider;
+
+                $lengthInstruction = $type === 'enem'
+                    ? "O texto DEVE ter no mínimo 1500 caracteres e no máximo 3000 caracteres, contendo introdução, desenvolvimento e proposta de intervenção completa com 5 elementos."
+                    : "O texto DEVE ser formal, coeso, dissertativo-argumentativo e completo.";
+
+                $prompt = "Você é um professor especialista. O aluno fugiu do tema ou o sistema precisa de um exemplo. Baseado APENAS no tema oficial: '{$topic}', escreva uma redação EXEMPLAR completa (adequada para '{$type}'). A resposta DEVE ser apenas o texto da redação, sem títulos, sem introduções explicativas e sem aspas. {$lengthInstruction}";
+
+                $result = $this->callAI($provider, $apiKey, $prompt);
+                $apiKey->incrementUsage();
+
+                $generated = trim((string) ($result['content']['text'] ?? $result['content'] ?? ''));
+                
+                // Validate if it's not JSON (sometimes AI returns JSON even when told not to)
+                if (str_starts_with($generated, '{')) {
+                     $sanitized = json_decode($generated, true);
+                     $generated = $sanitized['text'] ?? $sanitized['improved_version'] ?? $generated;
+                }
+
+                if (!empty($generated) && strlen($generated) > 200) {
+                    return $generated;
+                }
+
+                return $fallbackPremium;
+            });
+        } catch (\Exception $e) {
+            Log::warning("[AIService] Fallback rewrite generation failed: " . $e->getMessage());
+            return $fallbackPremium;
+        }
     }
 
     public function generateQuestions(string $subject, int $quantity = 1, array $context = [], ?int $userId = null): array

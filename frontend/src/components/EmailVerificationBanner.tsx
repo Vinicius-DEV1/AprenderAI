@@ -1,14 +1,27 @@
 import { useAuthStore } from '../stores/authStore';
 import { sendVerificationEmail } from '../api/auth';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function EmailVerificationBanner() {
     const { user } = useAuthStore();
     const [isSending, setIsSending] = useState(false);
+    const [isDismissed, setIsDismissed] = useState(false);
+
+    useEffect(() => {
+        if (user && user.email_verified_at) {
+            localStorage.removeItem('dismiss_email_verify_banner');
+        } else {
+            const dismissed = localStorage.getItem('dismiss_email_verify_banner');
+            if (dismissed === '1') {
+                setIsDismissed(true);
+            }
+        }
+    }, [user]);
 
     if (!user) return null;
     if (user.email_verified_at) return null;
+    if (isDismissed) return null;
 
     const handleResend = async () => {
         setIsSending(true);
@@ -26,8 +39,13 @@ export default function EmailVerificationBanner() {
         }
     };
 
+    const handleDismiss = () => {
+        localStorage.setItem('dismiss_email_verify_banner', '1');
+        setIsDismissed(true);
+    };
+
     return (
-        <div className="bg-yellow-50 dark:bg-yellow-900/30 border-b border-yellow-200 dark:border-yellow-900/50 p-3 sm:px-6 lg:px-8">
+        <div className="bg-yellow-50 dark:bg-yellow-900/30 border-b border-yellow-200 dark:border-yellow-900/50 p-3 sm:px-6 lg:px-8 relative pr-10">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 max-w-7xl mx-auto">
                 <div className="flex items-center gap-3">
                     <div className="flex-shrink-0">
@@ -49,6 +67,16 @@ export default function EmailVerificationBanner() {
                     </button>
                 </div>
             </div>
+            <button
+                type="button"
+                onClick={handleDismiss}
+                className="absolute top-1/2 -translate-y-1/2 right-2 sm:right-4 p-1 rounded-md text-yellow-600 hover:text-yellow-800 hover:bg-yellow-100 dark:text-yellow-500 dark:hover:text-yellow-300 dark:hover:bg-yellow-800/50 transition-colors"
+                aria-label="Fechar aviso de verificação de e-mail"
+            >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
         </div>
     );
 }

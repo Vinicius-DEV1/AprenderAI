@@ -8,6 +8,7 @@ use App\Models\UsageLedger;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Exception;
 
 class QuotaService
