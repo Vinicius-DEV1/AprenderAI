@@ -85,9 +85,14 @@ function App() {
         const checkAuthStatus = async () => {
             try {
                 const response = await getUser();
-                setUser(response.data.user);
-            } catch (error) {
-                console.warn('Auth check failed:', error);
+                if (response.data && response.data.user) {
+                    setUser(response.data.user);
+                } else {
+                    setUser(null);
+                }
+            } catch (error: any) {
+                // If 401, user is just not logged in or session expired
+                // No need to log as warning if it's a silent check
                 setUser(null);
             } finally {
                 setLoading(false);
