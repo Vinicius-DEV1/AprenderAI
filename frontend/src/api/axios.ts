@@ -25,8 +25,8 @@ api.interceptors.response.use(
         if (error.response) {
             const { status, data } = error.response;
 
-            // Handle 401 - Unauthorized/Session Expired
-            if (status === 401) {
+            // Handle 401 (Unauthorized) or 419 (CSRF/Session Expired)
+            if (status === 401 || status === 419) {
                 // Durante o bootstrap (verificação inicial), não redireciona.
                 if (_isBootstrapping) {
                     return Promise.reject(error);
@@ -37,7 +37,9 @@ api.interceptors.response.use(
                 const authPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
 
                 if (!authPaths.includes(currentPath)) {
-                    toast.error('Sessão expirada. Faça login novamente.');
+                    const message = status === 419 ? 'Página expirada por inatividade. Recarregando...' : 'Sessão expirada. Faça login novamente.';
+                    toast.error(message);
+
                     const { logout } = useAuthStore.getState();
                     logout();
                     window.location.href = '/login';
@@ -57,8 +59,17 @@ api.interceptors.response.use(
             else if (status >= 500) {
                 toast.error(data.message || 'Erro interno no servidor. Nossa equipe já foi notificada.');
             }
-        } else if (!error.response && error.message === 'Network Error') {
-            toast.error('Falha na conexão de rede. Verifique sua internet.');
+        } else if (!error.response) {
+            // Log para ajudar a debugar problemas silenciosos de rede ou CORS
+            console.error('API Connection Error:', {
+                message: error.message,
+                config: error.config?.url,
+                method: error.config?.method
+            });
+
+            if (error.message === 'Network Error') {
+                toast.error('Falha na conexão de rede. Verifique sua internet.');
+            }
         }
 
         return Promise.reject(error);

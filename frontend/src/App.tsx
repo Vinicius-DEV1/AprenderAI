@@ -78,17 +78,12 @@ import AdminXavierInsights from './pages/admin/XavierInsights';
 import Analytics from './components/Analytics';
 
 function App() {
-    // BUG FIX: configError NÃO deve bloquear o app inteiro.
-    // O erro de config era um bloqueio total — com isLoading=true a tela ficava branca.
-    // Agora continua o app mesmo com erro de config (usa valores padrão).
+    // Unificar o estado de carregamento inicial para evitar transições bruscas e race conditions.
     const { isLoading: configLoading } = useConfig();
-    const setUser = useAuthStore((state) => state.setUser);
-    const setLoading = useAuthStore((state) => state.setLoading);
+    const { setUser, setLoading: setAuthLoading, isLoading: authLoading } = useAuthStore();
 
     useEffect(() => {
         const checkAuthStatus = async () => {
-            // BUG FIX: A flag bootstrapping agora começa como true no axios.ts
-            // para cobrir o carregamento da config também.
             try {
                 const response = await getUser();
                 if (response.data && response.data.user) {
@@ -99,21 +94,22 @@ function App() {
             } catch {
                 setUser(null);
             } finally {
+                // Desativa as flags de bootstrap APENAS após o término real
                 setBootstrapping(false);
-                setLoading(false);
+                setAuthLoading(false);
             }
         };
 
         checkAuthStatus();
-    }, [setUser, setLoading]);
+    }, [setUser, setAuthLoading]);
 
-    // Mostra spinner apenas enquanto carrega config; se der erro, continua normalmente com defaults
-    if (configLoading) {
+    // Mostra spinner unificado enquanto carrega config OU auth
+    if (configLoading || authLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
                 <div className="flex flex-col items-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-                    <p className="text-slate-600 dark:text-slate-400 font-medium">Iniciando sistema...</p>
+                    <p className="text-slate-600 dark:text-slate-400 font-medium italic">Iniciando sistema...</p>
                 </div>
             </div>
         );
