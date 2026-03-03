@@ -21,6 +21,19 @@ class SubscriptionController extends Controller
     }
 
     /**
+     * Retorna o histórico de assinaturas do usuário.
+     */
+    public function index()
+    {
+        $subscriptions = Subscription::with('plan')
+            ->where('user_id', Auth::id())
+            ->latest()
+            ->get();
+
+        return response()->json($subscriptions);
+    }
+
+    /**
      * Valida um cupom de desconto.
      */
     public function validateCoupon(Request $request, Plan $plan)
@@ -148,12 +161,20 @@ class SubscriptionController extends Controller
                 if ($payment) {
                     $pixData = $this->asaasService->getPixQrCode($payment['id']);
                     if ($pixData) {
+                        $subscription->update([
+                            'billing_type' => 'pix',
+                            'pix_payload' => $pixData['payload'],
+                            'pix_image' => $pixData['encodedImage'],
+                        ]);
+
                         $responseData['pix'] = [
                             'payload' => $pixData['payload'],
                             'image' => $pixData['encodedImage'],
                         ];
                     }
                 }
+            } else {
+                $subscription->update(['billing_type' => 'credit_card']);
             }
 
             return response()->json($responseData);

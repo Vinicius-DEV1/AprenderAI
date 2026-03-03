@@ -2,6 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
+import { getSubscriptions } from '../../api/subscriptions';
+import { toast } from 'sonner';
 import PlanConfirmationModal from '../../components/PlanConfirmationModal';
 import Accordion from '../../components/Accordion';
 import '../../styles/landing-page.css';
@@ -14,6 +16,9 @@ export default function PlanList() {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedPlanForModal, setSelectedPlanForModal] = useState<any>(null);
+    const [history, setHistory] = useState<any[]>([]);
+    const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+    const [selectedPix, setSelectedPix] = useState<{ payload: string, image: string } | null>(null);
 
     const userPlanId = user?.plan_id || (user?.plan as any)?.id;
     const currentPlan = plans?.find((p: any) => String(p.id) === String(userPlanId));
@@ -64,6 +69,23 @@ export default function PlanList() {
             navigate(`/plans/${selectedPlanForModal.id}/checkout`);
         }
     };
+
+    useEffect(() => {
+        const fetchHistory = async () => {
+            if (!user) return;
+            setIsLoadingHistory(true);
+            try {
+                const response = await getSubscriptions();
+                setHistory(response.data);
+            } catch (err) {
+                console.error('Erro ao buscar histórico:', err);
+            } finally {
+                setIsLoadingHistory(false);
+            }
+        };
+
+        fetchHistory();
+    }, [user]);
 
     useEffect(() => {
         const searchParams = new URLSearchParams(window.location.search);
@@ -206,27 +228,68 @@ export default function PlanList() {
                                             ></div>
                                         </div>
                                     </div>
-
-                                    {/* Questões IA - Oculto Temporariamente a pedido do usuário */}
-                                    {/* 
-                                    <div>
-                                        <div className="flex justify-between text-[11px] mb-1.5">
-                                            <span className="font-bold text-slate-600 dark:text-slate-400">Xavier (Perguntas IA)</span>
-                                            <span className="font-black text-amber-600 dark:text-amber-400">
-                                                {(user as any).quotas?.ai_questions?.used || 0} / {(user as any).quotas?.ai_questions?.limit === 9999 ? '∞' : (user as any).quotas?.ai_questions?.limit || 0}
-                                            </span>
-                                        </div>
-                                        <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                            <div 
-                                                className="h-full bg-amber-500 rounded-full transition-all duration-500"
-                                                style={{ width: `${Math.min(100, (((user as any).quotas?.ai_questions?.used || 0) / ((user as any).quotas?.ai_questions?.limit || 1)) * 100)}%` }}
-                                            ></div>
-                                        </div>
-                                    </div>
-                                    */}
                                 </div>
                             </div>
                         </div>
+
+                        {/* HISTÓRICO DE PAGAMENTOS */}
+                        {history.length > 0 && (
+                            <div className="mt-10 pt-8 border-t border-slate-100 dark:border-slate-800">
+                                <h5 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-6">Histórico de Pedidos</h5>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+                                                <th className="pb-3 px-2">Data</th>
+                                                <th className="pb-3 px-2">Plano</th>
+                                                <th className="pb-3 px-2">Método</th>
+                                                <th className="pb-3 px-2">Status</th>
+                                                <th className="pb-3 px-2 text-right">Ação</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                                            {history.map((item) => {
+                                                const isExpired = item.status === 'pending' && new Date(item.created_at).getTime() < Date.now() - 24 * 60 * 60 * 1000;
+                                                return (
+                                                    <tr key={item.id} className="text-sm">
+                                                        <td className="py-4 px-2 font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                                                            {new Date(item.created_at).toLocaleDateString()}
+                                                        </td>
+                                                        <td className="py-4 px-2 font-bold text-slate-900 dark:text-white">
+                                                            {item.plan?.name}
+                                                        </td>
+                                                        <td className="py-4 px-2 text-slate-500 dark:text-slate-400 capitalize">
+                                                            {item.billing_type === 'pix' ? 'Pix' : (item.billing_type === 'credit_card' ? 'Cartão' : 'Gateway')}
+                                                        </td>
+                                                        <td className="py-4 px-2">
+                                                            {isExpired ? (
+                                                                <span className="inline-block bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Expirado</span>
+                                                            ) : item.status === 'active' ? (
+                                                                <span className="inline-block bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Confirmado</span>
+                                                            ) : item.status === 'pending' ? (
+                                                                <span className="inline-block bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Pendente</span>
+                                                            ) : (
+                                                                <span className="inline-block bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">{item.status}</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="py-4 px-2 text-right">
+                                                            {item.status === 'pending' && !isExpired && item.pix_payload && (
+                                                                <button
+                                                                    onClick={() => setSelectedPix({ payload: item.pix_payload, image: item.pix_image })}
+                                                                    className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline"
+                                                                >
+                                                                    Pagar via Pix
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -365,6 +428,38 @@ export default function PlanList() {
                     currentPlan={currentPlan}
                     selectedPlan={selectedPlanForModal}
                 />
+
+                {/* MODAL DO PIX */}
+                {selectedPix && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-300">
+                            <div className="bg-blue-600 p-6 text-center text-white">
+                                <h2 className="text-xl font-bold">Pagar via Pix</h2>
+                                <p className="mt-1 opacity-90 text-xs">Escaneie ou copie a chave abaixo</p>
+                            </div>
+
+                            <div className="p-6 text-center">
+                                <div className="bg-white p-2 inline-block border-2 border-slate-100 dark:border-slate-800 rounded-xl mb-4">
+                                    <img src={`data:image/png;base64,${selectedPix.image}`} alt="Pix QR Code" className="w-48 h-48 mx-auto" />
+                                </div>
+
+                                <div className="mb-6">
+                                    <div className="flex gap-2 relative">
+                                        <input readOnly value={selectedPix.payload} className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 py-2.5 px-3 rounded-lg text-[10px] font-mono w-full truncate pr-20 text-slate-600 dark:text-slate-300" />
+                                        <button onClick={() => navigator.clipboard.writeText(selectedPix.payload).then(() => toast.success('Copiado!'))} className="absolute right-1 top-1 bottom-1 bg-blue-600 text-white px-3 rounded-md font-bold text-[10px] hover:bg-blue-700 transition">Copiar</button>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={() => setSelectedPix(null)}
+                                    className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 py-3 rounded-xl font-bold text-sm transition"
+                                >
+                                    Fechar Janela
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
