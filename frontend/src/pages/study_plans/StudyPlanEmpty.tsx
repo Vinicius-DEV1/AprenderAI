@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 
 export default function StudyPlanEmpty() {
     return (
-        <div className="py-16 sm:py-24 flex items-start justify-center min-h-[calc(100vh-160px)] pt-10 pb-16">
+        <div className="py-16 sm:py-24 flex items-start justify-center min-h-[calc(100vh-160px)] pt-10 pb-16 -mt-[100px]">
             <div className="max-w-3xl w-full mx-auto px-4 sm:px-6 lg:px-8 mt-8">
                 <div className="relative bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl overflow-hidden shadow-2xl dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)] rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center border border-white/50 dark:border-slate-700/50 transition-all duration-300 hover:shadow-blue-500/10 dark:hover:shadow-blue-900/20 group">
 

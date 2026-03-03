@@ -4,7 +4,9 @@ import StudyPlanEmpty from './StudyPlanEmpty';
 import StudyPlanWizard from './StudyPlanWizard';
 
 const getStudyPlanData = async () => {
-    const { data } = await api.get('/api/v1/study-plan');
+    const { data } = await api.get('/api/v1/study-plan', {
+        validateStatus: (status) => status < 500 // Treats 403 as success to avoid the global error toast
+    });
     return data;
 };
 
