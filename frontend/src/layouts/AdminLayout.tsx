@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, Navigate } from 'react-router-dom';
 import { useConfigStore } from '../stores/configStore';
 import { useAuthStore } from '../stores/authStore';
 
@@ -10,7 +10,12 @@ export default function AdminLayout() {
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-    const { user } = useAuthStore();
+    const { user, isAuthenticated } = useAuthStore();
+
+    // Redireciona se não for admin
+    if (isAuthenticated && user && user.role !== 'admin') {
+        return <Navigate to="/dashboard" replace />;
+    }
 
     // Close notifications on location change or click outside
     useEffect(() => {
@@ -199,7 +204,13 @@ export default function AdminLayout() {
                 </aside>
 
                 {/* Main Content */}
-                <main className="flex-1 p-4 md:p-6 lg:ml-0 ml-64">
+                <main className="flex-1 p-4 md:p-6 lg:ml-0">
+                    <div className="lg:hidden mb-4">
+                        <NavLink to="/dashboard" className="text-gray-500 flex items-center gap-2 text-sm font-medium">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                            Voltar ao App
+                        </NavLink>
+                    </div>
                     <div className="flex justify-between items-start mb-8">
                         <header>
                             {/* Slot for Header/Title */}
