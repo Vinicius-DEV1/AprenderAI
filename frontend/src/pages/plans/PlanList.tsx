@@ -323,6 +323,11 @@ export default function PlanList() {
                                 </div>
                             </div>
                         )}
+                        {!isLoadingHistory && history.length === 0 && userPlanId && String(userPlanId) !== '1' && (
+                            <div className="mt-10 pt-8 border-t border-slate-100 dark:border-slate-800 text-center">
+                                <p className="text-sm text-slate-500 italic">Nenhum registro de pagamento encontrado nesta conta.</p>
+                            </div>
+                        )}
                     </div>
                 )}
 
