@@ -20,7 +20,7 @@ export const logout = async () => {
 };
 
 export const getUser = async () => {
-    return api.get('/api/v1/user');
+    return api.get('/api/v1/user', { _quiet: true } as any);
 };
 
 export const forgotPassword = async (data: any) => {

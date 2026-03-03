@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useConfigStore } from '../../stores/configStore';
+import { toast } from 'sonner';
 import '../../styles/landing-page.css';
 import PlanCheckout from './PlanCheckout';
 import Accordion from '../../components/Accordion';
@@ -24,7 +25,7 @@ export default function WelcomePlans() {
 
     const handlePlanSelect = (planName: string, interval: 'monthly' | 'yearly') => {
         if (!plans || plans.length === 0) {
-            console.warn('Plans not loaded yet');
+            toast.error('Os planos ainda estão carregando. Aguarde um momento.');
             return;
         }
 
@@ -43,7 +44,20 @@ export default function WelcomePlans() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
             console.error('Plan not found:', planName, interval);
+            toast.error(`Plano "${planName}" não encontrado. Tente novamente.`);
         }
+    };
+
+    // Helpers para preços dinâmicos (segue a mesma lógica do PlanList)
+    const getPlanPrice = (slugKeyword: string) => {
+        if (!plans || plans.length === 0) return null;
+        const p = plans.find(p => p.slug?.includes(slugKeyword) && (periodo === 'anual' ? p.interval === 'yearly' : p.interval === 'monthly'));
+        return p ? Number(p.price) : null;
+    };
+
+    const formatPrice = (price: number | null): string => {
+        if (price === null) return '--';
+        return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(price);
     };
 
     return (
@@ -118,7 +132,7 @@ export default function WelcomePlans() {
 
                                     <div style={{ marginBottom: '.25rem' }}>
                                         <span className="lp-plan-price-paid">
-                                            R$&nbsp;{periodo === 'anual' ? '20,00' : '25,00'}
+                                            R$&nbsp;{formatPrice(getPlanPrice('basic'))}
                                         </span>
                                         <span className="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
                                     </div>
@@ -170,7 +184,7 @@ export default function WelcomePlans() {
 
                                     <div style={{ marginBottom: '.25rem' }}>
                                         <span className="lp-plan-price-paid">
-                                            R$&nbsp;{periodo === 'anual' ? '40,00' : '49,90'}
+                                            R$&nbsp;{formatPrice(getPlanPrice('plus'))}
                                         </span>
                                         <span className="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
                                     </div>

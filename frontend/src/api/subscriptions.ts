@@ -15,3 +15,7 @@ export const checkSubscriptionStatus = () => {
 export const getSubscriptions = () => {
     return axios.get('/api/v1/subscriptions');
 };
+
+export const getPaymentReceipt = (subscriptionId: number | string) => {
+    return axios.get(`/api/v1/subscriptions/${subscriptionId}/receipt`);
+};
