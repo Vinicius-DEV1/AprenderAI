@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
 import { getSubscriptions, getPaymentReceipt } from '../../api/subscriptions';
@@ -7,6 +7,142 @@ import { toast } from 'sonner';
 import PlanConfirmationModal from '../../components/PlanConfirmationModal';
 import Accordion from '../../components/Accordion';
 import '../../styles/landing-page.css';
+
+// ───────────────────────────────────────────────────────
+// Sub-component: Pix Countdown Modal
+// ───────────────────────────────────────────────────────
+function PixCountdownModal({ pix, onClose }: {
+    pix: { payload: string; image: string; expiresAt: string | null; };
+    onClose: () => void;
+}) {
+    const [secondsLeft, setSecondsLeft] = useState<number>(() => {
+        if (!pix.expiresAt) return 30 * 60; // fallback 30min
+        const diff = Math.floor((new Date(pix.expiresAt).getTime() - Date.now()) / 1000);
+        return Math.max(0, diff);
+    });
+    const [copied, setCopied] = useState(false);
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    useEffect(() => {
+        intervalRef.current = setInterval(() => {
+            setSecondsLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(intervalRef.current!);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(intervalRef.current!);
+    }, []);
+
+    const handleCopy = useCallback(() => {
+        navigator.clipboard.writeText(pix.payload).then(() => {
+            setCopied(true);
+            toast.success('Chave Pix copiada!');
+            setTimeout(() => setCopied(false), 2500);
+        });
+    }, [pix.payload]);
+
+    const minutes = Math.floor(secondsLeft / 60).toString().padStart(2, '0');
+    const seconds = (secondsLeft % 60).toString().padStart(2, '0');
+    const isExpired = secondsLeft === 0;
+    const urgency = secondsLeft < 300; // últimos 5 min
+    const progress = pix.expiresAt
+        ? Math.max(0, (secondsLeft / ((new Date(pix.expiresAt).getTime() - Date.now() + secondsLeft * 1000) / 1000)) * 100)
+        : (secondsLeft / (30 * 60)) * 100;
+
+    return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-200">
+                {/* Header */}
+                <div className={`p-5 text-center transition-colors duration-700 ${isExpired ? 'bg-red-600' : urgency ? 'bg-amber-500' : 'bg-blue-600'
+                    }`}>
+                    <div className="text-white/80 text-[10px] font-black uppercase tracking-widest mb-1">Pagar via Pix</div>
+                    <h2 className="text-white text-xl font-black leading-none">QR Code Gerado</h2>
+                    {isExpired ? (
+                        <p className="text-white/90 text-xs mt-1">⚠️ QR Code expirado. Gere uma nova assinatura.</p>
+                    ) : (
+                        <p className="text-white/90 text-xs mt-1">Escaneie ou copie a chave Pix abaixo</p>
+                    )}
+                </div>
+
+                {/* Countdown bar */}
+                <div className="relative h-1.5 bg-slate-100 dark:bg-slate-800">
+                    <div
+                        className={`h-full transition-all duration-1000 ease-linear ${isExpired ? 'bg-red-500 w-0' : urgency ? 'bg-amber-400' : 'bg-blue-500'
+                            }`}
+                        style={{ width: isExpired ? '0%' : `${progress}%` }}
+                    />
+                </div>
+
+                <div className="p-6">
+                    {/* Timer */}
+                    <div className={`text-center mb-4 py-2 rounded-xl ${isExpired ? 'bg-red-50 dark:bg-red-900/20' : urgency ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-slate-50 dark:bg-slate-800/50'
+                        }`}>
+                        <span className={`text-3xl font-black tabular-nums ${isExpired ? 'text-red-600 dark:text-red-400' : urgency ? 'text-amber-600 dark:text-amber-400' : 'text-slate-700 dark:text-slate-200'
+                            }`}>
+                            {minutes}:{seconds}
+                        </span>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
+                            {isExpired ? 'Expirado' : 'Tempo restante'}
+                        </p>
+                    </div>
+
+                    {!isExpired ? (
+                        <>
+                            {/* QR Code */}
+                            <div className="flex justify-center mb-4">
+                                <div className="bg-white p-2 border-2 border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm">
+                                    <img
+                                        src={`data:image/png;base64,${pix.image}`}
+                                        alt="QR Code Pix"
+                                        className="w-44 h-44"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Copy field */}
+                            <div className="relative mb-4">
+                                <input
+                                    readOnly
+                                    value={pix.payload}
+                                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 pl-3 pr-24 text-[10px] font-mono text-slate-600 dark:text-slate-300 truncate focus:outline-none"
+                                />
+                                <button
+                                    onClick={handleCopy}
+                                    className={`absolute right-1.5 top-1.5 bottom-1.5 px-3 rounded-lg text-xs font-black transition-all duration-200 ${copied
+                                            ? 'bg-green-500 text-white'
+                                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                        }`}
+                                >
+                                    {copied ? '✓ Copiado' : 'Copiar'}
+                                </button>
+                            </div>
+
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mb-4">
+                                Após o pagamento, sua conta será ativada automaticamente em alguns minutos.
+                            </p>
+                        </>
+                    ) : (
+                        <div className="text-center mb-5">
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                                O QR Code expirou. Por favor, inicie uma nova assinatura para gerar um novo código.
+                            </p>
+                        </div>
+                    )}
+
+                    <button
+                        onClick={onClose}
+                        className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 py-3 rounded-xl font-bold text-sm transition"
+                    >
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 export default function PlanList() {
     const navigate = useNavigate();
@@ -19,7 +155,7 @@ export default function PlanList() {
     const [history, setHistory] = useState<any[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
     const [loadingReceiptId, setLoadingReceiptId] = useState<number | null>(null);
-    const [selectedPix, setSelectedPix] = useState<{ payload: string, image: string } | null>(null);
+    const [selectedPix, setSelectedPix] = useState<{ payload: string; image: string; expiresAt: string | null } | null>(null);
 
     const userPlanId = user?.plan_id || (user?.plan as any)?.id;
     const currentPlan = plans?.find((p: any) => String(p.id) === String(userPlanId));
@@ -285,12 +421,17 @@ export default function PlanList() {
                                                             )}
                                                         </td>
                                                         <td className="py-4 px-2 text-right">
+                                                            {/* Pix pending */}
                                                             {item.status === 'pending' && !isExpired && item.pix_payload && (
                                                                 <button
-                                                                    onClick={() => setSelectedPix({ payload: item.pix_payload, image: item.pix_image })}
-                                                                    className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline"
+                                                                    onClick={() => setSelectedPix({
+                                                                        payload: item.pix_payload,
+                                                                        image: item.pix_image,
+                                                                        expiresAt: item.pix_expires_at ?? null,
+                                                                    })}
+                                                                    className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline"
                                                                 >
-                                                                    Pagar via Pix
+                                                                    <span>📲</span> Ver QR Pix
                                                                 </button>
                                                             )}
                                                             {item.status === 'active' && (
@@ -467,36 +608,12 @@ export default function PlanList() {
                     selectedPlan={selectedPlanForModal}
                 />
 
-                {/* MODAL DO PIX */}
+                {/* MODAL Pix com countdown */}
                 {selectedPix && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-                        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-300">
-                            <div className="bg-blue-600 p-6 text-center text-white">
-                                <h2 className="text-xl font-bold">Pagar via Pix</h2>
-                                <p className="mt-1 opacity-90 text-xs">Escaneie ou copie a chave abaixo</p>
-                            </div>
-
-                            <div className="p-6 text-center">
-                                <div className="bg-white p-2 inline-block border-2 border-slate-100 dark:border-slate-800 rounded-xl mb-4">
-                                    <img src={`data:image/png;base64,${selectedPix.image}`} alt="Pix QR Code" className="w-48 h-48 mx-auto" />
-                                </div>
-
-                                <div className="mb-6">
-                                    <div className="flex gap-2 relative">
-                                        <input readOnly value={selectedPix.payload} className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 py-2.5 px-3 rounded-lg text-[10px] font-mono w-full truncate pr-20 text-slate-600 dark:text-slate-300" />
-                                        <button onClick={() => navigator.clipboard.writeText(selectedPix.payload).then(() => toast.success('Copiado!'))} className="absolute right-1 top-1 bottom-1 bg-blue-600 text-white px-3 rounded-md font-bold text-[10px] hover:bg-blue-700 transition">Copiar</button>
-                                    </div>
-                                </div>
-
-                                <button
-                                    onClick={() => setSelectedPix(null)}
-                                    className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 py-3 rounded-xl font-bold text-sm transition"
-                                >
-                                    Fechar Janela
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    <PixCountdownModal
+                        pix={selectedPix}
+                        onClose={() => setSelectedPix(null)}
+                    />
                 )}
             </div>
         </div>

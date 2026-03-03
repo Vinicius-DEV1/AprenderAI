@@ -162,15 +162,19 @@ class SubscriptionController extends Controller
                 if ($payment) {
                     $pixData = $this->asaasService->getPixQrCode($payment['id']);
                     if ($pixData) {
+                        $pixExpiresAt = now()->addMinutes(30); // QR Code válido por 30 minutos
+
                         $subscription->update([
                             'billing_type' => 'pix',
                             'pix_payload' => $pixData['payload'],
                             'pix_image' => $pixData['encodedImage'],
+                            'pix_expires_at' => $pixExpiresAt,
                         ]);
 
                         $responseData['pix'] = [
                             'payload' => $pixData['payload'],
                             'image' => $pixData['encodedImage'],
+                            'expires_at' => $pixExpiresAt->toISOString(),
                         ];
                     }
                 }
