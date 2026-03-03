@@ -10,9 +10,20 @@ export default function AdminLayout() {
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-    const { user, isAuthenticated } = useAuthStore();
+    const { user, isAuthenticated, isLoading } = useAuthStore();
 
-    // Redireciona se não for admin
+    // BUG FIX: Aguardando carregamento da sessão antes de decidir redirecionamento.
+    // Sem este guard, no reload o componente tentava verificar auth quando
+    // isAuthenticated=false ainda (estado inicial), causando redirect prematuro e tela branca.
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+            </div>
+        );
+    }
+
+    // Redireciona se não for admin (só após saber o estado real de auth)
     if (isAuthenticated && user && user.role !== 'admin') {
         return <Navigate to="/dashboard" replace />;
     }
