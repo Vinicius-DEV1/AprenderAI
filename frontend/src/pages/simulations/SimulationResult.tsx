@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axios';
 import { marked } from 'marked';
 import { useConfigStore } from '../../stores/configStore';
+import EssayReview from '../essays/EssayReview';
 import '../../styles/question-bank.css';
 
 const getSimulationResult = async (id: string) => {
@@ -125,6 +126,16 @@ export default function SimulationResult() {
                     filteredAnswers.map((ans: any) => (
                         <AnswerCard key={ans.question_id} answer={ans} index={answers.indexOf(ans)} aiName={aiName} simulationId={simulation.id} />
                     ))
+                )}
+
+                {/* --- Módulo de Redação Integrado (Essay) --- */}
+                {simulation.essay && simulation.essay.status && (
+                    <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-700">
+                        <h2 className="mb-4">Resultado da Redação</h2>
+                        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden p-4">
+                            <EssayReview essayId={simulation.essay.id} isEmbedded={true} />
+                        </div>
+                    </div>
                 )}
             </div>
 
