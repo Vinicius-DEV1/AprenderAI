@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import api from '../../api/axios';
 import { useUIStore } from '../../stores/uiStore';
 import EssayWrite from '../essays/EssayWrite';
+import { marked } from 'marked';
+import '../../styles/question-bank.css';
 
 // Local API calls just for this view's specific needs (polling/answering)
 const checkSimulationStatus = async (id: string) => {
@@ -38,6 +40,7 @@ export default function SimulationView() {
     const [currentMsgIdx, setCurrentMsgIdx] = useState(0);
     const [viewMode, setViewMode] = useState<'questions' | 'essay'>('questions');
     const [essayContent, setEssayContent] = useState('');
+    const [localAnswers, setLocalAnswers] = useState<Record<number, string>>({});
 
     const messages = [
         'Analisando seu desempenho histórico...',
@@ -115,7 +118,16 @@ export default function SimulationView() {
         if (simulation?.essay && !essayContent) {
             setEssayContent(simulation.essay.content || '');
         }
-    }, [simulation?.essay]);
+        if (simulation?.answers) {
+            const initialMap: Record<number, string> = {};
+            simulation.answers.forEach((ans: any) => {
+                if (ans.user_answer) {
+                    initialMap[ans.question_id] = ans.user_answer;
+                }
+            });
+            setLocalAnswers(prev => ({ ...initialMap, ...prev }));
+        }
+    }, [simulation?.essay, simulation?.answers]);
 
     // Mutations
     const answerMutation = useMutation({
@@ -158,10 +170,13 @@ export default function SimulationView() {
 
     // Handlers
     const handleAnswer = (questionId: number, answerStr: string) => {
-        if (!simulation || answerMutation.isPending) return;
+        if (!simulation) return;
+
+        // Optimistic UI update
+        setLocalAnswers(prev => ({ ...prev, [questionId]: answerStr }));
+
         const timeSpent = (simulation.configuration?.time_limit || 10800) - (timeRemaining || 0);
 
-        // Optimistic UI could be added here, but for now just feedback
         answerMutation.mutate({
             question_id: questionId,
             answer: answerStr,
@@ -211,6 +226,15 @@ export default function SimulationView() {
         const m = Math.floor((seconds % 3600) / 60);
         const s = seconds % 60;
         return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    };
+
+    const renderMd = (text: string) => {
+        if (!text) return { __html: '' };
+        try {
+            return { __html: marked.parse(text) as string };
+        } catch (e) {
+            return { __html: text };
+        }
     };
 
     if (hasError) {
@@ -378,8 +402,10 @@ export default function SimulationView() {
                     <div className="nav-grid">
                         {answersList.map((ans: any, index: number) => {
                             let classes = "nav-btn ";
+                            const isAnswered = ans.user_answer || localAnswers[ans.question_id];
+
                             if (index === currentQuestion) classes += "active ";
-                            else if (ans.user_answer) classes += "answered ";
+                            else if (isAnswered) classes += "answered ";
                             else if (ans.marked_for_review) classes += "marked ";
 
                             return (
@@ -441,33 +467,33 @@ export default function SimulationView() {
 
                                 <div className="question-statement" dangerouslySetInnerHTML={{ __html: question.html_statement || question.statement }} />
 
-                                <ul className="alternatives">
+                                <div className="qb-alternatives-list mt-8">
                                     {(question.alternatives || []).map((alt: any) => (
-                                        <li key={alt.id || alt.label} className="alternative">
-                                            <div
-                                                className={`alternative-container ${currentAnswerData.user_answer === alt.label ? 'selected' : ''}`}
-                                                onClick={() => handleAnswer(question.id, alt.label)}
-                                            >
-                                                <input
-                                                    type="radio"
-                                                    id={`q${question.id}_${alt.label}`}
-                                                    name={`question_${question.id}`}
-                                                    value={alt.label}
-                                                    checked={currentAnswerData.user_answer === alt.label}
-                                                    readOnly
-                                                    className="sr-only"
-                                                />
-                                                <label htmlFor={`q${question.id}_${alt.label}`} className="cursor-pointer flex items-start gap-3 p-4 w-full h-full">
-                                                    <span className="alternative-letter">{alt.label})</span>
-                                                    <div className="flex flex-col gap-2 flex-grow overflow-hidden">
-                                                        {alt.content && <span className="word-break-all">{alt.content}</span>}
-                                                        {alt.image_path && <img src={`/storage/${alt.image_path}`} alt={`Alternativa ${alt.label}`} className="max-w-full h-auto rounded object-contain mt-2" />}
-                                                    </div>
-                                                </label>
+                                        <div
+                                            key={alt.id || alt.label}
+                                            className={`qb-alt ${localAnswers[question.id] === alt.label ? 'selected' : ''}`}
+                                            onClick={() => handleAnswer(question.id, alt.label)}
+                                        >
+                                            <div className="qb-alt-letter">{alt.label}</div>
+                                            <div className="flex flex-col gap-2 flex-grow overflow-hidden">
+                                                {alt.content && (
+                                                    <div
+                                                        className="qb-alt-text prose prose-sm max-w-none text-slate-700 dark:text-slate-300 word-break-all"
+                                                        style={{ fontSize: '15px' }}
+                                                        dangerouslySetInnerHTML={renderMd(alt.content)}
+                                                    />
+                                                )}
+                                                {alt.image_path && (
+                                                    <img
+                                                        src={alt.image_path.startsWith('http') ? alt.image_path : `/storage/${alt.image_path}`}
+                                                        alt={`Alternativa ${alt.label}`}
+                                                        className="max-w-full h-auto rounded object-contain mt-2"
+                                                    />
+                                                )}
                                             </div>
-                                        </li>
+                                        </div>
                                     ))}
-                                </ul>
+                                </div>
 
                                 <div className="question-actions">
                                     <div className="checkbox-mark">
