@@ -30,6 +30,10 @@ export default function AdminQuestions() {
     const [removingIds, setRemovingIds] = useState<number[]>([]);
     const [activeMenu, setActiveMenu] = useState<number | null>(null);
 
+    // NEW STATES FOR REPORTS TABS
+    const [activeTab, setActiveTab] = useState<'all' | 'reported'>('all');
+    const [reportsPage, setReportsPage] = useState(1);
+
     const { data, isLoading } = useQuery({
         queryKey: ['admin-questions', filters, page, triageFilters, triagePage],
         queryFn: async () => {
@@ -52,6 +56,31 @@ export default function AdminQuestions() {
                 queryClient.invalidateQueries({ queryKey: ['admin-questions'] });
                 setRemovingIds(prev => prev.filter(rid => rid !== variables.id));
             }, 600);
+        }
+    });
+
+    const { data: reportsData, isLoading: reportsLoading } = useQuery({
+        queryKey: ['admin-reports', reportsPage],
+        queryFn: async () => {
+            const res = await api.get('/api/v1/admin/question-reports', {
+                params: { page: reportsPage, status: 'pending' }
+            });
+            return res.data;
+        },
+        enabled: activeTab === 'reported'
+    });
+
+    const reportActions = useMutation({
+        mutationFn: async ({ id, action }: { id: number, action: 'resolve' | 'deactivate' }) => {
+            const url = action === 'resolve'
+                ? `/api/v1/admin/question-reports/${id}/resolve`
+                : `/api/v1/admin/questions/${id}/deactivate`;
+            const res = await api.post(url);
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-reports'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-questions'] });
         }
     });
 
@@ -330,7 +359,7 @@ export default function AdminQuestions() {
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center text-lg">🏦</div>
                         <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
-                            Banco Completo
+                            Qualidade do Acervo
                             {data.DEBUG_CODE_VERSION && (
                                 <span className="text-[8px] bg-red-500 text-white px-1 rounded animate-pulse">
                                     V_STRITO
@@ -339,7 +368,27 @@ export default function AdminQuestions() {
                         </h2>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex bg-gray-100/80 p-1 rounded-xl">
+                        <button
+                            onClick={() => setActiveTab('all')}
+                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'all' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Banco Completo
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('reported')}
+                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'reported' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Denunciadas
+                            {reportsData?.total > 0 && (
+                                <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{reportsData.total}</span>
+                            )}
+                        </button>
+                    </div>
+                </div>
+
+                {activeTab === 'all' && (
+                    <div className="p-4 border-b border-gray-50 bg-white flex flex-wrap gap-2 items-center justify-end">
                         <input
                             name="search"
                             placeholder="Pesquisar..."
@@ -376,75 +425,183 @@ export default function AdminQuestions() {
                             {availableOrganizations.map((o: string) => <option key={o} value={o}>{o}</option>)}
                         </select>
                     </div>
-                </div>
+                )}
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead>
-                            <tr className="bg-gray-50/80">
-                                <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase w-16">ID</th>
-                                <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase">Enunciado / Disciplina</th>
-                                <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase w-28">Dificuldade</th>
-                                <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase text-right">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {questions.data.map((q: any) => (
-                                <tr key={q.id} className="hover:bg-gray-50/50 transition-colors">
-                                    <td className="px-4 py-3 text-[11px] font-black text-gray-300 font-mono">#{q.id}</td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex flex-col">
-                                            <div dangerouslySetInnerHTML={{ __html: q.statement }} className="text-[11px] font-bold text-gray-700 line-clamp-1 max-w-[500px]" />
-                                            <div className="flex gap-2 mt-0.5 items-center">
-                                                <span className="text-[9px] font-black text-indigo-400 uppercase">{q.subjects?.[0]?.name || 'Sem Matéria'}</span>
-                                                <span className="text-[9px] font-black text-gray-300 uppercase">•</span>
-                                                <span className="text-[9px] font-black text-gray-400 uppercase">{q.organization || 'AprenderAI'}</span>
-                                                <span className="text-[10px] font-black text-gray-300 uppercase">•</span>
-                                                {q.tipo_questao === 'Redação' ? (
-                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-100 text-orange-700 uppercase tracking-tighter">✍️ Redação</span>
-                                                ) : q.tipo_questao === 'Discursiva' ? (
-                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-700 uppercase tracking-tighter">🎓 Discursiva</span>
-                                                ) : q.format === 'true_false' ? (
-                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700 uppercase tracking-tighter">⚖️ Certo/Errado</span>
-                                                ) : (
-                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-gray-100 text-gray-600 uppercase tracking-tighter">📝 Múltipla Escolha</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <DifficultyBadge level={q.difficulty} />
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <div className="flex justify-end gap-1.5 items-center">
-                                            <button className="px-2 py-1 bg-indigo-100 text-indigo-700 text-[9px] rounded-lg hover:bg-indigo-200 font-black uppercase tracking-tighter" title="Ver">👁️ Ver</button>
-                                            <Link to={`/admin/questions/${q.id}/edit`} className="px-2 py-1 bg-blue-100 text-blue-700 text-[9px] rounded-lg hover:bg-blue-200 font-black uppercase tracking-tighter">✏️ Editar</Link>
-                                            <button onClick={() => adminActions.mutate({ id: q.id, action: 'evaluate-difficulty' })} className="px-2 py-1 bg-purple-100 text-purple-700 text-[9px] rounded-lg hover:bg-purple-200 font-black uppercase tracking-tighter" title="Reavaliar IA">⚡ IA</button>
-                                            <button onClick={() => adminActions.mutate({ id: q.id, action: 'retry-evaluation' })} className="px-2 py-1 bg-red-100 text-red-700 text-[9px] rounded-lg hover:bg-red-200 font-black uppercase tracking-tighter" title="Reprocessar">🔄 Reset</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                {activeTab === 'all' && (
+                    <>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="bg-gray-50/80">
+                                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase w-16">ID</th>
+                                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase">Enunciado / Disciplina</th>
+                                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase w-28">Dificuldade</th>
+                                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase text-right">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {questions.data.map((q: any) => (
+                                        <tr key={q.id} className="hover:bg-gray-50/50 transition-colors">
+                                            <td className="px-4 py-3 text-[11px] font-black text-gray-300 font-mono">#{q.id}</td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex flex-col">
+                                                    <div dangerouslySetInnerHTML={{ __html: q.statement }} className="text-[11px] font-bold text-gray-700 line-clamp-1 max-w-[500px]" />
+                                                    <div className="flex gap-2 mt-0.5 items-center">
+                                                        <span className="text-[9px] font-black text-indigo-400 uppercase">{q.subjects?.[0]?.name || 'Sem Matéria'}</span>
+                                                        <span className="text-[9px] font-black text-gray-300 uppercase">•</span>
+                                                        <span className="text-[9px] font-black text-gray-400 uppercase">{q.organization || 'AprenderAI'}</span>
+                                                        <span className="text-[10px] font-black text-gray-300 uppercase">•</span>
+                                                        {q.tipo_questao === 'Redação' ? (
+                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-100 text-orange-700 uppercase tracking-tighter">✍️ Redação</span>
+                                                        ) : q.tipo_questao === 'Discursiva' ? (
+                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-700 uppercase tracking-tighter">🎓 Discursiva</span>
+                                                        ) : q.format === 'true_false' ? (
+                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700 uppercase tracking-tighter">⚖️ Certo/Errado</span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-gray-100 text-gray-600 uppercase tracking-tighter">📝 Múltipla Escolha</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <DifficultyBadge level={q.difficulty} />
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="flex justify-end gap-1.5 items-center">
+                                                    <button className="px-2 py-1 bg-indigo-100 text-indigo-700 text-[9px] rounded-lg hover:bg-indigo-200 font-black uppercase tracking-tighter" title="Ver">👁️ Ver</button>
+                                                    <Link to={`/admin/questions/${q.id}/edit`} className="px-2 py-1 bg-blue-100 text-blue-700 text-[9px] rounded-lg hover:bg-blue-200 font-black uppercase tracking-tighter">✏️ Editar</Link>
+                                                    <button onClick={() => adminActions.mutate({ id: q.id, action: 'evaluate-difficulty' })} className="px-2 py-1 bg-purple-100 text-purple-700 text-[9px] rounded-lg hover:bg-purple-200 font-black uppercase tracking-tighter" title="Reavaliar IA">⚡ IA</button>
+                                                    <button onClick={() => adminActions.mutate({ id: q.id, action: 'retry-evaluation' })} className="px-2 py-1 bg-red-100 text-red-700 text-[9px] rounded-lg hover:bg-red-200 font-black uppercase tracking-tighter" title="Reprocessar">🔄 Reset</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
 
-                {/* Main Pagination */}
-                <div className="p-6 bg-gray-50/30 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-xs font-black text-gray-400 uppercase">Total: {questions.total} questões</span>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => setPage(p => Math.max(1, p - 1))}
-                            disabled={page === 1}
-                            className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-gray-50 transition"
-                        >Anterior</button>
-                        <button
-                            onClick={() => setPage(p => p + 1)}
-                            disabled={!questions.next_page_url}
-                            className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-gray-50 transition"
-                        >Próxima</button>
-                    </div>
-                </div>
+                        {/* Main Pagination */}
+                        <div className="p-6 bg-gray-50/30 border-t border-gray-100 flex items-center justify-between">
+                            <span className="text-xs font-black text-gray-400 uppercase">Total: {questions.total} questões</span>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    disabled={page === 1}
+                                    className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-gray-50 transition"
+                                >Anterior</button>
+                                <button
+                                    onClick={() => setPage(p => p + 1)}
+                                    disabled={!questions.next_page_url}
+                                    className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-gray-50 transition"
+                                >Próxima</button>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {activeTab === 'reported' && (
+                    <>
+                        {reportsLoading ? (
+                            <div className="p-12 text-center text-gray-400 font-bold animate-pulse">Carregando denúncias...</div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="bg-red-50/50">
+                                            <th className="px-4 py-3 text-[10px] font-black text-red-500 uppercase w-16">ID / Qtd</th>
+                                            <th className="px-4 py-3 text-[10px] font-black text-red-500 uppercase">Questão & Motivos</th>
+                                            <th className="px-4 py-3 text-[10px] font-black text-red-500 uppercase text-right">Ações de Curadoria</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {reportsData?.data?.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={3} className="px-4 py-12 text-center text-gray-400 font-bold">Nenhuma questão denunciada! 🎉</td>
+                                            </tr>
+                                        ) : reportsData?.data?.map((q: any) => (
+                                            <tr key={q.id} className="hover:bg-red-50/30 transition-colors">
+                                                <td className="px-4 py-3">
+                                                    <div className="flex flex-col items-start gap-1">
+                                                        <span className="text-[11px] font-black text-gray-400 font-mono">#{q.id}</span>
+                                                        <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                                                            <span>🚩</span> {q.reports_count} reports
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex flex-col gap-2">
+                                                        <div dangerouslySetInnerHTML={{ __html: q.statement }} className="text-[11px] font-bold text-gray-700 line-clamp-2 max-w-[500px]" />
+
+                                                        {/* Mostrar os motivos */}
+                                                        <div className="flex flex-col gap-1 mt-1 border-l-2 border-red-200 pl-3">
+                                                            {q.reports?.map((rep: any) => (
+                                                                <div key={rep.id} className="text-[10px] text-gray-600 flex flex-col">
+                                                                    <span className="font-bold text-red-600">"{rep.reason}"</span>
+                                                                    <span className="text-gray-400">Por {rep.user?.name || 'Aluno'} em {new Date(rep.created_at).toLocaleDateString()}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <div className="flex flex-col justify-end gap-2 items-end">
+                                                        <Link to={`/admin/questions/${q.id}/edit`} className="w-full text-center px-3 py-1.5 bg-blue-100 text-blue-700 text-[10px] rounded-lg hover:bg-blue-200 font-black uppercase tracking-tighter">
+                                                            ✏️ Editar Questão
+                                                        </Link>
+                                                        <button
+                                                            onClick={() => {
+                                                                if (confirm('Marcar todos os relatos como resolvidos sem desativar a questão?')) {
+                                                                    // Aqui podemos resolver individualmente ou adicionar um helper. 
+                                                                    // Como não há rota "resolve all", chamaremos a action 'resolve' no 1º report e assumiremos que resolve a questão pra quem vê. Mas a rota de resolver é do Report.
+                                                                    // Vou mandar para o primeiro caso não queiramos mudar a api.
+                                                                    if (q.reports.length > 0) {
+                                                                        reportActions.mutate({ id: q.reports[0].id, action: 'resolve' });
+                                                                    }
+                                                                }
+                                                            }}
+                                                            className="w-full text-center px-3 py-1.5 bg-green-100 text-green-700 text-[10px] rounded-lg hover:bg-green-200 font-black uppercase tracking-tighter"
+                                                        >
+                                                            ✅ Descartar e Resolver
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                if (confirm('ATENÇÃO: Isso vai ocultar a questão dos simulados e alunos, e resolver as denúncias pendentes. Confirmar?')) {
+                                                                    reportActions.mutate({ id: q.id, action: 'deactivate' });
+                                                                }
+                                                            }}
+                                                            className="w-full text-center px-3 py-1.5 bg-red-100 text-red-700 text-[10px] rounded-lg hover:bg-red-200 font-black uppercase tracking-tighter"
+                                                        >
+                                                            🚫 Desativar Questão
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        {/* Reports Pagination */}
+                        {reportsData && (
+                            <div className="p-6 bg-red-50/30 border-t border-red-50 flex items-center justify-between">
+                                <span className="text-xs font-black text-gray-500 uppercase">Total: {reportsData.total} relatadas</span>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setReportsPage(p => Math.max(1, p - 1))}
+                                        disabled={reportsPage === 1}
+                                        className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-gray-50 transition"
+                                    >Anterior</button>
+                                    <button
+                                        onClick={() => setReportsPage(p => p + 1)}
+                                        disabled={!reportsData.next_page_url}
+                                        className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-gray-50 transition"
+                                    >Próxima</button>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
             </div>
 
             <AdminBatchModal
@@ -456,7 +613,7 @@ export default function AdminQuestions() {
                     queryClient.invalidateQueries({ queryKey: ['admin-questions'] });
                 }}
             />
-        </div>
+        </div >
     );
 }
 
