@@ -58,8 +58,12 @@ class AIBatchService
             return [
                 'id' => $q->id,
                 'statement' => $q->statement,
+                'type' => $q->type,
+                'format' => $q->format,
+                'tipo_questao' => $q->tipo_questao,
                 'alternatives' => $q->alternativesAsMap(),
                 'correct_label' => $q->correct_answer,
+                'discursive_answer' => $q->discursive_answer,
                 'missing_fields' => $missing,
                 'reprocess_all' => $reprocess
             ];
@@ -87,13 +91,20 @@ class AIBatchService
 
     protected function getFallbackPrompt($instruction, $subjectsRef, $topicsRef, $questionsData): string
     {
-        $prompt = "Atue como um Especialista em Educacao e IA.\n\n";
+        $prompt = "Você é o Xavier, Mentor de Elite da AprovadoAI e Curador Chefe do Banco de Questões.\n\n";
         $prompt .= "TAREFA: " . $instruction . "\n\n";
+        $prompt .= "REGRAS DE PROCESSAMENTO OBRIGATÓRIAS:\n";
+        $prompt .= "1. TIPO DE QUESTÃO (`tipo_questao` / `format`):\n";
+        $prompt .= "   - MÚLTIPLA ESCOLHA: Resolva a questão. Se o `correct_label` não for a resposta correta, informe a certa em `suggested_answer`.\n";
+        $prompt .= "   - CERTO/ERRADO: Valide se a afirmação está Certa ou Errada.\n";
+        $prompt .= "   - DISCURSIVA: Crie uma resposta pedagógica, pois não há alternativas.\n";
+        $prompt .= "   - REDAÇÃO: Para temas de redação, gere APENAS Feedback Pedagógico em `explanation` e deixe o resto null.\n";
+        $prompt .= "2. LATEX OBRIGATÓRIO: Use \\( ... \\) e \\[ ... \\] para qualquer fórmula matemática/física.\n\n";
         $prompt .= "DADOS DAS QUESTOES:\n" . json_encode($questionsData) . "\n\n";
         $prompt .= "REFERENCIAS (Use IDs se houver correspondencia):\n";
         $prompt .= "Disciplinas: " . json_encode($subjectsRef) . "\n";
         $prompt .= "Assuntos: " . json_encode($topicsRef) . "\n\n";
-        $prompt .= "RESPOSTA: Retorne APENAS um Array JSON: [{\"id\": 1, \"difficulty\": \"easy\", \"difficulty_reasoning\": \"...\", \"explanation\": \"...\", \"subject_id\": ID, \"subject_name\": \"NOME\", \"topic_id\": ID, \"topic_name\": \"NOME\"}]";
+        $prompt .= "RESPOSTA: Retorne APENAS um Array JSON puro: [{\"id\": 1, \"difficulty\": \"easy|medium|hard|null\", \"difficulty_reasoning\": \"...\", \"explanation\": \"...\", \"subject\": ID|null, \"topic\": ID|null, \"suggested_answer\": \"...|null\"}]";
         return $prompt;
     }
 
@@ -124,11 +135,32 @@ class AIBatchService
                 $explanation = $explanation ?? $question->explanation;
             }
 
+            // Lógica de Redação: Ignorar dificuldade e classificação
+            $isEssay = strtolower($question->format ?? '') === 'redacao' || strtolower($question->tipo_questao ?? '') === 'redacao';
+            if ($isEssay) {
+                $question->update([
+                    'explanation' => $explanation,
+                    'review_status' => 'approved'
+                ]);
+                $applied++;
+                continue; // Pula classificação de Subjects/Topics abaixo
+            }
+
+            // Lógica de Gabarito Divergente para Múltipla Escolha / Certo-Errado
+            $suggestedAnswer = $data['suggested_answer'] ?? null;
+            $needsManualReview = false;
+            if (!empty($suggestedAnswer)) {
+                $isCorrectLabel = strtolower(trim($suggestedAnswer)) === strtolower(trim($question->correct_answer ?? ''));
+                if (!$isCorrectLabel) {
+                    $needsManualReview = true;
+                }
+            }
+
             $question->update([
                 'difficulty' => $difficulty,
                 'difficulty_reasoning' => $reasoning,
                 'explanation' => $explanation,
-                'review_status' => 'approved'
+                'review_status' => $needsManualReview ? 'pending' : 'approved'
             ]);
 
             // Resolucao de Disciplina (Subject)
