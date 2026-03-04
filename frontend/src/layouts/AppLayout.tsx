@@ -143,6 +143,13 @@ export default function AppLayout() {
                         {!sidebarCollapsed && <span className="whitespace-nowrap">Questões</span>}
                     </NavLink>
 
+                    <NavLink to="/notebooks" className={getNavLinkClass('/notebooks')} title="Cadernos">
+                        <svg className={getIconClass('/notebooks')} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                        {!sidebarCollapsed && <span className="whitespace-nowrap">Cadernos</span>}
+                    </NavLink>
+
                     <NavLink to="/essays" className={getNavLinkClass('/essays')} title="Redações">
                         <svg className={getIconClass('/essays')} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -204,12 +211,12 @@ export default function AppLayout() {
                                     {user?.name || 'User'}
                                 </p>
                                 <span className={`inline-block mt-0.5 px-2 py-0.5 text-[10px] font-bold rounded-md uppercase tracking-wide border ${(user?.plan?.name || '').toLowerCase().includes('plus')
-                                        ? 'bg-blue-900 text-white border-blue-800'
-                                        : (user?.plan?.name || '').toLowerCase().includes('básico') || (user?.plan?.name || '').toLowerCase().includes('basico')
-                                            ? 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800'
-                                            : isAdmin
-                                                ? 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800'
-                                                : 'bg-white text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+                                    ? 'bg-blue-900 text-white border-blue-800'
+                                    : (user?.plan?.name || '').toLowerCase().includes('básico') || (user?.plan?.name || '').toLowerCase().includes('basico')
+                                        ? 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800'
+                                        : isAdmin
+                                            ? 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800'
+                                            : 'bg-white text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
                                     }`}>
                                     {user?.plan?.name || (isAdmin ? 'Administrador' : 'Gratuito')}
                                 </span>

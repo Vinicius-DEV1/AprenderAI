@@ -36,11 +36,15 @@ import EssayList from './pages/essays/EssayList';
 import EssayWrite from './pages/essays/EssayWrite';
 import EssayReview from './pages/essays/EssayReview';
 
-import QuestionBank from './pages/questions/QuestionBank';
 import PlanList from './pages/plans/PlanList';
 import WelcomePlans from './pages/plans/WelcomePlans';
 import PlanCheckout from './pages/plans/PlanCheckout';
 import PlanSuccess from './pages/plans/PlanSuccess';
+
+// Notebooks
+import NotebookList from './pages/notebooks/NotebookList';
+
+import QuestionBank from './pages/questions/QuestionBank';
 
 // Admin Pages
 import AdminLayout from './layouts/AdminLayout';
@@ -170,8 +174,9 @@ function App() {
                         <Route path="/essays/create" element={<><MetaTags title="Escrever Redação" /><EssayWrite /></>} />
                         <Route path="/essays/:id" element={<><MetaTags title="Correção de Redação" /><EssayReview /></>} />
 
-                        {/* Question Bank */}
+                        {/* Question Bank & Notebooks */}
                         <Route path="/questions" element={<><MetaTags title="Banco de Questões" /><QuestionBank /></>} />
+                        <Route path="/notebooks" element={<><MetaTags title="Meus Cadernos" /><NotebookList /></>} />
 
                         {/* Plans */}
                         <Route path="/plans" element={<><MetaTags title="Planos e Preços" /><PlanList /></>} />
