@@ -403,7 +403,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
         try {
             const sanitizedContent = sanitizeHTML(contentToSave);
             if (editingNoteId) {
-                const res = await api.put(`/api/v1/notes/${editingNoteId}`, { content: sanitizedContent });
+                const res = await api.put(`/api/v1/questions/notes/${editingNoteId}`, { content: sanitizedContent });
                 setNotes(notes.map(n => n.id === editingNoteId ? res.data.note : n));
                 setEditingNoteId(null);
                 toast.success('Anotação atualizada!');
@@ -434,7 +434,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
 
     const handleDeleteNote = async (id: number) => {
         try {
-            await api.delete(`/api/v1/notes/${id}`);
+            await api.delete(`/api/v1/questions/notes/${id}`);
             const updatedNotes = notes.filter(n => n.id !== id);
             setNotes(updatedNotes);
             if (updatedNotes.length === 0) setHasNotes(false);
