@@ -33,7 +33,14 @@ export default function SimulationView() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const { toggleSidebar } = useUIStore();
+    const { setSidebarCollapsed, toggleSidebar } = useUIStore();
+
+    useEffect(() => {
+        // Auto-minimize sidebar when simulation starts
+        setSidebarCollapsed(true);
+    }, [setSidebarCollapsed]);
+
+    const [struckLabels, setStruckLabels] = useState<string[]>([]);
 
     const [currentQuestion, setCurrentQuestion] = useState(0);
     const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
@@ -127,7 +134,15 @@ export default function SimulationView() {
             });
             setLocalAnswers(prev => ({ ...initialMap, ...prev }));
         }
+
+        // Reset struck labels when moving to next question (or keep them?)
+        // Usually,考生 likes to keep them per question.
+        // Let's reset them when currentQuestion changes.
     }, [simulation?.essay, simulation?.answers]);
+
+    useEffect(() => {
+        setStruckLabels([]);
+    }, [currentQuestion]);
 
     // Mutations
     const answerMutation = useMutation({
@@ -173,6 +188,7 @@ export default function SimulationView() {
         if (!simulation) return;
 
         // Optimistic UI update
+        if (struckLabels.includes(answerStr)) return;
         setLocalAnswers(prev => ({ ...prev, [questionId]: answerStr }));
 
         const timeSpent = (simulation.configuration?.time_limit || 10800) - (timeRemaining || 0);
@@ -182,6 +198,13 @@ export default function SimulationView() {
             answer: answerStr,
             time_spent: timeSpent > 0 ? timeSpent : 0
         });
+    };
+
+    const handleRightClickAlt = (e: React.MouseEvent, label: string) => {
+        e.preventDefault();
+        setStruckLabels(prev =>
+            prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label]
+        );
     };
 
     const handleToggleMark = (questionId: number, currentMarked: boolean) => {
@@ -471,10 +494,11 @@ export default function SimulationView() {
                                     {(question.alternatives || []).map((alt: any) => (
                                         <div
                                             key={alt.id || alt.label}
-                                            className={`qb-alt ${localAnswers[question.id] === alt.label ? 'selected' : ''}`}
-                                            onClick={() => handleAnswer(question.id, alt.label)}
+                                            className={`qb-alt ${localAnswers[question.id] === alt.label ? 'selected' : ''} ${struckLabels.includes(alt.label) ? 'opacity-40 grayscale' : ''}`}
+                                            onClick={() => !struckLabels.includes(alt.label) && handleAnswer(question.id, alt.label)}
+                                            onContextMenu={(e) => handleRightClickAlt(e, alt.label)}
                                         >
-                                            <div className="qb-alt-letter">{alt.label}</div>
+                                            <div className="qb-alt-letter" style={{ textDecoration: struckLabels.includes(alt.label) ? 'line-through' : 'none' }}>{alt.label}</div>
                                             <div className="flex flex-col gap-2 flex-grow overflow-hidden">
                                                 {alt.content && (
                                                     <div

@@ -62,6 +62,7 @@ export default function QuestionCard({
 
     const [selectedAnswer, setSelectedAnswer] = useState<string | null>(initialUserAnswer || null);
     const [discursiveAnswers, setDiscursiveAnswers] = useState<Record<string, string>>({});
+    const [struckLabels, setStruckLabels] = useState<string[]>([]);
 
     const [answered, setAnswered] = useState(isResultMode);
     const [isCorrect, setIsCorrect] = useState<boolean | null>(isResultMode ? (initialUserAnswer ? q.was_correct ?? null : null) : (q.was_correct ?? null));
@@ -81,6 +82,7 @@ export default function QuestionCard({
     // Sync state if question prop changes
     useEffect(() => {
         setNotebookIds((q.notebook_ids || []).map(id => Number(id)));
+        setStruckLabels([]);
     }, [q.id, q.notebook_ids]);
 
     const [showReportModal, setShowReportModal] = useState(false);
@@ -184,7 +186,15 @@ export default function QuestionCard({
     };
 
     const selectAnswer = (letter: string) => {
-        if (!answered && !isDiscursive) setSelectedAnswer(letter);
+        if (!answered && !isDiscursive && !struckLabels.includes(letter)) setSelectedAnswer(letter);
+    };
+
+    const handleRightClickAlt = (e: React.MouseEvent, label: string) => {
+        e.preventDefault();
+        if (answered) return;
+        setStruckLabels(prev =>
+            prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label]
+        );
     };
 
     const handleDiscursiveChange = (label: string, text: string) => {
@@ -459,8 +469,13 @@ export default function QuestionCard({
             ) : (
                 <div className="qb-alternatives-list">
                     {q.alternatives.sort((a, b) => a.label.localeCompare(b.label)).map(alt => (
-                        <div key={alt.id} className={`qb-alt ${selectedAnswer === alt.label && !answered ? 'selected' : ''} ${answered && alt.label === (correctAnswer || (alt.is_correct ? alt.label : null)) ? 'correct-reveal' : ''} ${answered && selectedAnswer === alt.label && alt.label !== correctAnswer ? 'incorrect-reveal' : ''} ${answered ? 'disabled' : ''}`} onClick={() => selectAnswer(alt.label)}>
-                            <div className="qb-alt-letter">{alt.label}</div>
+                        <div
+                            key={alt.id}
+                            className={`qb-alt ${selectedAnswer === alt.label && !answered ? 'selected' : ''} ${answered && alt.label === (correctAnswer || (alt.is_correct ? alt.label : null)) ? 'correct-reveal' : ''} ${answered && selectedAnswer === alt.label && alt.label !== correctAnswer ? 'incorrect-reveal' : ''} ${answered ? 'disabled' : ''} ${!answered && struckLabels.includes(alt.label) ? 'opacity-40 grayscale' : ''}`}
+                            onClick={() => selectAnswer(alt.label)}
+                            onContextMenu={(e) => handleRightClickAlt(e, alt.label)}
+                        >
+                            <div className="qb-alt-letter" style={{ textDecoration: !answered && struckLabels.includes(alt.label) ? 'line-through' : 'none' }}>{alt.label}</div>
                             <div className="flex flex-col gap-2 flex-grow overflow-hidden">
                                 {alt.content && <div className="qb-alt-text prose prose-sm max-w-none text-slate-700 dark:text-slate-300" dangerouslySetInnerHTML={renderMd(alt.content)} />}
                                 {alt.image_path && <img src={alt.image_path.startsWith('http') ? alt.image_path : `${apiUrl}/storage/${alt.image_path}`} alt={alt.label} className="max-w-full h-auto rounded-lg" />}
