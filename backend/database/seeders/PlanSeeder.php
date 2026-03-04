@@ -111,5 +111,8 @@ class PlanSeeder extends Seeder
         foreach ($plans as $planData) {
             Plan::updateOrCreate(['slug' => $planData['slug']], $planData);
         }
+
+        \Illuminate\Support\Facades\Cache::forget('active_plans');
+        $this->command->info('Planos atualizados e cache "active_plans" limpo com sucesso.');
     }
 }
