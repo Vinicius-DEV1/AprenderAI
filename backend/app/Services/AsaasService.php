@@ -126,6 +126,43 @@ class AsaasService
     }
 
     /**
+     * Cria um cliente "Fasma" (Secundário) no Asaas.
+     * Usado estrategicamente quando o Asaas bloqueia uma nova assinatura 
+     * no ID principal por regra de "apenas 1 assinatura por cliente".
+     * 
+     * @param User $user Usuário do sistema
+     * @param string|null $cpf CPF ou CNPJ (obrigatório para PIX, opcional cartão)
+     * @return string ID do NOVO cliente no Asaas (cus_...)
+     * @throws \Exception Se houver erro na criação
+     */
+    public function createGhostCustomer(User $user, ?string $cpf = null): string
+    {
+        $payload = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'externalReference' => (string) $user->id,
+            'notificationDisabled' => true,
+        ];
+
+        if ($cpf) {
+            $payload['cpfCnpj'] = $cpf;
+        }
+
+        $response = Http::withHeader('access_token', $this->apiKey)
+            ->post("{$this->baseUrl}/customers", $payload);
+
+        if ($response->failed()) {
+            Log::error('[Asaas] Erro ao criar Ghost Customer', [
+                'user_id' => $user->id,
+                'response' => $response->body(),
+            ]);
+            throw new \Exception('Erro ao criar cliente secundário no gateway.');
+        }
+
+        return $response->json()['id'];
+    }
+
+    /**
      * Cria uma nova assinatura no Asaas.
      *
      * @param User $user Usuário assinante
@@ -133,12 +170,14 @@ class AsaasService
      * @param string $paymentMethod Método ('credit_card' ou 'pix')
      * @param array $cardData Dados do cartão (opcional) — NUNCA logados
      * @param array|null $discount Dados do desconto (opcional)
+     * @param string|null $forceCustomerId ID forçado do cliente (Ghost Customer injection)
      * @return array Dados da assinatura criada
      * @throws \Exception Se houver erro no processamento
      */
-    public function createSubscription(User $user, $plan, string $paymentMethod, array $cardData = [], ?array $discount = null): array
+    public function createSubscription(User $user, $plan, string $paymentMethod, array $cardData = [], ?array $discount = null, ?string $forceCustomerId = null): array
     {
-        $customerId = $this->getOrCreateCustomer($user, $cardData['cpf'] ?? null);
+        // Se um Ghost Customer foi injetado (fallback flow), usamos ele em vez do ID padrão salvo no BD
+        $customerId = $forceCustomerId ?? $this->getOrCreateCustomer($user, $cardData['cpf'] ?? null);
 
         $data = [
             'customer' => $customerId,

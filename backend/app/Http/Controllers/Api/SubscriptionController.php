@@ -119,13 +119,46 @@ class SubscriptionController extends Controller
                 ]);
             }
 
-            $asaasSubscription = $this->asaasService->createSubscription(
-                $user,
-                $plan,
-                $request->payment_method,
-                $cardData,
-                $discount
-            );
+            try {
+                // Tentativa normal de criar assinatura
+                $asaasSubscription = $this->asaasService->createSubscription(
+                    $user,
+                    $plan,
+                    $request->payment_method,
+                    $cardData,
+                    $discount
+                );
+            } catch (\Exception $asaasEx) {
+                // Estratégia de Fallback (Ghost Customer) se o Asaas barrar por "Assinatura Única"
+                $errorMsg = strtolower($asaasEx->getMessage());
+                $isDuplicateError = str_contains($errorMsg, 'assinatura') || str_contains($errorMsg, 'já possui') || str_contains($errorMsg, 'uma transação');
+
+                if ($isDuplicateError) {
+                    Log::warning('[Asaas] Bloqueado por limite de assinaturas. Executando estratégia Ghost Customer.', [
+                        'user_id' => $user->id,
+                        'error' => $errorMsg
+                    ]);
+
+                    // 1. Criamos um cliente secundário, desvinculado das amarras do cliente primário
+                    $ghostCustomerId = $this->asaasService->createGhostCustomer($user, $cardData['cpf'] ?? null);
+
+                    // 2. Tentamos assinar obrigando o uso desse cliente novo
+                    $asaasSubscription = $this->asaasService->createSubscription(
+                        $user,
+                        $plan,
+                        $request->payment_method,
+                        $cardData,
+                        $discount,
+                        $ghostCustomerId
+                    );
+
+                    // Se passar daqui, o Webhook fará a limpeza da assinatura antiga do ID velho automaticamente depois
+                    Log::info('[Asaas] Estratégia Ghost Customer bem sucedida.', ['new_customer_id' => $ghostCustomerId]);
+                } else {
+                    // Erro normal (ex: Saldo insuficiente, Cartão recusado)
+                    throw $asaasEx;
+                }
+            }
 
             $subscription = Subscription::create([
                 'user_id' => $user->id,
