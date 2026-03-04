@@ -186,7 +186,7 @@ class SimulationCreationService
                     $extra = Question::published()->whereHas('subjects', function ($q) use ($subjectNorm) {
                         $q->where('name', $subjectNorm);
                     })
-                        ->whereNotIn('id', array_merge($finalQuestions->pluck('id')->toArray(), $subjectQuestions->pluck('id')->toArray()))
+                        ->whereNotIn('id', array_merge($finalQuestions->pluck('id')->toArray(), $subjectQuestions->pluck('id')->toArray(), $lastSeenIds))
                         ->inRandomOrder()
                         ->limit($missing)
                         ->get();
@@ -243,14 +243,14 @@ class SimulationCreationService
 
             $subjectQuestions = $realQuestions->merge($aiQuestions);
 
-            // 3. Fallback: Repetition (Ignore ignoredIds)
+            // 3. Fallback: Repetition (Strict: DO NOT ignore ignoredIds)
             $missing = $subjectTotal - $subjectQuestions->count();
             if ($missing > 0) {
                 $extraQuestions = Question::published()->whereHas('subjects', function ($q) use ($subjectNorm) {
                     $q->where('name', $subjectNorm);
                 })
                     ->where('type', 'enem')
-                    ->whereNotIn('id', array_merge($alreadyPickedIds, $subjectQuestions->pluck('id')->toArray()))
+                    ->whereNotIn('id', array_merge($alreadyPickedIds, $subjectQuestions->pluck('id')->toArray(), $ignoredIds))
                     ->inRandomOrder()
                     ->limit($missing)
                     ->get();
