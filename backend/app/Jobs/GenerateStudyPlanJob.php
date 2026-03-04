@@ -32,19 +32,37 @@ class GenerateStudyPlanJob implements ShouldQueue
 
         try {
             $plan->update([
+                'status' => 'processing',
                 'started_at' => now(),
             ]);
 
             $generator->generateContent($plan);
 
         } catch (\Throwable $e) {
-            Log::error("Failed to generate study plan {$this->studyPlanId}: " . $e->getMessage());
-
-            $plan->update([
-                'status' => 'failed',
-                'error_message' => 'Erro interno ao gerar plano. Tente novamente.',
-                'finished_at' => now(),
-            ]);
+            $this->markAsFailed($plan, $e->getMessage());
+            throw $e; // Re-throw to allow Laravel to handle retry/failure logic
         }
+    }
+
+    /**
+     * Handle a job failure.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        $plan = StudyPlan::find($this->studyPlanId);
+        if ($plan) {
+            $this->markAsFailed($plan, "Falha crítica na fila: " . $exception->getMessage());
+        }
+    }
+
+    protected function markAsFailed(StudyPlan $plan, string $message): void
+    {
+        Log::error("Failed to generate study plan {$plan->id}: " . $message);
+
+        $plan->update([
+            'status' => 'failed',
+            'error_message' => 'Ocorreu um erro no processamento do seu plano. Por favor, tente novamente.',
+            'finished_at' => now(),
+        ]);
     }
 }

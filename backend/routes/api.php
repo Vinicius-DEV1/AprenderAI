@@ -167,6 +167,7 @@ Route::prefix('v1')->group(function () {
 
             // Administrative CRUDs
             Route::get('questions/support-data', [AdminQuestionController::class, 'supportData']);
+            Route::get('questions/{question}/delete-impact', [AdminQuestionController::class, 'deleteImpact']);
             Route::apiResource('questions', AdminQuestionController::class);
             Route::post('questions/{question}/evaluate-difficulty', [AdminQuestionController::class, 'evaluateDifficulty']);
             Route::post('questions/{question}/generate-explanation', [AdminQuestionController::class, 'generateExplanation']);
