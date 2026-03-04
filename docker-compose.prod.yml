@@ -82,6 +82,32 @@ services:
     networks:
       - production-network
 
+  # AI Dedicated Queue Worker
+  ai-worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.prod
+    image: aprender-ai-app
+    restart: always
+    working_dir: /var/www
+    volumes:
+      - ./backend/storage/app/public:/var/www/storage/app/public
+      - /proc:/host_proc:ro
+    env_file: ./backend/.env
+    # Fila exclusiva para triagem em lote do Xavier (evita travar o sistema principal)
+    command: php artisan queue:work --queue=ai-batches --sleep=3 --tries=3 --max-time=3600
+    deploy:
+      replicas: 2
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - production-network
+
   # PHP Scheduler
   scheduler:
     build:
