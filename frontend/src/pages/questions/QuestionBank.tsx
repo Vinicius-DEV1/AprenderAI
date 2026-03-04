@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAuthStore } from '../../stores/authStore';
 import { useConfigStore } from '../../stores/configStore';
@@ -20,6 +21,8 @@ interface FilterOptions {
     role: string;
     status: string;
     include_discursive: boolean;
+    notebook_id?: string;
+    favorites_only?: boolean;
 }
 
 // ── Typewriter placeholders (mirrored from Blade original) ──
@@ -80,6 +83,10 @@ const STATIC_PREFIX = 'Comece agora busque: ex: ';
 const ENABLE_DISCURSIVAS_FILTER = false;
 
 export default function QuestionBank() {
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const initialNotebookId = queryParams.get('notebook_id') || '';
+
     const { user } = useAuthStore();
     const { aiName } = useConfigStore();
     const [page, setPage] = useState(1);
@@ -94,9 +101,11 @@ export default function QuestionBank() {
         organization: '',
         institution: '',
         role: '',
-        include_discursive: false
+        include_discursive: false,
+        notebook_id: initialNotebookId,
+        favorites_only: false
     });
-    const [moreFilters, setMoreFilters] = useState(false);
+    const [moreFilters, setMoreFilters] = useState(!!initialNotebookId);
     const [statsOpen, setStatsOpen] = useState(false);
 
     // --- Xavier AI Search State ---
@@ -153,6 +162,14 @@ export default function QuestionBank() {
         queryKey: ['filterOptions'],
         queryFn: async () => {
             const res = await api.get('/api/v1/questions/filter-options');
+            return res.data;
+        }
+    });
+
+    const { data: notebooksData } = useQuery({
+        queryKey: ['notebooks'],
+        queryFn: async () => {
+            const res = await api.get('/api/v1/notebooks');
             return res.data;
         }
     });
@@ -248,7 +265,8 @@ export default function QuestionBank() {
     const clearFilters = () => {
         setFilters({
             type: '', subject: '', topic: '', keyword: '', year: '',
-            difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false
+            difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false,
+            notebook_id: '', favorites_only: false
         });
         setMoreFilters(false);
         setPage(1);
@@ -259,7 +277,8 @@ export default function QuestionBank() {
         // evitando que filtros anteriores (ex: Ano 2024) persistam se não estiverem na sugestão.
         const baseFilters = {
             type: '', subject: '', topic: '', keyword: '', year: '',
-            difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false
+            difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false,
+            notebook_id: '', favorites_only: false
         };
         const finalFilters = { ...baseFilters, ...newFilters };
         setFilters(finalFilters as FilterOptions);
@@ -299,7 +318,8 @@ export default function QuestionBank() {
 
                 const baseFilters = {
                     type: '', subject: '', topic: '', keyword: '', year: '',
-                    difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false
+                    difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false,
+                    notebook_id: '', favorites_only: false
                 };
                 const finalFilters = { ...baseFilters, ...res.data.filters };
                 setFilters(finalFilters as FilterOptions);
@@ -346,7 +366,8 @@ export default function QuestionBank() {
                     // RADICAL REPLACEMENT: When AI responds, we replace all filters to avoid ghosts
                     const baseFilters = {
                         type: '', subject: '', topic: '', keyword: '', year: '',
-                        difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false
+                        difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false,
+                        notebook_id: '', favorites_only: false
                     };
                     const finalFilters = { ...baseFilters, ...res.data.filters };
                     setFilters(finalFilters as FilterOptions);
@@ -569,6 +590,29 @@ export default function QuestionBank() {
                                     <option value="unanswered">Não respondidas</option>
                                     <option value="answered">Respondidas</option>
                                 </select>
+                            </div>
+                            <div className="qb-filter-item">
+                                <label>Caderno</label>
+                                <select name="notebook_id" value={filters.notebook_id || ''} onChange={onFilterChange}>
+                                    <option value="">Todos</option>
+                                    {notebooksData?.map((nb: any) => (
+                                        <option key={nb.id} value={nb.id}>{nb.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="qb-filter-item flex items-center sm:mt-6 mt-2">
+                                <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
+                                    <input
+                                        type="checkbox"
+                                        name="favorites_only"
+                                        checked={filters.favorites_only}
+                                        onChange={(e) => {
+                                            setFilters(prev => ({ ...prev, favorites_only: e.target.checked }));
+                                            setPage(1);
+                                        }}
+                                    />
+                                    <span className="text-sm font-bold text-slate-600 dark:text-slate-300 select-none">Apenas Favoritas ⭐</span>
+                                </label>
                             </div>
                             {/* Concurso-specific filters (hidden when type === 'enem') */}
                             {showConcursoFilters && (
