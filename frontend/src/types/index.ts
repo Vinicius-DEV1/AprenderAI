@@ -27,3 +27,41 @@ export interface AuthState {
     isAuthenticated: boolean;
     isLoading: boolean;
 }
+
+export interface Alternative {
+    id: number;
+    label: string;
+    content: string;
+    image_path?: string;
+    is_correct?: boolean;
+}
+
+export interface QuestionImage {
+    id: number;
+    image_url: string;
+}
+
+export interface Question {
+    id: number;
+    year?: number;
+    organization?: string;
+    institution?: string;
+    role?: string;
+    source: string;
+    number?: string;
+    subjects: { id: number; name: string }[];
+    difficulty: 'easy' | 'medium' | 'hard';
+    statement_html: string;
+    statement: string;
+    tipo_questao?: 'Objetiva' | 'Discursiva' | 'Redação' | string;
+    type?: string;
+    discursive_answer?: any;
+    explanation?: string;
+    alternatives: Alternative[];
+    images?: QuestionImage[];
+    already_answered?: boolean;
+    was_correct?: boolean;
+    is_favorite?: boolean;
+    has_notes?: boolean;
+    notebook_ids?: number[];
+}
