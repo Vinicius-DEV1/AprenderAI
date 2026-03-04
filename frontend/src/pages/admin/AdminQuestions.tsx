@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
 import AdminBatchModal from './components/AdminBatchModal';
@@ -758,12 +758,25 @@ export default function AdminQuestions() {
             <AdminBatchModal
                 isOpen={isBatchModalOpen}
                 onClose={() => setIsBatchModalOpen(false)}
-                pendingCount={counts.pending_total}
-                onBatchStarted={(bid) => {
-                    console.log('Batch started:', bid);
+                pendingCount={counts.pending_total || 0}
+                onBatchStarted={(batchId) => {
+                    console.log(`Lote ${batchId} iniciado.`);
                     queryClient.invalidateQueries({ queryKey: ['admin-questions'] });
                 }}
             />
+
+            {!isBatchModalOpen && localStorage.getItem('ai_batch_id') && (
+                <div
+                    onClick={() => setIsBatchModalOpen(true)}
+                    className="fixed bottom-6 right-6 z-50 bg-indigo-600 text-white px-5 py-3 rounded-full shadow-2xl cursor-pointer hover:bg-indigo-700 hover:scale-105 transition-all flex items-center gap-3 animate-bounce border-2 border-indigo-400 group"
+                >
+                    <span className="text-xl">⏳</span>
+                    <span className="font-black text-sm tracking-wide">
+                        Restaurar Painel IA
+                    </span>
+                    <div className="absolute inset-0 rounded-full border-4 border-white opacity-20 -z-10 group-hover:animate-ping"></div>
+                </div>
+            )}
 
             <AdminDeleteQuestionModal
                 isOpen={deleteModal.isOpen}

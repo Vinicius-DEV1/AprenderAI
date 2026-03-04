@@ -252,6 +252,7 @@ Route::prefix('v1')->group(function () {
                 Route::post('/start', [AdminAIBatchTriageController::class, 'start']);
                 Route::get('/{batchId}/status', [AdminAIBatchTriageController::class, 'status']);
                 Route::post('/{batchId}/cancel', [AdminAIBatchTriageController::class, 'cancel']);
+                Route::post('/{batchId}/cancel-and-revert', [AdminAIBatchTriageController::class, 'cancelAndRevert']);
             });
 
             // AI Batch History & Rollback
