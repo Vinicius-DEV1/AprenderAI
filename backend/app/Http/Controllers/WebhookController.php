@@ -161,8 +161,26 @@ class WebhookController extends Controller
                             Log::info('[Webhook] Detectado UPGRADE de Plano Pago. Aplicando Soma Acumulativa!', ['user_id' => $user->id]);
                             $this->quotaService->processUpgradeSoma($subscription, $plan->default_limits ?? []);
                         } else {
-                            Log::info('[Webhook] Detectado DOWNGRADE ou mudança de mesmo valor. Criando ciclo limpo (Sem Reembolso conforme regra).', ['user_id' => $user->id]);
-                            $this->quotaService->createOrRenewCycle($subscription);
+                            Log::info('[Webhook] Detectado DOWNGRADE ou mudança de mesmo valor. Agendando novo ciclo para o final do atual.', ['user_id' => $user->id]);
+
+                            // Em downgrade, buscamos a data de validade atual real em vez de iniciar agora.
+                            // Isso preserva os "dias" que ele já tinha pago no plano anterior.
+                            $currentExpiry = $user->plan_expires_at && $user->plan_expires_at->isFuture()
+                                ? $user->plan_expires_at
+                                : now();
+
+                            // O novo ciclo vai do fim do atual até +1 Mês/Ano.
+                            // Mas na Subscription de banco mantemos as datas ancoradas no Asaas
+                            // O QuotaService é quem usa a SubscriptionCycle para adiar os limites.
+                            $this->quotaService->createPostponedCycle($subscription, $currentExpiry);
+
+                            // IMPORTANTE: Atualizamos o User->plan_expires_at para a NOVA data futura 
+                            // (Fim do antigo + 1 mês do novo)
+                            $newGlobalExpiry = $plan->interval === 'yearly'
+                                ? $currentExpiry->copy()->addYear()
+                                : $currentExpiry->copy()->addMonth();
+
+                            $user->update(['plan_expires_at' => $newGlobalExpiry]);
                         }
 
                         // 🛑 Cancela assinaturas anteriores ATIVAS no Asaas para este usuário
