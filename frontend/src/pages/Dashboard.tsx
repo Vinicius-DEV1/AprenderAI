@@ -9,8 +9,8 @@ import { getEssays } from '../api/essays';
 Chart.register(...registerables);
 
 export default function Dashboard() {
-    const { data, isLoading } = useDashboard();
     const { user } = useAuthStore();
+    const { data, isLoading } = useDashboard(user?.id);
     const progressChartRef = useRef<HTMLCanvasElement>(null);
     const subjectChartRef = useRef<HTMLCanvasElement>(null);
     const progressChartInstance = useRef<Chart | null>(null);
@@ -24,9 +24,10 @@ export default function Dashboard() {
 
     // Fetch essay chart data from the essays index endpoint
     const { data: essayData } = useQuery({
-        queryKey: ['essays-dashboard-charts'],
+        queryKey: ['essays-dashboard-charts', user?.id],
         queryFn: () => getEssays(1),
         staleTime: 60_000,
+        enabled: !!user?.id,
     });
     const essayCharts = essayData?.meta?.charts ?? {};
     const hasEnem: boolean = !!essayCharts.hasEnem;

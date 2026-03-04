@@ -104,6 +104,10 @@ class UserEngagementService
             'today_count' => $todayStats ? $todayStats->total_answered : 0,
             'streak_days' => $this->calculateStreak($userId),
             'daily_goal' => $user->daily_goal ?? 10,
+            'daily_quota' => [
+                'used' => $user->dailyQuestionUsed(),
+                'limit' => $user->dailyQuestionQuotaLimit()
+            ],
             'sparkline' => $sparkline
         ];
     }

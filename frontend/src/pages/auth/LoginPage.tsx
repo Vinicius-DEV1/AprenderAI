@@ -3,11 +3,13 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
 import { login as apiLogin, getUser } from '../../api/auth';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function LoginPage() {
     const navigate = useNavigate();
     const config = useConfigStore();
     const setUser = useAuthStore((state) => state.setUser);
+    const queryClient = useQueryClient();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -22,6 +24,7 @@ export default function LoginPage() {
 
         try {
             await apiLogin({ email, password, remember });
+            queryClient.clear();
 
             // Fetch user data after successful login
             const response = await getUser();
