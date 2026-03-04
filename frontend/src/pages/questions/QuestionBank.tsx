@@ -678,7 +678,7 @@ export default function QuestionBank() {
                                     ))}
                                 </select>
                             </div>
-                            <div className="qb-filter-item flex items-center sm:mt-6 mt-2">
+                            <div className="qb-filter-checkbox">
                                 <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
                                     <input
                                         type="checkbox"
