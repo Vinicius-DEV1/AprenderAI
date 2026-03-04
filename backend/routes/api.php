@@ -167,6 +167,10 @@ Route::prefix('v1')->group(function () {
 
             // Administrative CRUDs
             Route::get('questions/support-data', [AdminQuestionController::class, 'supportData']);
+            Route::get('questions/trashed', [AdminQuestionController::class, 'trashed']);
+            Route::post('questions/{id}/restore', [AdminQuestionController::class, 'restore']);
+            Route::delete('questions/{id}/force', [AdminQuestionController::class, 'forceDelete']);
+
             Route::get('questions/{question}/delete-impact', [AdminQuestionController::class, 'deleteImpact']);
             Route::apiResource('questions', AdminQuestionController::class);
             Route::post('questions/{question}/evaluate-difficulty', [AdminQuestionController::class, 'evaluateDifficulty']);
