@@ -2,11 +2,12 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 import api from '../../api/axios';
-import { useAuthStore } from '../../stores/authStore';
 import { useConfigStore } from '../../stores/configStore';
 import QuestionCard from './QuestionCard';
 import StatsSlideOver from './StatsSlideOver';
 import SearchableSelect from '../../components/SearchableSelect';
+import GoalSettingsModal from './components/GoalSettingsModal';
+import { motion, AnimatePresence } from 'framer-motion';
 import '../../styles/question-bank.css';
 
 interface FilterOptions {
@@ -87,7 +88,6 @@ export default function QuestionBank() {
     const queryParams = new URLSearchParams(location.search);
     const initialNotebookId = queryParams.get('notebook_id') || '';
 
-    const { user } = useAuthStore();
     const { aiName } = useConfigStore();
     const [page, setPage] = useState(1);
     const [filters, setFilters] = useState<FilterOptions>({
@@ -107,6 +107,19 @@ export default function QuestionBank() {
     });
     const [moreFilters, setMoreFilters] = useState(!!initialNotebookId);
     const [statsOpen, setStatsOpen] = useState(false);
+    const [goalModalOpen, setGoalModalOpen] = useState(false);
+
+    // --- Engagement State ---
+    const { data: engagementData, refetch: refetchEngagement } = useQuery({
+        queryKey: ['engagement'],
+        queryFn: async () => {
+            const res = await api.get('/api/v1/questions/engagement');
+            return res.data;
+        }
+    });
+
+    // Provide refetch to context or pass it down? 
+    // Actually, TanStack Query handles this if we use queryClient.invalidateQueries({ queryKey: ['engagement'] }) inside QuestionCard.
 
     // --- Xavier AI Search State ---
     const [prompt, setPrompt] = useState('');
@@ -417,28 +430,93 @@ export default function QuestionBank() {
         <div className="py-2">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-                {/* Header */}
-                <div className="qb-header">
+                {/* Original Header Restored + New Metrics */}
+                <div className="qb-header flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                     <div className="qb-header-left">
-                        <h1>📋 Banco de Questões</h1>
+                        <h1>📘 Banco de Questões</h1>
                         <p>Resolva questões, veja explicações e tire dúvidas com {aiName}</p>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
+                    <div className="flex flex-col items-start md:items-end gap-3">
                         <button className="qb-btn-desempenho" onClick={() => setStatsOpen(true)}>
                             📊 Ver Meu Desempenho
                         </button>
-                        <div className="qb-header-stats">
+
+                        {/* Status bar */}
+                        <div className="qb-header-stats" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'flex-end' }}>
                             <div className="qb-stat">
-                                <div className="val">{(user as any)?.stats?.questions_answered || 0}</div>
+                                <div className="val">{engagementData?.total_answered || 0}</div>
                                 <div className="lbl">Respondidas</div>
                             </div>
                             <div className="qb-stat">
-                                <div className="val">{(user as any)?.stats?.accuracy_rate ? `${(user as any).stats.accuracy_rate}%` : '--%'}</div>
+                                <div className="val">{engagementData?.accuracy_rate || 0}%</div>
                                 <div className="lbl">Acerto</div>
                             </div>
+                            <div className="qb-stat">
+                                <div className="val">{engagementData?.today_count || 0}</div>
+                                <div className="lbl">Hoje</div>
+                            </div>
+                            <div className="qb-stat">
+                                <div className="val" style={{ color: '#fb923c' }}>🔥 {engagementData?.streak_days || 0}</div>
+                                <div className="lbl">Streak</div>
+                            </div>
+                            <div className="qb-stat" style={{ minWidth: '100px', cursor: 'pointer' }} onClick={() => setGoalModalOpen(true)} title="Definir Meta">
+                                <div className="val" style={{ color: (engagementData?.today_count || 0) >= (engagementData?.daily_goal || 10) ? '#4ade80' : 'inherit' }}>
+                                    {engagementData?.today_count || 0} / {engagementData?.daily_goal || 10}
+                                </div>
+                                <div className="lbl" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>Meta Diária ⚙️</div>
+                            </div>
                         </div>
+
+                        {/* Discrete Sparkline within the header limits */}
+                        {engagementData?.sparkline && engagementData.sparkline.length > 0 && (
+                            <div style={{ width: '100%', maxWidth: '200px', height: '24px', display: 'flex', alignItems: 'flex-end', gap: '2px', opacity: 0.8 }} title="Produtividade dos últimos 14 dias">
+                                {engagementData.sparkline.map((day: any, idx: number) => {
+                                    const maxVal = Math.max(...engagementData.sparkline.map((d: any) => d.value), 1);
+                                    const height = (day.value / maxVal) * 100;
+                                    return (
+                                        <div key={idx} style={{ flex: 1, height: '100%', position: 'relative' }} className="group">
+                                            <div
+                                                style={{
+                                                    position: 'absolute', bottom: 0, width: '100%',
+                                                    height: `${Math.max(10, height)}%`,
+                                                    backgroundColor: day.value >= (engagementData?.daily_goal || 10) ? '#4ade80' : 'rgba(255,255,255,0.4)',
+                                                    borderRadius: '2px 2px 0 0',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                className="group-hover:bg-white"
+                                            />
+                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-900 text-white text-[9px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-20">
+                                                {day.value}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <AnimatePresence>
+                            {(engagementData?.today_count || 0) >= (engagementData?.daily_goal || 10) && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="text-[10px] font-bold text-green-400 flex items-center gap-1"
+                                >
+                                    🎉 Meta batida hoje!
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </div>
+
+                <GoalSettingsModal
+                    isOpen={goalModalOpen}
+                    onClose={() => setGoalModalOpen(false)}
+                    currentGoal={engagementData?.daily_goal || 10}
+                    onSave={async (newGoal) => {
+                        await api.post('/api/v1/questions/goal', { daily_goal: newGoal });
+                        refetchEngagement();
+                    }}
+                />
 
                 {/* Xavier AI Search */}
                 <div className="xavier-header-badge">

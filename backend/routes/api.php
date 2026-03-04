@@ -139,6 +139,10 @@ Route::prefix('v1')->group(function () {
             // Xavier Chat
             Route::get('/{question}/chat', [QuestionController::class, 'chat'])->name('questions.chat.index');
             Route::post('/{question}/chat', [QuestionController::class, 'sendChat'])->name('questions.chat.store');
+
+            // Engagement & Goals
+            Route::get('/engagement', [QuestionController::class, 'engagement']);
+            Route::post('/goal', [QuestionController::class, 'updateGoal']);
         });
 
         // Profile

@@ -1,6 +1,7 @@
-import { toast } from 'sonner';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
 import api from '../../api/axios';
@@ -41,6 +42,7 @@ interface Question {
 export default function QuestionCard({ question: q }: { question: Question }) {
     const { aiName } = useConfigStore();
     const { user } = useAuthStore();
+    const queryClient = useQueryClient();
 
     const isDiscursive = q.tipo_questao === 'Discursiva';
 
@@ -204,6 +206,9 @@ export default function QuestionCard({ question: q }: { question: Question }) {
             setCorrectAnswer(data.correct_answer ?? null);
             setExplanation(data.explanation || '');
             setActiveTab('gabarito');
+
+            // Refetch engagement stats
+            queryClient.invalidateQueries({ queryKey: ['engagement'] });
         } catch (e) {
             toast.error('Erro ao enviar resposta.');
         } finally {
