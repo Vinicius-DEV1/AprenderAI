@@ -781,8 +781,8 @@ EOT;
 
                 // Explicit strict boolean conversion
                 $isOffTopic = isset($responseContent['off_topic']) && (
-                    $responseContent['off_topic'] === true || 
-                    $responseContent['off_topic'] === 'true' || 
+                    $responseContent['off_topic'] === true ||
+                    $responseContent['off_topic'] === 'true' ||
                     $responseContent['off_topic'] === 1
                 );
 
@@ -869,11 +869,11 @@ EOT;
                 $apiKey->incrementUsage();
 
                 $generated = trim((string) ($result['content']['text'] ?? $result['content'] ?? ''));
-                
+
                 // Validate if it's not JSON (sometimes AI returns JSON even when told not to)
                 if (str_starts_with($generated, '{')) {
-                     $sanitized = json_decode($generated, true);
-                     $generated = $sanitized['text'] ?? $sanitized['improved_version'] ?? $generated;
+                    $sanitized = json_decode($generated, true);
+                    $generated = $sanitized['text'] ?? $sanitized['improved_version'] ?? $generated;
                 }
 
                 if (!empty($generated) && strlen($generated) > 200) {
@@ -1155,7 +1155,10 @@ EOT;
             }
 
             $result = $this->callAI($provider, $apiKey, $prompt, $userId);
-            return ['data' => $result['content']];
+            return [
+                'data' => $result['content'],
+                'usage' => $result['usage'] ?? ['input_tokens' => 0, 'output_tokens' => 0]
+            ];
         }, $provider);
     }
 
@@ -1175,7 +1178,7 @@ EOT;
         }
 
         // Fetch User and additional metrics
-        $user = $userId ? User::find($userId) : null;
+        $user = $userId ? \App\Models\User::find($userId) : null;
         if ($user) {
             $totalAttempts = \App\Models\UserTopicStat::where('user_id', $user->id)->sum('attempts');
             $totalCorrect = \App\Models\UserTopicStat::where('user_id', $user->id)->sum('correct');
