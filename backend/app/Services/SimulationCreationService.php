@@ -56,6 +56,8 @@ class SimulationCreationService
         $distribution = $data['subject_distribution'] ?? [];
         $type = $data['type'];
 
+        \Illuminate\Support\Facades\Log::info("DEBUG: Starting processSimulationQuestions [v4 - relaxed validation]. Simulation: {$simulation->id}");
+
         $questions = $this->selectQuestions($simulation->user, $type, $total, $distribution, $data);
 
         // Relaxed validation: Instead of throwing exception and breaking the flow, 
