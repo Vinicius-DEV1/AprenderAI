@@ -150,7 +150,7 @@ class UserController extends Controller
                 \App\Models\UserLog::create([
                     'user_id' => $user->id,
                     'action' => 'admin_force_refund_cdc',
-                    'details' => json_encode(['admin_id' => $request->user()->id, 'message' => 'Admin forçou o cancelamento imediato / estorno cortando limites ciclos acumulados.'])
+                    'description' => json_encode(['admin_id' => $request->user()->id, 'message' => 'Admin forçou o cancelamento imediato / estorno cortando limites ciclos acumulados.'])
                 ]);
             });
 

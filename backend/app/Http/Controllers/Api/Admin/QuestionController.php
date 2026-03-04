@@ -308,13 +308,11 @@ class QuestionController extends Controller
             }
 
             // Log the action
-            \DB::table('question_event_logs')->insert([
-                'question_id' => $question->id,
-                'event_type' => 'admin_deleted',
-                'payload' => json_encode($impactData),
-                'created_by' => $request->user()->id,
-                'created_at' => now(),
-                'updated_at' => now(),
+            \App\Models\UserLog::create([
+                'user_id' => $request->user()->id,
+                'action' => 'admin_deleted_question',
+                'description' => json_encode($impactData),
+                'ip_address' => $request->ip(),
             ]);
 
             $question->delete();
