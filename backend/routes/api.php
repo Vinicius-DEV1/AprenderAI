@@ -223,6 +223,7 @@ Route::prefix('v1')->group(function () {
             Route::prefix('monitor')->group(function () {
                 Route::get('/realtime', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'realtime']);
                 Route::get('/history', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'history']);
+                Route::get('/queues', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'queues']);
                 Route::get('/logs', [\App\Http\Controllers\Api\Admin\SystemLogController::class, 'index']);
             });
 
