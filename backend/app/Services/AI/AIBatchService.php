@@ -27,7 +27,7 @@ class AIBatchService
             $result = $this->aiService->generateJson($prompt, $model);
             $data = $result['data'] ?? [];
             $usage = $result['usage'] ?? ['input_tokens' => 0, 'output_tokens' => 0];
-            $appliedData = $this->applyResults($questions, $data, $type, $reprocess);
+            $appliedData = $this->applyResults($questions, $data, $type, $reprocess, $batchId);
             $appliedData['usage'] = $usage;
 
             \Illuminate\Support\Facades\DB::flushQueryLog();
@@ -108,13 +108,41 @@ class AIBatchService
         return $prompt;
     }
 
-    protected function applyResults(Collection $questions, array $results, string $type, bool $reprocess): array
+    protected function applyResults(Collection $questions, array $results, string $type, bool $reprocess, ?string $batchId = null): array
     {
         $applied = 0;
+        $errors = [];
+
         foreach ($questions as $question) {
+            $snapshotBefore = [
+                'difficulty' => $question->difficulty,
+                'difficulty_reasoning' => $question->difficulty_reasoning,
+                'explanation' => $question->explanation,
+                'subjects' => $question->subjects->pluck('id')->toArray(),
+                'topics' => $question->topics->pluck('id')->toArray(),
+            ];
+
+            $batchItem = null;
+            if ($batchId) {
+                $batchItem = \App\Models\AiBatchItem::create([
+                    'batch_id' => $batchId,
+                    'question_id' => $question->id,
+                    'status' => 'pending',
+                    'snapshot_before' => $snapshotBefore,
+                ]);
+            }
+
             $data = collect($results)->firstWhere('id', $question->id);
-            if (!is_array($data))
+            if (!is_array($data)) {
+                if ($batchItem) {
+                    $batchItem->update([
+                        'status' => 'failed',
+                        'error_message' => 'Nenhum dado retornado pela IA para esta questão.',
+                    ]);
+                }
+                $errors[] = "Questão #{$question->id}: Falha ao processar dados.";
                 continue;
+            }
 
             // Mapeamento defensivo para chaves variadas que a IA possa retornar
             $difficulty = $data['difficulty'] ?? $question->difficulty;
@@ -143,6 +171,20 @@ class AIBatchService
                     'review_status' => 'approved'
                 ]);
                 $applied++;
+
+                if ($batchItem) {
+                    $batchItem->update([
+                        'status' => 'processed',
+                        'snapshot_after' => [
+                            'difficulty' => $question->difficulty,
+                            'difficulty_reasoning' => $question->difficulty_reasoning,
+                            'explanation' => $question->explanation,
+                            'subjects' => $question->subjects->pluck('id')->toArray(),
+                            'topics' => $question->topics->pluck('id')->toArray(),
+                        ],
+                    ]);
+                }
+
                 continue; // Pula classificação de Subjects/Topics abaixo
             }
 
@@ -200,7 +242,22 @@ class AIBatchService
             }
 
             $applied++;
+
+            if ($batchItem) {
+                // Reload relationships to ensure snapshot_after gets fresh data
+                $question->load('subjects', 'topics');
+                $batchItem->update([
+                    'status' => 'processed',
+                    'snapshot_after' => [
+                        'difficulty' => $question->difficulty,
+                        'difficulty_reasoning' => $question->difficulty_reasoning,
+                        'explanation' => $question->explanation,
+                        'subjects' => $question->subjects->pluck('id')->toArray(),
+                        'topics' => $question->topics->pluck('id')->toArray(),
+                    ],
+                ]);
+            }
         }
-        return ['total' => $questions->count(), 'applied' => $applied, 'errors' => []];
+        return ['total' => $questions->count(), 'applied' => $applied, 'errors' => $errors];
     }
 }
