@@ -220,6 +220,8 @@ class Question extends Model
             ->whereRaw("TRIM(difficulty_reasoning) != ''")
             ->whereNotNull('explanation')
             ->whereRaw("TRIM(explanation) != ''")
+            ->whereNotNull('difficulty')
+            ->whereRaw("TRIM(difficulty) != ''")
             ->whereHas('subjects')
             ->whereHas('topics');
     }
