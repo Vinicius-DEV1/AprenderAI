@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
 import AdminBatchModal from './components/AdminBatchModal';
+import AdminDeleteQuestionModal from './components/AdminDeleteQuestionModal';
 import { AdminPageSkeleton } from './components/AdminSkeletons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -29,6 +30,7 @@ export default function AdminQuestions() {
     const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
     const [removingIds, setRemovingIds] = useState<number[]>([]);
     const [activeMenu, setActiveMenu] = useState<number | null>(null);
+    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean, id: number | null }>({ isOpen: false, id: null });
 
     // NEW STATES FOR REPORTS TABS
     const [activeTab, setActiveTab] = useState<'all' | 'reported'>('all');
@@ -320,6 +322,18 @@ export default function AdminQuestions() {
                                                                             pending={adminActions.isPending && adminActions.variables?.id === q.id && adminActions.variables?.action === 'complete'}
                                                                             variant="blade-green"
                                                                         />
+
+                                                                        <div className="h-0.5 bg-gray-50 my-1"></div>
+
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setDeleteModal({ isOpen: true, id: q.id });
+                                                                                setActiveMenu(null);
+                                                                            }}
+                                                                            className="px-3 py-2 text-[10px] rounded-xl font-black transition flex items-center gap-2 border border-transparent uppercase tracking-wider bg-red-50 text-red-600 hover:bg-red-100"
+                                                                        >
+                                                                            🗑️ EXCLUIR QUESTÃO
+                                                                        </button>
                                                                     </div>
                                                                 </div>
                                                             </>
@@ -471,7 +485,8 @@ export default function AdminQuestions() {
                                                     <button className="px-2 py-1 bg-indigo-100 text-indigo-700 text-[9px] rounded-lg hover:bg-indigo-200 font-black uppercase tracking-tighter" title="Ver">👁️ Ver</button>
                                                     <Link to={`/admin/questions/${q.id}/edit`} className="px-2 py-1 bg-blue-100 text-blue-700 text-[9px] rounded-lg hover:bg-blue-200 font-black uppercase tracking-tighter">✏️ Editar</Link>
                                                     <button onClick={() => adminActions.mutate({ id: q.id, action: 'evaluate-difficulty' })} className="px-2 py-1 bg-purple-100 text-purple-700 text-[9px] rounded-lg hover:bg-purple-200 font-black uppercase tracking-tighter" title="Reavaliar IA">⚡ IA</button>
-                                                    <button onClick={() => adminActions.mutate({ id: q.id, action: 'retry-evaluation' })} className="px-2 py-1 bg-red-100 text-red-700 text-[9px] rounded-lg hover:bg-red-200 font-black uppercase tracking-tighter" title="Reprocessar">🔄 Reset</button>
+                                                    <button onClick={() => adminActions.mutate({ id: q.id, action: 'retry-evaluation' })} className="px-2 py-1 bg-gray-100 text-gray-700 text-[9px] rounded-lg hover:bg-gray-200 font-black uppercase tracking-tighter" title="Reprocessar">🔄 Reset</button>
+                                                    <button onClick={() => setDeleteModal({ isOpen: true, id: q.id })} className="px-2 py-1 bg-red-100 text-red-700 text-[9px] rounded-lg hover:bg-red-200 font-black uppercase tracking-tighter" title="Excluir">🗑️ Excluir</button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -610,6 +625,15 @@ export default function AdminQuestions() {
                 pendingCount={counts.pending_total}
                 onBatchStarted={(bid) => {
                     console.log('Batch started:', bid);
+                    queryClient.invalidateQueries({ queryKey: ['admin-questions'] });
+                }}
+            />
+
+            <AdminDeleteQuestionModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, id: null })}
+                questionId={deleteModal.id}
+                onDeleted={() => {
                     queryClient.invalidateQueries({ queryKey: ['admin-questions'] });
                 }}
             />

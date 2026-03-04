@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 
@@ -11,6 +11,37 @@ export default function StudyPlanWizard() {
     const [examName, setExamName] = useState('');
     const [examDate, setExamDate] = useState('');
 
+    const pollerRef = useRef<NodeJS.Timeout | null>(null);
+    const isMounted = useRef(true);
+
+    const STORAGE_KEY = 'studyPlanGenerationInProgress';
+    const PLAN_ID_KEY = 'studyPlanGeneratingId';
+
+    useEffect(() => {
+        // Resume polling if we left the page while generating
+        if (localStorage.getItem(STORAGE_KEY) === 'true') {
+            setLoading(true);
+            const savedId = localStorage.getItem(PLAN_ID_KEY);
+            if (savedId) {
+                pollStatus(parseInt(savedId, 10));
+            } else {
+                // If API supports polling without ID to get the latest plan
+                pollStatus();
+            }
+        }
+
+        return () => {
+            isMounted.current = false;
+            if (pollerRef.current) clearInterval(pollerRef.current);
+        };
+    }, []);
+
+    const stopPollingAndClean = () => {
+        if (pollerRef.current) clearInterval(pollerRef.current);
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(PLAN_ID_KEY);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -22,29 +53,54 @@ export default function StudyPlanWizard() {
                 exam_type: examType,
                 exam_name: examName,
                 exam_date: examDate || null
+            }, {
+                validateStatus: (status) => status < 500 // Impede o toast lateral vermelho interceptando o 403 silenciosamente
             });
+
+            if (!isMounted.current) return;
 
             if (response.status === 202) {
                 const planId = response.data.study_plan_id;
+                localStorage.setItem(STORAGE_KEY, 'true');
+                if (planId) localStorage.setItem(PLAN_ID_KEY, planId.toString());
                 pollStatus(planId);
+            } else if (response.status === 403) {
+                setLoading(false);
+                setError(response.data.message || 'Dados insuficientes para gerar o plano.');
             } else {
+                setLoading(false);
                 navigate('/study-plan');
             }
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Erro ao iniciar geração.');
+            if (!isMounted.current) return;
+            console.error('Study plan generation error:', err);
+            setError(err.response?.data?.message || err.response?.data?.error || 'Erro ao iniciar geração. Tente novamente.');
             setLoading(false);
         }
     };
 
-    const pollStatus = (id: number) => {
-        const poller = setInterval(async () => {
+    const pollStatus = (id?: number) => {
+        pollerRef.current = setInterval(async () => {
             try {
-                const res = await api.get('/api/v1/study-plan/status', { params: { id } });
-                if (res.data.status === 'ready') {
-                    clearInterval(poller);
+                const params = id ? { id } : {};
+                const res = await api.get('/api/v1/study-plan/status', {
+                    params,
+                    validateStatus: (status) => status < 500
+                });
+
+                if (!isMounted.current) {
+                    if (pollerRef.current) clearInterval(pollerRef.current);
+                    return;
+                }
+
+                if (res.status === 404) {
+                    stopPollingAndClean();
+                    setLoading(false);
+                } else if (res.data.status === 'ready') {
+                    stopPollingAndClean();
                     navigate('/study-plan');
                 } else if (res.data.status === 'failed') {
-                    clearInterval(poller);
+                    stopPollingAndClean();
                     setLoading(false);
                     setError(res.data.message || 'Falha na geração do plano.');
                 }

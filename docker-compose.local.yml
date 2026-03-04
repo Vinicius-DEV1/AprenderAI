@@ -105,7 +105,7 @@ services:
       - SESSION_DRIVER=redis
       - CACHE_STORE=redis
       - QUEUE_CONNECTION=database
-    command: php artisan queue:work --queue=default,import --sleep=3 --tries=3 --timeout=90
+    command: php artisan queue:work --queue=default,import --sleep=3 --tries=3 --timeout=180
     depends_on:
       app:
         condition: service_started

@@ -9,8 +9,8 @@ import { getEssays } from '../api/essays';
 Chart.register(...registerables);
 
 export default function Dashboard() {
+    const { data, isLoading } = useDashboard();
     const { user } = useAuthStore();
-    const { data, isLoading } = useDashboard(user?.id);
     const progressChartRef = useRef<HTMLCanvasElement>(null);
     const subjectChartRef = useRef<HTMLCanvasElement>(null);
     const progressChartInstance = useRef<Chart | null>(null);
@@ -24,10 +24,9 @@ export default function Dashboard() {
 
     // Fetch essay chart data from the essays index endpoint
     const { data: essayData } = useQuery({
-        queryKey: ['essays-dashboard-charts', user?.id],
+        queryKey: ['essays-dashboard-charts'],
         queryFn: () => getEssays(1),
         staleTime: 60_000,
-        enabled: !!user?.id,
     });
     const essayCharts = essayData?.meta?.charts ?? {};
     const hasEnem: boolean = !!essayCharts.hasEnem;
@@ -302,13 +301,26 @@ export default function Dashboard() {
     }
 
     // ── SAFE DEFAULTS: Even if backend sends partial data, the UI never crashes ──
+    // Extract Mathematics average directly from subjectPerformance as requested
+    const subjectPerf = data?.subjectPerformance || [];
+    const mathEntry = subjectPerf.find((s: any) => s.name?.toLowerCase().includes('matemática') || s.name?.toLowerCase().includes('matematica'));
+
+    let mathDisplay = '—';
+    if (mathEntry) {
+        if (typeof mathEntry.percentage !== 'undefined') {
+            mathDisplay = Number(mathEntry.percentage).toLocaleString('pt-BR', { minimumFractionDigits: 1 }) + '%';
+        } else if (typeof mathEntry.correct !== 'undefined' && typeof mathEntry.total !== 'undefined' && Number(mathEntry.total) > 0) {
+            mathDisplay = Number((mathEntry.correct / mathEntry.total) * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1 }) + '%';
+        }
+    }
+
     const safeStats = {
         total_simulations: 0,
         total_essays: 0,
         total_questions_answered: 0,
-        average_math_score: 0,
         average_portuguese_score: 0,
         ...(data?.stats || {}),
+        mathDisplay // Inject the computed value specifically
     };
     const safeSimulationLimit = {
         can_create: true,
@@ -771,7 +783,7 @@ export default function Dashboard() {
                     </div>
                     <div className="stat">
                         <div className="k">Média em Matemática</div>
-                        <div className="v">{Number(safeStats.average_math_score).toLocaleString('pt-BR', { minimumFractionDigits: 1 })}%</div>
+                        <div className="v">{safeStats.mathDisplay}</div>
                         <div className="l">de acertos</div>
                     </div>
                     <div className="stat">

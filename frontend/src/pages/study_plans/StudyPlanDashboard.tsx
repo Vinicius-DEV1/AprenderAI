@@ -1,20 +1,29 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
+import { useDashboard } from '../../hooks/useDashboard';
 import StudyPlanEmpty from './StudyPlanEmpty';
 import StudyPlanWizard from './StudyPlanWizard';
 
 const getStudyPlanData = async () => {
-    const { data } = await api.get('/api/v1/study-plan', {
-        validateStatus: (status) => status < 500 // Treats 403 as success to avoid the global error toast
-    });
-    return data;
+    try {
+        const { data } = await api.get('/api/v1/study-plan', {
+            validateStatus: (status) => status < 500 // Treats 403 as success to avoid the global error toast
+        });
+        return data || { view_state: 'empty', code: 'EMPTY_RESPONSE' };
+    } catch (e) {
+        return { view_state: 'empty', code: 'FETCH_ERROR' };
+    }
 };
 
 export default function StudyPlanDashboard() {
     const queryClient = useQueryClient();
-    const { data, isLoading, isError } = useQuery({
+    const { data: dashboardData, isLoading: isDashLoading } = useDashboard();
+
+    const { data, isLoading } = useQuery({
         queryKey: ['studyPlanDashboard'],
-        queryFn: getStudyPlanData
+        queryFn: getStudyPlanData,
+        refetchOnWindowFocus: false,
+        retry: false,
     });
 
     const updateMutation = useMutation({
@@ -24,12 +33,18 @@ export default function StudyPlanDashboard() {
         }
     });
 
-    if (isLoading) return <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>;
+    const isAnyLoading = isLoading || isDashLoading;
 
-    // Guard defensivo: nunca quebrar a tela se a API retornar erro (403/422/5xx)
-    // isError = axios lançou exceção (status >= 400); !data = resposta vazia inesperada
-    if (isError || !data) return <StudyPlanEmpty />;
+    if (isAnyLoading) {
+        return <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>;
+    }
 
+    const answeredCount = dashboardData?.stats?.total_questions_answered ?? 0;
+    // Admin fail-open safety net included to correctly interpret "muitos dados"
+    const hasPrereq = answeredCount >= 50 || (dashboardData?.stats?.total_simulations ?? 0) > 0;
+    const isInsufficient = data?.code === 'INSUFFICIENT_DATA' || data?.view_state === 'empty';
+
+    // ── Paywall ───────────────────────────────────────────────────────────
     if (data?.code === 'PAYWALL' || data?.view_state === 'paywall') {
         return (
             <div className="py-20 text-center px-4">
@@ -50,11 +65,22 @@ export default function StudyPlanDashboard() {
         );
     }
 
-    if (data?.view_state === 'empty' || data?.code === 'INSUFFICIENT_DATA') return <StudyPlanEmpty />;
-    if (data?.view_state === 'wizard') return <StudyPlanWizard />;
+    // ── Deterministic Rendering Flow ─────────────────────────────────────
+    if (data?.view_state === 'dashboard') {
+        // Continue and render the main dashboard below
+    } else if (hasPrereq) {
+        return <StudyPlanWizard />;
+    } else if (isInsufficient) {
+        return <StudyPlanEmpty />;
+    } else if (data?.view_state === 'wizard') {
+        return <StudyPlanWizard />;
+    } else {
+        return <StudyPlanEmpty />;
+    }
 
-    // Main Dashboard — só chegamos aqui se view_state === 'dashboard' e data está garantida
-    if (data?.view_state !== 'dashboard') return <StudyPlanEmpty />;
+    // Main Dashboard — só chegamos aqui se view_state === 'dashboard'
+
+    // Safely destruct dashboard data
     const { confidence, diagnostics, projection, weak_strong, recommendations, exam_strategy, plan, can_update, next_update_at, days_until_update, motivation } = data;
 
     const dayIcons: Record<string, string> = {
@@ -375,7 +401,7 @@ export default function StudyPlanDashboard() {
                     )}
                 </div>
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {Object.entries(plan.plan_json.weekly_schedule || {}).map(([day, tasks]: [string, any]) => (
+                    {Object.entries(plan?.plan_json?.weekly_schedule?.days || plan?.plan_json?.weekly_schedule || {}).map(([day, tasks]: [string, any]) => (
                         <div key={day} className="bg-slate-50/50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800 p-5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                             <h4 className="text-sm font-black text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2 capitalize">
                                 <span className="text-xl">{getDayIcon(day)}</span>
@@ -405,14 +431,14 @@ export default function StudyPlanDashboard() {
                                         ) : (
                                             <div className="flex gap-3">
                                                 <span className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 shrink-0"></span>
-                                                <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{task}</span>
+                                                <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{typeof task === 'string' ? task : '-'}</span>
                                             </div>
                                         )}
                                     </li>
                                 )) : (
                                     <li className="p-4 text-center bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/20">
                                         <p className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">🛋️ Rest Day</p>
-                                        <p className="text-[10px] text-blue-400 mt-1">{tasks}</p>
+                                        <p className="text-[10px] text-blue-400 mt-1">{typeof tasks === 'string' ? tasks : '-'}</p>
                                     </li>
                                 )}
                             </ul>

@@ -264,11 +264,62 @@ class QuestionController extends Controller
     }
 
     /**
-     * Remove a question.
+     * Preview impact of deleting a question — called before the confirmation modal.
      */
-    public function destroy(Question $question)
+    public function deleteImpact(Question $question)
     {
-        $question->delete();
-        return response()->json(['message' => 'Questão removida com sucesso!']);
+        $simulationAnswers = \DB::table('simulation_answers')->where('question_id', $question->id)->count();
+        $userAnswers = \DB::table('user_question_answers')->where('question_id', $question->id)->count();
+        $affectedSimulations = \DB::table('simulation_answers')->where('question_id', $question->id)->distinct('simulation_id')->count('simulation_id');
+        $favorites = \DB::table('favorites')->where('question_id', $question->id)->count();
+        $notebooks = \DB::table('notebook_questions')->where('question_id', $question->id)->count();
+
+        return response()->json([
+            'question_id' => $question->id,
+            'statement_preview' => mb_strimwidth(strip_tags($question->statement), 0, 120, '...'),
+            'simulation_answers' => $simulationAnswers,
+            'user_answers' => $userAnswers,
+            'affected_simulations' => $affectedSimulations,
+            'favorites' => $favorites,
+            'notebooks' => $notebooks,
+        ]);
+    }
+
+    /**
+     * Safely delete a question with full integrity guarantees and audit trail.
+     */
+    public function destroy(Request $request, Question $question)
+    {
+        $impactData = [
+            'admin_id' => $request->user()->id,
+            'admin_email' => $request->user()->email,
+            'question_id' => $question->id,
+            'statement_preview' => mb_strimwidth(strip_tags($question->statement), 0, 100, '...'),
+            'simulation_answers' => \DB::table('simulation_answers')->where('question_id', $question->id)->count(),
+            'user_answers' => \DB::table('user_question_answers')->where('question_id', $question->id)->count(),
+        ];
+
+        \DB::transaction(function () use ($question, $impactData, $request) {
+            // Cleanup orphan records in legacy tables
+            foreach (['favorites', 'notebook_questions', 'question_reports', 'question_notes'] as $table) {
+                if (\Schema::hasTable($table)) {
+                    \DB::table($table)->where('question_id', $question->id)->delete();
+                }
+            }
+
+            // Log the action
+            \DB::table('question_event_logs')->insert([
+                'question_id' => $question->id,
+                'event_type' => 'admin_deleted',
+                'payload' => json_encode($impactData),
+                'created_by' => $request->user()->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $question->delete();
+        });
+
+        return response()->json(['message' => 'Questão excluída com sucesso.', 'impact' => $impactData]);
     }
 }
