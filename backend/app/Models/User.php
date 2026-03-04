@@ -136,6 +136,26 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(AiRequestLog::class);
     }
 
+    public function notebooks()
+    {
+        return $this->hasMany(Notebook::class);
+    }
+
+    public function favorites()
+    {
+        return $this->hasMany(Favorite::class);
+    }
+
+    public function questionReports()
+    {
+        return $this->hasMany(QuestionReport::class);
+    }
+
+    public function questionNotes()
+    {
+        return $this->hasMany(QuestionNote::class);
+    }
+
     // =========================================================================
     // ROLE & PLAN HELPERS
     // =========================================================================
@@ -492,6 +512,25 @@ class User extends Authenticatable implements MustVerifyEmail
             app(\App\Services\QuotaService::class)->consumeQuota($this, 'daily_questions');
         } catch (\Exception $e) {
         }
+    }
+
+    // =========================================================================
+    // NOTEBOOK QUOTA
+    // =========================================================================
+
+    public function canCreateNotebook(): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        // If the user has an active paid subscription, unlimited notebooks
+        if ($this->hasActiveSubscription()) {
+            return true;
+        }
+
+        // Free plan allows only 1 notebook
+        return $this->notebooks()->count() < 1;
     }
 
     // =========================================================================

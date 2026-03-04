@@ -117,6 +117,27 @@ class Question extends Model
         return $this->hasMany(DiscursiveResponse::class);
     }
 
+    public function notebooks()
+    {
+        return $this->belongsToMany(Notebook::class, 'notebook_questions')
+            ->withTimestamps();
+    }
+
+    public function favorites()
+    {
+        return $this->hasMany(Favorite::class);
+    }
+
+    public function reports()
+    {
+        return $this->hasMany(QuestionReport::class);
+    }
+
+    public function notes()
+    {
+        return $this->hasMany(QuestionNote::class);
+    }
+
     public function isCorrect(string $answer): bool
     {
         return $this->alternatives()
@@ -215,10 +236,12 @@ class Question extends Model
      */
     public function scopePublished($query)
     {
-        return $query->complete()->where(function ($q) {
-            $q->whereNull('review_status')       // Questões manuais
-                ->orWhere('review_status', 'approved'); // Questões importadas e aprovadas
-        });
+        return $query->complete()
+            ->where('is_active', true)
+            ->where(function ($q) {
+                $q->whereNull('review_status')       // Questões manuais
+                    ->orWhere('review_status', 'approved'); // Questões importadas e aprovadas
+            });
     }
 
     /**
