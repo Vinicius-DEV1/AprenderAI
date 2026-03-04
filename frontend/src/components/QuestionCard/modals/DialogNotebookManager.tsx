@@ -133,7 +133,7 @@ export default function DialogNotebookManager({ isOpen, onClose, questionId, ini
                                     type="checkbox"
                                     checked={selectedIds.map(Number).includes(Number(nb.id))}
                                     onChange={() => handleToggle(nb.id)}
-                                    className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 bg-white"
+                                    className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
                                 />
                                 <span className="flex-1 text-sm text-gray-800 dark:text-slate-200 font-medium truncate">
                                     {nb.name}
