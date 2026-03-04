@@ -434,7 +434,6 @@ export default function QuestionCard({
                 <div className="flex gap-1.5 ml-2 sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-1 rounded-lg border border-gray-100 dark:border-slate-800 shadow-sm z-10">
                     <button onClick={handleToggleFavorite} disabled={favLoading} className={`p-1.5 rounded-md transition-colors ${isFavorite ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'}`}>{isFavorite ? '⭐' : '☆'}</button>
                     <button onClick={() => setShowNotebookModal(true)} className={`p-1.5 rounded-md transition-colors ${notebookIds.length > 0 ? 'bg-indigo-100 text-indigo-700' : 'text-gray-400 hover:bg-gray-100'}`}>📁</button>
-                    <button onClick={toggleNotes} className={`p-1.5 rounded-md transition-colors ${hasNotes ? 'bg-emerald-100 text-emerald-700' : 'text-gray-400 hover:bg-gray-100'}`}>📝</button>
                     <button onClick={() => setShowReportModal(true)} className="p-1.5 rounded-md text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors">🚩</button>
                     {user?.role === 'admin' && <button onClick={() => setShowStatsModal(true)} className="p-1.5 rounded-md text-gray-400 hover:bg-gray-100 transition-colors">📊</button>}
                 </div>
@@ -476,7 +475,9 @@ export default function QuestionCard({
                         <button className={`qb-action-btn ${activeTab === 'gabarito' ? '!bg-indigo-600 !text-white' : ''}`} onClick={() => setActiveTab(activeTab === 'gabarito' ? null : 'gabarito')}>📖 Gabarito Comentado</button>
                         <button className={`qb-action-btn ${activeTab === 'chat' ? '!bg-indigo-600 !text-white' : ''}`} onClick={toggleChat}>✨ Tirar Dúvida</button>
                         <button className={`qb-action-btn ${activeTab === 'history' ? '!bg-indigo-600 !text-white' : ''}`} onClick={toggleHistory}>📜 Meu Histórico</button>
-                        <button className={`qb-action-btn ${activeTab === 'notes' ? '!bg-indigo-600 !text-white' : ''}`} onClick={toggleNotes}>📝 Minhas Anotações</button>
+                        <button className={`qb-action-btn ${activeTab === 'notes' ? '!bg-indigo-600 !text-white' : ''} ${hasNotes && activeTab !== 'notes' ? '!bg-emerald-50 !text-emerald-700 !border-emerald-200' : ''}`} onClick={toggleNotes}>
+                            {hasNotes ? '📝' : '✏️'} Minhas Anotações
+                        </button>
                         {mode !== 'result' && <button className="qb-action-btn retry" onClick={resetCard}>🔄 Tentar Novamente</button>}
                     </div>
                 )}
@@ -539,7 +540,7 @@ export default function QuestionCard({
                         </div>
                         <div className="flex gap-2 border-t pt-3">
                             <input type="text" className="flex-1 rounded-md border text-xs px-3 py-2 outline-none focus:ring-1 focus:ring-indigo-500 dark:bg-slate-900" placeholder="Qual sua dúvida?" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendChat()} disabled={chatTyping} />
-                            <button onClick={sendChat} className="bg-indigo-600 text-white px-4 py-2 rounded-md text-xs font-bold shadow-sm" disabled={chatTyping || !chatFocus.trim()}>Enviar</button>
+                            <button onClick={sendChat} className="bg-indigo-600 text-white px-4 py-2 rounded-md text-xs font-bold shadow-sm" disabled={chatTyping || !chatInput.trim()}>Enviar</button>
                         </div>
                     </motion.div>
                 )}
@@ -558,15 +559,20 @@ export default function QuestionCard({
                             </div>
                         </div>
                         <div className="space-y-3 max-h-48 overflow-y-auto">
-                            {notes.map(n => (
-                                <div key={n.id} className="p-3 bg-amber-50 rounded-xl border border-amber-100 relative group">
-                                    <div className="absolute top-2 right-2 flex gap-1 group-hover:opacity-100 opacity-0 transition">
-                                        <button onClick={() => handleEditNote(n)}>✏️</button>
-                                        <button onClick={() => handleDeleteNote(n.id)}>🗑️</button>
+                            {loadingNotes ? (
+                                <p className="text-center text-[10px] text-gray-400 py-4 italic">Carregando anotações...</p>
+                            ) : notes.length === 0 ? (
+                                <p className="text-center text-[10px] text-gray-400 py-4 italic">Nenhuma anotação nesta questão.</p>
+                            ) : (
+                                notes.map(n => (
+                                    <div key={n.id} className="p-3 bg-amber-50 rounded-xl border border-amber-100 relative group">
+                                        <div className="absolute top-2 right-2 flex gap-1 group-hover:opacity-100 opacity-0 transition">
+                                            <button onClick={() => handleEditNote(n)}>✏️</button>
+                                            <button onClick={() => handleDeleteNote(n.id)}>🗑️</button>
+                                        </div>
+                                        <div className="text-xs pr-12" dangerouslySetInnerHTML={{ __html: sanitizeHTML(decodeEntities(n.content)) }} />
                                     </div>
-                                    <div className="text-xs pr-12" dangerouslySetInnerHTML={{ __html: sanitizeHTML(decodeEntities(n.content)) }} />
-                                </div>
-                            ))}
+                                )))}
                         </div>
                     </motion.div>
                 )}
