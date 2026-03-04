@@ -312,14 +312,16 @@ export default function SimulationView() {
     const totalQuestions = answersList.length;
 
     return (
-        <div className="simulation-page p-0 lg:p-0 h-screen overflow-hidden flex flex-col">
+        <div className="simulation-page p-4 lg:p-8 max-w-[1400px] mx-auto">
             <style>{`
-        .simulation-container { display: grid; grid-template-columns: 280px 1fr; gap: 0px; flex: 1; overflow: hidden; }
+        .simulation-container { display: grid; grid-template-columns: 250px 1fr; gap: 24px; height: calc(100vh - 120px); }
         @media (max-width: 768px) { .simulation-container { grid-template-columns: 1fr; height: auto; } .question-nav { display: none; } }
-        .question-nav { background: white; border-right: 1px solid #e2e8f0; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; border-radius: 0; }
+        .question-nav { background: white; border-radius: 12px; padding: 20px; overflow-y: auto; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); display: flex; flex-direction: column; }
         .timer { background: #1e293b; color: white; padding: 16px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
         .timer-label { font-size: 12px; opacity: 0.7; margin-bottom: 4px; }
-        .nav-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 20px; }
+        .timer-value { font-size: 28px; font-weight: 700; font-family: 'Courier New', monospace; }
+        .nav-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 20px; flex: 1; overflow-y: auto; }
+        .nav-btn { width: 100%; aspect-ratio: 1; border: 2px solid #e2e8f0; background: white; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .nav-btn:hover { border-color: #cbd5e1; }
         .nav-btn.answered { background: #d1fae5; border-color: #10b981; color: #065f46; }
         .nav-btn.marked { background: #fef3c7; border-color: #f59e0b; color: #78350f; }
@@ -327,8 +329,7 @@ export default function SimulationView() {
         .legend { font-size: 12px; margin-top: 16px; }
         .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
         .legend-color { width: 20px; height: 20px; border-radius: 4px; border: 2px solid; }
-        .question-area { background: #f8fafc; padding: 0; overflow-y: auto; height: 100%; display: flex; flex-direction: column; }
-        .question-scroll-content { padding: 32px; max-width: 1000px; margin: 0 auto; width: 100%; flex: 1; }
+        .question-area { background: white; border-radius: 12px; padding: 32px; overflow-y: auto; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); height: 100%; }
         .question-header { display: flex; justify-content: space-between; items-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #f1f5f9; gap: 10px; flex-wrap: wrap; }
         .question-number { font-size: 14px; font-weight: 600; color: #64748b; }
         .question-statement { font-size: 16px; line-height: 1.7; color: #1e293b; margin-bottom: 32px; max-width: 900px; white-space: pre-wrap; }
@@ -349,8 +350,7 @@ export default function SimulationView() {
         .btn-danger:hover { background: #dc2626; }
         .checkbox-mark { display: flex; align-items: center; gap: 8px; }
         
-        :root.dark .question-nav { background: #1e293b; border-right-color: rgba(255,255,255,0.05); color: #f1f5f9; }
-        :root.dark .question-area { background: #0f172a; color: #f1f5f9; }
+        :root.dark .question-nav, :root.dark .question-area { background: #1e293b; color: #f1f5f9; }
         :root.dark h2, :root.dark .question-statement { color: #e2e8f0; }
         :root.dark .question-number { color: #94a3b8; }
         :root.dark .question-header { border-bottom-color: rgba(255,255,255,0.1); }
@@ -377,25 +377,18 @@ export default function SimulationView() {
         .word-break-all { word-break: break-all; }
       `}</style>
 
-            <div className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between z-20">
-                <div className="flex items-center">
-                    <button
-                        onClick={() => toggleSidebar()}
-                        className="mr-6 p-2 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center gap-2 transition-colors"
-                        title="Menu Painel"
-                    >
-                        <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Menu</span>
-                    </button>
-                    <h2 className="text-lg font-bold text-gray-800 dark:text-slate-200">Simulado em Progresso</h2>
-                </div>
-                {simulation && (
-                    <div className="hidden sm:flex gap-4">
-                        <span className="text-sm text-gray-500 font-medium">Questão {currentQuestion + 1} de {totalQuestions}</span>
-                    </div>
-                )}
+            <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center' }}>
+                <button
+                    onClick={() => toggleSidebar()}
+                    className="mr-4 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2 transition-colors"
+                    title="Menu Painel"
+                >
+                    <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Menu Painel</span>
+                </button>
+                <h2 className="text-xl font-bold text-gray-800 dark:text-slate-200">Simulado em Progresso</h2>
             </div>
 
             <div className="simulation-container">
@@ -464,84 +457,82 @@ export default function SimulationView() {
                 <main className="question-area">
                     {viewMode === 'questions' ? (
                         question && (
-                            <div className="question-scroll-content animate-fade-in">
-                                <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-800">
-                                    <div className="question-header">
-                                        <span className="question-number">Questão {currentQuestion + 1} de {totalQuestions}</span>
-                                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', background: '#f1f5f9', padding: '4px 12px', borderRadius: '12px' }} className="dark:bg-slate-800 dark:text-slate-300">
-                                            {question.subjects?.map((s: any) => s.name).join(', ') || 'Geral'}
-                                        </span>
-                                    </div>
+                            <div className="question-content animate-fade-in">
+                                <div className="question-header">
+                                    <span className="question-number">Questão {currentQuestion + 1} de {totalQuestions}</span>
+                                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', background: '#f1f5f9', padding: '4px 12px', borderRadius: '12px' }} className="dark:bg-slate-800 dark:text-slate-300">
+                                        {question.subjects?.map((s: any) => s.name).join(', ') || 'Geral'}
+                                    </span>
+                                </div>
 
-                                    <div className="question-statement" dangerouslySetInnerHTML={{ __html: question.html_statement || question.statement }} />
+                                <div className="question-statement" dangerouslySetInnerHTML={{ __html: question.html_statement || question.statement }} />
 
-                                    <div className="qb-alternatives-list mt-8">
-                                        {(question.alternatives || []).map((alt: any) => (
-                                            <div
-                                                key={alt.id || alt.label}
-                                                className={`qb-alt ${localAnswers[question.id] === alt.label ? 'selected' : ''}`}
-                                                onClick={() => handleAnswer(question.id, alt.label)}
-                                            >
-                                                <div className="qb-alt-letter">{alt.label}</div>
-                                                <div className="flex flex-col gap-2 flex-grow overflow-hidden">
-                                                    {alt.content && (
-                                                        <div
-                                                            className="qb-alt-text prose prose-sm max-w-none text-slate-700 dark:text-slate-300 word-break-all"
-                                                            style={{ fontSize: '15px' }}
-                                                            dangerouslySetInnerHTML={renderMd(alt.content)}
-                                                        />
-                                                    )}
-                                                    {alt.image_path && (
-                                                        <img
-                                                            src={alt.image_path.startsWith('http') ? alt.image_path : `/storage/${alt.image_path}`}
-                                                            alt={`Alternativa ${alt.label}`}
-                                                            className="max-w-full h-auto rounded object-contain mt-2"
-                                                        />
-                                                    )}
-                                                </div>
+                                <div className="qb-alternatives-list mt-8">
+                                    {(question.alternatives || []).map((alt: any) => (
+                                        <div
+                                            key={alt.id || alt.label}
+                                            className={`qb-alt ${localAnswers[question.id] === alt.label ? 'selected' : ''}`}
+                                            onClick={() => handleAnswer(question.id, alt.label)}
+                                        >
+                                            <div className="qb-alt-letter">{alt.label}</div>
+                                            <div className="flex flex-col gap-2 flex-grow overflow-hidden">
+                                                {alt.content && (
+                                                    <div
+                                                        className="qb-alt-text prose prose-sm max-w-none text-slate-700 dark:text-slate-300 word-break-all"
+                                                        style={{ fontSize: '15px' }}
+                                                        dangerouslySetInnerHTML={renderMd(alt.content)}
+                                                    />
+                                                )}
+                                                {alt.image_path && (
+                                                    <img
+                                                        src={alt.image_path.startsWith('http') ? alt.image_path : `/storage/${alt.image_path}`}
+                                                        alt={`Alternativa ${alt.label}`}
+                                                        className="max-w-full h-auto rounded object-contain mt-2"
+                                                    />
+                                                )}
                                             </div>
-                                        ))}
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="question-actions">
+                                    <div className="checkbox-mark">
+                                        <input
+                                            type="checkbox"
+                                            id={`mark_${currentQuestion}`}
+                                            checked={currentAnswerData.marked_for_review ? true : false}
+                                            onChange={() => handleToggleMark(question.id, currentAnswerData.marked_for_review)}
+                                        />
+                                        <label htmlFor={`mark_${currentQuestion}`} className="cursor-pointer select-none text-sm text-gray-600 dark:text-gray-300">
+                                            Marcar para revisão
+                                        </label>
                                     </div>
 
-                                    <div className="question-actions">
-                                        <div className="checkbox-mark">
-                                            <input
-                                                type="checkbox"
-                                                id={`mark_${currentQuestion}`}
-                                                checked={currentAnswerData.marked_for_review ? true : false}
-                                                onChange={() => handleToggleMark(question.id, currentAnswerData.marked_for_review)}
-                                            />
-                                            <label htmlFor={`mark_${currentQuestion}`} className="cursor-pointer select-none text-sm text-gray-600 dark:text-gray-300">
-                                                Marcar para revisão
-                                            </label>
-                                        </div>
-
-                                        <div className="flex flex-wrap gap-3">
-                                            {currentQuestion > 0 && (
-                                                <button type="button" className="btn btn-secondary" onClick={() => setCurrentQuestion(curr => curr - 1)}>
-                                                    ← Anterior
-                                                </button>
-                                            )}
-                                            {currentQuestion < totalQuestions - 1 ? (
-                                                <button type="button" className="btn btn-primary" onClick={() => setCurrentQuestion(curr => curr + 1)}>
-                                                    Próxima →
-                                                </button>
-                                            ) : simulation.essay ? (
-                                                <button type="button" className="btn btn-primary" onClick={toggleViewMode}>
-                                                    📝 Ir para Redação
-                                                </button>
-                                            ) : (
-                                                <button type="button" className="btn btn-danger" onClick={() => handleFinishSimulation()}>
-                                                    Finalizar Prova
-                                                </button>
-                                            )}
-                                        </div>
+                                    <div className="flex flex-wrap gap-3">
+                                        {currentQuestion > 0 && (
+                                            <button type="button" className="btn btn-secondary" onClick={() => setCurrentQuestion(curr => curr - 1)}>
+                                                ← Anterior
+                                            </button>
+                                        )}
+                                        {currentQuestion < totalQuestions - 1 ? (
+                                            <button type="button" className="btn btn-primary" onClick={() => setCurrentQuestion(curr => curr + 1)}>
+                                                Próxima →
+                                            </button>
+                                        ) : simulation.essay ? (
+                                            <button type="button" className="btn btn-primary" onClick={toggleViewMode}>
+                                                📝 Ir para Redação
+                                            </button>
+                                        ) : (
+                                            <button type="button" className="btn btn-danger" onClick={() => handleFinishSimulation()}>
+                                                Finalizar Prova
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             </div>
                         )
                     ) : (
-                        <div className="essay-view animate-fade-in h-full flex flex-col p-6">
+                        <div className="essay-view animate-fade-in h-full flex flex-col">
                             <EssayWrite
                                 isSimulationMode={true}
                                 simulationEssayId={simulation.essay?.id}
