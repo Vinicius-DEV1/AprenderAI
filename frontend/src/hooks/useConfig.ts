@@ -13,6 +13,7 @@ export function useConfig() {
             return response.data.data;
         },
         staleTime: 1000 * 60 * 60, // 1 hour
+        retry: false, // Don't retry on bootstrap — unblock rendering fast
     });
 
     useEffect(() => {

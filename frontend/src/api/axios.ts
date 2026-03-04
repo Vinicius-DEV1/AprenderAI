@@ -18,6 +18,31 @@ const api = axios.create({
     },
 });
 
+// -------------------------------------------------------
+// Interceptor 1: Auto-retry on 419 (CSRF mismatch)
+// Re-fetches the CSRF cookie and retries the request once.
+// Must be registered BEFORE the main error interceptor.
+// -------------------------------------------------------
+api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+        if (error.response?.status === 419 && !originalRequest._csrfRetried) {
+            originalRequest._csrfRetried = true;
+            try {
+                await api.get('/sanctum/csrf-cookie');
+                return api(originalRequest);
+            } catch {
+                // If CSRF refresh also fails, fall through to the main interceptor
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
+// -------------------------------------------------------
+// Interceptor 2: Global error handling (401, 422, 403, 500+)
+// -------------------------------------------------------
 api.interceptors.response.use(
     (response) => response,
     (error) => {

@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useConfig } from './hooks/useConfig';
 import { useAuthStore } from './stores/authStore';
-import { getUser } from './api/auth';
+import { getUser, getCsrfCookie } from './api/auth';
 import { Toaster } from 'sonner';
 import { setBootstrapping } from './api/axios';
 
@@ -79,12 +79,15 @@ import Analytics from './components/Analytics';
 
 function App() {
     // Unificar o estado de carregamento inicial para evitar transições bruscas e race conditions.
-    const { isLoading: configLoading } = useConfig();
+    const { isLoading: configLoading, isError: configError } = useConfig();
     const { setUser, setLoading: setAuthLoading, isLoading: authLoading } = useAuthStore();
+    const [bootstrapTimedOut, setBootstrapTimedOut] = useState(false);
 
     useEffect(() => {
         const checkAuthStatus = async () => {
             try {
+                // Garante que o cookie de sessão existe antes de verificar auth
+                await getCsrfCookie();
                 const response = await getUser();
                 if (response.data && response.data.user) {
                     setUser(response.data.user);
@@ -103,8 +106,21 @@ function App() {
         checkAuthStatus();
     }, [setUser, setAuthLoading]);
 
+    // Timeout de segurança — nunca deixa o spinner bloquear permanentemente
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setBootstrapTimedOut(true);
+            // Garante que o loading do auth também é desativado
+            setAuthLoading(false);
+            setBootstrapping(false);
+        }, 8000);
+        return () => clearTimeout(timer);
+    }, [setAuthLoading]);
+
     // Mostra spinner unificado enquanto carrega config OU auth
-    if (configLoading || authLoading) {
+    // O spinner é desbloqueado se: ambos terminaram, ou houve erro no config, ou timeout
+    const isBootstrapping = (configLoading || authLoading) && !bootstrapTimedOut && !configError;
+    if (isBootstrapping) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
                 <div className="flex flex-col items-center">
