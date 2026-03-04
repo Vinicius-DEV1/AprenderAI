@@ -47,9 +47,12 @@ export default function DialogNotebookManager({ isOpen, onClose, questionId, ini
         }
     };
 
-    const handleToggle = (id: number) => {
+    const handleToggle = (id: any) => {
+        const numericId = Number(id);
         setSelectedIds(prev =>
-            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+            prev.map(Number).includes(numericId)
+                ? prev.filter(x => Number(x) !== numericId)
+                : [...prev, numericId]
         );
     };
 
@@ -57,10 +60,10 @@ export default function DialogNotebookManager({ isOpen, onClose, questionId, ini
         setSaving(true);
         try {
             await api.post(`/api/v1/questions/${questionId}/sync-notebooks`, {
-                notebook_ids: selectedIds
+                notebook_ids: selectedIds.map(Number)
             });
             toast.success('Cadernos atualizados!');
-            if (onSaved) onSaved(selectedIds);
+            if (onSaved) onSaved(selectedIds.map(Number));
             onClose();
         } catch (e) {
             toast.error('Erro ao salvar em cadernos.');
@@ -74,8 +77,9 @@ export default function DialogNotebookManager({ isOpen, onClose, questionId, ini
         setCreating(true);
         try {
             const res = await api.post('/api/v1/notebooks', { name: newName });
-            setNotebooks([res.data.notebook, ...notebooks]);
-            setSelectedIds([...selectedIds, res.data.notebook.id]);
+            const newNb = res.data.notebook;
+            setNotebooks([newNb, ...notebooks]);
+            setSelectedIds([...selectedIds.map(Number), Number(newNb.id)]);
             setNewName('');
             toast.success('Caderno criado e questão adicionada!');
         } catch (e: any) {
@@ -127,7 +131,7 @@ export default function DialogNotebookManager({ isOpen, onClose, questionId, ini
                             <label key={nb.id} className="flex items-center gap-3 p-2.5 hover:bg-gray-50 dark:hover:bg-slate-700/50 rounded-lg cursor-pointer transition border border-transparent hover:border-gray-200 dark:hover:border-slate-600 select-none">
                                 <input
                                     type="checkbox"
-                                    checked={selectedIds.includes(nb.id)}
+                                    checked={selectedIds.map(Number).includes(Number(nb.id))}
                                     onChange={() => handleToggle(nb.id)}
                                     className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 bg-white"
                                 />
