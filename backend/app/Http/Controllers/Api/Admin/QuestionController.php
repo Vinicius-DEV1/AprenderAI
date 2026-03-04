@@ -286,10 +286,66 @@ class QuestionController extends Controller
     }
 
     /**
-     * Safely delete a question with full integrity guarantees and audit trail.
+     * Move a question to the trash (Soft Delete).
      */
     public function destroy(Request $request, Question $question)
     {
+        $question->delete();
+
+        \App\Models\UserLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'admin_soft_deleted_question',
+            'description' => json_encode(['question_id' => $question->id]),
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json(['message' => 'Questão movida para a lixeira.']);
+    }
+
+    /**
+     * List trashed questions.
+     */
+    public function trashed(Request $request)
+    {
+        $query = Question::onlyTrashed()->with(['subjects:id,name', 'topics:id,name']);
+
+        if ($request->filled('search')) {
+            $query->where('statement', 'like', '%' . $request->search . '%');
+        }
+
+        $questions = $query->orderByDesc('deleted_at')->paginate($request->get('per_page', 20));
+
+        return response()->json([
+            'questions' => $questions,
+        ]);
+    }
+
+    /**
+     * Restore a trashed question.
+     */
+    public function restore(Request $request, $id)
+    {
+        $question = Question::onlyTrashed()->findOrFail($id);
+        $question->restore();
+
+        \App\Models\UserLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'admin_restored_question',
+            'description' => json_encode(['question_id' => $question->id]),
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json(['message' => 'Questão restaurada com sucesso.']);
+    }
+
+    /**
+     * Permanently delete a question (Force Delete).
+     * This executes the cleanup of legacy legacy tables before purging.
+     */
+    public function forceDelete(Request $request, $id)
+    {
+        $question = Question::onlyTrashed()->findOrFail($id);
+
         $impactData = [
             'admin_id' => $request->user()->id,
             'admin_email' => $request->user()->email,
@@ -307,17 +363,17 @@ class QuestionController extends Controller
                 }
             }
 
-            // Log the action
+            // Log the permanent purge
             \App\Models\UserLog::create([
                 'user_id' => $request->user()->id,
-                'action' => 'admin_deleted_question',
+                'action' => 'admin_force_deleted_question',
                 'description' => json_encode($impactData),
                 'ip_address' => $request->ip(),
             ]);
 
-            $question->delete();
+            $question->forceDelete();
         });
 
-        return response()->json(['message' => 'Questão excluída com sucesso.', 'impact' => $impactData]);
+        return response()->json(['message' => 'Questão permanentemente excluída.', 'impact' => $impactData]);
     }
 }
