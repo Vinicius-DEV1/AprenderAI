@@ -5,6 +5,7 @@ import { sendVerificationEmail } from '../api/auth';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import QuestionCard from '../components/QuestionCard';
 
 export default function Profile() {
     const { user, setUser } = useAuthStore();
@@ -31,6 +32,7 @@ export default function Profile() {
     const [favTotal, setFavTotal] = useState(0);
     const [favLoading, setFavLoading] = useState(false);
     const [favHasNext, setFavHasNext] = useState(false);
+    const [favViewMode, setFavViewMode] = useState<'card' | 'list'>('card');
 
     // Notebooks state
     const [notebooks, setNotebooks] = useState<any[]>([]);
@@ -421,11 +423,27 @@ export default function Profile() {
                                 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}
                                 className="space-y-4"
                             >
-                                <div className="flex justify-between items-center mb-4">
+                                <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
                                     <h3 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
                                         ⭐ Questões Favoritas
                                     </h3>
-                                    <Link to="/questions" className="text-xs font-bold text-blue-600 hover:underline uppercase tracking-wider">Resolver Favoritas</Link>
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex bg-gray-100 dark:bg-slate-800 p-1 rounded-lg">
+                                            <button
+                                                onClick={() => setFavViewMode('card')}
+                                                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${favViewMode === 'card' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                                            >
+                                                Cards
+                                            </button>
+                                            <button
+                                                onClick={() => setFavViewMode('list')}
+                                                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${favViewMode === 'list' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                                            >
+                                                Completo
+                                            </button>
+                                        </div>
+                                        <Link to="/questions" className="text-xs font-bold text-blue-600 hover:underline uppercase tracking-wider">Resolver Favoritas</Link>
+                                    </div>
                                 </div>
 
                                 {favLoading ? (
@@ -437,22 +455,30 @@ export default function Profile() {
                                     </div>
                                 ) : (
                                     <>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {favorites.map(q => (
-                                                <div key={q.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
-                                                    <div>
-                                                        <div className="flex justify-between items-start mb-2">
-                                                            <span className="text-[10px] uppercase font-black text-indigo-400 tracking-tighter">#{q.id} • {q.subjects?.[0]?.name || 'Geral'}</span>
-                                                            <button onClick={() => handleRemoveFavorite(q.id)} className="text-amber-500 hover:text-gray-400 text-sm" title="Remover dos Favoritos">★</button>
+                                        {favViewMode === 'card' ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {favorites.map(q => (
+                                                    <div key={q.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
+                                                        <div>
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <span className="text-[10px] uppercase font-black text-indigo-400 tracking-tighter">#{q.id} • {q.subjects?.[0]?.name || 'Geral'}</span>
+                                                                <button onClick={() => handleRemoveFavorite(q.id)} className="text-amber-500 hover:text-gray-400 text-sm" title="Remover dos Favoritos">★</button>
+                                                            </div>
+                                                            <div dangerouslySetInnerHTML={{ __html: q.statement }} className="text-xs text-gray-700 dark:text-slate-300 line-clamp-3 mb-4 font-medium" />
                                                         </div>
-                                                        <div dangerouslySetInnerHTML={{ __html: q.statement }} className="text-xs text-gray-700 dark:text-slate-300 line-clamp-3 mb-4 font-medium" />
+                                                        <div className="flex justify-end gap-2">
+                                                            <Link to={`/questions?id=${q.id}`} className="px-3 py-1.5 bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-gray-200 text-[10px] font-bold rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-colors uppercase tracking-wider">Visualizar</Link>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex justify-end gap-2">
-                                                        <Link to={`/questions?id=${q.id}`} className="px-3 py-1.5 bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-gray-200 text-[10px] font-bold rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-colors uppercase tracking-wider">Visualizar</Link>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {favorites.map(q => (
+                                                    <QuestionCard key={q.id} question={q} />
+                                                ))}
+                                            </div>
+                                        )}
                                         <div className="flex justify-center gap-4 mt-8 pb-8">
                                             <button onClick={() => setFavPage(p => Math.max(1, p - 1))} disabled={favPage === 1} className="px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-bold disabled:opacity-50">Anterior</button>
                                             <button onClick={() => setFavPage(p => p + 1)} disabled={!favHasNext} className="px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-bold disabled:opacity-50">Próxima</button>
