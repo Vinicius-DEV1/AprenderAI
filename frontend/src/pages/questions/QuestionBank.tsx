@@ -24,6 +24,7 @@ interface FilterOptions {
     status: string;
     include_discursive: boolean;
     notebook_id?: string;
+    id?: string;
     favorites_only?: boolean;
 }
 
@@ -88,6 +89,7 @@ export default function QuestionBank() {
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
     const initialNotebookId = queryParams.get('notebook_id') || '';
+    const initialQuestionId = queryParams.get('id') || '';
 
     const { aiName } = useConfigStore();
     const { user } = useAuthStore();
@@ -105,9 +107,10 @@ export default function QuestionBank() {
         role: '',
         include_discursive: false,
         notebook_id: initialNotebookId,
+        id: initialQuestionId,
         favorites_only: false
     });
-    const [moreFilters, setMoreFilters] = useState(!!initialNotebookId);
+    const [moreFilters, setMoreFilters] = useState(!!initialNotebookId || !!initialQuestionId);
     const [statsOpen, setStatsOpen] = useState(false);
     const [goalModalOpen, setGoalModalOpen] = useState(false);
 
@@ -281,7 +284,7 @@ export default function QuestionBank() {
 
     const clearFilters = () => {
         setFilters({
-            type: '', subject: '', topic: '', keyword: '', year: '',
+            type: '', subject: '', topic: '', keyword: '', year: '', id: '',
             difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false,
             notebook_id: '', favorites_only: false
         });
@@ -293,7 +296,7 @@ export default function QuestionBank() {
         // RADICAL RESET: Substituímos TUDO pelo que a IA sugeriu, 
         // evitando que filtros anteriores (ex: Ano 2024) persistam se não estiverem na sugestão.
         const baseFilters = {
-            type: '', subject: '', topic: '', keyword: '', year: '',
+            type: '', subject: '', topic: '', keyword: '', year: '', id: '',
             difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false,
             notebook_id: '', favorites_only: false
         };
@@ -334,7 +337,7 @@ export default function QuestionBank() {
                 if (res.data.suggestions) setAiSuggestions(res.data.suggestions);
 
                 const baseFilters = {
-                    type: '', subject: '', topic: '', keyword: '', year: '',
+                    type: '', subject: '', topic: '', keyword: '', year: '', id: '',
                     difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false,
                     notebook_id: '', favorites_only: false
                 };
@@ -382,7 +385,7 @@ export default function QuestionBank() {
 
                     // RADICAL REPLACEMENT: When AI responds, we replace all filters to avoid ghosts
                     const baseFilters = {
-                        type: '', subject: '', topic: '', keyword: '', year: '',
+                        type: '', subject: '', topic: '', keyword: '', year: '', id: '',
                         difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false,
                         notebook_id: '', favorites_only: false
                     };

@@ -64,6 +64,9 @@ class QuestionController extends Controller
         }
 
         // Attribute filters
+        if ($request->filled('id')) {
+            $query->where('id', $request->id);
+        }
         if ($request->filled('difficulty')) {
             $query->where('difficulty', $request->difficulty);
         }
