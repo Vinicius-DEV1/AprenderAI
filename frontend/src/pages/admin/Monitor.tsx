@@ -42,6 +42,23 @@ interface RealtimeData {
     top_processes?: TopProcess[];
 }
 
+interface QueueJob {
+    id: number;
+    queue: string;
+    name: string;
+    attempts: number;
+    is_processing: boolean;
+    created_at: string;
+}
+
+interface FailedJob {
+    id: number;
+    queue: string;
+    name: string;
+    exception: string;
+    failed_at: string;
+}
+
 export default function Monitor() {
     const [currentRange, setCurrentRange] = useState('24h');
     const [realtimeData, setRealtimeData] = useState<RealtimeData>({
@@ -83,6 +100,15 @@ export default function Monitor() {
             return res.data?.logs || [];
         },
         refetchInterval: 10000 // A cada 10s
+    });
+
+    const { data: queuesData } = useQuery({
+        queryKey: ['admin-monitor-queues'],
+        queryFn: async () => {
+            const res = await api.get('/api/v1/admin/monitor/queues');
+            return res.data || { jobs: [], failed: [] };
+        },
+        refetchInterval: 5000 // A cada 5s
     });
 
     useEffect(() => {
@@ -394,6 +420,115 @@ export default function Monitor() {
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Detailed Queues Tables */}
+            <div className="mt-8 grid grid-cols-1 gap-8">
+                {/* Active/Pending Jobs */}
+                <div className="bg-white rounded-xl shadow-sm p-6 overflow-hidden">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                            <span className="relative flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                            </span>
+                            Jobs Ativos &amp; Pendentes
+                        </h3>
+                        <span className="text-sm text-gray-500">Total: {queuesData?.jobs?.length || 0}</span>
+                    </div>
+
+                    <div className="overflow-x-auto border border-gray-100 rounded-lg">
+                        <table className="w-full text-sm text-left text-gray-500">
+                            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th className="px-4 py-3">ID</th>
+                                    <th className="px-4 py-3">Classe (Job)</th>
+                                    <th className="px-4 py-3">Fila</th>
+                                    <th className="px-4 py-3">Status</th>
+                                    <th className="px-4 py-3 text-right">Criado em</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {(queuesData?.jobs || []).length > 0 ? (
+                                    queuesData?.jobs.map((job: QueueJob) => (
+                                        <tr key={job.id} className="border-b hover:bg-gray-50">
+                                            <td className="px-4 py-3 font-medium text-gray-900">#{job.id}</td>
+                                            <td className="px-4 py-3 font-mono text-blue-600">{job.name}</td>
+                                            <td className="px-4 py-3">
+                                                <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-md">
+                                                    {job.queue}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {job.is_processing ? (
+                                                    <span className="px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full flex items-center w-max gap-1">
+                                                        <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                                        Processando
+                                                    </span>
+                                                ) : (
+                                                    <span className="px-2 py-1 text-xs font-semibold bg-amber-100 text-amber-700 rounded-full">
+                                                        Pendente (Tentativas: {job.attempts})
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-right text-gray-400">
+                                                {new Date(job.created_at).toLocaleTimeString()}
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={5} className="px-4 py-6 text-center text-gray-500 italic">Nenhum job pendente no momento.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* Failed Jobs */}
+                <div className="bg-white rounded-xl shadow-sm p-6 overflow-hidden border border-red-50">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-red-600 flex items-center gap-2">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            Últimas Falhas (Failed Jobs)
+                        </h3>
+                        <span className="text-sm text-gray-500">Exibindo últimos 50</span>
+                    </div>
+
+                    <div className="overflow-x-auto border border-gray-100 rounded-lg">
+                        <table className="w-full text-sm text-left text-gray-500">
+                            <thead className="text-xs text-gray-700 uppercase bg-red-50">
+                                <tr>
+                                    <th className="px-4 py-3">ID</th>
+                                    <th className="px-4 py-3">Classe</th>
+                                    <th className="px-4 py-3">Erro (Exception)</th>
+                                    <th className="px-4 py-3 text-right">Data</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {(queuesData?.failed || []).length > 0 ? (
+                                    queuesData?.failed.map((job: FailedJob) => (
+                                        <tr key={job.id} className="border-b border-gray-50 hover:bg-red-50/50">
+                                            <td className="px-4 py-3 font-medium text-gray-900">#{job.id}</td>
+                                            <td className="px-4 py-3 font-mono text-gray-600">{job.name}</td>
+                                            <td className="px-4 py-3 text-red-600 max-w-md truncate" title={job.exception}>
+                                                {job.exception}
+                                            </td>
+                                            <td className="px-4 py-3 text-right text-gray-500">
+                                                {new Date(job.failed_at).toLocaleString()}
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={4} className="px-4 py-6 text-center text-gray-500 italic">Nenhum job falhou recentemente.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
