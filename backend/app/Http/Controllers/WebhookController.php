@@ -155,6 +155,24 @@ class WebhookController extends Controller
                     if ($oldPlanId && $oldPlanId != $plan->id && $oldPlanId != 1) {
                         Log::info('[Webhook] Detectado UPGRADE de Plano Pago. Aplicando Soma Acumulativa!', ['user_id' => $user->id]);
                         $this->quotaService->processUpgradeSoma($subscription, $plan->default_limits ?? []);
+
+                        // 🛑 Cancela assinaturas anteriores ATIVAS no Asaas para este usuário
+                        // Isso evita cobranças duplicadas no futuro.
+                        $previousActiveSubscriptions = Subscription::where('user_id', $user->id)
+                            ->where('id', '!=', $subscription->id)
+                            ->where('status', 'active')
+                            ->whereNotNull('gateway_id')
+                            ->get();
+
+                        foreach ($previousActiveSubscriptions as $oldSub) {
+                            Log::info('[Webhook] Cancelando assinatura antiga no Asaas devido a upgrade', [
+                                'user_id' => $user->id,
+                                'old_gateway_id' => $oldSub->gateway_id
+                            ]);
+                            $asaasService = app(\App\Services\AsaasService::class);
+                            $asaasService->cancelSubscription($oldSub->gateway_id);
+                            $oldSub->update(['status' => 'canceled']);
+                        }
                     } else {
                         Log::info('[Webhook] Renovacão normal, compra inicial ou upgrade vindo do Grátis. Criando ciclo limpo.', ['user_id' => $user->id]);
                         $this->quotaService->createOrRenewCycle($subscription);

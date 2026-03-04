@@ -327,4 +327,26 @@ class AsaasService
 
         return $response->json();
     }
+
+    /**
+     * Cancela uma assinatura no Asaas.
+     *
+     * @param string $subscriptionId ID da assinatura no Asaas
+     * @return bool Sucesso ou falha
+     */
+    public function cancelSubscription(string $subscriptionId): bool
+    {
+        $response = Http::withHeader('access_token', $this->apiKey)
+            ->delete("{$this->baseUrl}/subscriptions/{$subscriptionId}");
+
+        if ($response->failed()) {
+            Log::error('[Asaas] Erro ao cancelar assinatura', [
+                'subscription_id' => $subscriptionId,
+                'response' => $response->body(),
+            ]);
+            return false;
+        }
+
+        return true;
+    }
 }
