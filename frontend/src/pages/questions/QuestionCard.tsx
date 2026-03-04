@@ -6,6 +6,12 @@ import { useAuthStore } from '../../stores/authStore';
 import api from '../../api/axios';
 import { marked } from 'marked';
 
+// Modals
+import DialogReportQuestion from './modals/DialogReportQuestion';
+import DrawerQuestionNotes from './modals/DrawerQuestionNotes';
+import DialogNotebookManager from './modals/DialogNotebookManager';
+import DialogQuestionStats from './modals/DialogQuestionStats';
+
 interface Alternative {
     id: number;
     label: string;
@@ -28,6 +34,9 @@ interface Question {
     alternatives: Alternative[];
     already_answered?: boolean;
     was_correct?: boolean;
+    is_favorite?: boolean;
+    has_notes?: boolean;
+    notebook_ids?: number[];
 }
 
 export default function QuestionCard({ question: q }: { question: Question }) {
@@ -44,6 +53,19 @@ export default function QuestionCard({ question: q }: { question: Question }) {
     const [correctAnswer, setCorrectAnswer] = useState<string | null>(null);
     const [explanation, setExplanation] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
+
+    // Feature states
+    const [isFavorite, setIsFavorite] = useState(q.is_favorite || false);
+    const [favLoading, setFavLoading] = useState(false);
+
+    // Notes state tracking to show highlighted icon
+    const [hasNotes, setHasNotes] = useState(q.has_notes || false);
+    const [notebookIds, setNotebookIds] = useState<number[]>(q.notebook_ids || []);
+
+    const [showReportModal, setShowReportModal] = useState(false);
+    const [showNotesDrawer, setShowNotesDrawer] = useState(false);
+    const [showNotebookModal, setShowNotebookModal] = useState(false);
+    const [showStatsModal, setShowStatsModal] = useState(false);
 
     // NEW FOR ANALYTICS
     const viewingLoggedRef = useRef(false);
@@ -103,6 +125,27 @@ export default function QuestionCard({ question: q }: { question: Question }) {
             return { __html: marked.parse(processedText) as string };
         } catch (e) {
             return { __html: processedText };
+        }
+    };
+
+    const handleToggleFavorite = async () => {
+        if (favLoading) return;
+        setFavLoading(true);
+        // Optimistic UI
+        setIsFavorite(!isFavorite);
+        try {
+            const res = await api.post(`/api/v1/questions/${q.id}/favorite`);
+            setIsFavorite(res.data.is_favorite);
+            if (res.data.is_favorite) {
+                toast.success('Questão adicionada aos favoritos.');
+            } else {
+                toast.success('Questão removida dos favoritos.');
+            }
+        } catch (e) {
+            setIsFavorite(!isFavorite);
+            toast.error('Erro ao favoritar questão.');
+        } finally {
+            setFavLoading(false);
         }
     };
 
@@ -321,13 +364,57 @@ export default function QuestionCard({ question: q }: { question: Question }) {
     };
 
     return (
-        <div className="qb-card">
-            <div className="qb-card-meta">
-                {q.source === 'ai_generated' && <span className="qb-badge qb-badge-ai">✨ INÉDITA</span>}
-                {q.year && <span className="qb-badge qb-badge-origin">{q.year}</span>}
-                {q.organization && <span className="qb-badge qb-badge-origin">{q.organization}</span>}
-                <span className="qb-badge qb-badge-origin">{q.subjects.map(s => s.name).join(', ')}</span>
-                <span className={`qb-badge ${dc.class}`}>{dc.label}</span>
+        <div className="qb-card relative">
+            <div className="flex justify-between items-start mb-4 border-b border-gray-100 dark:border-slate-800 pb-3">
+                <div className="qb-card-meta !mb-0 flex-1">
+                    {q.source === 'ai_generated' && <span className="qb-badge qb-badge-ai">✨ INÉDITA</span>}
+                    {q.year && <span className="qb-badge qb-badge-origin">{q.year}</span>}
+                    {q.organization && <span className="qb-badge qb-badge-origin">{q.organization}</span>}
+                    <span className="qb-badge qb-badge-origin">{q.subjects.map(s => s.name).join(', ')}</span>
+                    <span className={`qb-badge ${dc.class}`}>{dc.label}</span>
+                </div>
+
+                <div className="flex gap-1.5 ml-2 sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-1 rounded-lg border border-gray-100 dark:border-slate-800 shadow-sm z-10">
+                    <button
+                        onClick={handleToggleFavorite}
+                        title="Favoritar"
+                        disabled={favLoading}
+                        className={`p-1.5 rounded-md transition-colors ${isFavorite ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                    >
+                        {isFavorite ? '⭐' : '☆'}
+                    </button>
+                    <button
+                        onClick={() => setShowNotebookModal(true)}
+                        title="Salvar em Cadernos"
+                        className={`p-1.5 rounded-md transition-colors ${notebookIds && notebookIds.length > 0 ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                    >
+                        📁
+                    </button>
+                    <button
+                        onClick={() => setShowNotesDrawer(true)}
+                        title="Minhas Anotações"
+                        className={`p-1.5 rounded-md transition-colors ${hasNotes ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                    >
+                        📝
+                    </button>
+                    <button
+                        onClick={() => setShowReportModal(true)}
+                        title="Reportar Erro"
+                        className="p-1.5 rounded-md text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
+                    >
+                        🚩
+                    </button>
+                    <button
+                        onClick={() => setShowStatsModal(true)}
+                        title="Estatísticas (Somente Admin)"
+                        className="p-1.5 rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-slate-800 dark:hover:text-gray-300 transition-colors"
+                    >
+                        📊
+                    </button>
+                </div>
+            </div>
+
+            <div className="qb-card-meta !mt-0">
                 {q.already_answered && !answered && (
                     <div className="flex items-center gap-2 mb-2">
                         <span className={`qb-badge ${q.was_correct ? 'qb-badge-correct' : 'qb-badge-incorrect'}`}>
@@ -558,6 +645,33 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <DialogReportQuestion
+                isOpen={showReportModal}
+                onClose={() => setShowReportModal(false)}
+                questionId={q.id}
+            />
+
+            <DrawerQuestionNotes
+                isOpen={showNotesDrawer}
+                onClose={() => setShowNotesDrawer(false)}
+                questionId={q.id}
+                onNoteSaved={() => setHasNotes(true)}
+            />
+
+            <DialogNotebookManager
+                isOpen={showNotebookModal}
+                onClose={() => setShowNotebookModal(false)}
+                questionId={q.id}
+                initialNotebookIds={notebookIds}
+                onSaved={(ids) => setNotebookIds(ids)}
+            />
+
+            <DialogQuestionStats
+                isOpen={showStatsModal}
+                onClose={() => setShowStatsModal(false)}
+                questionId={q.id}
+            />
         </div >
     );
 }
