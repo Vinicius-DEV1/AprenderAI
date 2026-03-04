@@ -28,7 +28,9 @@ export default function DialogNotebookManager({ isOpen, onClose, questionId, ini
 
     useEffect(() => {
         if (isOpen) {
-            setSelectedIds(initialNotebookIds || []);
+            // Ensure IDs are numbers to match nb.id type
+            const numericIds = (initialNotebookIds || []).map(id => Number(id));
+            setSelectedIds(numericIds);
             loadNotebooks();
         }
     }, [isOpen, initialNotebookIds]);
