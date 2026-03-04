@@ -141,6 +141,7 @@ class WebhookController extends Controller
 
                 // Guarda o plano antigo para decidir se é Upgrade
                 $oldPlanId = $user->plan_id;
+                $oldPlan = $oldPlanId ? \App\Models\Plan::find($oldPlanId) : null;
 
                 // Ativa o plano do usuário primeiramente na tabela (compatibilidade retroativa)
                 $user->update([
@@ -149,12 +150,20 @@ class WebhookController extends Controller
                     'plan_expires_at' => $periodEnd,
                 ]);
 
-                // --- NOVO MODELO ACUMULATIVO ---
+                // --- NOVO MODELO ACUMULATIVO (Somente Upgrade) ---
                 try {
-                    // Se o usuário já tinha um plano ativo, e esse plano NÃO ERA O GRÁTIS (1), e não é uma mera renovação do mesmo plano
+                    // Se o usuário já tinha um plano ativo e não é o grátis
                     if ($oldPlanId && $oldPlanId != $plan->id && $oldPlanId != 1) {
-                        Log::info('[Webhook] Detectado UPGRADE de Plano Pago. Aplicando Soma Acumulativa!', ['user_id' => $user->id]);
-                        $this->quotaService->processUpgradeSoma($subscription, $plan->default_limits ?? []);
+
+                        $isUpgrade = $oldPlan && ($plan->price > $oldPlan->price);
+
+                        if ($isUpgrade) {
+                            Log::info('[Webhook] Detectado UPGRADE de Plano Pago. Aplicando Soma Acumulativa!', ['user_id' => $user->id]);
+                            $this->quotaService->processUpgradeSoma($subscription, $plan->default_limits ?? []);
+                        } else {
+                            Log::info('[Webhook] Detectado DOWNGRADE ou mudança de mesmo valor. Criando ciclo limpo (Sem Reembolso conforme regra).', ['user_id' => $user->id]);
+                            $this->quotaService->createOrRenewCycle($subscription);
+                        }
 
                         // 🛑 Cancela assinaturas anteriores ATIVAS no Asaas para este usuário
                         // Isso evita cobranças duplicadas no futuro.
