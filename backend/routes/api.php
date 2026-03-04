@@ -285,6 +285,7 @@ Route::prefix('v1')->group(function () {
                 Route::post('/', [AdminQuestionImportController::class, 'store']);
                 Route::get('/active-job', [AdminQuestionImportController::class, 'activeJob']);
                 Route::get('/{id}/progress', [AdminQuestionImportController::class, 'progress']);
+                Route::delete('/{id}', [AdminQuestionImportController::class, 'destroy']);
             });
         });
     });
