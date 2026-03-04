@@ -61,26 +61,26 @@ export default function WelcomePlans() {
     };
 
     return (
-        <div className="lp-wrapper bg-[#f1f5f9] min-h-screen">
+        <div className="lp-wrapper bg-[#0f172a] min-h-screen">
 
-            <section className="lp-plans pt-0 pb-12 -mt-[75px]" style={{ background: '#f1f5f9' }}>
+            <section className="lp-plans pt-0 pb-12 -mt-[75px]" style={{ background: '#0f172a' }}>
                 <div style={{ maxWidth: '980px', margin: '0 auto' }}>
                     <div className="text-center mb-6">
-                        <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">
+                        <span className="bg-indigo-500/20 text-indigo-300 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block border border-indigo-500/30">
                             Conta criada com sucesso!
                         </span>
-                        <h2 className="lp-plans-title text-4xl mb-1">
-                            Agora, escolha o seu plano e <span>comece a estudar</span>
+                        <h2 className="lp-plans-title text-4xl mb-1" style={{ color: 'white' }}>
+                            Agora, escolha o seu plano e <span style={{ color: '#6366f1' }}>comece a estudar</span>
                         </h2>
-                        <p className="lp-plans-subtitle text-lg" style={{ marginBottom: '1.25rem' }}>
+                        <p className="lp-plans-subtitle text-lg" style={{ marginBottom: '1.25rem', color: 'rgba(255,255,255,0.7)' }}>
                             Desbloqueie todo o poder da Inteligência Artificial em sua preparação.
                         </p>
                     </div>
 
                     <div className="lp-plans-toggle-wrap" style={{ marginBottom: '1.5rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#f1f5f9', borderRadius: '50px', padding: '.35rem .75rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.1)', borderRadius: '50px', padding: '.35rem .75rem', border: '1px solid rgba(255,255,255,0.1)' }}>
                             <span
-                                style={{ fontSize: '.85rem', fontWeight: 600, cursor: 'pointer', transition: 'color .2s', color: periodo === 'mensal' ? '#0f2b6e' : '#94a3b8' }}
+                                style={{ fontSize: '.85rem', fontWeight: 600, cursor: 'pointer', transition: 'color .2s', color: periodo === 'mensal' ? '#fff' : 'rgba(255,255,255,0.4)' }}
                                 onClick={() => setPeriodo('mensal')}
                             >
                                 Mensal
@@ -90,7 +90,7 @@ export default function WelcomePlans() {
                                 type="button"
                                 onClick={() => setPeriodo(periodo === 'mensal' ? 'anual' : 'mensal')}
                                 className="relative inline-flex h-6 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none"
-                                style={{ background: periodo === 'anual' ? '#1d4ed8' : '#cbd5e1' }}
+                                style={{ background: periodo === 'anual' ? '#6366f1' : 'rgba(255,255,255,0.2)' }}
                                 role="switch"
                                 aria-checked={periodo === 'anual' ? 'true' : 'false'}
                             >
@@ -101,11 +101,11 @@ export default function WelcomePlans() {
                             </button>
 
                             <span
-                                style={{ fontSize: '.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '.4rem', transition: 'color .2s', color: periodo === 'anual' ? '#0f2b6e' : '#94a3b8' }}
+                                style={{ fontSize: '.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '.4rem', transition: 'color .2s', color: periodo === 'anual' ? '#fff' : 'rgba(255,255,255,0.4)' }}
                                 onClick={() => setPeriodo('anual')}
                             >
                                 Anual
-                                <span style={{ background: '#dcfce7', color: '#15803d', fontSize: '.7rem', fontWeight: 800, padding: '.15rem .5rem', borderRadius: '99px' }}>-20% OFF</span>
+                                <span style={{ background: 'rgba(74, 222, 128, 0.2)', color: '#4ade80', fontSize: '.7rem', fontWeight: 800, padding: '.15rem .5rem', borderRadius: '99px' }}>-20% OFF</span>
                             </span>
                         </div>
                     </div>
