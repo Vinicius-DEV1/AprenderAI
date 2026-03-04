@@ -8,7 +8,6 @@ import { marked } from 'marked';
 
 // Modals
 import DialogReportQuestion from './modals/DialogReportQuestion';
-import DrawerQuestionNotes from './modals/DrawerQuestionNotes';
 import DialogNotebookManager from './modals/DialogNotebookManager';
 import DialogQuestionStats from './modals/DialogQuestionStats';
 
@@ -63,9 +62,16 @@ export default function QuestionCard({ question: q }: { question: Question }) {
     const [notebookIds, setNotebookIds] = useState<number[]>(q.notebook_ids || []);
 
     const [showReportModal, setShowReportModal] = useState(false);
-    const [showNotesDrawer, setShowNotesDrawer] = useState(false);
     const [showNotebookModal, setShowNotebookModal] = useState(false);
     const [showStatsModal, setShowStatsModal] = useState(false);
+
+    // Notes panel state
+    const [notes, setNotes] = useState<any[]>([]);
+    const [newNote, setNewNote] = useState('');
+    const [loadingNotes, setLoadingNotes] = useState(false);
+    const [savingNote, setSavingNote] = useState(false);
+    const [notesLoaded, setNotesLoaded] = useState(false);
+    const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
 
     // NEW FOR ANALYTICS
     const viewingLoggedRef = useRef(false);
@@ -79,7 +85,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
         }
     }, [q.id]);
 
-    const [activeTab, setActiveTab] = useState<'gabarito' | 'chat' | 'history' | null>(null);
+    const [activeTab, setActiveTab] = useState<'gabarito' | 'chat' | 'history' | 'notes' | null>(null);
 
     const [chatMessages, setChatMessages] = useState<any[]>([]);
     const [chatInput, setChatInput] = useState('');
@@ -127,6 +133,22 @@ export default function QuestionCard({ question: q }: { question: Question }) {
             return { __html: processedText };
         }
     };
+
+    const sanitizeHTML = (html: string) => {
+        if (!html) return '';
+        // Basic sanitization: remove scripts and event handlers
+        return html
+            .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gim, "")
+            .replace(/on\w+=(['"])(.*?)\1/gim, "")
+            .replace(/javascript:/gim, "");
+    };
+
+    const decodeEntities = (html: string) => {
+        const txt = document.createElement("textarea");
+        txt.innerHTML = html;
+        return txt.value;
+    };
+
 
     const handleToggleFavorite = async () => {
         if (favLoading) return;
@@ -352,6 +374,97 @@ export default function QuestionCard({ question: q }: { question: Question }) {
         }
     };
 
+    const loadNotes = async () => {
+        setLoadingNotes(true);
+        try {
+            const res = await api.get(`/api/v1/questions/${q.id}/notes`);
+            setNotes(res.data);
+            setNotesLoaded(true);
+        } catch (error) {
+            toast.error('Erro ao carregar anotações.');
+        } finally {
+            setLoadingNotes(false);
+        }
+    };
+
+    const toggleNotes = async () => {
+        const nextState = activeTab !== 'notes';
+        setActiveTab(nextState ? 'notes' : null);
+        if (nextState && !notesLoaded) {
+            await loadNotes();
+        }
+    };
+
+    const handleSaveNote = async () => {
+        const contentToSave = editorRef.current ? editorRef.current.innerHTML : newNote;
+        if (!contentToSave.trim() || contentToSave === '<br>') return;
+
+        setSavingNote(true);
+        try {
+            const sanitizedContent = sanitizeHTML(contentToSave);
+            if (editingNoteId) {
+                const res = await api.put(`/api/v1/notes/${editingNoteId}`, { content: sanitizedContent });
+                setNotes(notes.map(n => n.id === editingNoteId ? res.data.note : n));
+                setEditingNoteId(null);
+                toast.success('Anotação atualizada!');
+            } else {
+                const res = await api.post(`/api/v1/questions/${q.id}/notes`, { content: sanitizedContent });
+                setNotes([res.data.note, ...notes]);
+                setHasNotes(true);
+                toast.success('Anotação salva!');
+            }
+            setNewNote('');
+            if (editorRef.current) editorRef.current.innerHTML = '';
+        } catch (error) {
+            toast.error('Erro ao salvar anotação.');
+        } finally {
+            setSavingNote(false);
+        }
+    };
+
+    const handleEditNote = (note: any) => {
+        const content = decodeEntities(note.content);
+        setNewNote(content);
+        setEditingNoteId(note.id);
+        if (editorRef.current) {
+            editorRef.current.innerHTML = content;
+            editorRef.current.focus();
+        }
+    };
+
+    const handleDeleteNote = async (id: number) => {
+        try {
+            await api.delete(`/api/v1/notes/${id}`);
+            const updatedNotes = notes.filter(n => n.id !== id);
+            setNotes(updatedNotes);
+            if (updatedNotes.length === 0) setHasNotes(false);
+            toast.success('Anotação excluída.');
+        } catch (error) {
+            toast.error('Erro ao excluir anotação.');
+        }
+    };
+
+    const editorRef = useRef<HTMLDivElement>(null);
+
+    const applyFormatting = (command: string, value: string = '') => {
+        document.execCommand(command, false, value);
+        if (editorRef.current) {
+            setNewNote(editorRef.current.innerHTML);
+        }
+    };
+
+    // Keep editor in sync when editingNoteId changes
+    useEffect(() => {
+        if (editorRef.current && editingNoteId !== null) {
+            editorRef.current.innerHTML = newNote;
+        } else if (editorRef.current && editingNoteId === null && activeTab === 'notes' && !savingNote) {
+            // Clear editor when not editing if it was just saved
+            if (newNote === '') {
+                editorRef.current.innerHTML = '';
+            }
+        }
+    }, [editingNoteId, activeTab]);
+
     const difficultyMap = {
         easy: { class: 'qb-badge-easy', label: 'Fácil' },
         medium: { class: 'qb-badge-medium', label: 'Média' },
@@ -372,6 +485,12 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                     {q.organization && <span className="qb-badge qb-badge-origin">{q.organization}</span>}
                     <span className="qb-badge qb-badge-origin">{q.subjects.map(s => s.name).join(', ')}</span>
                     <span className={`qb-badge ${dc.class}`}>{dc.label}</span>
+
+                    {q.already_answered && !answered && (
+                        <span className={`qb-badge ${q.was_correct ? 'qb-badge-correct' : 'qb-badge-incorrect'} ml-1`}>
+                            {q.was_correct ? '✓ Resolvida' : '✗ Tentada'}
+                        </span>
+                    )}
                 </div>
 
                 <div className="flex gap-1.5 ml-2 sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-1 rounded-lg border border-gray-100 dark:border-slate-800 shadow-sm z-10">
@@ -391,7 +510,7 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                         📁
                     </button>
                     <button
-                        onClick={() => setShowNotesDrawer(true)}
+                        onClick={toggleNotes}
                         title="Minhas Anotações"
                         className={`p-1.5 rounded-md transition-colors ${hasNotes ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-600 dark:hover:text-gray-300'}`}
                     >
@@ -414,16 +533,6 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                 </div>
             </div>
 
-            <div className="qb-card-meta !mt-0">
-                {q.already_answered && !answered && (
-                    <div className="flex items-center gap-2 mb-2">
-                        <span className={`qb-badge ${q.was_correct ? 'qb-badge-correct' : 'qb-badge-incorrect'}`}>
-                            {q.was_correct ? '✓ Você já acertou esta questão' : '✗ Você já tentou esta questão'}
-                        </span>
-                        <span className="text-[10px] text-gray-400 font-medium">Você pode responder novamente abaixo.</span>
-                    </div>
-                )}
-            </div>
 
             <div className="qb-statement" dangerouslySetInnerHTML={{ __html: q.statement_html }} />
 
@@ -504,6 +613,13 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                             style={{ flexShrink: 0 }}
                         >
                             📜 Meu Histórico
+                        </button>
+                        <button
+                            className={`qb-action-btn transition-colors duration-200 ${activeTab === 'notes' ? '!bg-indigo-600 !text-white !border-indigo-600 shadow-sm' : ''}`}
+                            onClick={toggleNotes}
+                            style={{ flexShrink: 0 }}
+                        >
+                            📝 Minhas Anotações
                         </button>
                         <button className="qb-action-btn retry" onClick={resetCard} style={{ flexShrink: 0 }}>
                             <span>🔄 Tentar Novamente</span>
@@ -644,6 +760,102 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                         </div>
                     </motion.div>
                 )}
+
+                {activeTab === 'notes' && (
+                    <motion.div
+                        key="notes-panel"
+                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}
+                        className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-4 overflow-hidden w-full"
+                    >
+                        <h4 className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mb-3 flex items-center gap-2">
+                            📝 Suas Anotações Privadas
+                        </h4>
+
+                        <div className="bg-gray-50 dark:bg-slate-900/50 p-2 rounded-xl border border-gray-300 dark:border-slate-700 mb-4 transition-all relative">
+                            {/* Toolbar */}
+                            <div className="flex flex-wrap gap-1 mb-2 pb-2 border-b border-gray-200 dark:border-slate-800">
+                                <button onClick={() => applyFormatting('bold')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-slate-800 text-sm font-bold" title="Negrito">B</button>
+                                <button onClick={() => applyFormatting('italic')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-slate-800 text-sm italic" title="Itálico">I</button>
+                                <button onClick={() => applyFormatting('underline')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-slate-800 text-sm underline" title="Sublinhado">U</button>
+                                <div className="w-px h-5 bg-gray-300 dark:bg-slate-700 mx-1 self-center"></div>
+                                <button onClick={() => applyFormatting('foreColor', '#ef4444')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-slate-800 text-red-500 font-black" title="Vermelho">A</button>
+                                <button onClick={() => applyFormatting('foreColor', '#22c55e')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-slate-800 text-green-500 font-black" title="Verde">A</button>
+                                <button onClick={() => applyFormatting('foreColor', '#3b82f6')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-slate-800 text-blue-500 font-black" title="Azul">A</button>
+                                <button onClick={() => applyFormatting('hiliteColor', '#fef08a')} className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-slate-800 bg-yellow-200 text-yellow-800 text-[10px] font-bold" title="Marca-texto">M</button>
+                            </div>
+
+                            <div
+                                ref={editorRef}
+                                contentEditable
+                                onInput={(e) => setNewNote(e.currentTarget.innerHTML)}
+                                className="w-full bg-transparent outline-none text-sm dark:text-gray-100 min-h-[80px] p-1 overflow-y-auto qb-question-text"
+                                style={{ whiteSpace: 'pre-wrap' }}
+                                onBlur={() => setNewNote(editorRef.current?.innerHTML || '')}
+                            ></div>
+
+                            {(newNote === '' || newNote === '<br>') && !editingNoteId && (
+                                <div className="absolute top-[52px] left-4 text-gray-400 pointer-events-none text-xs italic">
+                                    Escreva sua anotação aqui...
+                                </div>
+                            )}
+                            <div className="flex justify-between items-center mt-2">
+                                <div>
+                                    {editingNoteId && (
+                                        <button
+                                            onClick={() => { setEditingNoteId(null); setNewNote(''); if (editorRef.current) editorRef.current.innerHTML = ''; }}
+                                            className="text-[10px] font-bold text-gray-400 hover:text-gray-600 uppercase"
+                                        >
+                                            Cancelar Edição
+                                        </button>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={handleSaveNote}
+                                    disabled={savingNote || !newNote.trim() || newNote === '<br>'}
+                                    className={`px-4 py-1.5 rounded-lg text-[11px] font-bold text-white transition-all uppercase tracking-wider shadow-sm ${editingNoteId ? 'bg-amber-500 hover:bg-amber-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                                >
+                                    {savingNote ? 'Salvando...' : editingNoteId ? 'Atualizar Anotação' : 'Salvar Anotação'}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                            {loadingNotes ? (
+                                <p className="text-center text-xs text-gray-500 py-4 animate-pulse">Carregando...</p>
+                            ) : notes.length === 0 ? (
+                                <p className="text-center text-xs text-gray-400 py-4">Nenhuma anotação nesta questão.</p>
+                            ) : (
+                                notes.map(note => (
+                                    <div key={note.id} className="bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-xl border border-amber-100 dark:border-amber-900/30 relative group">
+                                        <div className="absolute top-2 right-2 flex gap-1">
+                                            <button
+                                                onClick={() => handleEditNote(note)}
+                                                className="text-amber-600 opacity-0 group-hover:opacity-100 hover:bg-amber-100 dark:hover:bg-amber-900/30 p-1 rounded-md transition"
+                                                title="Editar"
+                                            >
+                                                ✏️
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteNote(note.id)}
+                                                className="text-red-500 opacity-0 group-hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded-md transition"
+                                                title="Excluir"
+                                            >
+                                                🗑️
+                                            </button>
+                                        </div>
+                                        <div
+                                            className="note-content text-xs text-slate-700 dark:text-slate-300 pr-12 break-words whitespace-pre-wrap leading-relaxed qb-question-text"
+                                            dangerouslySetInnerHTML={{ __html: sanitizeHTML(decodeEntities(note.content)) }}
+                                        />
+                                        <div className="text-[9px] text-gray-400 mt-2 text-right font-medium italic">
+                                            Editado em {new Date(note.updated_at).toLocaleDateString()}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </motion.div>
+                )}
             </AnimatePresence>
 
             <DialogReportQuestion
@@ -652,12 +864,6 @@ export default function QuestionCard({ question: q }: { question: Question }) {
                 questionId={q.id}
             />
 
-            <DrawerQuestionNotes
-                isOpen={showNotesDrawer}
-                onClose={() => setShowNotesDrawer(false)}
-                questionId={q.id}
-                onNoteSaved={() => setHasNotes(true)}
-            />
 
             <DialogNotebookManager
                 isOpen={showNotebookModal}
