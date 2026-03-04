@@ -251,6 +251,23 @@ class AIBatchTriageController extends Controller
     }
 
     /**
+     * Get the currently active batch (processing).
+     */
+    public function active()
+    {
+        $batch = AiProcessingBatch::where('status', 'processing')->latest()->first();
+
+        if ($batch) {
+            return response()->json([
+                'success' => true,
+                'batch_id' => $batch->batch_id
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Nenhum lote ativo.']);
+    }
+
+    /**
      * Get progress for a batch.
      */
     public function status($batchId)

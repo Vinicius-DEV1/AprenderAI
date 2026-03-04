@@ -250,6 +250,7 @@ Route::prefix('v1')->group(function () {
             Route::prefix('triage')->group(function () {
                 Route::post('/preview', [AdminAIBatchTriageController::class, 'preview']);
                 Route::post('/start', [AdminAIBatchTriageController::class, 'start']);
+                Route::get('/active', [AdminAIBatchTriageController::class, 'active']);
                 Route::get('/{batchId}/status', [AdminAIBatchTriageController::class, 'status']);
                 Route::post('/{batchId}/cancel', [AdminAIBatchTriageController::class, 'cancel']);
                 Route::post('/{batchId}/cancel-and-revert', [AdminAIBatchTriageController::class, 'cancelAndRevert']);
