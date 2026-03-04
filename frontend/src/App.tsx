@@ -79,6 +79,8 @@ import AdminApiPricing from './pages/admin/ApiPricing';
 import AdminSimulationBuilder from './pages/admin/SimulationBuilder';
 import AdminSubscriptions from './pages/admin/AdminSubscriptions';
 import AdminXavierInsights from './pages/admin/XavierInsights';
+import AdminExamsList from './pages/admin/exams/AdminExamsList';
+import AdminExamDetails from './pages/admin/exams/AdminExamDetails';
 import Analytics from './components/Analytics';
 
 function App() {
@@ -232,6 +234,10 @@ function App() {
                         <Route path="subscriptions" element={<><MetaTags title="Admin: Assinaturas" /><AdminSubscriptions /></>} />
                         <Route path="simulations/builder" element={<><MetaTags title="Admin: Motor de Simulados" /><AdminSimulationBuilder /></>} />
                         <Route path="xavier/insights" element={<><MetaTags title="Admin: Xavier Insights" /><AdminXavierInsights /></>} />
+
+                        {/* Exams (Provas) */}
+                        <Route path="provas" element={<><MetaTags title="Admin: Provas (PDFs)" /><AdminExamsList /></>} />
+                        <Route path="provas/:id" element={<><MetaTags title="Admin: Detalhes da Prova" /><AdminExamDetails /></>} />
 
                     </Route>
                 </Route>

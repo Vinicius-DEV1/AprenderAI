@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\Admin\AdminImportReviewController;
 use App\Http\Controllers\Api\Admin\AdminSimulationController;
 use App\Http\Controllers\Api\Admin\ApiPricingController;
 use App\Http\Controllers\Api\Admin\PaymentSettingsController;
+use App\Http\Controllers\Api\Admin\ExamController;
 
 /*
 |--------------------------------------------------------------------------
@@ -156,10 +157,13 @@ Route::prefix('v1')->group(function () {
             Route::get('/dashboard', [AdminController::class, 'dashboard']);
             Route::get('/curadoria', [CuradoriaController::class, 'index']);
 
-            // Question Reports & Quality
             Route::get('question-reports', [QuestionReportController::class, 'index']);
             Route::post('question-reports/{report}/resolve', [QuestionReportController::class, 'resolve']);
             Route::post('questions/{question}/deactivate', [QuestionReportController::class, 'deactivateQuestion']);
+
+            // Exams (Provas) Visualization
+            Route::get('exams', [ExamController::class, 'index']);
+            Route::get('exams/{id}', [ExamController::class, 'show']);
 
             // Administrative CRUDs
             Route::get('questions/support-data', [AdminQuestionController::class, 'supportData']);
