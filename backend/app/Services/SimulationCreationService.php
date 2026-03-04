@@ -58,18 +58,15 @@ class SimulationCreationService
 
         $questions = $this->selectQuestions($simulation->user, $type, $total, $distribution, $data);
 
-        // Strict validation: must have exactly the required number of questions
+        // Relaxed validation: Instead of throwing exception and breaking the flow, 
+        // we log the warning and proceed with what we have.
         if ($questions->count() < $total) {
+            \Illuminate\Support\Facades\Log::warning("Simulation created with fewer questions than requested. Requested: $total | Found: {$questions->count()}. User: {$simulation->user->id}");
+
+            // Only throw if absolutely EMPTY (which should be rare with repetition fallback)
             if ($questions->isEmpty()) {
-                throw new \Exception("Quantidade insuficiente de quest\u00f5es dispon\u00edveis para este tipo de simulado.");
+                throw new \Exception("Quantidade insuficiente de questões disponíveis para este tipo de simulado.");
             }
-            // Partial result: reject to avoid a broken simulation
-            $reason = "Dica: Caso o simulado exija muitas quest\u00f5es novas, os limites das suas chaves de API da IA podem ter sido atingidos. Tente um simulado menor ou aguarde alguns minutos.";
-            \Illuminate\Support\Facades\Log::warning("Simulation generation failed. Total found: {$questions->count()} / $total. ");
-            throw new \Exception(
-                "Quantidade insuficiente de quest\u00f5es dispon\u00edveis para este tipo de simulado. "
-                . "Solicitado: $total | Encontrado: {$questions->count()}. $reason"
-            );
         }
 
         // Persistence (Inside Transaction - Fast)
