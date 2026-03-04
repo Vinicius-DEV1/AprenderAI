@@ -312,16 +312,14 @@ export default function SimulationView() {
     const totalQuestions = answersList.length;
 
     return (
-        <div className="simulation-page p-0 lg:p-0 min-h-screen">
+        <div className="simulation-page p-0 lg:p-0 h-screen overflow-hidden flex flex-col">
             <style>{`
-        .simulation-container { display: grid; grid-template-columns: 280px 1fr; gap: 0px; height: calc(100vh - 84px); overflow: hidden; }
+        .simulation-container { display: grid; grid-template-columns: 280px 1fr; gap: 0px; flex: 1; overflow: hidden; }
         @media (max-width: 768px) { .simulation-container { grid-template-columns: 1fr; height: auto; } .question-nav { display: none; } }
         .question-nav { background: white; border-right: 1px solid #e2e8f0; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; border-radius: 0; }
         .timer { background: #1e293b; color: white; padding: 16px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
         .timer-label { font-size: 12px; opacity: 0.7; margin-bottom: 4px; }
-        .timer-value { font-size: 28px; font-weight: 700; font-family: 'Courier New', monospace; }
-        .nav-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 20px; flex: 1; overflow-y: auto; }
-        .nav-btn { width: 100%; aspect-ratio: 1; border: 2px solid #e2e8f0; background: white; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .nav-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 20px; }
         .nav-btn:hover { border-color: #cbd5e1; }
         .nav-btn.answered { background: #d1fae5; border-color: #10b981; color: #065f46; }
         .nav-btn.marked { background: #fef3c7; border-color: #f59e0b; color: #78350f; }
@@ -379,7 +377,7 @@ export default function SimulationView() {
         .word-break-all { word-break: break-all; }
       `}</style>
 
-            <div className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between sticky top-0 z-20">
+            <div className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between z-20">
                 <div className="flex items-center">
                     <button
                         onClick={() => toggleSidebar()}
