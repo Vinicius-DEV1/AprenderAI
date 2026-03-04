@@ -183,7 +183,8 @@ class SimulationCreationService
                 $subjectQuestions = $query->inRandomOrder()->limit($subjectTotal)->get();
                 $finalQuestions = $finalQuestions->merge($subjectQuestions);
 
-                // AI Fallback for concurso gaps
+                // AI Fallback for concurso gaps - TEMPORARILY DISABLED
+                /*
                 $missing = $subjectTotal - $subjectQuestions->count();
                 if ($missing > 0) {
                     try {
@@ -228,6 +229,7 @@ class SimulationCreationService
                         \Illuminate\Support\Facades\Log::error("Concurso AI Failed: " . $e->getMessage());
                     }
                 }
+                */
 
                 continue;
             }
@@ -298,7 +300,8 @@ class SimulationCreationService
                 $subjectQuestions = $subjectQuestions->merge($extraReal);
             }
 
-            // 4. Final attempt: trigger AI generation if still missing
+            // 4. Final attempt: trigger AI generation if still missing - TEMPORARILY DISABLED
+            /*
             $missing = $subjectTotal - $subjectQuestions->count();
             if ($missing > 0) {
                 try {
@@ -326,6 +329,7 @@ class SimulationCreationService
                                 ]);
 
                                 $correct = strtoupper($nq['correct_answer'] ?? 'A');
+                                $correct = strtoupper($nq['correct_answer'] ?? 'A');
                                 foreach ($nq['alternatives'] as $label => $content) {
                                     $createdQ->alternatives()->create([
                                         'label' => strtoupper($label),
@@ -350,6 +354,7 @@ class SimulationCreationService
                     \Illuminate\Support\Facades\Log::warning("ENEM AI Generation failed for $subject: " . $e->getMessage());
                 }
             }
+            */
 
             $finalQuestions = $finalQuestions->merge($subjectQuestions->take($subjectTotal));
         }

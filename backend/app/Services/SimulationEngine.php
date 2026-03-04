@@ -115,8 +115,8 @@ class SimulationEngine
 
             $available = $query->count();
 
-            // How many real questions we need (AI quota covers the rest)
-            $realNeeded = $subjectTotal - (int) ceil($subjectTotal * $aiRatio);
+            // TEMPORARILY DISABLED AI: We need 100% of questions from the real database
+            $realNeeded = $subjectTotal;
 
             if ($available < $realNeeded) {
                 throw new \RuntimeException(
@@ -194,6 +194,8 @@ class SimulationEngine
             $finalQuestions = $finalQuestions->merge($aiPool);
 
             // 3. Generate missing via AI if needed
+            // TEMPORARILY DISABLED: Skipping AI generation fallback for performance
+            /*
             $missing = $subjectTotal - $finalQuestions->where(
                 fn($q) => in_array($q->subjects->first()?->name, [$subject])
             )->count();
@@ -208,6 +210,7 @@ class SimulationEngine
                     $finalQuestions = $finalQuestions->merge($generated);
                 }
             }
+            */
         }
 
         return $finalQuestions->take($total);
