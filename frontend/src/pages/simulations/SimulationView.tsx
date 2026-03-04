@@ -251,12 +251,21 @@ export default function SimulationView() {
         return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
 
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
+
     const renderMd = (text: string) => {
         if (!text) return { __html: '' };
+        let processedText = text;
+        if (processedText.includes('](/storage/')) {
+            processedText = processedText.replace(/\]\(\/storage\//g, `](${apiUrl}/storage/`);
+        }
+        if (processedText.includes('src="/storage/')) {
+            processedText = processedText.replace(/src="\/storage\//g, `src="${apiUrl}/storage/`);
+        }
         try {
-            return { __html: marked.parse(text) as string };
+            return { __html: marked.parse(processedText) as string };
         } catch (e) {
-            return { __html: text };
+            return { __html: processedText };
         }
     };
 
@@ -488,7 +497,7 @@ export default function SimulationView() {
                                     </span>
                                 </div>
 
-                                <div className="question-statement" dangerouslySetInnerHTML={{ __html: question.html_statement || question.statement }} />
+                                <div className="question-statement" dangerouslySetInnerHTML={renderMd(question.html_statement || question.statement)} />
 
                                 <div className="qb-alternatives-list mt-8">
                                     {(question.alternatives || []).map((alt: any) => (
