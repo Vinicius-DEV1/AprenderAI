@@ -85,9 +85,10 @@ class SubscriptionController extends Controller
 
         $user = Auth::user();
 
-        // Evita duplicidade se o usuário já tem um plano ativo
-        if ($user->plan_id && $user->plan_id != 1 && $user->plan_expires_at && $user->plan_expires_at->isFuture()) {
-            return response()->json(['message' => 'Você já possui um plano ativo.'], 400);
+        // Evita duplicidade apenas se o usuário já tem EXATAMENTE o mesmo plano ativo
+        // Isso permite upgrades, downgrades ou mudanças para planos diferentes.
+        if ($user->plan_id === $plan->id && $user->plan_expires_at && $user->plan_expires_at->isFuture()) {
+            return response()->json(['message' => 'Você já possui este plano ativo e ele ainda é válido.'], 400);
         }
 
         try {
