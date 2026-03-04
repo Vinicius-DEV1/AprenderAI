@@ -54,6 +54,11 @@ class QuestionResource extends JsonResource
             'already_answered' => $this->when(auth()->check(), function () {
                 return $this->userAnswers()->where('user_id', auth()->id())->exists();
             }),
+            'is_favorite' => $this->when(isset($this->is_favorite), fn() => (bool) $this->is_favorite),
+            'has_notes' => $this->when(isset($this->has_notes), fn() => (bool) $this->has_notes),
+            'notebook_ids' => $this->whenLoaded('notebooks', function () {
+                return $this->notebooks->pluck('id');
+            }),
         ];
     }
 }

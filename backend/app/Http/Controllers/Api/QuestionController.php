@@ -18,7 +18,14 @@ class QuestionController extends Controller
      */
     public function index(Request $request)
     {
+        $userId = $request->user('sanctum')?->id;
         $query = Question::published()->with(['subjects', 'topics', 'alternatives', 'images']);
+
+        if ($userId) {
+            $query->withExists(['favorites as is_favorite' => fn($q) => $q->where('user_id', $userId)])
+                ->withExists(['notes as has_notes' => fn($q) => $q->where('user_id', $userId)])
+                ->with(['notebooks' => fn($q) => $q->where('user_id', $userId)->select('notebooks.id')]);
+        }
 
         // Base Type Blocks: Never return Redação in student endpoints
         $query->where('tipo_questao', '!=', 'Redação');
@@ -36,6 +43,24 @@ class QuestionController extends Controller
         // Relational filters
         $query->filterBySubject($request->subject); // Handles subject ID
         $query->filterByTopic($request->topic);     // Handles topic ID
+
+        // Favorites filter
+        if ($userId && $request->boolean('favorites_only')) {
+            $query->whereHas('favorites', fn($q) => $q->where('user_id', $userId));
+        }
+        if ($userId && $request->boolean('exclude_favorites')) {
+            $query->whereDoesntHave('favorites', fn($q) => $q->where('user_id', $userId));
+        }
+
+        // Notebooks filter (array or single ID)
+        if ($userId && $request->filled('notebook_id')) {
+            $notebookIds = (array) $request->notebook_id;
+            $query->whereHas('notebooks', fn($q) => $q->whereIn('notebooks.id', $notebookIds)->where('user_id', $userId));
+        }
+        if ($userId && $request->filled('exclude_notebook_id')) {
+            $excludeNotebookIds = (array) $request->exclude_notebook_id;
+            $query->whereDoesntHave('notebooks', fn($q) => $q->whereIn('notebooks.id', $excludeNotebookIds)->where('user_id', $userId));
+        }
 
         // Attribute filters
         if ($request->filled('difficulty')) {
@@ -76,6 +101,14 @@ class QuestionController extends Controller
     public function show(Request $request, Question $question)
     {
         $question->load(['subjects', 'topics', 'alternatives', 'images']);
+
+        $userId = $request->user('sanctum')?->id;
+        if ($userId) {
+            $question->loadExists(['favorites as is_favorite' => fn($q) => $q->where('user_id', $userId)]);
+            $question->loadExists(['notes as has_notes' => fn($q) => $q->where('user_id', $userId)]);
+            $question->load(['notebooks' => fn($q) => $q->where('user_id', $userId)->select('notebooks.id')]);
+        }
+
         return new QuestionResource($question);
     }
 
@@ -179,6 +212,37 @@ class QuestionController extends Controller
             'temporal' => $statsService->getTemporalEvolution($userId),
             'byDifficulty' => $statsService->getDifficultyHeatmap($userId),
         ]);
+    }
+
+    /**
+     * Statistics for a specific question.
+     */
+    public function questionStats(Request $request, Question $question)
+    {
+        $showStats = filter_var(env('SHOW_QUESTION_STATS_TO_USERS', false), FILTER_VALIDATE_BOOLEAN);
+
+        if (!$showStats && !$request->user()->isAdmin()) {
+            return response()->json(['message' => 'Estatísticas indisponíveis. Ocultas no momento.'], 403);
+        }
+
+        $answers = \App\Models\UserQuestionAnswer::where('question_id', $question->id)->get();
+        if ($answers->isEmpty()) {
+            return response()->json(['total_responses' => 0]);
+        }
+
+        $total = $answers->count();
+        $correct = $answers->where('is_correct', true)->count();
+
+        $stats = [
+            'difficulty' => $question->difficulty ?? 'N/A',
+            'total_responses' => $total,
+            'correct_percentage' => round(($correct / $total) * 100, 2),
+            'incorrect_percentage' => round((($total - $correct) / $total) * 100, 2),
+            'average_time_seconds' => round($answers->avg('time_spent_seconds') ?? 0, 2),
+            'alternative_distribution' => $answers->groupBy('selected_answer')->map(fn($group) => round(($group->count() / $total) * 100, 2)),
+        ];
+
+        return response()->json($stats);
     }
 
     /**

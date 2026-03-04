@@ -13,6 +13,10 @@ use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\FavoriteController;
+use App\Http\Controllers\Api\NotebookController;
+use App\Http\Controllers\Api\QuestionNoteController;
+use App\Http\Controllers\Api\QuestionReportController;
 use App\Http\Controllers\Api\Admin\CuradoriaController;
 use App\Http\Controllers\Api\Admin\QuestionController as AdminQuestionController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
@@ -100,6 +104,12 @@ Route::prefix('v1')->group(function () {
             Route::get('/{subscription}/receipt', [SubscriptionController::class, 'receiptUrl']);
         });
 
+        // Notebooks
+        Route::apiResource('notebooks', NotebookController::class);
+        Route::post('notebooks/{notebook}/questions/{question}', [NotebookController::class, 'addQuestion']);
+        Route::delete('notebooks/{notebook}/questions/{question}', [NotebookController::class, 'removeQuestion']);
+        Route::post('questions/{question}/sync-notebooks', [NotebookController::class, 'syncQuestion']);
+
         // Question Bank
         Route::prefix('questions')->group(function () {
             Route::get('/essay-themes', [QuestionController::class, 'essayThemes']);
@@ -112,6 +122,15 @@ Route::prefix('v1')->group(function () {
             Route::post('/{question}/view', [QuestionController::class, 'logView']);
             Route::post('/{question}/answer', [QuestionController::class, 'answer'])
                 ->middleware('check.plan.limits:daily_question');
+
+            // Notes, Favorites, Reports, and Stats
+            Route::post('/{question}/favorite', [FavoriteController::class, 'toggle']);
+            Route::post('/{question}/report', [QuestionReportController::class, 'store']);
+            Route::get('/{question}/stats', [QuestionController::class, 'questionStats']);
+            Route::get('/{question}/notes', [QuestionNoteController::class, 'index']);
+            Route::post('/{question}/notes', [QuestionNoteController::class, 'store']);
+            Route::put('/notes/{note}', [QuestionNoteController::class, 'update']);
+            Route::delete('/notes/{note}', [QuestionNoteController::class, 'destroy']);
 
             // Xavier AI Search
             Route::post('/ai-search', [QuestionController::class, 'aiSearch'])->name('questions.ai-search');
@@ -132,6 +151,11 @@ Route::prefix('v1')->group(function () {
         Route::prefix('admin')->middleware(['is.admin'])->group(function () {
             Route::get('/dashboard', [AdminController::class, 'dashboard']);
             Route::get('/curadoria', [CuradoriaController::class, 'index']);
+
+            // Question Reports & Quality
+            Route::get('question-reports', [QuestionReportController::class, 'index']);
+            Route::post('question-reports/{report}/resolve', [QuestionReportController::class, 'resolve']);
+            Route::post('questions/{question}/deactivate', [QuestionReportController::class, 'deactivateQuestion']);
 
             // Administrative CRUDs
             Route::get('questions/support-data', [AdminQuestionController::class, 'supportData']);
