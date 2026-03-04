@@ -253,6 +253,15 @@ Route::prefix('v1')->group(function () {
                 Route::post('/{batchId}/cancel', [AdminAIBatchTriageController::class, 'cancel']);
             });
 
+            // AI Batch History & Rollback
+            Route::prefix('questions-batch')->group(function () {
+                Route::get('/history', [AdminAIBatchTriageController::class, 'history']);
+                Route::get('/details/{batchId}', [AdminAIBatchTriageController::class, 'details']);
+                Route::post('/undo-batch/{batchId}', [AdminAIBatchTriageController::class, 'undoBatch']);
+                Route::post('/undo-item/{itemId}', [AdminAIBatchTriageController::class, 'undoItem']);
+                Route::post('/retry/{batchId}', [AdminAIBatchTriageController::class, 'retry']);
+            });
+
             // Simulation Builder
             Route::prefix('simulations')->group(function () {
                 Route::get('/presets', [AdminSimulationController::class, 'index']);
