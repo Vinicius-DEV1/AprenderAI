@@ -431,13 +431,13 @@ export default function QuestionBank() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
                 {/* Original Header Restored + New Metrics */}
-                <div className="qb-header flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                    <div className="qb-header-left">
+                <div className="qb-header flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 lg:gap-8 w-full overflow-hidden">
+                    <div className="qb-header-left flex-shrink-0">
                         <h1>📘 Banco de Questões</h1>
                         <p>Resolva questões, veja explicações e tire dúvidas com {aiName}</p>
                     </div>
-                    <div className="flex flex-col items-start md:items-end gap-3">
-                        <button className="qb-btn-desempenho" onClick={() => setStatsOpen(true)}>
+                    <div className="flex flex-col items-start lg:items-end gap-3 w-full lg:w-auto mt-2 lg:mt-0">
+                        <button className="qb-btn-desempenho w-full lg:w-auto justify-center" onClick={() => setStatsOpen(true)}>
                             📊 Ver Meu Desempenho
                         </button>
 
