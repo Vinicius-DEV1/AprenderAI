@@ -152,22 +152,21 @@ class SimulationCreationService
             );
 
             if (str_contains($subjectSanitized, 'PORTUGU'))
-                $subject = "LINGUA PORTUGUESA";
+                $subjectNorm = "LINGUA PORTUGUESA";
             elseif (str_contains($subjectSanitized, 'MATEM'))
-                $subject = "MATEMATICA";
+                $subjectNorm = "MATEMATICA";
             else
-                $subject = $subjectSanitized;
+                $subjectNorm = $subjectSanitized;
 
-            \Illuminate\Support\Facades\Log::info("Processing Subject: $subject (Orig: $subjectOrig) | Total Needed: $subjectTotal | Type: $type");
+            \Illuminate\Support\Facades\Log::info("Processing Subject: $subjectNorm (Orig: $subjectOrig) | Total Needed: $subjectTotal | Type: $type");
 
             // ----------------------------------------------------------------
             // CONCURSO PATH
             // ----------------------------------------------------------------
             if ($type === 'concurso') {
-                $query = Question::published()->whereHas('subjects', function ($q) use ($subject) {
-                    $q->where('name', $subject);
+                $query = Question::published()->whereHas('subjects', function ($q) use ($subjectNorm) {
+                    $q->where('name', $subjectNorm);
                 });
-                // No type restriction for concurso — can mix question types
 
                 if (!empty($context['organization']))
                     $query->whereIn('organization', $context['organization']);
@@ -181,61 +180,26 @@ class SimulationCreationService
                     $query->whereNotIn('id', $avoidIds);
 
                 $subjectQuestions = $query->inRandomOrder()->limit($subjectTotal)->get();
-                $finalQuestions = $finalQuestions->merge($subjectQuestions);
 
-                // AI Fallback for concurso gaps - TEMPORARILY DISABLED
-                /*
-                $missing = $subjectTotal - $subjectQuestions->count();
-                if ($missing > 0) {
-                    try {
-                        $aiService = app(\App\Services\AI\AIService::class);
-                        $generated = $aiService->generateQuestions($subject, $missing, $context);
-
-                        foreach ($generated as $nq) {
-                            if (!empty($nq['statement'])) {
-                                $createdQ = Question::create([
-                                    'type' => 'concurso',
-                                    'difficulty' => $nq['difficulty'] ?? 'medium',
-                                    'year' => date('Y'),
-                                    'statement' => $nq['statement'],
-                                    'explanation' => $nq['explanation'] ?? null,
-                                    'source' => 'ai_generated',
-                                    'external_id' => 'ai_' . bin2hex(random_bytes(8)),
-                                    'organization' => $context['organization'][0] ?? null,
-                                    'institution' => $context['institution'][0] ?? null,
-                                    'role' => $context['role'][0] ?? null,
-                                ]);
-
-                                if (!empty($nq['alternatives']) && is_array($nq['alternatives'])) {
-                                    $correct = strtoupper($nq['correct_answer'] ?? 'A');
-                                    foreach ($nq['alternatives'] as $label => $content) {
-                                        $createdQ->alternatives()->create([
-                                            'label' => strtoupper($label),
-                                            'content' => $content,
-                                            'is_correct' => strtoupper($label) === $correct,
-                                        ]);
-                                    }
-                                }
-
-                                $subjectModel = \App\Models\Subject::firstOrCreate(
-                                    ['name' => $subject],
-                                    ['slug' => \Illuminate\Support\Str::slug($subject), 'type' => 'concurso']
-                                );
-                                $createdQ->subjects()->attach($subjectModel->id);
-                                $finalQuestions->push($createdQ);
-                            }
-                        }
-                    } catch (\Exception $e) {
-                        \Illuminate\Support\Facades\Log::error("Concurso AI Failed: " . $e->getMessage());
-                    }
+                // Fallback: Repetition
+                if ($subjectQuestions->count() < $subjectTotal) {
+                    $missing = $subjectTotal - $subjectQuestions->count();
+                    $extra = Question::published()->whereHas('subjects', function ($q) use ($subjectNorm) {
+                        $q->where('name', $subjectNorm);
+                    })
+                        ->whereNotIn('id', array_merge($finalQuestions->pluck('id')->toArray(), $subjectQuestions->pluck('id')->toArray()))
+                        ->inRandomOrder()
+                        ->limit($missing)
+                        ->get();
+                    $subjectQuestions = $subjectQuestions->merge($extra);
                 }
-                */
 
+                $finalQuestions = $finalQuestions->merge($subjectQuestions);
                 continue;
             }
 
             // ----------------------------------------------------------------
-            // ENEM PATH (strict: only type='enem' questions)
+            // ENEM PATH
             // ----------------------------------------------------------------
             $preset = \App\Models\SimulationPreset::where('type', $type)->where('is_active', true)->first();
             $aiRatio = 0.10;
@@ -249,10 +213,11 @@ class SimulationCreationService
             $countRealInitial = $subjectTotal - $countGenTarget;
 
             $ignoredIds = $this->getLastSeenQuestionIds($user);
+            $alreadyPickedIds = $finalQuestions->pluck('id')->toArray();
 
-            // 1. Initial Real Questions (honoring ratio)
-            $realQuestions = Question::published()->whereHas('subjects', function ($q) use ($subject) {
-                $q->where('name', $subject);
+            // 1. Initial Real Questions (No Repeat)
+            $realQuestions = Question::published()->whereHas('subjects', function ($q) use ($subjectNorm) {
+                $q->where('name', $subjectNorm);
             })
                 ->where('type', 'enem')
                 ->where(function ($q) {
@@ -261,100 +226,38 @@ class SimulationCreationService
                         ->orWhere('source', 'enem_api')
                         ->orWhere('source', 'api');
                 })
-                ->whereNotIn('id', $ignoredIds)
+                ->whereNotIn('id', array_merge($ignoredIds, $alreadyPickedIds))
                 ->inRandomOrder()
                 ->limit($countRealInitial)
                 ->get();
 
             // 2. Pre-generated AI questions from DB
-            $aiQuestions = Question::published()->whereHas('subjects', function ($q) use ($subject) {
-                $q->where('name', $subject);
+            $aiQuestions = Question::published()->whereHas('subjects', function ($q) use ($subjectNorm) {
+                $q->where('name', $subjectNorm);
             })
                 ->where('type', 'enem')
                 ->where('source', 'ai_generated')
-                ->whereNotIn('id', $ignoredIds)
+                ->whereNotIn('id', array_merge($ignoredIds, $alreadyPickedIds, $realQuestions->pluck('id')->toArray()))
                 ->inRandomOrder()
                 ->limit($countGenTarget)
                 ->get();
 
             $subjectQuestions = $realQuestions->merge($aiQuestions);
 
-            // 3. FALLBACK: If still missing, try to fill with MORE real questions before generating new ones
+            // 3. Fallback: Repetition (Ignore ignoredIds)
             $missing = $subjectTotal - $subjectQuestions->count();
             if ($missing > 0) {
-                $extraReal = Question::published()->whereHas('subjects', function ($q) use ($subject) {
-                    $q->where('name', $subject);
+                $extraQuestions = Question::published()->whereHas('subjects', function ($q) use ($subjectNorm) {
+                    $q->where('name', $subjectNorm);
                 })
                     ->where('type', 'enem')
-                    ->where(function ($q) {
-                        $q->where('source', 'enem_real_2009_2023')
-                            ->orWhere('source', 'manual')
-                            ->orWhere('source', 'enem_api')
-                            ->orWhere('source', 'api');
-                    })
-                    ->whereNotIn('id', array_merge($ignoredIds, $subjectQuestions->pluck('id')->toArray()))
+                    ->whereNotIn('id', array_merge($alreadyPickedIds, $subjectQuestions->pluck('id')->toArray()))
                     ->inRandomOrder()
                     ->limit($missing)
                     ->get();
 
-                $subjectQuestions = $subjectQuestions->merge($extraReal);
+                $subjectQuestions = $subjectQuestions->merge($extraQuestions);
             }
-
-            // 4. Final attempt: trigger AI generation if still missing - TEMPORARILY DISABLED
-            /*
-            $missing = $subjectTotal - $subjectQuestions->count();
-            if ($missing > 0) {
-                try {
-                    $aiService = app(\App\Services\AI\AIService::class);
-                    $chunkSize = 5;
-                    $remaining = $missing;
-
-                    while ($remaining > 0) {
-                        $batch = min($remaining, $chunkSize);
-                        $newQs = $aiService->generateQuestions($subject, $batch);
-
-                        if (empty($newQs))
-                            break;
-
-                        foreach ($newQs as $nq) {
-                            if (!empty($nq['statement']) && !empty($nq['alternatives'])) {
-                                $createdQ = Question::create([
-                                    'type' => 'enem',
-                                    'difficulty' => $nq['difficulty'] ?? 'medium',
-                                    'year' => $nq['year'] ?? rand(2015, 2025),
-                                    'statement' => $nq['statement'],
-                                    'explanation' => $nq['explanation'] ?? null,
-                                    'source' => 'ai_generated',
-                                    'external_id' => 'ai_' . bin2hex(random_bytes(8)),
-                                ]);
-
-                                $correct = strtoupper($nq['correct_answer'] ?? 'A');
-                                $correct = strtoupper($nq['correct_answer'] ?? 'A');
-                                foreach ($nq['alternatives'] as $label => $content) {
-                                    $createdQ->alternatives()->create([
-                                        'label' => strtoupper($label),
-                                        'content' => $content,
-                                        'is_correct' => strtoupper($label) === $correct,
-                                    ]);
-                                }
-
-                                $subjectModel = \App\Models\Subject::firstOrCreate(
-                                    ['name' => $subject],
-                                    ['slug' => \Illuminate\Support\Str::slug($subject), 'type' => 'enem']
-                                );
-                                $createdQ->subjects()->attach($subjectModel->id);
-                                $subjectQuestions->push($createdQ);
-                                $remaining--;
-                                if ($remaining <= 0)
-                                    break;
-                            }
-                        }
-                    }
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::warning("ENEM AI Generation failed for $subject: " . $e->getMessage());
-                }
-            }
-            */
 
             $finalQuestions = $finalQuestions->merge($subjectQuestions->take($subjectTotal));
         }

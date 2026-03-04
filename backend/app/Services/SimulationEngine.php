@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * SimulationEngine
@@ -104,9 +105,23 @@ class SimulationEngine
             if ($subjectTotal <= 0)
                 continue;
 
+            // Subject Normalization
+            $subjectUpper = mb_strtoupper(trim($subject), 'UTF-8');
+            $subjectSanitized = str_replace(
+                ['Á', 'À', 'Â', 'Ã', 'É', 'Ê', 'Í', 'Ó', 'Ô', 'Õ', 'Ú', 'Ç'],
+                ['A', 'A', 'A', 'A', 'E', 'E', 'I', 'O', 'O', 'O', 'U', 'C'],
+                $subjectUpper
+            );
+
+            if (str_contains($subjectSanitized, 'PORTUGU'))
+                $subjectNorm = "LINGUA PORTUGUESA";
+            elseif (str_contains($subjectSanitized, 'MATEM'))
+                $subjectNorm = "MATEMATICA";
+            else
+                $subjectNorm = $subjectSanitized;
+
             // Count real questions available for this subject+type combination
-            $query = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subject))
-                ->whereNotIn('id', $excludedIds);
+            $query = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subjectNorm));
 
             // ENEM: strict type filter; concurso: no type restriction
             if ($tipo === 'enem') {
@@ -116,12 +131,14 @@ class SimulationEngine
             $available = $query->count();
 
             // TEMPORARILY DISABLED AI: We need 100% of questions from the real database
+            // Note: We ignore $excludedIds here for VALIDATION because we have a fallback 
+            // to repeat questions if needed during selection.
             $realNeeded = $subjectTotal;
 
             if ($available < $realNeeded) {
                 throw new \RuntimeException(
                     "Quantidade insuficiente de questões disponíveis para este tipo de simulado. "
-                    . "Matéria: $subject — disponíveis: $available, necessárias (banco real): $realNeeded."
+                    . "Matéria: $subjectNorm — disponíveis no banco total: $available, necessárias: $realNeeded."
                 );
             }
         }
@@ -151,14 +168,29 @@ class SimulationEngine
             if ($subjectTotal <= 0)
                 continue;
 
+            // Subject Normalization
+            $subjectUpper = mb_strtoupper(trim($subject), 'UTF-8');
+            $subjectSanitized = str_replace(
+                ['Á', 'À', 'Â', 'Ã', 'É', 'Ê', 'Í', 'Ó', 'Ô', 'Õ', 'Ú', 'Ç'],
+                ['A', 'A', 'A', 'A', 'E', 'E', 'I', 'O', 'O', 'O', 'U', 'C'],
+                $subjectUpper
+            );
+
+            if (str_contains($subjectSanitized, 'PORTUGU'))
+                $subjectNorm = "LINGUA PORTUGUESA";
+            elseif (str_contains($subjectSanitized, 'MATEM'))
+                $subjectNorm = "MATEMATICA";
+            else
+                $subjectNorm = $subjectSanitized;
+
             $countAiTarget = (int) ceil($subjectTotal * $aiRatio);
             $countRealTarget = $subjectTotal - $countAiTarget;
 
             $alreadyPicked = $finalQuestions->pluck('id')->toArray();
             $avoidIds = array_merge($excludedIds, $alreadyPicked);
 
-            // 1. Fetch real (human-authored) questions
-            $realQuery = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subject))
+            // 1. Fetch real (human-authored) questions (Attempt 1: No Repeat)
+            $realQuery = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subjectNorm))
                 ->where('source', '!=', 'ai_generated')
                 ->whereNotIn('id', $avoidIds);
 
@@ -179,10 +211,23 @@ class SimulationEngine
             }
 
             $realPool = $realQuery->inRandomOrder()->limit($countRealTarget)->get();
+
+            // Fallback: If not enough questions found without repetition, allow repetition
+            if ($realPool->count() < $countRealTarget) {
+                $missingReal = $countRealTarget - $realPool->count();
+                $fallbackPool = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subjectNorm))
+                    ->where('source', '!=', 'ai_generated')
+                    ->whereNotIn('id', array_merge($alreadyPicked, $realPool->pluck('id')->toArray()))
+                    ->inRandomOrder()
+                    ->limit($missingReal)
+                    ->get();
+                $realPool = $realPool->merge($fallbackPool);
+            }
+
             $finalQuestions = $finalQuestions->merge($realPool);
 
-            // 2. Fetch AI questions from DB (pre-generated) — filter by type too
-            $aiQuery = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subject))
+            // 2. Fetch AI questions from DB (pre-generated)
+            $aiQuery = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subjectNorm))
                 ->where('source', 'ai_generated')
                 ->whereNotIn('id', array_merge($avoidIds, $finalQuestions->pluck('id')->toArray()));
 
@@ -191,26 +236,34 @@ class SimulationEngine
             }
 
             $aiPool = $aiQuery->inRandomOrder()->limit($countAiTarget)->get();
+
+            // AI Fallback: Allow repeating AI questions if needed
+            if ($aiPool->count() < $countAiTarget) {
+                $missingAi = $countAiTarget - $aiPool->count();
+                $fallbackAi = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subjectNorm))
+                    ->where('source', 'ai_generated')
+                    ->whereNotIn('id', array_merge($alreadyPicked, $finalQuestions->pluck('id')->toArray(), $aiPool->pluck('id')->toArray()))
+                    ->inRandomOrder()
+                    ->limit($missingAi)
+                    ->get();
+                $aiPool = $aiPool->merge($fallbackAi);
+            }
+
             $finalQuestions = $finalQuestions->merge($aiPool);
 
-            // 3. Generate missing via AI if needed
-            // TEMPORARILY DISABLED: Skipping AI generation fallback for performance
-            /*
-            $missing = $subjectTotal - $finalQuestions->where(
-                fn($q) => in_array($q->subjects->first()?->name, [$subject])
-            )->count();
+            // 3. Last Fallback: Fill anything left with ANY questions of this subject/type
+            $missingSubject = $subjectTotal - collect($finalQuestions)->filter(function ($q) use ($subjectNorm) {
+                return $q->subjects->pluck('name')->contains($subjectNorm);
+            })->count();
 
-            if ($missing > 0) {
-                $missing = $subjectTotal - collect($finalQuestions)->filter(function ($q) use ($subject) {
-                    return $q->subjects->pluck('name')->contains($subject);
-                })->count();
-
-                if ($missing > 0) {
-                    $generated = $this->generateAiQuestions($subject, $missing, $tipo, $config);
-                    $finalQuestions = $finalQuestions->merge($generated);
-                }
+            if ($missingSubject > 0) {
+                $emergencyPool = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subjectNorm))
+                    ->whereNotIn('id', $finalQuestions->pluck('id')->toArray())
+                    ->inRandomOrder()
+                    ->limit($missingSubject)
+                    ->get();
+                $finalQuestions = $finalQuestions->merge($emergencyPool);
             }
-            */
         }
 
         return $finalQuestions->take($total);
