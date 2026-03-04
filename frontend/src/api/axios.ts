@@ -59,9 +59,9 @@ api.interceptors.response.use(
 
                 // Normaliza path para evitar loops (ex: /login/ com barra no final)
                 const currentPath = window.location.pathname.replace(/\/$/, '') || '/';
-                const authPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
+                const publicPaths = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/privacidade', '/uso-justo', '/500', '/verify-email'];
 
-                if (!authPaths.includes(currentPath)) {
+                if (!publicPaths.includes(currentPath)) {
                     const message = status === 419 ? 'Página expirada por inatividade. Recarregando...' : 'Sessão expirada. Faça login novamente.';
                     toast.error(message);
 

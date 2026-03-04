@@ -61,23 +61,23 @@ export default function WelcomePlans() {
     };
 
     return (
-        <div className="lp-wrapper bg-white min-h-screen">
+        <div className="lp-wrapper bg-[#f8fafc] min-h-screen">
 
-            <section className="lp-plans py-16 -mt-[25px]">
+            <section className="lp-plans pt-0 pb-12 -mt-[75px]">
                 <div style={{ maxWidth: '980px', margin: '0 auto' }}>
-                    <div className="text-center mb-12">
-                        <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-4 inline-block">
+                    <div className="text-center mb-6">
+                        <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">
                             Conta criada com sucesso!
                         </span>
-                        <h2 className="lp-plans-title text-4xl mb-4">
+                        <h2 className="lp-plans-title text-4xl mb-1">
                             Agora, escolha o seu plano e <span>comece a estudar</span>
                         </h2>
-                        <p className="lp-plans-subtitle text-lg">
+                        <p className="lp-plans-subtitle text-lg" style={{ marginBottom: '1.25rem' }}>
                             Desbloqueie todo o poder da Inteligência Artificial em sua preparação.
                         </p>
                     </div>
 
-                    <div className="lp-plans-toggle-wrap">
+                    <div className="lp-plans-toggle-wrap" style={{ marginBottom: '1.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#f1f5f9', borderRadius: '50px', padding: '.35rem .75rem' }}>
                             <span
                                 style={{ fontSize: '.85rem', fontWeight: 600, cursor: 'pointer', transition: 'color .2s', color: periodo === 'mensal' ? '#0f2b6e' : '#94a3b8' }}
@@ -111,7 +111,7 @@ export default function WelcomePlans() {
                     </div>
 
                     {selectedPlanId ? (
-                        <div className="w-full mt-8 animate-in fade-in duration-300">
+                        <div className="w-full mt-4 animate-in fade-in duration-300">
                             <button onClick={() => setSelectedPlanId(null)} className="mb-4 text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                                 Voltar aos planos
@@ -123,7 +123,7 @@ export default function WelcomePlans() {
                             />
                         </div>
                     ) : (
-                        <div className="lp-plans-grid mt-10">
+                        <div className="lp-plans-grid mt-6">
                             {/* BÁSICO */}
                             <div className="lp-plan-basic flex flex-col justify-between">
                                 <div>
