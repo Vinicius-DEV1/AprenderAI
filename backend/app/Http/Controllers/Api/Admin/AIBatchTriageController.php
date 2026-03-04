@@ -4,7 +4,11 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Question;
+use App\Models\Subject;
+use App\Models\Topic;
 use App\Jobs\AIBatchTriageJob;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\AiProcessingBatch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -185,6 +189,65 @@ class AIBatchTriageController extends Controller
         }
 
         return response()->json(['success' => false, 'message' => 'Lote não encontrado.'], 404);
+    }
+
+    /**
+     * Cancel an active batch AND revert all processed items so far.
+     */
+    public function cancelAndRevert($batchId)
+    {
+        $batch = AiProcessingBatch::where('batch_id', $batchId)->first();
+
+        if (!$batch) {
+            return response()->json(['success' => false, 'message' => 'Lote não encontrado.'], 404);
+        }
+
+        // 1. Cancels future jobs
+        $batch->update(['status' => 'cancelled']);
+        Cache::forget("batch_progress_{$batchId}");
+
+        // 2. Perform Undo on all already processed items
+        try {
+            DB::beginTransaction();
+            $items = \App\Models\AiBatchItem::where('batch_id', $batchId)
+                ->where('status', 'success')
+                ->get();
+
+            $revertedCount = 0;
+            foreach ($items as $item) {
+                $question = \App\Models\Question::find($item->question_id);
+                if ($question && $item->snapshot_before) {
+                    $snap = $item->snapshot_before;
+
+                    $question->update([
+                        'difficulty' => $snap['difficulty'] ?? null,
+                        'difficulty_reasoning' => $snap['difficulty_reasoning'] ?? null,
+                        'explanation' => $snap['explanation'] ?? null,
+                    ]);
+
+                    if (isset($snap['subjects'])) {
+                        $question->subjects()->sync($snap['subjects']);
+                    }
+                    if (isset($snap['topics'])) {
+                        $question->topics()->sync($snap['topics']);
+                    }
+
+                    $item->update(['status' => 'reverted']);
+                    $revertedCount++;
+                }
+            }
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Lote cancelado. {$revertedCount} questões processadas foram revertidas com sucesso."
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("[AIBATCH] Error during cancelAndRevert: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Erro ao reverter questões do lote.'], 500);
+        }
     }
 
     /**
