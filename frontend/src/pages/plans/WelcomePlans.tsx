@@ -61,9 +61,9 @@ export default function WelcomePlans() {
     };
 
     return (
-        <div className="lp-wrapper bg-[#f8fafc] min-h-screen">
+        <div className="lp-wrapper bg-[#f1f5f9] min-h-screen">
 
-            <section className="lp-plans pt-0 pb-12 -mt-[75px]">
+            <section className="lp-plans pt-0 pb-12 -mt-[75px]" style={{ background: '#f1f5f9' }}>
                 <div style={{ maxWidth: '980px', margin: '0 auto' }}>
                     <div className="text-center mb-6">
                         <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">
