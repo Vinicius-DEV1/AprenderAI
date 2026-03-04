@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import api from '../api/axios';
 import { sendVerificationEmail } from '../api/auth';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Profile() {
     const { user, setUser } = useAuthStore();
@@ -20,6 +22,93 @@ export default function Profile() {
         password: '',
         password_confirmation: '',
     });
+
+    const [activeTab, setActiveTab] = useState<'summary' | 'favorites' | 'notebooks'>('summary');
+
+    // Favorites state
+    const [favorites, setFavorites] = useState<any[]>([]);
+    const [favPage, setFavPage] = useState(1);
+    const [favTotal, setFavTotal] = useState(0);
+    const [favLoading, setFavLoading] = useState(false);
+    const [favHasNext, setFavHasNext] = useState(false);
+
+    // Notebooks state
+    const [notebooks, setNotebooks] = useState<any[]>([]);
+    const [nbLoading, setNbLoading] = useState(false);
+    const [newNbName, setNewNbName] = useState('');
+    const [creatingNb, setCreatingNb] = useState(false);
+
+    useEffect(() => {
+        if (activeTab === 'favorites') {
+            loadFavorites();
+        } else if (activeTab === 'notebooks') {
+            loadNotebooks();
+        }
+    }, [activeTab, favPage]);
+
+    const loadFavorites = async () => {
+        setFavLoading(true);
+        try {
+            const res = await api.get(`/api/v1/questions?is_favorite=1&page=${favPage}`);
+            setFavorites(res.data.data);
+            setFavTotal(res.data.total);
+            setFavHasNext(!!res.data.next_page_url);
+        } catch (e) {
+            toast.error('Erro ao carregar favoritas');
+        } finally {
+            setFavLoading(false);
+        }
+    };
+
+    const loadNotebooks = async () => {
+        setNbLoading(true);
+        try {
+            const res = await api.get('/api/v1/notebooks');
+            setNotebooks(res.data);
+        } catch (e) {
+            toast.error('Erro ao carregar cadernos');
+        } finally {
+            setNbLoading(false);
+        }
+    };
+
+    const handleCreateNotebook = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newNbName.trim()) return;
+        setCreatingNb(true);
+        try {
+            const res = await api.post('/api/v1/notebooks', { name: newNbName });
+            setNotebooks([res.data.notebook, ...notebooks]);
+            setNewNbName('');
+            toast.success('Caderno criado!');
+        } catch (e: any) {
+            toast.error(e.response?.data?.message || 'Erro ao criar caderno');
+        } finally {
+            setCreatingNb(false);
+        }
+    };
+
+    const handleDeleteNotebook = async (id: number) => {
+        if (!confirm('Excluir este caderno?')) return;
+        try {
+            await api.delete(`/api/v1/notebooks/${id}`);
+            setNotebooks(notebooks.filter(n => n.id !== id));
+            toast.success('Caderno excluído');
+        } catch (e) {
+            toast.error('Erro ao excluir caderno');
+        }
+    };
+
+    const handleRemoveFavorite = async (id: number) => {
+        try {
+            await api.post(`/api/v1/questions/${id}/favorite`);
+            setFavorites(favorites.filter(f => f.id !== id));
+            setFavTotal(prev => prev - 1);
+            toast.success('Removida dos favoritos');
+        } catch (e) {
+            toast.error('Erro ao remover favorito');
+        }
+    };
 
     const handleProfileSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -159,12 +248,34 @@ export default function Profile() {
             `}</style>
 
             <div className="wrap -mt-[10px]">
-                <div className="hero">
+                <div className="hero !mb-2">
                     <div>
-                        <h1 className="text-xl font-bold">Configurações de Perfil</h1>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Gerencie suas informações e preferências de conta.</p>
+                        <h1 className="text-xl font-bold">Meu Perfil</h1>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Gerencie sua conta, cadernos e questões favoritas.</p>
                     </div>
-                    <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800">Ativo</span>
+                    <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800 uppercase tracking-tighter">Status: Ativo</span>
+                </div>
+
+                {/* Tab Navigation */}
+                <div className="flex gap-2 mb-6 border-b border-gray-100 dark:border-slate-800 pb-px overflow-x-auto whitespace-nowrap scrollbar-none">
+                    <button
+                        onClick={() => setActiveTab('summary')}
+                        className={`px-4 py-3 text-sm font-bold transition-all border-b-2 gap-2 flex items-center ${activeTab === 'summary' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                    >
+                        📊 Resumo
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('favorites')}
+                        className={`px-4 py-3 text-sm font-bold transition-all border-b-2 gap-2 flex items-center ${activeTab === 'favorites' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                    >
+                        ⭐ Favoritas {favTotal > 0 && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">{favTotal}</span>}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('notebooks')}
+                        className={`px-4 py-3 text-sm font-bold transition-all border-b-2 gap-2 flex items-center ${activeTab === 'notebooks' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                    >
+                        📁 Meus Cadernos
+                    </button>
                 </div>
 
                 {message && (
@@ -173,197 +284,236 @@ export default function Profile() {
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* View Profile */}
-                        <div className="profile-card">
-                            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                </svg>
-                                Informações Pessoais
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="info-item">
-                                    <h4>Nome Completo</h4>
-                                    <p>{user.name}</p>
+                <div className="min-h-[400px]">
+                    <AnimatePresence mode="wait">
+                        {activeTab === 'summary' && (
+                            <motion.div
+                                key="summary"
+                                initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}
+                                className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+                            >
+                                <div className="lg:col-span-2 space-y-6">
+                                    {/* View Profile */}
+                                    <div className="profile-card !mb-0">
+                                        <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                                            <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                            </svg>
+                                            Informações Pessoais
+                                        </h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div className="info-item">
+                                                <h4>Nome Completo</h4>
+                                                <p className="text-sm">{user.name}</p>
+                                            </div>
+                                            <div className="info-item">
+                                                <h4>E-mail</h4>
+                                                <p className="flex items-center gap-2 flex-wrap text-sm">
+                                                    <span className="truncate">{user.email}</span>
+                                                    {user.email_verified_at ? (
+                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 uppercase">Confirmado</span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 uppercase">Pendente</span>
+                                                    )}
+                                                </p>
+                                                {!user.email_verified_at && (
+                                                    <button onClick={handleResendVerification} disabled={loading} className="mt-2 text-[11px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 font-bold uppercase underline">Reenviar Confirmação</button>
+                                                )}
+                                            </div>
+                                            <div className="info-item">
+                                                <h4>Telefone</h4>
+                                                <p className="text-sm">{user.phone || '—'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Edit Profile */}
+                                    <div className="profile-card !mb-0">
+                                        <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                                            <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                            Editar Informações
+                                        </h3>
+                                        <form onSubmit={handleProfileSubmit}>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                                <div>
+                                                    <label className="profile-label">Nome</label>
+                                                    <input type="text" className="profile-input" value={profileData.name} onChange={e => setProfileData({ ...profileData, name: e.target.value })} required />
+                                                </div>
+                                                <div>
+                                                    <label className="profile-label">Telefone</label>
+                                                    <input type="text" className="profile-input" value={profileData.phone} onChange={e => setProfileData({ ...profileData, phone: e.target.value })} placeholder="(00) 00000-0000" />
+                                                </div>
+                                            </div>
+                                            <div className="mb-6">
+                                                <label className="profile-label">E-mail</label>
+                                                <input type="email" className="profile-input" value={profileData.email} onChange={e => setProfileData({ ...profileData, email: e.target.value })} required />
+                                            </div>
+                                            <div className="flex justify-end">
+                                                <button type="submit" className="profile-btn" disabled={loading}>{loading ? 'Salvando...' : 'Salvar Alterações'}</button>
+                                            </div>
+                                        </form>
+                                    </div>
+
+                                    {/* Security */}
+                                    <div className="profile-card !mb-0">
+                                        <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-red-600 dark:text-red-400">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                            </svg>
+                                            Segurança e Senha
+                                        </h3>
+                                        <form onSubmit={handlePasswordSubmit}>
+                                            <div className="mb-6">
+                                                <label className="profile-label">Senha Atual</label>
+                                                <input type="password" title="Senha Atual" className="profile-input" value={pwdData.current_password} onChange={e => setPwdData({ ...pwdData, current_password: e.target.value })} required />
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                                <div>
+                                                    <label className="profile-label">Nova Senha</label>
+                                                    <input type="password" title="Nova Senha" className="profile-input" value={pwdData.password} onChange={e => setPwdData({ ...pwdData, password: e.target.value })} required />
+                                                </div>
+                                                <div>
+                                                    <label className="profile-label">Confirmar Senha</label>
+                                                    <input type="password" title="Confirmar Senha" className="profile-input" value={pwdData.password_confirmation} onChange={e => setPwdData({ ...pwdData, password_confirmation: e.target.value })} required />
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-end">
+                                                <button type="submit" className="profile-btn" disabled={loading} style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' }}>{loading ? 'Atualizando...' : 'Atualizar Senha'}</button>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
-                                <div className="info-item">
-                                    <h4>E-mail</h4>
-                                    <p className="flex items-center gap-2 flex-wrap">
-                                        <span className="truncate">{user.email}</span>
-                                        {user.email_verified_at ? (
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                                                Confirmado
-                                            </span>
-                                        ) : (
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
-                                                Pendente
-                                            </span>
+
+                                <div className="space-y-6">
+                                    {/* Plan Status */}
+                                    <div className="profile-card" style={{ background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%)', borderColor: 'rgba(99, 102, 241, 0.2)' }}>
+                                        <h3 className="text-lg font-bold mb-4">Seu Plano</h3>
+                                        <div className="mb-6">
+                                            <span className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">{user.plan?.name || 'Grátis'}</span>
+                                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Uso ilimitado das ferramentas principais.</p>
+                                        </div>
+                                        {user.simulation_limit && (
+                                            <div className="space-y-3 mb-6">
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-slate-500 dark:text-slate-400 font-medium">Simulados restantes:</span>
+                                                    <span className="font-bold text-slate-700 dark:text-slate-200">{user.simulation_limit.remaining}</span>
+                                                </div>
+                                                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                                                    <div className="bg-indigo-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${Math.max(0, Math.min(100, (user.simulation_limit.remaining / (user.simulation_limit.total || 1)) * 100))}%` }}></div>
+                                                </div>
+                                            </div>
                                         )}
-                                    </p>
-                                    {!user.email_verified_at && (
+                                        <Link to="/plans" className="profile-btn w-full block text-center">Fazer Upgrade</Link>
+                                    </div>
+                                    <div className="profile-card bg-slate-50 dark:bg-slate-800/50 border-dashed">
+                                        <h4 className="text-sm font-bold mb-2 flex items-center gap-2">💡 Dica de Segurança</h4>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">Use senhas fortes com uma mistura de letras, números e símbolos.</p>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {activeTab === 'favorites' && (
+                            <motion.div
+                                key="favorites"
+                                initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}
+                                className="space-y-4"
+                            >
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                                        ⭐ Questões Favoritas
+                                    </h3>
+                                    <Link to="/questions" className="text-xs font-bold text-blue-600 hover:underline uppercase tracking-wider">Resolver Favoritas</Link>
+                                </div>
+
+                                {favLoading ? (
+                                    <div className="p-20 text-center text-gray-400 animate-pulse font-bold">Carregando favoritas...</div>
+                                ) : favorites.length === 0 ? (
+                                    <div className="p-20 text-center bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-gray-200 dark:border-slate-800">
+                                        <span className="text-4xl block mb-4">⭐</span>
+                                        <p className="text-gray-500 font-bold">Você ainda não tem questões favoritas.</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {favorites.map(q => (
+                                                <div key={q.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
+                                                    <div>
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <span className="text-[10px] uppercase font-black text-indigo-400 tracking-tighter">#{q.id} • {q.subjects?.[0]?.name || 'Geral'}</span>
+                                                            <button onClick={() => handleRemoveFavorite(q.id)} className="text-amber-500 hover:text-gray-400 text-sm" title="Remover dos Favoritos">★</button>
+                                                        </div>
+                                                        <div dangerouslySetInnerHTML={{ __html: q.statement }} className="text-xs text-gray-700 dark:text-slate-300 line-clamp-3 mb-4 font-medium" />
+                                                    </div>
+                                                    <div className="flex justify-end gap-2">
+                                                        <Link to={`/questions?id=${q.id}`} className="px-3 py-1.5 bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-gray-200 text-[10px] font-bold rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-colors uppercase tracking-wider">Visualizar</Link>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="flex justify-center gap-4 mt-8 pb-8">
+                                            <button onClick={() => setFavPage(p => Math.max(1, p - 1))} disabled={favPage === 1} className="px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-bold disabled:opacity-50">Anterior</button>
+                                            <button onClick={() => setFavPage(p => p + 1)} disabled={!favHasNext} className="px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-bold disabled:opacity-50">Próxima</button>
+                                        </div>
+                                    </>
+                                )}
+                            </motion.div>
+                        )}
+
+                        {activeTab === 'notebooks' && (
+                            <motion.div
+                                key="notebooks"
+                                initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}
+                                className="space-y-6"
+                            >
+                                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+                                    <form onSubmit={handleCreateNotebook} className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={newNbName}
+                                            onChange={(e) => setNewNbName(e.target.value)}
+                                            placeholder="Nome do novo caderno..."
+                                            className="flex-1 bg-gray-50 dark:bg-slate-900 border-none rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                                        />
                                         <button
-                                            onClick={handleResendVerification}
-                                            disabled={loading}
-                                            className="mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium disabled:opacity-50"
+                                            type="submit"
+                                            disabled={creatingNb || !newNbName.trim()}
+                                            className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition shadow-sm disabled:opacity-50"
                                         >
-                                            Reenviar E-mail de Confirmação
+                                            {creatingNb ? 'Wait...' : '+ Criar'}
                                         </button>
-                                    )}
+                                    </form>
                                 </div>
-                                <div className="info-item">
-                                    <h4>Telefone</h4>
-                                    <p>{user.phone || 'Não informado'}</p>
-                                </div>
-                            </div>
-                        </div>
 
-                        {/* Edit Profile */}
-                        <div className="profile-card">
-                            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                                <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                                Editar Informações
-                            </h3>
-                            <form onSubmit={handleProfileSubmit}>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                    <div>
-                                        <label className="profile-label">Nome</label>
-                                        <input
-                                            type="text"
-                                            className="profile-input"
-                                            value={profileData.name}
-                                            onChange={e => setProfileData({ ...profileData, name: e.target.value })}
-                                            required
-                                        />
+                                {nbLoading ? (
+                                    <div className="p-20 text-center text-gray-400 animate-pulse font-bold">Carregando cadernos...</div>
+                                ) : notebooks.length === 0 ? (
+                                    <div className="p-20 text-center bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-gray-200 dark:border-slate-800">
+                                        <span className="text-4xl block mb-4">📁</span>
+                                        <p className="text-gray-500 font-bold">Você ainda não tem cadernos.</p>
                                     </div>
-                                    <div>
-                                        <label className="profile-label">Telefone</label>
-                                        <input
-                                            type="text"
-                                            className="profile-input"
-                                            value={profileData.phone}
-                                            onChange={e => setProfileData({ ...profileData, phone: e.target.value })}
-                                            placeholder="(00) 00000-0000"
-                                        />
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-8">
+                                        {notebooks.map(nb => (
+                                            <div key={nb.id} className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col justify-between hover:border-indigo-200 transition-all relative group">
+                                                <button onClick={() => handleDeleteNotebook(nb.id)} className="absolute top-3 right-3 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">✕</button>
+                                                <div>
+                                                    <h4 className="font-bold text-gray-800 dark:text-white mb-1 truncate pr-6">{nb.name}</h4>
+                                                    <span className="text-[10px] px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-full font-bold uppercase">{nb.questions_count} Questões</span>
+                                                </div>
+                                                <div className="mt-6 flex flex-col gap-2">
+                                                    <Link to={`/questions?notebook_id=${nb.id}`} className="w-full text-center py-2 bg-indigo-600 dark:bg-indigo-600/90 text-white text-[11px] font-bold rounded-xl hover:bg-indigo-700 uppercase tracking-wider transition-all">Estudar Agora</Link>
+                                                    <button className="w-full text-center py-2 bg-gray-50 dark:bg-slate-700 text-gray-500 dark:text-gray-300 text-[11px] font-bold rounded-xl hover:bg-gray-100 uppercase tracking-wider transition-all" onClick={() => toast.info('Funcionalidade em breve')}>Renomear</button>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                </div>
-                                <div className="mb-6">
-                                    <label className="profile-label">E-mail</label>
-                                    <input
-                                        type="email"
-                                        className="profile-input"
-                                        value={profileData.email}
-                                        onChange={e => setProfileData({ ...profileData, email: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div className="flex justify-end">
-                                    <button type="submit" className="profile-btn" disabled={loading}>
-                                        {loading ? 'Salvando...' : 'Salvar Alterações'}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-
-                        {/* Security */}
-                        <div className="profile-card">
-                            <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-red-600 dark:text-red-400">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                </svg>
-                                Segurança e Senha
-                            </h3>
-                            <form onSubmit={handlePasswordSubmit}>
-                                <div className="mb-6">
-                                    <label className="profile-label">Senha Atual</label>
-                                    <input
-                                        type="password"
-                                        className="profile-input"
-                                        value={pwdData.current_password}
-                                        onChange={e => setPwdData({ ...pwdData, current_password: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                    <div>
-                                        <label className="profile-label">Nova Senha</label>
-                                        <input
-                                            type="password"
-                                            className="profile-input"
-                                            value={pwdData.password}
-                                            onChange={e => setPwdData({ ...pwdData, password: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="profile-label">Confirmar Senha</label>
-                                        <input
-                                            type="password"
-                                            className="profile-input"
-                                            value={pwdData.password_confirmation}
-                                            onChange={e => setPwdData({ ...pwdData, password_confirmation: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                                <div className="flex justify-end">
-                                    <button type="submit" className="profile-btn" disabled={loading} style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', boxShadow: '0 10px 20px rgba(239, 68, 68, .15)' }}>
-                                        {loading ? 'Atualizando...' : 'Atualizar Senha'}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    <div className="space-y-6">
-                        {/* Plan Status */}
-                        <div className="profile-card" style={{ background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%)', borderColor: 'rgba(99, 102, 241, 0.2)' }}>
-                            <h3 className="text-lg font-bold mb-4">Seu Plano</h3>
-                            <div className="mb-6">
-                                <span className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">
-                                    {user.plan?.name || 'Grátis'}
-                                </span>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                                    Status: <span className="text-green-500 font-semibold">Ativo</span>
-                                </p>
-                            </div>
-
-                            {/* Progress Bar logic as per Blade */}
-                            {user.simulation_limit && (
-                                <div className="space-y-3 mb-6">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-500 dark:text-slate-400 font-medium">Simulados restantes:</span>
-                                        <span className="font-bold text-slate-700 dark:text-slate-200">
-                                            {user.simulation_limit.remaining}
-                                        </span>
-                                    </div>
-                                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
-                                        <div
-                                            className="bg-indigo-500 h-1.5 rounded-full transition-all duration-500"
-                                            style={{ width: `${Math.max(0, Math.min(100, (user.simulation_limit.remaining / (user.simulation_limit.total || 1)) * 100))}%` }}
-                                        ></div>
-                                    </div>
-                                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
-                                        Uso: {user.simulation_limit.total - user.simulation_limit.remaining} / {user.simulation_limit.total}
-                                    </p>
-                                </div>
-                            )}
-
-                            <a href="/plans" className="profile-btn w-full block text-center">Fazer Upgrade</a>
-                        </div>
-
-                        <div className="profile-card bg-slate-50 dark:bg-slate-800/50 border-dashed">
-                            <h4 className="text-sm font-bold mb-2 flex items-center gap-2">
-                                💡 Dica de Segurança
-                            </h4>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                                Use senhas fortes com uma mistura de letras, números e símbolos para manter sua conta segura.
-                            </p>
-                        </div>
-                    </div>
+                                )}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
         </div>
