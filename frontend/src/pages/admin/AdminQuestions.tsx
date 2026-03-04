@@ -37,13 +37,23 @@ export default function AdminQuestions() {
     const [reportsPage, setReportsPage] = useState(1);
     const [trashedPage, setTrashedPage] = useState(1);
     const [trashedSearch, setTrashedSearch] = useState('');
-    // Persistência com LocalStorage
+    // Verificação de Lote Ativo no Servidor
+    const { data: activeBatchData } = useQuery({
+        queryKey: ['admin-triage-active'],
+        queryFn: async () => {
+            const res = await api.get('/api/v1/admin/triage/active');
+            return res.data;
+        },
+        refetchInterval: isBatchModalOpen ? false : 30000 // Verifica a cada 30s se o modal estiver fechado
+    });
+
     useEffect(() => {
-        const activeBatchId = localStorage.getItem('ai_batch_id');
-        if (activeBatchId) {
-            setIsBatchModalOpen(true);
+        if (activeBatchData?.success && activeBatchData?.batch_id) {
+            // Se detectar um lote ativo pela primeira vez na montagem ou refresh, podemos abrir o modal
+            // Mas talvez seja melhor apenas mostrar o widget flutuante para não ser invasivo
+            // setIsBatchModalOpen(true); 
         }
-    }, []);
+    }, [activeBatchData]);
 
     const { data, isLoading } = useQuery({
         queryKey: ['admin-questions', filters, page, triageFilters, triagePage],
@@ -765,7 +775,7 @@ export default function AdminQuestions() {
                 }}
             />
 
-            {!isBatchModalOpen && localStorage.getItem('ai_batch_id') && (
+            {!isBatchModalOpen && activeBatchData?.success && activeBatchData?.batch_id && (
                 <div
                     onClick={() => setIsBatchModalOpen(true)}
                     className="fixed bottom-6 right-6 z-50 bg-indigo-600 text-white px-5 py-3 rounded-full shadow-2xl cursor-pointer hover:bg-indigo-700 hover:scale-105 transition-all flex items-center gap-3 animate-bounce border-2 border-indigo-400 group"

@@ -25,17 +25,24 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
     const [lastProgressRecord, setLastProgressRecord] = useState<{ processed: number; time: number } | null>(null);
     const [etaSeconds, setEtaSeconds] = useState<number | null>(null);
 
-    // Persistência com LocalStorage (Recuperação no F5)
+    // Persistência com Servidor (Recuperação no F5)
     useEffect(() => {
         if (isOpen && !batchId) {
-            const activeBatchId = localStorage.getItem('ai_batch_id');
-            if (activeBatchId) {
-                setBatchId(activeBatchId);
-                setStep('processing');
-                onBatchStarted(activeBatchId); // Notify parent component if needed
-            }
+            const checkActiveBatch = async () => {
+                try {
+                    const res = await api.get('/api/v1/admin/triage/active');
+                    if (res.data.success && res.data.batch_id) {
+                        setBatchId(res.data.batch_id);
+                        setStep('processing');
+                        onBatchStarted(res.data.batch_id); // Notify parent component if needed
+                    }
+                } catch (error) {
+                    console.error('Erro ao buscar lote ativo:', error);
+                }
+            };
+            checkActiveBatch();
         }
-    }, [isOpen]);
+    }, [isOpen, batchId]);
 
     // Fetch dynamically configured models from API Keys vault
     const { data: availableModels = [] } = useQuery({
@@ -99,7 +106,6 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
         },
         onSuccess: (data) => {
             setBatchId(data.batch_id);
-            localStorage.setItem('ai_batch_id', data.batch_id);
             onBatchStarted(data.batch_id);
         }
     });
@@ -134,7 +140,6 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
 
                     if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
                         clearInterval(interval);
-                        localStorage.removeItem('ai_batch_id');
 
                         // Somente fecha automático se for SUCESSO total (sem erros)
                         if (data.status === 'completed' && data.errors === 0) {
@@ -158,7 +163,6 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
     }, [batchId, step, lastProgressRecord]);
 
     const handleFinalize = () => {
-        localStorage.removeItem('ai_batch_id');
         onClose();
         setBatchId(null);
         setProgress(null);
