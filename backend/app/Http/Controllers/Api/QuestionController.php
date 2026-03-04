@@ -178,8 +178,11 @@ class QuestionController extends Controller
             $request
         );
 
-        // Consome a cota diária do usuário
-        $request->user()->incrementDailyQuestionUsage();
+        // Consome a cota diária do usuário e atualiza estatísticas de engajamento
+        $user = $request->user();
+        $user->incrementDailyQuestionUsage();
+
+        app(\App\Services\UserEngagementService::class)->updateDailyStats($user->id, $feedback['correct']);
 
         return response()->json($feedback);
     }
@@ -522,5 +525,33 @@ class QuestionController extends Controller
             'suggestions' => $aiSearchRequest->filters['suggestions'] ?? [],
             'error' => $aiSearchRequest->error
         ], 200);
+    }
+
+    /**
+     * Get engagement data for the micro dashboard.
+     */
+    public function engagement(Request $request)
+    {
+        $data = app(\App\Services\UserEngagementService::class)->getEngagementData($request->user()->id);
+        return response()->json($data);
+    }
+
+    /**
+     * Update user daily goal.
+     */
+    public function updateGoal(Request $request)
+    {
+        $request->validate([
+            'daily_goal' => 'required|integer|min:1|max:500',
+        ]);
+
+        $user = $request->user();
+        $user->daily_goal = $request->daily_goal;
+        $user->save();
+
+        return response()->json([
+            'message' => 'Meta diária atualizada com sucesso.',
+            'daily_goal' => $user->daily_goal
+        ]);
     }
 }
