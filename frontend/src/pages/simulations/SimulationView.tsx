@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
 import { useUIStore } from '../../stores/uiStore';
-// import { marked } from 'marked';
+import EssayWrite from '../essays/EssayWrite';
 
 // Local API calls just for this view's specific needs (polling/answering)
 const checkSimulationStatus = async (id: string) => {
@@ -468,43 +468,34 @@ export default function SimulationView() {
                         )
                     ) : (
                         <div className="essay-view animate-fade-in h-full flex flex-col">
-                            <div className="question-header">
-                                <span className="question-number">Folha de Redação</span>
-                                <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', background: '#fef3c7', padding: '4px 12px', borderRadius: '12px' }} className="dark:bg-amber-900/30 dark:text-amber-300 text-amber-800 border border-amber-200">
-                                    {simulation.essay?.type?.toUpperCase()}
-                                </span>
-                            </div>
-
-                            <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700">
-                                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">{simulation.essay?.title}</h3>
-                                <div className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed whitespace-pre-wrap">
-                                    {simulation.essay?.topic_description}
-                                </div>
-                            </div>
-
-                            <div className="flex-1 flex flex-col gap-4">
-                                <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Desenvolva seu texto abaixo:</label>
-                                <textarea
-                                    className="flex-1 p-6 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-indigo-500 focus:ring-0 dark:bg-slate-900 dark:text-slate-100 font-serif text-lg leading-relaxed resize-none transition-all"
-                                    placeholder="Comece a escrever aqui sua redação..."
-                                    value={essayContent}
-                                    onChange={(e) => setEssayContent(e.target.value)}
-                                    onBlur={() => simulation.essay && updateEssayMutation.mutate(essayContent)}
-                                />
-                                <div className="flex justify-between items-center text-xs text-slate-400">
-                                    <span>{essayContent.length} caracteres | ~{Math.floor(essayContent.length / 6)} palavras</span>
-                                    <span>O rascunho é salvo automaticamente ao mudar de aba ou sair do campo.</span>
-                                </div>
-                            </div>
-
-                            <div className="question-actions mt-8">
-                                <button type="button" className="btn btn-secondary" onClick={toggleViewMode}>
-                                    ← Voltar para Questões
-                                </button>
-                                <button type="button" className="btn btn-danger" onClick={handleFinishSimulation}>
-                                    Finalizar e Entregar Simulado
-                                </button>
-                            </div>
+                            <EssayWrite
+                                isSimulationMode={true}
+                                simulationEssayId={simulation.essay?.id}
+                                initialTheme={simulation.essay?.title || ''}
+                                initialThemeDescription={simulation.essay?.topic_description || ''}
+                                initialType={simulation.essay?.type || 'enem'}
+                                initialContent={essayContent}
+                                onBack={() => {
+                                    // Save essay draft when going back to questions
+                                    if (simulation?.essay && essayContent) {
+                                        updateEssayMutation.mutate(essayContent);
+                                    }
+                                    setViewMode('questions');
+                                }}
+                                onSubmitSimulationEssay={(formData) => {
+                                    // Extract content from formData if available
+                                    const textContent = formData.get('content') as string;
+                                    if (textContent) {
+                                        setEssayContent(textContent);
+                                        updateEssayMutation.mutate(textContent);
+                                    }
+                                    // Finish the simulation after essay submission
+                                    handleFinishSimulation();
+                                }}
+                                onDraftUpdate={(text) => {
+                                    setEssayContent(text);
+                                }}
+                            />
                         </div>
                     )}
                 </main>
