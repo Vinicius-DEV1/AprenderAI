@@ -204,6 +204,8 @@ class AIBatchTriageController extends Controller
                     'total' => $batch->total_count,
                     'processed' => $batch->processed_count,
                     'errors' => $batch->error_count,
+                    'input_tokens' => $batch->input_tokens ?? 0,
+                    'output_tokens' => $batch->output_tokens ?? 0,
                     'status' => $batch->status,
                     'last_error' => $lastError,
                     'message' => $lastError ? "Finalizado com Erros" : "Concluído",

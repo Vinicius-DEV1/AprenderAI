@@ -16,6 +16,8 @@ class AiProcessingBatch extends Model
         'total_count',
         'processed_count',
         'error_count',
+        'input_tokens',
+        'output_tokens',
         'status',
         'errors_log',
     ];
@@ -25,6 +27,8 @@ class AiProcessingBatch extends Model
         'total_count' => 'integer',
         'processed_count' => 'integer',
         'error_count' => 'integer',
+        'input_tokens' => 'integer',
+        'output_tokens' => 'integer',
     ];
 
     /**
@@ -41,6 +45,6 @@ class AiProcessingBatch extends Model
      */
     public function items()
     {
-        return $this->hasMany(AiBatchItem::class , 'batch_id', 'batch_id');
+        return $this->hasMany(AiBatchItem::class, 'batch_id', 'batch_id');
     }
 }
