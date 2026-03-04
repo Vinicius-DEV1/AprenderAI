@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import api from '../../api/axios';
 import { useUIStore } from '../../stores/uiStore';
 import EssayWrite from '../essays/EssayWrite';
@@ -131,17 +132,36 @@ export default function SimulationView() {
         }
     });
 
+    const submitEssayMutation = useMutation({
+        mutationFn: (formData: FormData) => api.post(`/api/v1/essays/${simulation?.essay?.id}/submit`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['simulationDetails', id] });
+            toast.success('Redação enviada com sucesso!');
+        },
+        onError: () => {
+            toast.error('Erro ao enviar redação.');
+        }
+    });
+
     const finishMutation = useMutation({
         mutationFn: () => finishSimulationApi(id!),
         onSuccess: () => {
+            toast.success('Simulado finalizado!');
             navigate(`/simulations/${id}/result`);
+        },
+        onError: (err: any) => {
+            toast.error(err.response?.data?.message || 'Erro ao finalizar simulado.');
         }
     });
 
     // Handlers
     const handleAnswer = (questionId: number, answerStr: string) => {
-        if (!simulation) return;
+        if (!simulation || answerMutation.isPending) return;
         const timeSpent = (simulation.configuration?.time_limit || 10800) - (timeRemaining || 0);
+
+        // Optimistic UI could be added here, but for now just feedback
         answerMutation.mutate({
             question_id: questionId,
             answer: answerStr,
@@ -150,19 +170,23 @@ export default function SimulationView() {
     };
 
     const handleToggleMark = (questionId: number, currentMarked: boolean) => {
+        if (answerMutation.isPending) return;
         answerMutation.mutate({
             question_id: questionId,
             marked_for_review: !currentMarked
         });
     };
 
-    const handleFinishSimulation = () => {
-        // Auto-save essay before finishing if we are in essay mode
-        if (viewMode === 'essay' && simulation?.essay) {
-            updateEssayMutation.mutate(essayContent);
-        }
-
+    const handleFinishSimulation = (skipEssaySubmit = false) => {
         if (window.confirm('Tem certeza que deseja finalizar a prova? Esta ação não pode ser desfeita.')) {
+            // Auto-save essay before finishing if we are in essay mode and not already submitted
+            if (!skipEssaySubmit && viewMode === 'essay' && simulation?.essay && essayContent) {
+                const formData = new FormData();
+                formData.append('input_type', 'text');
+                formData.append('content', essayContent);
+                submitEssayMutation.mutate(formData);
+            }
+
             finishMutation.mutate();
         }
     };
@@ -317,6 +341,16 @@ export default function SimulationView() {
         :root.dark .nav-btn.marked { background: rgba(120, 53, 15, 0.4); border-color: #d97706; color: #fde68a; }
         :root.dark .btn-secondary { background: #334155; color: #e2e8f0; }
         :root.dark .btn-secondary:hover { background: #475569; }
+
+        .alternative-container { border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .alternative-container:hover { border-color: #cbd5e1; background: #f8fafc; }
+        .alternative-container.selected { border-color: #2563EB; background: #eff6ff; }
+        :root.dark .alternative-container { border-color: rgba(255,255,255,0.1); }
+        :root.dark .alternative-container:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2); }
+        :root.dark .alternative-container.selected { background: rgba(37,99,235,0.2); border-color: #3b82f6; }
+
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
+        .word-break-all { word-break: break-all; }
       `}</style>
 
             <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center' }}>
@@ -387,7 +421,7 @@ export default function SimulationView() {
                     )}
 
                     {(viewMode === 'essay' || !simulation.essay) && (
-                        <button type="button" className="btn btn-danger w-full mt-2" onClick={handleFinishSimulation}>
+                        <button type="button" className="btn btn-danger w-full mt-2" onClick={() => handleFinishSimulation()}>
                             Finalizar Prova
                         </button>
                     )}
@@ -410,22 +444,27 @@ export default function SimulationView() {
                                 <ul className="alternatives">
                                     {(question.alternatives || []).map((alt: any) => (
                                         <li key={alt.id || alt.label} className="alternative">
-                                            <input
-                                                type="radio"
-                                                id={`q${question.id}_${alt.label}`}
-                                                name={`question_${question.id}`}
-                                                value={alt.label}
-                                                checked={currentAnswerData.user_answer === alt.label}
-                                                onChange={() => handleAnswer(question.id, alt.label)}
-                                                className="sr-only" // using + label selector
-                                            />
-                                            <label htmlFor={`q${question.id}_${alt.label}`}>
-                                                <span className="alternative-letter">{alt.label})</span>
-                                                <div className="flex flex-col gap-2 flex-grow overflow-hidden">
-                                                    {alt.content && <span className="word-break-all">{alt.content}</span>}
-                                                    {alt.image_path && <img src={`/storage/${alt.image_path}`} alt={`Alternativa ${alt.label}`} className="max-w-full h-auto rounded object-contain mt-2" />}
-                                                </div>
-                                            </label>
+                                            <div
+                                                className={`alternative-container ${currentAnswerData.user_answer === alt.label ? 'selected' : ''}`}
+                                                onClick={() => handleAnswer(question.id, alt.label)}
+                                            >
+                                                <input
+                                                    type="radio"
+                                                    id={`q${question.id}_${alt.label}`}
+                                                    name={`question_${question.id}`}
+                                                    value={alt.label}
+                                                    checked={currentAnswerData.user_answer === alt.label}
+                                                    readOnly
+                                                    className="sr-only"
+                                                />
+                                                <label htmlFor={`q${question.id}_${alt.label}`} className="cursor-pointer flex items-start gap-3 p-4 w-full h-full">
+                                                    <span className="alternative-letter">{alt.label})</span>
+                                                    <div className="flex flex-col gap-2 flex-grow overflow-hidden">
+                                                        {alt.content && <span className="word-break-all">{alt.content}</span>}
+                                                        {alt.image_path && <img src={`/storage/${alt.image_path}`} alt={`Alternativa ${alt.label}`} className="max-w-full h-auto rounded object-contain mt-2" />}
+                                                    </div>
+                                                </label>
+                                            </div>
                                         </li>
                                     ))}
                                 </ul>
@@ -458,7 +497,7 @@ export default function SimulationView() {
                                                 📝 Ir para Redação
                                             </button>
                                         ) : (
-                                            <button type="button" className="btn btn-danger" onClick={handleFinishSimulation}>
+                                            <button type="button" className="btn btn-danger" onClick={() => handleFinishSimulation()}>
                                                 Finalizar Prova
                                             </button>
                                         )}
@@ -487,10 +526,14 @@ export default function SimulationView() {
                                     const textContent = formData.get('content') as string;
                                     if (textContent) {
                                         setEssayContent(textContent);
-                                        updateEssayMutation.mutate(textContent);
                                     }
-                                    // Finish the simulation after essay submission
-                                    handleFinishSimulation();
+
+                                    // Submit essay and finish simulation
+                                    submitEssayMutation.mutate(formData, {
+                                        onSuccess: () => {
+                                            handleFinishSimulation(true);
+                                        }
+                                    });
                                 }}
                                 onDraftUpdate={(text) => {
                                     setEssayContent(text);
