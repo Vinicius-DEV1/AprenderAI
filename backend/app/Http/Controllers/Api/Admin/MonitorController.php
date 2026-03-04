@@ -49,4 +49,67 @@ class MonitorController extends Controller
 
         return response()->json($data->values());
     }
+
+    /**
+     * Retorna os detalhes em tempo real de filas e trabalhos.
+     */
+    public function queues()
+    {
+        $payloadToClassName = function ($payload) {
+            $data = json_decode($payload, true);
+            if (!$data)
+                return 'Unknown';
+            if (isset($data['displayName'])) {
+                return class_basename($data['displayName']);
+            }
+            if (isset($data['job'])) {
+                return class_basename($data['job']);
+            }
+            return 'Unknown';
+        };
+
+        // Jobs Ativos/Pendentes (da tabela 'jobs')
+        // Obs: Em produção de alta demanda, deve-se limitar o número de registros
+        $jobs = \Illuminate\Support\Facades\DB::table('jobs')
+            ->orderBy('id', 'asc')
+            ->limit(100)
+            ->get()
+            ->map(function ($job) use ($payloadToClassName) {
+                return [
+                    'id' => $job->id,
+                    'queue' => $job->queue,
+                    'name' => $payloadToClassName($job->payload),
+                    'attempts' => $job->attempts,
+                    'is_processing' => $job->reserved_at !== null,
+                    'created_at' => \Carbon\Carbon::createFromTimestamp($job->created_at)->toIso8601String(),
+                ];
+            });
+
+        // Jobs Falhados (da tabela 'failed_jobs')
+        $failedJobs = \Illuminate\Support\Facades\DB::table('failed_jobs')
+            ->orderBy('failed_at', 'desc')
+            ->limit(50)
+            ->get()
+            ->map(function ($job) use ($payloadToClassName) {
+                // Tenta extrair apenas a primeira linha da exception (mensagem de erro principal)
+                $exceptionSummary = $job->exception;
+                $exceptionLines = explode("\n", $job->exception);
+                if (count($exceptionLines) > 0) {
+                    $exceptionSummary = $exceptionLines[0];
+                }
+
+                return [
+                    'id' => $job->id,
+                    'queue' => $job->queue,
+                    'name' => $payloadToClassName($job->payload),
+                    'exception' => $exceptionSummary,
+                    'failed_at' => $job->failed_at,
+                ];
+            });
+
+        return response()->json([
+            'jobs' => $jobs,
+            'failed' => $failedJobs,
+        ]);
+    }
 }
