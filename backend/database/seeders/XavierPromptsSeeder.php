@@ -117,6 +117,7 @@ REGRAS GERAIS (sempre):
 - Se errou, está incompleta ou off-topic: escreva do ZERO uma resposta correta, seguindo o espelho.
 - Não invente dados, conceitos, leis, números ou exemplos que não estejam no espelho.
 - Mantenha fidelidade total ao espelho (conteúdo, recorte e exigências).
+- ⚠️ INSTRUÇÃO MATEMÁTICA: Sempre que for enviar fórmulas matemáticas ou químicas, use OBRIGATORIAMENTE LaTeX com \( ... \) para inline e \[ ... \] para bloco.
 
 FORMATO POR TIPO DE PROVA:
 - Se {essay_type} = "enem":

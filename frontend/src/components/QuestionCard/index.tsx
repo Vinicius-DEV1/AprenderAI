@@ -6,6 +6,7 @@ import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
 import api from '../../api/axios';
 import { marked } from 'marked';
+import katex from 'katex';
 
 // Modals
 import DialogReportQuestion from './modals/DialogReportQuestion';
@@ -141,12 +142,32 @@ export default function QuestionCard({
     const renderMd = (text: string) => {
         if (!text) return { __html: '' };
         let processedText = text;
+
         if (processedText.includes('](/storage/')) {
             processedText = processedText.replace(/\]\(\/storage\//g, `](${apiUrl}/storage/`);
         }
         if (processedText.includes('src="/storage/')) {
             processedText = processedText.replace(/src="\/storage\//g, `src="${apiUrl}/storage/`);
         }
+
+        // Render block math \[ ... \]
+        processedText = processedText.replace(/\\\[([\s\S]*?)\\\]/g, (match, formula) => {
+            try {
+                return `<div class="katex-block-wrapper my-2">${katex.renderToString(formula, { displayMode: true, throwOnError: false })}</div>`;
+            } catch (e) {
+                return match;
+            }
+        });
+
+        // Render inline math \( ... \)
+        processedText = processedText.replace(/\\\(([\s\S]*?)\\\)/g, (match, formula) => {
+            try {
+                return katex.renderToString(formula, { displayMode: false, throwOnError: false });
+            } catch (e) {
+                return match;
+            }
+        });
+
         try {
             return { __html: marked.parse(processedText) as string };
         } catch (e) {
