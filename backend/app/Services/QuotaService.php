@@ -41,12 +41,19 @@ class QuotaService
             if ($limit === null || $limit === 'unlimited' || $limit === 9999) {
                 // Ilimitado no ciclo
             } else {
-                $used = UsageLedger::where('subscription_cycle_id', $cycle->id)
-                    ->where('feature_name', $feature)
-                    ->sum('amount');
+                $query = UsageLedger::where('subscription_cycle_id', $cycle->id)
+                    ->where('feature_name', $feature);
+
+                // Regra Especial: Se for limit diário, filtramos apenas hoje.
+                if ($feature === 'daily_questions') {
+                    $query->whereDate('created_at', Carbon::today());
+                }
+
+                $used = $query->sum('amount');
 
                 if (($used + $amount) > $limit) {
-                    abort(403, "Limite da quota de {$feature} atingido para este mês.");
+                    $context = ($feature === 'daily_questions') ? "para hoje" : "para este mês";
+                    abort(403, "Limite da quota de {$feature} atingido {$context}.");
                 }
             }
 
@@ -75,9 +82,16 @@ class QuotaService
         }
 
         $limit = $cycle->limits[$feature] ?? 0;
-        $used = UsageLedger::where('subscription_cycle_id', $cycle->id)
-            ->where('feature_name', $feature)
-            ->sum('amount');
+
+        $query = UsageLedger::where('subscription_cycle_id', $cycle->id)
+            ->where('feature_name', $feature);
+
+        // Regra Especial: Se for limit diário, filtramos apenas hoje.
+        if ($feature === 'daily_questions') {
+            $query->whereDate('created_at', Carbon::today());
+        }
+
+        $used = $query->sum('amount');
 
         return [
             'used' => (int) $used,

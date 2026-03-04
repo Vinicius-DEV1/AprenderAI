@@ -4,11 +4,13 @@ import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
 import { register as apiRegister, getUser } from '../../api/auth';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function RegisterPage() {
     const navigate = useNavigate();
     const config = useConfigStore();
     const setUser = useAuthStore((state) => state.setUser);
+    const queryClient = useQueryClient();
 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -31,6 +33,7 @@ export default function RegisterPage() {
             });
 
             const response = await getUser();
+            queryClient.clear();
             setUser(response.data.user);
 
             toast.success('Conta criada com sucesso! Verifique seu e-mail para validar sua conta e liberar todos os recursos.', {

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 import api from '../../api/axios';
 import { useConfigStore } from '../../stores/configStore';
+import { useAuthStore } from '../../stores/authStore';
 import QuestionCard from '../../components/QuestionCard';
 import StatsSlideOver from './StatsSlideOver';
 import SearchableSelect from '../../components/SearchableSelect';
@@ -89,6 +90,7 @@ export default function QuestionBank() {
     const initialNotebookId = queryParams.get('notebook_id') || '';
 
     const { aiName } = useConfigStore();
+    const { user } = useAuthStore();
     const [page, setPage] = useState(1);
     const [filters, setFilters] = useState<FilterOptions>({
         type: '',
@@ -111,11 +113,12 @@ export default function QuestionBank() {
 
     // --- Engagement State ---
     const { data: engagementData, refetch: refetchEngagement } = useQuery({
-        queryKey: ['engagement'],
+        queryKey: ['engagement', user?.id],
         queryFn: async () => {
             const res = await api.get('/api/v1/questions/engagement');
             return res.data;
-        }
+        },
+        enabled: !!user?.id
     });
 
     // Provide refetch to context or pass it down? 
@@ -137,11 +140,12 @@ export default function QuestionBank() {
 
     // --- Data Fetching (Moved up to avoid "used before declaration" in effects) ---
     const { data: questionsData, isLoading: questionsLoading } = useQuery({
-        queryKey: ['questions', page, filters],
+        queryKey: ['questions', user?.id, page, filters],
         queryFn: async () => {
             const res = await api.get('/api/v1/questions', { params: { ...filters, page } });
             return res.data;
-        }
+        },
+        enabled: !!user?.id
     });
 
     const { data: subjectsData, isLoading: loadingSubjects } = useQuery({
@@ -458,6 +462,12 @@ export default function QuestionBank() {
                             <div className="qb-stat">
                                 <div className="val" style={{ color: '#fb923c' }}>🔥 {engagementData?.streak_days || 0}</div>
                                 <div className="lbl">Streak</div>
+                            </div>
+                            <div className="qb-stat" title="Limite de questões para hoje">
+                                <div className="val" style={{ color: '#fff' }}>
+                                    {engagementData?.daily_quota?.used || 0} / {engagementData?.daily_quota?.limit === 9999 ? '∞' : (engagementData?.daily_quota?.limit || 0)}
+                                </div>
+                                <div className="lbl">Limite Diário</div>
                             </div>
                             <div className="qb-stat" style={{ minWidth: '100px', cursor: 'pointer' }} onClick={() => setGoalModalOpen(true)} title="Definir Meta">
                                 <div className="val" style={{ color: (engagementData?.today_count || 0) >= (engagementData?.daily_goal || 10) ? '#4ade80' : 'inherit' }}>

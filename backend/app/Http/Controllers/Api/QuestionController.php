@@ -10,6 +10,7 @@ use App\Jobs\RespondToStandaloneChatJob;
 use App\Jobs\InterpretSearchPromptJob;
 use App\Http\Resources\QuestionResource;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class QuestionController extends Controller
 {
@@ -18,7 +19,7 @@ class QuestionController extends Controller
      */
     public function index(Request $request)
     {
-        $userId = $request->user('sanctum')?->id;
+        $userId = Auth::id();
         $query = Question::published()->with(['subjects', 'topics', 'alternatives', 'images']);
 
         if ($userId) {

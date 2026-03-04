@@ -4,6 +4,7 @@ import { useConfigStore } from '../stores/configStore';
 import { useAuthStore } from '../stores/authStore';
 import { logout as apiLogout } from '../api/auth';
 import { useUIStore } from '../stores/uiStore';
+import { useQueryClient } from '@tanstack/react-query';
 import EmailVerificationBanner from '../components/EmailVerificationBanner';
 
 export default function AppLayout() {
@@ -26,9 +27,12 @@ export default function AppLayout() {
         localStorage.setItem('theme', newDarkMode ? 'dark' : 'light');
     };
 
+    const queryClient = useQueryClient();
+
     const handleLogout = async (e: React.FormEvent) => {
         e.preventDefault();
         await apiLogout();
+        queryClient.clear();
         logout();
         navigate('/login');
     };

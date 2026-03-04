@@ -112,8 +112,8 @@ function PixCountdownModal({ pix, onClose }: {
                                 <button
                                     onClick={handleCopy}
                                     className={`absolute right-1.5 top-1.5 bottom-1.5 px-3 rounded-lg text-xs font-black transition-all duration-200 ${copied
-                                            ? 'bg-green-500 text-white'
-                                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                        ? 'bg-green-500 text-white'
+                                        : 'bg-blue-600 hover:bg-blue-700 text-white'
                                         }`}
                                 >
                                     {copied ? '✓ Copiado' : 'Copiar'}
@@ -318,12 +318,12 @@ export default function PlanList() {
 
                             {/* Lado Direito: Consumos */}
                             <div className="flex-1 flex flex-col justify-center">
-                                <h5 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Consumo Mensal</h5>
+                                <h5 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">Seu Consumo</h5>
                                 <div className="space-y-4">
                                     {/* Simulações */}
                                     <div>
                                         <div className="flex justify-between text-[11px] mb-1.5">
-                                            <span className="font-bold text-slate-600 dark:text-slate-400">Simulados</span>
+                                            <span className="font-bold text-slate-600 dark:text-slate-400">Simulados (Mensal)</span>
                                             <span className="font-black text-blue-600 dark:text-blue-400">
                                                 {(user as any).quotas?.simulations?.used || 0} / {(user as any).quotas?.simulations?.limit === 9999 ? '∞' : (user as any).quotas?.simulations?.limit || 0}
                                             </span>
@@ -339,7 +339,7 @@ export default function PlanList() {
                                     {/* Redações */}
                                     <div>
                                         <div className="flex justify-between text-[11px] mb-1.5">
-                                            <span className="font-bold text-slate-600 dark:text-slate-400">Redações</span>
+                                            <span className="font-bold text-slate-600 dark:text-slate-400">Redações (Mensal)</span>
                                             <span className="font-black text-purple-600 dark:text-purple-400">
                                                 {(user as any).quotas?.essays?.used || 0} / {(user as any).quotas?.essays?.limit === 9999 ? '∞' : (user as any).quotas?.essays?.limit || 0}
                                             </span>
@@ -355,7 +355,7 @@ export default function PlanList() {
                                     {/* Questões Objetivas */}
                                     <div>
                                         <div className="flex justify-between text-[11px] mb-1.5">
-                                            <span className="font-bold text-slate-600 dark:text-slate-400">Questões Objetivas</span>
+                                            <span className="font-bold text-slate-600 dark:text-slate-400">Questões Objetivas (Diário)</span>
                                             <span className="font-black text-emerald-600 dark:text-emerald-400">
                                                 {(user as any).quotas?.daily_questions?.used || 0} / {(user as any).quotas?.daily_questions?.limit === 9999 ? '∞' : (user as any).quotas?.daily_questions?.limit || 0}
                                             </span>
