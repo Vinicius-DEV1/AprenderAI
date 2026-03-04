@@ -22,6 +22,18 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
     const [batchId, setBatchId] = useState<string | null>(null);
     const [progress, setProgress] = useState<any>(null);
 
+    // Persistência com LocalStorage (Recuperação no F5)
+    useEffect(() => {
+        if (isOpen && !batchId) {
+            const activeBatchId = localStorage.getItem('ai_batch_id');
+            if (activeBatchId) {
+                setBatchId(activeBatchId);
+                setStep('processing');
+                onBatchStarted(activeBatchId); // Notify parent component if needed
+            }
+        }
+    }, [isOpen]);
+
     // Fetch dynamically configured models from API Keys vault
     const { data: availableModels = [] } = useQuery({
         queryKey: ['admin-api-keys-models'],
@@ -84,6 +96,7 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
         },
         onSuccess: (data) => {
             setBatchId(data.batch_id);
+            localStorage.setItem('ai_batch_id', data.batch_id);
             onBatchStarted(data.batch_id);
         }
     });
@@ -118,6 +131,7 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
     }, [batchId]);
 
     const handleFinalize = () => {
+        localStorage.removeItem('ai_batch_id');
         onClose();
         setBatchId(null);
         setProgress(null);

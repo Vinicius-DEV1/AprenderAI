@@ -37,6 +37,13 @@ export default function AdminQuestions() {
     const [reportsPage, setReportsPage] = useState(1);
     const [trashedPage, setTrashedPage] = useState(1);
     const [trashedSearch, setTrashedSearch] = useState('');
+    // Persistência com LocalStorage
+    useEffect(() => {
+        const activeBatchId = localStorage.getItem('ai_batch_id');
+        if (activeBatchId) {
+            setIsBatchModalOpen(true);
+        }
+    }, []);
 
     const { data, isLoading } = useQuery({
         queryKey: ['admin-questions', filters, page, triageFilters, triagePage],
