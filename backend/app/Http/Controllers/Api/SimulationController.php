@@ -223,21 +223,33 @@ class SimulationController extends Controller
             return response()->json(['error' => 'Question not found in this simulation'], 404);
         }
 
-        $isCorrect = $answer->question->isCorrect($validated['answer'] ?? '');
-        $answer->update([
-            'user_answer' => $validated['answer'] ?? null,
-            'marked_for_review' => $validated['marked_for_review'] ?? $answer->marked_for_review,
-            'time_spent' => $validated['time_spent'] ?? 0,
-            'is_correct' => $isCorrect,
-        ]);
+        $updateData = [];
 
-        // Record atomic analytics log (Simulation Context)
-        if ($validated['answer']) {
+        // Support partial updates to prevent clearing existing data (UI metadata vs real answers)
+        if (array_key_exists('answer', $validated)) {
+            $updateData['user_answer'] = $validated['answer'];
+            $updateData['is_correct'] = $answer->question->isCorrect($validated['answer'] ?? '');
+        }
+
+        if (array_key_exists('marked_for_review', $validated)) {
+            $updateData['marked_for_review'] = $validated['marked_for_review'];
+        }
+
+        if (array_key_exists('time_spent', $validated)) {
+            $updateData['time_spent'] = $validated['time_spent'];
+        }
+
+        if (!empty($updateData)) {
+            $answer->update($updateData);
+        }
+
+        // Record atomic analytics log only if an actual answer was submitted
+        if (!empty($validated['answer'])) {
             app(\App\Services\AnalyticsService::class)->logAnswer(
                 $answer->question,
                 $request->user()->id,
-                $isCorrect,
-                $validated['time_spent'] ?? 0,
+                $answer->is_correct,
+                $answer->time_spent,
                 $request,
                 'simulado'
             );
