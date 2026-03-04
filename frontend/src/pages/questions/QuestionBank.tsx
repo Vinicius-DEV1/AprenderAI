@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 import api from '../../api/axios';
 import { useConfigStore } from '../../stores/configStore';
-import QuestionCard from './QuestionCard';
+import QuestionCard from '../../components/QuestionCard';
 import StatsSlideOver from './StatsSlideOver';
 import SearchableSelect from '../../components/SearchableSelect';
 import GoalSettingsModal from './components/GoalSettingsModal';
