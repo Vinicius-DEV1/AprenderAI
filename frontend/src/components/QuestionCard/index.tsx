@@ -75,7 +75,13 @@ export default function QuestionCard({
 
     // Notes state tracking to show highlighted icon
     const [hasNotes, setHasNotes] = useState(q.has_notes || false);
-    const [notebookIds, setNotebookIds] = useState<number[]>(q.notebook_ids || []);
+    // List of notebook IDs this question belongs to
+    const [notebookIds, setNotebookIds] = useState<number[]>((q.notebook_ids || []).map(id => Number(id)));
+
+    // Sync state if question prop changes
+    useEffect(() => {
+        setNotebookIds((q.notebook_ids || []).map(id => Number(id)));
+    }, [q.id, q.notebook_ids]);
 
     const [showReportModal, setShowReportModal] = useState(false);
     const [showNotebookModal, setShowNotebookModal] = useState(false);

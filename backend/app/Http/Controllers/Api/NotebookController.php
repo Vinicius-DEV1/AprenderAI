@@ -109,15 +109,20 @@ class NotebookController extends Controller
         // Verifica se todos os cadernos pertencem ao usuário
         $validNotebooks = $user->notebooks()->whereIn('id', $notebookIds)->pluck('id')->toArray();
 
-        // 1. Remove a questão de todos os cadernos Deste usuário
-        $allUserNotebookIds = $user->notebooks()->pluck('id');
-        foreach ($allUserNotebookIds as $nId) {
-            $notebook = Notebook::find($nId);
-            if (!in_array($nId, $validNotebooks)) {
-                $notebook->questions()->detach($question->id);
-            } else {
-                $notebook->questions()->syncWithoutDetaching([$question->id]);
-            }
+        // 1. Get all notebook IDs belonging to the user
+        $allUserNotebookIds = $user->notebooks()->pluck('id')->toArray();
+
+        // 2. Identify which of the user's notebooks should be DETACHED
+        // (those the user owns but were NOT present in the valid requested IDs)
+        $notebooksToDetach = array_diff($allUserNotebookIds, $validNotebooks);
+
+        // 3. Perform bulk operations
+        if (!empty($notebooksToDetach)) {
+            $question->notebooks()->detach($notebooksToDetach);
+        }
+
+        if (!empty($validNotebooks)) {
+            $question->notebooks()->syncWithoutDetaching($validNotebooks);
         }
 
         return response()->json(['message' => 'Questão sincronizada com os cadernos selecionados.']);

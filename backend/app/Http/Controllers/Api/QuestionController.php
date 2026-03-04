@@ -24,7 +24,7 @@ class QuestionController extends Controller
         if ($userId) {
             $query->withExists(['favorites as is_favorite' => fn($q) => $q->where('user_id', $userId)])
                 ->withExists(['notes as has_notes' => fn($q) => $q->where('user_id', $userId)])
-                ->with(['notebooks' => fn($q) => $q->where('user_id', $userId)->select('notebooks.id')]);
+                ->with(['notebooks' => fn($q) => $q->where('user_id', $userId)]);
         }
 
         // Base Type Blocks: Never return Redação in student endpoints
@@ -106,7 +106,7 @@ class QuestionController extends Controller
         if ($userId) {
             $question->loadExists(['favorites as is_favorite' => fn($q) => $q->where('user_id', $userId)]);
             $question->loadExists(['notes as has_notes' => fn($q) => $q->where('user_id', $userId)]);
-            $question->load(['notebooks' => fn($q) => $q->where('user_id', $userId)->select('notebooks.id')]);
+            $question->load(['notebooks' => fn($q) => $q->where('user_id', $userId)]);
         }
 
         return new QuestionResource($question);
