@@ -211,11 +211,28 @@ class AIBatchService
             $subjectName = !is_numeric($subjectVal) ? $subjectVal : ($data['subject_name'] ?? null);
 
             if (!$subjectId && !empty($subjectName)) {
-                $subject = Subject::firstOrCreate(
-                    ['name' => $subjectName],
-                    ['slug' => \Illuminate\Support\Str::slug($subjectName), 'type' => 'concurso']
-                );
-                $subjectId = $subject->id;
+                $normalizedName = strtolower(trim($subjectName));
+
+                // Força mapeamento de variantes comuns para o padrão oficial do BD
+                if (in_array($normalizedName, ['português', 'portugues', 'língua portuguesa', 'lingua portuguesa'])) {
+                    $subjectName = 'Língua Portuguesa';
+                    $normalizedName = 'língua portuguesa';
+                }
+
+                // Tenta achar pelo nome exato ou parecido ignorando case antes de criar um novo
+                $existingSubject = Subject::whereRaw('LOWER(name) = ?', [$normalizedName])
+                    ->orWhere('name', 'like', '%' . trim($subjectName) . '%')
+                    ->first();
+
+                if ($existingSubject) {
+                    $subjectId = $existingSubject->id;
+                } else {
+                    $subject = Subject::firstOrCreate(
+                        ['name' => trim($subjectName)],
+                        ['slug' => \Illuminate\Support\Str::slug($subjectName), 'type' => 'concurso']
+                    );
+                    $subjectId = $subject->id;
+                }
             }
             if ($subjectId) {
                 if ($reprocess || $question->subjects->isEmpty()) {
@@ -229,11 +246,22 @@ class AIBatchService
             $topicName = !is_numeric($topicVal) ? $topicVal : ($data['topic_name'] ?? null);
 
             if (!$topicId && !empty($topicName)) {
-                $topic = Topic::firstOrCreate(
-                    ['name' => $topicName],
-                    ['slug' => \Illuminate\Support\Str::slug($topicName)]
-                );
-                $topicId = $topic->id;
+                $normalizedTopicName = strtolower(trim($topicName));
+
+                // Tenta achar pelo nome exato ou parecido ignorando case antes de criar um novo
+                $existingTopic = Topic::whereRaw('LOWER(name) = ?', [$normalizedTopicName])
+                    ->orWhere('name', 'like', '%' . trim($topicName) . '%')
+                    ->first();
+
+                if ($existingTopic) {
+                    $topicId = $existingTopic->id;
+                } else {
+                    $topic = Topic::firstOrCreate(
+                        ['name' => trim($topicName)],
+                        ['slug' => \Illuminate\Support\Str::slug($topicName)]
+                    );
+                    $topicId = $topic->id;
+                }
             }
             if ($topicId) {
                 if ($reprocess || $question->topics->isEmpty()) {

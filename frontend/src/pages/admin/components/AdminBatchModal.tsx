@@ -308,7 +308,6 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                             value={chunkSize}
                                             onChange={(e) => setChunkSize(parseInt(e.target.value) || 5)}
                                             min={1}
-                                            max={50}
                                             className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold"
                                         />
                                         <p className="text-[10px] text-gray-400 mt-1 font-bold italic">Questões processadas por requisição API.</p>
