@@ -75,6 +75,8 @@ class GoogleAuthController extends Controller
             return redirect($frontendUrl . '/login?error=google_failed');
         }
 
+        $isNewUser = false;
+
         // 1. Try to find user by google_id
         $user = User::where('google_id', $googleUser->getId())->first();
 
@@ -93,6 +95,7 @@ class GoogleAuthController extends Controller
 
         // 3. If still not found, create new user
         if (!$user) {
+            $isNewUser = true;
             $user = User::create([
                 'name' => $googleUser->getName(),
                 'email' => $googleUser->getEmail(),
@@ -131,9 +134,8 @@ class GoogleAuthController extends Controller
             'description' => 'Login via Google SSO efetuado com sucesso.',
         ]);
 
-        // CRO: Redirect new or free users to onboarding (only once per login)
-        if ((!$user->plan || $user->plan->slug === 'free') && !session('onboarding_shown')) {
-            session(['onboarding_shown' => true]);
+        // CRO: Redirect exclusively new users to onboarding
+        if ($isNewUser) {
             return redirect($frontendUrl . '/welcome');
         }
 

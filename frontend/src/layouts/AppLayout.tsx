@@ -31,10 +31,15 @@ export default function AppLayout() {
 
     const handleLogout = async (e: React.FormEvent) => {
         e.preventDefault();
-        await apiLogout();
+        // Clear local state FIRST to prevent data leakage (favorites, history) if API fails
         queryClient.clear();
         logout();
         navigate('/login');
+        try {
+            await apiLogout();
+        } catch (error) {
+            console.error('Logout API failed, but local state was cleared.');
+        }
     };
 
     const isRouteActive = (pattern: string) => {

@@ -16,5 +16,9 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
     isLoading: true,
     setUser: (user) => set({ user, isAuthenticated: !!user, isLoading: false }),
     setLoading: (isLoading) => set({ isLoading }),
-    logout: () => set({ user: null, isAuthenticated: false, isLoading: false }),
+    logout: () => {
+        // Clear React Query cache before logging out to prevent data leakage 
+        // Example: showing previous user's favorite questions on a new account
+        set({ user: null, isAuthenticated: false, isLoading: false });
+    },
 }));
