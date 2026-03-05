@@ -34,7 +34,7 @@ class AIBatchService
             if (gc_enabled())
                 gc_collect_cycles();
             return $appliedData;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error("AIBatchService: Falha no processamento do lote: " . $e->getMessage());
             throw $e;
         }
@@ -211,6 +211,11 @@ class AIBatchService
             $subjectName = !is_numeric($subjectVal) ? $subjectVal : ($data['subject_name'] ?? null);
 
             if (!$subjectId && !empty($subjectName)) {
+                // Defensive check: if subjectName is an array (AI error), convert to string
+                if (is_array($subjectName)) {
+                    $subjectName = json_encode($subjectName);
+                }
+                $subjectName = (string) $subjectName;
                 $normalizedName = strtolower(trim($subjectName));
 
                 // Força mapeamento de variantes comuns para o padrão oficial do BD
@@ -246,6 +251,11 @@ class AIBatchService
             $topicName = !is_numeric($topicVal) ? $topicVal : ($data['topic_name'] ?? null);
 
             if (!$topicId && !empty($topicName)) {
+                // Defensive check: if topicName is an array (AI error), convert to string
+                if (is_array($topicName)) {
+                    $topicName = json_encode($topicName);
+                }
+                $topicName = (string) $topicName;
                 $normalizedTopicName = strtolower(trim($topicName));
 
                 // Tenta achar pelo nome exato ou parecido ignorando case antes de criar um novo
