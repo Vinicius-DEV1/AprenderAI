@@ -255,6 +255,18 @@ export default function PlanList() {
         return plans.find(p => p.slug?.includes(slugKeyword) && (periodo === 'anual' ? p.interval === 'yearly' : p.interval === 'monthly'));
     };
 
+    // Para plano anual: exibe o valor mensal equivalente (price / 12 ou monthly_price)
+    const getDisplayPrice = (slugKeyword: string) => {
+        const p = getPlanBySlug(slugKeyword);
+        if (!p) return { monthly: 0, total: null };
+        if (periodo === 'anual') {
+            // Se o backend fornece monthly_price no plano anual, usa ele; caso contrário divide por 12
+            const monthly = p.monthly_price ? Number(p.monthly_price) : Number(p.price) / 12;
+            return { monthly, total: Number(p.price) };
+        }
+        return { monthly: Number(p.price), total: null };
+    };
+
     useEffect(() => {
         if (plans?.length > 0) {
             if (import.meta.env.DEV) {
@@ -543,8 +555,13 @@ export default function PlanList() {
                             <div className="lp-plan-name-paid">Básico</div>
                             <div className="lp-plan-tagline-paid">Para evoluir com correção completa e IA.</div>
                             <div className="mb-2">
-                                <span className="lp-plan-price-paid">R$&nbsp;{new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(getPlanPrice('basic'))}</span>
+                                <span className="lp-plan-price-paid">R$&nbsp;{new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(getDisplayPrice('basic').monthly)}</span>
                                 <span className="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
+                                {getDisplayPrice('basic').total !== null && (
+                                    <p className="text-blue-100 text-xs font-semibold mt-1 opacity-80">
+                                        Total: R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(getDisplayPrice('basic').total)}/ano
+                                    </p>
+                                )}
                             </div>
                             <ul className="lp-plan-list lp-plan-list-paid">
                                 <li><span className="lp-check-paid">✓</span> Correção detalhada (IA)</li>
@@ -583,8 +600,13 @@ export default function PlanList() {
                             <div className="lp-plan-name-paid">Plus</div>
                             <div className="lp-plan-tagline-paid">A estratégia definitiva de aprovação.</div>
                             <div className="mb-2">
-                                <span className="lp-plan-price-paid">R$&nbsp;{new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(getPlanPrice('plus'))}</span>
+                                <span className="lp-plan-price-paid">R$&nbsp;{new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(getDisplayPrice('plus').monthly)}</span>
                                 <span className="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
+                                {getDisplayPrice('plus').total !== null && (
+                                    <p className="text-blue-100 text-xs font-semibold mt-1 opacity-80">
+                                        Total: R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(getDisplayPrice('plus').total)}/ano
+                                    </p>
+                                )}
                             </div>
                             <ul className="lp-plan-list lp-plan-list-paid">
                                 <li><span className="lp-check-paid">✓</span> <strong className="text-white">Análise estratégica</strong></li>
