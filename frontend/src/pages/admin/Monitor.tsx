@@ -59,8 +59,17 @@ interface FailedJob {
     failed_at: string;
 }
 
+interface CompletedBatch {
+    id: string;
+    name: string;
+    total_jobs: number;
+    failed_jobs: number;
+    finished_at: string;
+}
+
 export default function Monitor() {
     const [currentRange, setCurrentRange] = useState('24h');
+    const [activeTab, setActiveTab] = useState<'pending' | 'failed' | 'completed'>('pending');
     const [realtimeData, setRealtimeData] = useState<RealtimeData>({
         cpu_usage: 0, ram_usage: 0, ram_used_gb: 0, ram_total_gb: 0,
         disk_usage: 0, disk_used_gb: 0, disk_total_gb: 0,
@@ -106,7 +115,7 @@ export default function Monitor() {
         queryKey: ['admin-monitor-queues'],
         queryFn: async () => {
             const res = await api.get('/api/v1/admin/monitor/queues');
-            return res.data || { jobs: [], failed: [] };
+            return res.data || { jobs: [], failed: [], completed: [] };
         },
         refetchInterval: 5000 // A cada 5s
     });
@@ -232,69 +241,73 @@ export default function Monitor() {
             </div>
 
             {/* Gauges - 2 rows: CPU/RAM/Disk + Net */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {/* CPU */}
-                <div className="bg-white rounded-xl shadow-sm p-6 relative overflow-hidden">
-                    <div className="flex justify-between items-start mb-4">
+                <div className="bg-white rounded-xl shadow-sm p-4 relative overflow-hidden">
+                    <div className="flex justify-between items-start mb-2">
                         <div>
-                            <h3 className="text-sm font-medium text-gray-500">CPU Usage</h3>
-                            <div className="text-3xl font-bold text-gray-900 mt-1">{(realtimeData.cpu_usage || 0).toFixed(1)}%</div>
+                            <h3 className="text-xs font-medium text-gray-500 uppercase">CPU</h3>
+                            <div className="text-xl font-bold text-gray-900 mt-1">{(realtimeData.cpu_usage || 0).toFixed(1)}%</div>
                         </div>
-                        <div className="p-2 bg-blue-50 rounded-lg">
-                            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" /></svg>
+                        <div className="p-1.5 bg-blue-50 rounded-lg text-blue-600">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" /></svg>
                         </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-blue-600 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(realtimeData.cpu_usage || 0, 100)}%` }}></div>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                        <div className="bg-blue-600 h-1.5 rounded-full transition-all duration-500" style={{ width: `${Math.min(realtimeData.cpu_usage || 0, 100)}%` }}></div>
                     </div>
                 </div>
 
-                {/* RAM — com valor absoluto */}
-                <div className="bg-white rounded-xl shadow-sm p-6 relative overflow-hidden">
-                    <div className="flex justify-between items-start mb-4">
+                {/* RAM */}
+                <div className="bg-white rounded-xl shadow-sm p-4 relative overflow-hidden">
+                    <div className="flex justify-between items-start mb-2">
                         <div>
-                            <h3 className="text-sm font-medium text-gray-500">RAM Usage</h3>
-                            <div className="text-3xl font-bold text-gray-900 mt-1">{(realtimeData.ram_usage || 0).toFixed(1)}%</div>
-                            <p className="text-xs text-gray-400 mt-0.5">{fmtGb(realtimeData.ram_used_gb)} / {fmtGb(realtimeData.ram_total_gb)}</p>
+                            <h3 className="text-xs font-medium text-gray-500 uppercase">RAM</h3>
+                            <div className="flex items-baseline gap-2 mt-1">
+                                <div className="text-xl font-bold text-gray-900">{(realtimeData.ram_usage || 0).toFixed(1)}%</div>
+                                <span className="text-xs text-gray-400">{fmtGb(realtimeData.ram_used_gb)}/{fmtGb(realtimeData.ram_total_gb)}</span>
+                            </div>
                         </div>
-                        <div className="p-2 bg-purple-50 rounded-lg">
-                            <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                        <div className="p-1.5 bg-purple-50 rounded-lg text-purple-600">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
                         </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-purple-600 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(realtimeData.ram_usage || 0, 100)}%` }}></div>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                        <div className="bg-purple-600 h-1.5 rounded-full transition-all duration-500" style={{ width: `${Math.min(realtimeData.ram_usage || 0, 100)}%` }}></div>
                     </div>
                 </div>
 
                 {/* Disco */}
-                <div className="bg-white rounded-xl shadow-sm p-6 relative overflow-hidden">
-                    <div className="flex justify-between items-start mb-4">
+                <div className="bg-white rounded-xl shadow-sm p-4 relative overflow-hidden">
+                    <div className="flex justify-between items-start mb-2">
                         <div>
-                            <h3 className="text-sm font-medium text-gray-500">Disco</h3>
-                            <div className="text-3xl font-bold text-gray-900 mt-1">{(realtimeData.disk_usage || 0).toFixed(1)}%</div>
-                            <p className="text-xs text-gray-400 mt-0.5">{fmtGb(realtimeData.disk_used_gb)} / {fmtGb(realtimeData.disk_total_gb)}</p>
+                            <h3 className="text-xs font-medium text-gray-500 uppercase">Disco</h3>
+                            <div className="flex items-baseline gap-2 mt-1">
+                                <span className="text-xl font-bold text-gray-900">{(realtimeData.disk_usage || 0).toFixed(1)}%</span>
+                                <span className="text-xs text-gray-400">{fmtGb(realtimeData.disk_used_gb)}/{fmtGb(realtimeData.disk_total_gb)}</span>
+                            </div>
                         </div>
-                        <div className="p-2 bg-amber-50 rounded-lg">
-                            <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                        <div className="p-1.5 bg-amber-50 rounded-lg text-amber-600">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
                         </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className={`h-2 rounded-full transition-all duration-500 ${(realtimeData.disk_usage || 0) > 85 ? 'bg-red-500' : 'bg-amber-500'}`}
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                        <div className={`h-1.5 rounded-full transition-all duration-500 ${(realtimeData.disk_usage || 0) > 85 ? 'bg-red-500' : 'bg-amber-500'}`}
                             style={{ width: `${Math.min(realtimeData.disk_usage || 0, 100)}%` }}></div>
                     </div>
                 </div>
 
                 {/* Rede */}
-                <div className="bg-white rounded-xl shadow-sm p-6">
-                    <h3 className="text-sm font-medium text-gray-500 mb-3">Tráfego de Rede</h3>
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between">
+                <div className="bg-white rounded-xl shadow-sm p-4">
+                    <h3 className="text-xs font-medium text-gray-500 uppercase mb-2">Rede (I/O)</h3>
+                    <div className="space-y-1 mt-1">
+                        <div className="flex items-center justify-between text-sm">
                             <span className="text-xs text-green-600 font-bold flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 14l-7 7m0 0l-7-7" /></svg>RX</span>
-                            <span className="font-bold text-green-600 text-sm">{formatBytes(realtimeData.net_rx_speed)}</span>
+                            <span className="font-bold text-gray-700">{formatBytes(realtimeData.net_rx_speed)}</span>
                         </div>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between text-sm">
                             <span className="text-xs text-orange-600 font-bold flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 10l7-7m0 0l7 7" /></svg>TX</span>
-                            <span className="font-bold text-orange-600 text-sm">{formatBytes(realtimeData.net_tx_speed)}</span>
+                            <span className="font-bold text-gray-700">{formatBytes(realtimeData.net_tx_speed)}</span>
                         </div>
                     </div>
                 </div>
@@ -424,112 +437,162 @@ export default function Monitor() {
                 </div>
             </div>
 
-            {/* Detailed Queues Tables */}
-            <div className="mt-8 grid grid-cols-1 gap-8">
-                {/* Active/Pending Jobs */}
-                <div className="bg-white rounded-xl shadow-sm p-6 overflow-hidden">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                            <span className="relative flex h-3 w-3">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-                            </span>
-                            Jobs Ativos &amp; Pendentes
-                        </h3>
-                        <span className="text-sm text-gray-500">Total: {queuesData?.jobs?.length || 0}</span>
-                    </div>
-
-                    <div className="overflow-x-auto border border-gray-100 rounded-lg">
-                        <table className="w-full text-sm text-left text-gray-500">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                                <tr>
-                                    <th className="px-4 py-3">ID</th>
-                                    <th className="px-4 py-3">Classe (Job)</th>
-                                    <th className="px-4 py-3">Fila</th>
-                                    <th className="px-4 py-3">Status</th>
-                                    <th className="px-4 py-3 text-right">Criado em</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {(queuesData?.jobs || []).length > 0 ? (
-                                    queuesData?.jobs.map((job: QueueJob) => (
-                                        <tr key={job.id} className="border-b hover:bg-gray-50">
-                                            <td className="px-4 py-3 font-medium text-gray-900">#{job.id}</td>
-                                            <td className="px-4 py-3 font-mono text-blue-600">{job.name}</td>
-                                            <td className="px-4 py-3">
-                                                <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-md">
-                                                    {job.queue}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {job.is_processing ? (
-                                                    <span className="px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full flex items-center w-max gap-1">
-                                                        <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                                                        Processando
-                                                    </span>
-                                                ) : (
-                                                    <span className="px-2 py-1 text-xs font-semibold bg-amber-100 text-amber-700 rounded-full">
-                                                        Pendente (Tentativas: {job.attempts})
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 text-right text-gray-400">
-                                                {new Date(job.created_at).toLocaleTimeString()}
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={5} className="px-4 py-6 text-center text-gray-500 italic">Nenhum job pendente no momento.</td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+            {/* Tabbed Detailed Queues */}
+            <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="flex border-b border-gray-100 bg-gray-50/50">
+                    <button
+                        onClick={() => setActiveTab('pending')}
+                        className={`px-6 py-3.5 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'pending' ? 'border-blue-500 text-blue-700 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                    >
+                        Jobs Pendentes/Ativos
+                        <span className="bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">{queuesData?.jobs?.length || 0}</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('completed')}
+                        className={`px-6 py-3.5 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'completed' ? 'border-green-500 text-green-700 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                    >
+                        Lotes Concluídos
+                        <span className="bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">{queuesData?.completed?.length || 0}</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('failed')}
+                        className={`px-6 py-3.5 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'failed' ? 'border-red-500 text-red-700 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                    >
+                        Falhas Recentes
+                        <span className="bg-red-100 text-red-600 py-0.5 px-2 rounded-full text-xs font-bold">{queuesData?.failed?.length || 0}</span>
+                    </button>
                 </div>
 
-                {/* Failed Jobs */}
-                <div className="bg-white rounded-xl shadow-sm p-6 overflow-hidden border border-red-50">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-red-600 flex items-center gap-2">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            Últimas Falhas (Failed Jobs)
-                        </h3>
-                        <span className="text-sm text-gray-500">Exibindo últimos 50</span>
-                    </div>
-
-                    <div className="overflow-x-auto border border-gray-100 rounded-lg">
-                        <table className="w-full text-sm text-left text-gray-500">
-                            <thead className="text-xs text-gray-700 uppercase bg-red-50">
-                                <tr>
-                                    <th className="px-4 py-3">ID</th>
-                                    <th className="px-4 py-3">Classe</th>
-                                    <th className="px-4 py-3">Erro (Exception)</th>
-                                    <th className="px-4 py-3 text-right">Data</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {(queuesData?.failed || []).length > 0 ? (
-                                    queuesData?.failed.map((job: FailedJob) => (
-                                        <tr key={job.id} className="border-b border-gray-50 hover:bg-red-50/50">
-                                            <td className="px-4 py-3 font-medium text-gray-900">#{job.id}</td>
-                                            <td className="px-4 py-3 font-mono text-gray-600">{job.name}</td>
-                                            <td className="px-4 py-3 text-red-600 max-w-md truncate" title={job.exception}>
-                                                {job.exception}
-                                            </td>
-                                            <td className="px-4 py-3 text-right text-gray-500">
-                                                {new Date(job.failed_at).toLocaleString()}
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
+                <div className="p-0">
+                    {/* Active/Pending Jobs Tab */}
+                    {activeTab === 'pending' && (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-gray-500">
+                                <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                                     <tr>
-                                        <td colSpan={4} className="px-4 py-6 text-center text-gray-500 italic">Nenhum job falhou recentemente.</td>
+                                        <th className="px-4 py-3">ID</th>
+                                        <th className="px-4 py-3">Classe (Job)</th>
+                                        <th className="px-4 py-3">Fila</th>
+                                        <th className="px-4 py-3">Status</th>
+                                        <th className="px-4 py-3 text-right">Criado em</th>
                                     </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody>
+                                    {(queuesData?.jobs || []).length > 0 ? (
+                                        queuesData?.jobs.map((job: QueueJob) => (
+                                            <tr key={job.id} className="border-b hover:bg-gray-50">
+                                                <td className="px-4 py-3 font-medium text-gray-900">#{job.id}</td>
+                                                <td className="px-4 py-3 font-mono text-blue-600">{job.name}</td>
+                                                <td className="px-4 py-3">
+                                                    <span className="px-2 py-1 text-[10px] font-bold uppercase bg-gray-100 text-gray-600 rounded">
+                                                        {job.queue}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    {job.is_processing ? (
+                                                        <span className="px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full flex items-center w-max gap-1">
+                                                            <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                                            Processando
+                                                        </span>
+                                                    ) : (
+                                                        <span className="px-2 py-1 text-xs font-semibold bg-amber-100 text-amber-700 rounded-full">
+                                                            Pendente (Tentativas: {job.attempts})
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-right text-gray-400">
+                                                    {new Date(job.created_at).toLocaleTimeString('pt-BR')}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={5} className="px-4 py-8 text-center text-gray-500 italic">Nenhum job pendente no momento. Tudo limpo! 🎉</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {/* Completed Batches Tab */}
+                    {activeTab === 'completed' && (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-gray-500">
+                                <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                    <tr>
+                                        <th className="px-4 py-3">Lote ID / Nome</th>
+                                        <th className="px-4 py-3 text-center">Jobs Totais</th>
+                                        <th className="px-4 py-3 text-center">Falhas no Lote</th>
+                                        <th className="px-4 py-3 text-right">Data de Conclusão</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(queuesData?.completed || []).length > 0 ? (
+                                        queuesData?.completed.map((batch: CompletedBatch) => (
+                                            <tr key={batch.id} className="border-b hover:bg-gray-50">
+                                                <td className="px-4 py-3">
+                                                    <div className="font-medium text-gray-900">{batch.name}</div>
+                                                    <div className="font-mono text-[10px] text-gray-400">{batch.id}</div>
+                                                </td>
+                                                <td className="px-4 py-3 text-center font-medium text-gray-700">{batch.total_jobs}</td>
+                                                <td className="px-4 py-3 text-center">
+                                                    {batch.failed_jobs > 0 ? (
+                                                        <span className="text-red-500 font-bold">{batch.failed_jobs}</span>
+                                                    ) : (
+                                                        <span className="text-green-500">—</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-right text-gray-500">
+                                                    {new Date(batch.finished_at).toLocaleString('pt-BR')}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={4} className="px-4 py-8 text-center text-gray-500 italic">Nenhum lote foi concluído recentemente.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {/* Failed Jobs Tab */}
+                    {activeTab === 'failed' && (
+                        <div className="overflow-x-auto bg-red-50/20">
+                            <table className="w-full text-sm text-left text-gray-500">
+                                <thead className="text-xs text-red-800 uppercase bg-red-50">
+                                    <tr>
+                                        <th className="px-4 py-3">ID</th>
+                                        <th className="px-4 py-3">Classe</th>
+                                        <th className="px-4 py-3">Erro (Exception)</th>
+                                        <th className="px-4 py-3 text-right">Data</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(queuesData?.failed || []).length > 0 ? (
+                                        queuesData?.failed.map((job: FailedJob) => (
+                                            <tr key={job.id} className="border-b border-gray-100 hover:bg-red-50/50">
+                                                <td className="px-4 py-3 font-medium text-gray-900">#{job.id}</td>
+                                                <td className="px-4 py-3 font-mono text-gray-600">{job.name}</td>
+                                                <td className="px-4 py-3 text-red-600 max-w-xl truncate" title={job.exception}>
+                                                    {job.exception}
+                                                </td>
+                                                <td className="px-4 py-3 text-right text-gray-500">
+                                                    {new Date(job.failed_at).toLocaleString('pt-BR')}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={4} className="px-4 py-8 text-center text-gray-500 italic">Nenhuma falha registrada! Ótimo trabalho. 👍</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </div>
 

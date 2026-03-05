@@ -107,9 +107,26 @@ class MonitorController extends Controller
                 ];
             });
 
+        // Lotes Concluídos (da tabela 'job_batches')
+        $completedBatches = \Illuminate\Support\Facades\DB::table('job_batches')
+            ->whereNotNull('finished_at')
+            ->orderBy('finished_at', 'desc')
+            ->limit(30)
+            ->get()
+            ->map(function ($batch) {
+                return [
+                    'id' => $batch->id,
+                    'name' => class_basename($batch->name),
+                    'total_jobs' => $batch->total_jobs,
+                    'failed_jobs' => $batch->failed_jobs,
+                    'finished_at' => \Carbon\Carbon::createFromTimestamp($batch->finished_at)->toIso8601String(),
+                ];
+            });
+
         return response()->json([
             'jobs' => $jobs,
             'failed' => $failedJobs,
+            'completed' => $completedBatches,
         ]);
     }
 }
