@@ -58,6 +58,9 @@ RUN mkdir -p bootstrap/cache storage/framework/sessions storage/framework/views 
 
 # Install PHP dependencies
 ENV COMPOSER_MEMORY_LIMIT=-1
+# Dummy vars to prevent Laravel from trying to connect to real services during build scripts
+ENV REDIS_HOST=127.0.0.1
+ENV DB_CONNECTION=sqlite
 RUN composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs --no-scripts
 
 # Create system user
