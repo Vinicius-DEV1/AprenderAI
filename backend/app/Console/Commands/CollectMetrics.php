@@ -29,36 +29,24 @@ class CollectMetrics extends Command
     {
         $this->info('Coletando métricas...');
 
-        // 1. Snapshot Inicial de Rede
-        $netStart = $service->getNetworkStats();
-        
-        // 2. Aguarda 1 segundo para delta
-        sleep(1);
-        
-        // 3. Snapshot Final e CPU/RAM
-        $netEnd = $service->getNetworkStats();
-        $cpu = $service->getCpuUsage();
-        $ram = $service->getRamUsage();
+        try {
+            // O serviço collect() já extrai CPU, RAM e o delta da Velocidade de Rede internamente via cache.
+            $metrics = $service->collect();
 
-        // 4. Calcula Velocidade (Bytes/s)
-        $rxSpeed = max(0, $netEnd['rx'] - $netStart['rx']);
-        $txSpeed = max(0, $netEnd['tx'] - $netStart['tx']);
+            // Salva no Banco apenas os valores necessários para os gráficos de histórico
+            ServerMetric::create([
+                'cpu_usage' => $metrics['cpu_usage'] ?? 0,
+                'ram_usage' => $metrics['ram_usage'] ?? 0,
+                'net_rx_speed' => $metrics['net_rx_speed'] ?? 0,
+                'net_tx_speed' => $metrics['net_tx_speed'] ?? 0,
+            ]);
 
-        // Se o contador reiniciou ou houve erro, ignora valor negativo
-        if ($rxSpeed < 0) $rxSpeed = 0;
-        if ($txSpeed < 0) $txSpeed = 0;
+            $this->info("Métricas salvas com sucesso.");
+        } catch (\Exception $e) {
+            $this->error("Erro ao coletar métricas: " . $e->getMessage());
+        }
 
-        // 5. Salva no Banco
-        ServerMetric::create([
-            'cpu_usage' => $cpu,
-            'ram_usage' => $ram,
-            'net_rx_speed' => $rxSpeed,
-            'net_tx_speed' => $txSpeed,
-        ]);
-
-        $this->info("Métricas salvas: CPU: {$cpu}%, RAM: {$ram}%, RX: {$rxSpeed} B/s, TX: {$txSpeed} B/s");
-
-        // 6. Limpeza Automática (Pruning) > 30 dias
+        // Limpeza Automática (Pruning) > 30 dias
         $deleted = ServerMetric::where('created_at', '<', now()->subDays(30))->delete();
         if ($deleted > 0) {
             $this->info("Pruning: {$deleted} registros antigos removidos.");
