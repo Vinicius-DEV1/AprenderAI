@@ -34,6 +34,7 @@ use App\Http\Controllers\Api\Admin\AdminSimulationController;
 use App\Http\Controllers\Api\Admin\ApiPricingController;
 use App\Http\Controllers\Api\Admin\PaymentSettingsController;
 use App\Http\Controllers\Api\Admin\ExamController;
+use App\Http\Controllers\Api\Admin\BackupController;
 
 /*
 |--------------------------------------------------------------------------
@@ -302,6 +303,15 @@ Route::prefix('v1')->group(function () {
                 Route::get('/active-job', [AdminQuestionImportController::class, 'activeJob']);
                 Route::get('/{id}/progress', [AdminQuestionImportController::class, 'progress']);
                 Route::delete('/{id}', [AdminQuestionImportController::class, 'destroy']);
+            });
+
+            // Database Backups
+            Route::prefix('backups')->group(function () {
+                Route::get('/', [BackupController::class, 'index']);
+                Route::post('/trigger', [BackupController::class, 'trigger']);
+                Route::get('/{id}/status', [BackupController::class, 'show']);
+                Route::get('/{id}/download', [BackupController::class, 'download']);
+                Route::post('/settings', [BackupController::class, 'updateSettings']);
             });
         });
     });
