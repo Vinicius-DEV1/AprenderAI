@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../../api/axios';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 
 interface DeleteImpact {
@@ -21,7 +21,6 @@ interface Props {
 }
 
 export default function AdminDeleteQuestionModal({ isOpen, onClose, questionId, onDeleted }: Props) {
-    const queryClient = useQueryClient();
     const [impact, setImpact] = useState<DeleteImpact | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -86,8 +85,8 @@ export default function AdminDeleteQuestionModal({ isOpen, onClose, questionId, 
                         <div className="flex items-center gap-4 mb-6">
                             <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center text-2xl shadow-inner">⚠️</div>
                             <div>
-                                <h2 className="text-2xl font-black text-slate-900">Excluir Questão</h2>
-                                <p className="text-slate-500 font-medium text-sm">Esta ação é irreversível e afetará o histórico.</p>
+                                <h2 className="text-2xl font-black text-slate-900">Mover para a Lixeira</h2>
+                                <p className="text-slate-500 font-medium text-sm">A questão será ocultada, mas poderá ser restaurada depois.</p>
                             </div>
                         </div>
 
@@ -116,9 +115,9 @@ export default function AdminDeleteQuestionModal({ isOpen, onClose, questionId, 
                                     <ImpactStat label="Salva em Cadernos" value={impact.notebooks} icon="📚" isCritical={impact.notebooks > 0} />
                                 </div>
 
-                                <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl text-[11px] font-medium text-orange-800 leading-relaxed">
-                                    <span className="font-black flex items-center gap-2 mb-1">💡 NOTA DE INTEGRIDADE:</span>
-                                    A exclusão removerá permanentemente todos os registros vinculados (respostas, favoritos, anotações).
+                                <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl text-[11px] font-medium text-indigo-800 leading-relaxed">
+                                    <span className="font-black flex items-center gap-2 mb-1">💡 INFO:</span>
+                                    Ao confirmar, a questão vai para a <b>Lixeira</b>. Ela não aparecerá mais para os alunos, mas você poderá restaurá-la a qualquer momento no painel de questões.
                                 </div>
                             </div>
                         ) : null}
@@ -128,20 +127,20 @@ export default function AdminDeleteQuestionModal({ isOpen, onClose, questionId, 
                                 onClick={onClose}
                                 className="flex-1 px-6 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition"
                             >
-                                Cancelar
+                                Manter Questão
                             </button>
                             <button
                                 onClick={() => deleteMutation.mutate()}
                                 disabled={deleteMutation.isPending || loading || !impact}
-                                className="flex-[1.5] px-6 py-4 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700 transition shadow-lg shadow-red-200 disabled:opacity-50 flex items-center justify-center gap-2"
+                                className="flex-[1.5] px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                                 {deleteMutation.isPending ? (
                                     <>
                                         <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        Excluindo...
+                                        Movendo...
                                     </>
                                 ) : (
-                                    <>Confirmar Exclusão 🧨</>
+                                    <>Mover para Lixeira 🗑️</>
                                 )}
                             </button>
                         </div>

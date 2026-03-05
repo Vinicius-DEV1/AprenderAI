@@ -29,6 +29,7 @@ class QuestionController extends Controller
         // Exibimos apenas questões 100% classificadas no Banco Completo
         // Aplicamos redundância de filtros para garantir a exclusão de sem-matéria
         $query = Question::complete()
+            ->withoutTrashed()
             ->has('subjects')
             ->has('topics')
             ->with(['subjects:id,name', 'topics:id,name']);
@@ -52,7 +53,9 @@ class QuestionController extends Controller
         $questions = $query->orderByDesc('created_at')->paginate($request->get('per_page', 20));
 
         // --- 2. Triage Bank Query ---
-        $triageQuery = Question::incomplete()->with(['subjects:id,name', 'topics:id,name']);
+        $triageQuery = Question::incomplete()
+            ->withoutTrashed()
+            ->with(['subjects:id,name', 'topics:id,name']);
 
         if ($request->filled('triage_search')) {
             $triageQuery->where('statement', 'like', '%' . $request->triage_search . '%');
@@ -79,8 +82,7 @@ class QuestionController extends Controller
         $stats = [
             'total_questions' => Question::count(),
             'ai_questions' => Question::where('source', 'ai_generated')->count(),
-            'questions_by_organization' => \DB::table('questions')
-                ->select('organization', \DB::raw('count(*) as total'))
+            'questions_by_organization' => Question::select('organization', \DB::raw('count(*) as total'))
                 ->whereNotNull('organization')
                 ->groupBy('organization')
                 ->orderByDesc('total')
@@ -91,8 +93,10 @@ class QuestionController extends Controller
             'pending_total' => Question::incomplete()->count(),
             'missing_difficulty' => Question::missingField('difficulty_reasoning')->count(),
             'missing_explanation' => Question::missingField('explanation')->count(),
-            'missing_classification' => Question::whereDoesntHave('subjects')->orWhereDoesntHave('topics')->count(),
-            'both_missing' => Question::incomplete()->count(), // Simplified to avoid complex intersection query for counts, just total incomplete
+            'missing_classification' => Question::where(function ($q) {
+                $q->whereDoesntHave('subjects')->orWhereDoesntHave('topics');
+            })->count(),
+            'both_missing' => Question::incomplete()->count(),
         ];
 
         return response()->json([
@@ -101,7 +105,7 @@ class QuestionController extends Controller
             'meta' => $stats,
             'counts' => $counts,
             'availableSubjects' => \App\Models\Subject::orderBy('name')->pluck('name'),
-            'availableOrganizations' => \DB::table('questions')->whereNotNull('organization')->distinct()->pluck('organization'),
+            'availableOrganizations' => Question::whereNotNull('organization')->distinct()->pluck('organization'),
             'DEBUG_CODE_VERSION' => 'FILTER_V2_' . time(),
         ]);
     }
@@ -286,10 +290,66 @@ class QuestionController extends Controller
     }
 
     /**
-     * Safely delete a question with full integrity guarantees and audit trail.
+     * Move a question to the trash (Soft Delete).
      */
     public function destroy(Request $request, Question $question)
     {
+        $question->delete();
+
+        \App\Models\UserLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'admin_soft_deleted_question',
+            'description' => json_encode(['question_id' => $question->id]),
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json(['message' => 'Questão movida para a lixeira.']);
+    }
+
+    /**
+     * List trashed questions.
+     */
+    public function trashed(Request $request)
+    {
+        $query = Question::onlyTrashed()->with(['subjects:id,name', 'topics:id,name']);
+
+        if ($request->filled('search')) {
+            $query->where('statement', 'like', '%' . $request->search . '%');
+        }
+
+        $questions = $query->orderByDesc('deleted_at')->paginate($request->get('per_page', 20));
+
+        return response()->json([
+            'questions' => $questions,
+        ]);
+    }
+
+    /**
+     * Restore a trashed question.
+     */
+    public function restore(Request $request, $id)
+    {
+        $question = Question::onlyTrashed()->findOrFail($id);
+        $question->restore();
+
+        \App\Models\UserLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'admin_restored_question',
+            'description' => json_encode(['question_id' => $question->id]),
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json(['message' => 'Questão restaurada com sucesso.']);
+    }
+
+    /**
+     * Permanently delete a question (Force Delete).
+     * This executes the cleanup of legacy legacy tables before purging.
+     */
+    public function forceDelete(Request $request, $id)
+    {
+        $question = Question::onlyTrashed()->findOrFail($id);
+
         $impactData = [
             'admin_id' => $request->user()->id,
             'admin_email' => $request->user()->email,
@@ -307,19 +367,17 @@ class QuestionController extends Controller
                 }
             }
 
-            // Log the action
-            \DB::table('question_event_logs')->insert([
-                'question_id' => $question->id,
-                'event_type' => 'admin_deleted',
-                'payload' => json_encode($impactData),
-                'created_by' => $request->user()->id,
-                'created_at' => now(),
-                'updated_at' => now(),
+            // Log the permanent purge
+            \App\Models\UserLog::create([
+                'user_id' => $request->user()->id,
+                'action' => 'admin_force_deleted_question',
+                'description' => json_encode($impactData),
+                'ip_address' => $request->ip(),
             ]);
 
-            $question->delete();
+            $question->forceDelete();
         });
 
-        return response()->json(['message' => 'Questão excluída com sucesso.', 'impact' => $impactData]);
+        return response()->json(['message' => 'Questão permanentemente excluída.', 'impact' => $impactData]);
     }
 }

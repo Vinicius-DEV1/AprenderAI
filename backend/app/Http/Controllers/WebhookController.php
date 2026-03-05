@@ -141,6 +141,7 @@ class WebhookController extends Controller
 
                 // Guarda o plano antigo para decidir se é Upgrade
                 $oldPlanId = $user->plan_id;
+                $oldPlan = $oldPlanId ? \App\Models\Plan::find($oldPlanId) : null;
 
                 // Ativa o plano do usuário primeiramente na tabela (compatibilidade retroativa)
                 $user->update([
@@ -149,12 +150,56 @@ class WebhookController extends Controller
                     'plan_expires_at' => $periodEnd,
                 ]);
 
-                // --- NOVO MODELO ACUMULATIVO ---
+                // --- NOVO MODELO ACUMULATIVO (Somente Upgrade) ---
                 try {
-                    // Se o usuário já tinha um plano ativo, e esse plano NÃO ERA O GRÁTIS (1), e não é uma mera renovação do mesmo plano
+                    // Se o usuário já tinha um plano ativo e não é o grátis
                     if ($oldPlanId && $oldPlanId != $plan->id && $oldPlanId != 1) {
-                        Log::info('[Webhook] Detectado UPGRADE de Plano Pago. Aplicando Soma Acumulativa!', ['user_id' => $user->id]);
-                        $this->quotaService->processUpgradeSoma($subscription, $plan->default_limits ?? []);
+
+                        $isUpgrade = $oldPlan && ($plan->price > $oldPlan->price);
+
+                        if ($isUpgrade) {
+                            Log::info('[Webhook] Detectado UPGRADE de Plano Pago. Aplicando Soma Acumulativa!', ['user_id' => $user->id]);
+                            $this->quotaService->processUpgradeSoma($subscription, $plan->default_limits ?? []);
+                        } else {
+                            Log::info('[Webhook] Detectado DOWNGRADE ou mudança de mesmo valor. Agendando novo ciclo para o final do atual.', ['user_id' => $user->id]);
+
+                            // Em downgrade, buscamos a data de validade atual real em vez de iniciar agora.
+                            // Isso preserva os "dias" que ele já tinha pago no plano anterior.
+                            $currentExpiry = $user->plan_expires_at && $user->plan_expires_at->isFuture()
+                                ? $user->plan_expires_at
+                                : now();
+
+                            // O novo ciclo vai do fim do atual até +1 Mês/Ano.
+                            // Mas na Subscription de banco mantemos as datas ancoradas no Asaas
+                            // O QuotaService é quem usa a SubscriptionCycle para adiar os limites.
+                            $this->quotaService->createPostponedCycle($subscription, $currentExpiry);
+
+                            // IMPORTANTE: Atualizamos o User->plan_expires_at para a NOVA data futura 
+                            // (Fim do antigo + 1 mês do novo)
+                            $newGlobalExpiry = $plan->interval === 'yearly'
+                                ? $currentExpiry->copy()->addYear()
+                                : $currentExpiry->copy()->addMonth();
+
+                            $user->update(['plan_expires_at' => $newGlobalExpiry]);
+                        }
+
+                        // 🛑 Cancela assinaturas anteriores ATIVAS no Asaas para este usuário
+                        // Isso evita cobranças duplicadas no futuro.
+                        $previousActiveSubscriptions = Subscription::where('user_id', $user->id)
+                            ->where('id', '!=', $subscription->id)
+                            ->where('status', 'active')
+                            ->whereNotNull('gateway_id')
+                            ->get();
+
+                        foreach ($previousActiveSubscriptions as $oldSub) {
+                            Log::info('[Webhook] Cancelando assinatura antiga no Asaas devido a upgrade', [
+                                'user_id' => $user->id,
+                                'old_gateway_id' => $oldSub->gateway_id
+                            ]);
+                            $asaasService = app(\App\Services\AsaasService::class);
+                            $asaasService->cancelSubscription($oldSub->gateway_id);
+                            $oldSub->update(['status' => 'canceled']);
+                        }
                     } else {
                         Log::info('[Webhook] Renovacão normal, compra inicial ou upgrade vindo do Grátis. Criando ciclo limpo.', ['user_id' => $user->id]);
                         $this->quotaService->createOrRenewCycle($subscription);

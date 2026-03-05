@@ -122,6 +122,23 @@ class QuotaService
     }
 
     /**
+     * Cria um ciclo agendado para o futuro (usado em Downgrades, para manter o mês atual intacto).
+     */
+    public function createPostponedCycle(Subscription $subscription, Carbon $startDate): SubscriptionCycle
+    {
+        $planLimits = $subscription->plan->default_limits ?? [];
+
+        return SubscriptionCycle::create([
+            'user_id' => $subscription->user_id,
+            'subscription_id' => $subscription->id,
+            'start_date' => $startDate,
+            'end_date' => $startDate->copy()->addMonth(),
+            'limits' => $planLimits,
+            'has_used_cumulative_bonus' => false
+        ]);
+    }
+
+    /**
      * Auto-creates a cycle for a user if they have an active plan but no formal cycle
      * (e.g. Free users, Admins, or gracefully handling missing data).
      */

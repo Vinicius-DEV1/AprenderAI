@@ -167,6 +167,10 @@ Route::prefix('v1')->group(function () {
 
             // Administrative CRUDs
             Route::get('questions/support-data', [AdminQuestionController::class, 'supportData']);
+            Route::get('questions/trashed', [AdminQuestionController::class, 'trashed']);
+            Route::post('questions/{id}/restore', [AdminQuestionController::class, 'restore']);
+            Route::delete('questions/{id}/force', [AdminQuestionController::class, 'forceDelete']);
+
             Route::get('questions/{question}/delete-impact', [AdminQuestionController::class, 'deleteImpact']);
             Route::apiResource('questions', AdminQuestionController::class);
             Route::post('questions/{question}/evaluate-difficulty', [AdminQuestionController::class, 'evaluateDifficulty']);
@@ -219,6 +223,7 @@ Route::prefix('v1')->group(function () {
             Route::prefix('monitor')->group(function () {
                 Route::get('/realtime', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'realtime']);
                 Route::get('/history', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'history']);
+                Route::get('/queues', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'queues']);
                 Route::get('/logs', [\App\Http\Controllers\Api\Admin\SystemLogController::class, 'index']);
             });
 
@@ -245,8 +250,19 @@ Route::prefix('v1')->group(function () {
             Route::prefix('triage')->group(function () {
                 Route::post('/preview', [AdminAIBatchTriageController::class, 'preview']);
                 Route::post('/start', [AdminAIBatchTriageController::class, 'start']);
+                Route::get('/active', [AdminAIBatchTriageController::class, 'active']);
                 Route::get('/{batchId}/status', [AdminAIBatchTriageController::class, 'status']);
                 Route::post('/{batchId}/cancel', [AdminAIBatchTriageController::class, 'cancel']);
+                Route::post('/{batchId}/cancel-and-revert', [AdminAIBatchTriageController::class, 'cancelAndRevert']);
+            });
+
+            // AI Batch History & Rollback
+            Route::prefix('questions-batch')->group(function () {
+                Route::get('/history', [AdminAIBatchTriageController::class, 'history']);
+                Route::get('/details/{batchId}', [AdminAIBatchTriageController::class, 'details']);
+                Route::post('/undo-batch/{batchId}', [AdminAIBatchTriageController::class, 'undoBatch']);
+                Route::post('/undo-item/{itemId}', [AdminAIBatchTriageController::class, 'undoItem']);
+                Route::post('/retry/{batchId}', [AdminAIBatchTriageController::class, 'retry']);
             });
 
             // Simulation Builder
@@ -285,6 +301,7 @@ Route::prefix('v1')->group(function () {
                 Route::post('/', [AdminQuestionImportController::class, 'store']);
                 Route::get('/active-job', [AdminQuestionImportController::class, 'activeJob']);
                 Route::get('/{id}/progress', [AdminQuestionImportController::class, 'progress']);
+                Route::delete('/{id}', [AdminQuestionImportController::class, 'destroy']);
             });
         });
     });
