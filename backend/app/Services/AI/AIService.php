@@ -393,12 +393,24 @@ EOT;
             $json = ['text' => $content];
         }
 
+        $inputTokens = $usage['prompt_tokens'] ?? 0;
+        $totalTokens = $usage['total_tokens'] ?? 0;
+        $outputTokens = $usage['completion_tokens'] ?? 0;
+
+        if ($outputTokens <= 0 && $totalTokens > 0) {
+            $outputTokens = max(0, $totalTokens - $inputTokens);
+        }
+
+        if ($outputTokens <= 0 && !empty($content)) {
+            $outputTokens = $this->telemetryService->estimateTokens(is_string($content) ? $content : json_encode($content));
+        }
+
         return [
             'content' => $json,
             'usage' => [
-                'input_tokens' => $usage['prompt_tokens'] ?? 0,
-                'output_tokens' => $usage['completion_tokens'] ?? 0,
-                'total_tokens' => $usage['total_tokens'] ?? 0,
+                'input_tokens' => $inputTokens,
+                'output_tokens' => $outputTokens,
+                'total_tokens' => $totalTokens > 0 ? $totalTokens : ($inputTokens + $outputTokens),
             ]
         ];
     }
@@ -526,12 +538,24 @@ EOT;
 
         $usageMeta = $data['usageMetadata'] ?? [];
 
+        $inputTokens = $usageMeta['promptTokenCount'] ?? 0;
+        $totalTokens = $usageMeta['totalTokenCount'] ?? 0;
+        $outputTokens = $usageMeta['candidatesTokenCount'] ?? $usageMeta['candidateTokenCount'] ?? 0;
+
+        if ($outputTokens <= 0 && $totalTokens > 0) {
+            $outputTokens = max(0, $totalTokens - $inputTokens);
+        }
+
+        if ($outputTokens <= 0 && !empty($text)) {
+            $outputTokens = $this->telemetryService->estimateTokens($text);
+        }
+
         return [
             'content' => $json,
             'usage' => [
-                'input_tokens' => $usageMeta['promptTokenCount'] ?? 0,
-                'output_tokens' => $usageMeta['candidatesTokenCount'] ?? 0,
-                'total_tokens' => $usageMeta['totalTokenCount'] ?? 0,
+                'input_tokens' => $inputTokens,
+                'output_tokens' => $outputTokens,
+                'total_tokens' => $totalTokens > 0 ? $totalTokens : ($inputTokens + $outputTokens),
             ]
         ];
     }
