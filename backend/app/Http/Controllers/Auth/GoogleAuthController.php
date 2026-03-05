@@ -134,7 +134,7 @@ class GoogleAuthController extends Controller
         // CRO: Redirect new or free users to onboarding (only once per login)
         if ((!$user->plan || $user->plan->slug === 'free') && !session('onboarding_shown')) {
             session(['onboarding_shown' => true]);
-            return redirect($frontendUrl . '/bem-vindo');
+            return redirect($frontendUrl . '/welcome');
         }
 
         return redirect($frontendUrl . '/dashboard');
