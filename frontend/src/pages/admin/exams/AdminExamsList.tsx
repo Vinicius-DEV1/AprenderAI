@@ -1,17 +1,26 @@
 import React, { useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { getAdminExamsList } from '../../../api/adminExams';
+import { getAdminExamsList, AdminExamSummary } from '../../../api/adminExams';
 import { Link } from 'react-router-dom';
 
 export default function AdminExamsList() {
     const [page, setPage] = useState(1);
     const [filters, setFilters] = useState({ year: '', organization: '', institution: '' });
 
-    const { data: response, isLoading } = useQuery({
+    const { data: response, isLoading, error } = useQuery({
         queryKey: ['adminExams', page, filters],
         queryFn: () => getAdminExamsList(page, filters),
         placeholderData: keepPreviousData,
     });
+
+    // Suporta tanto { data: [...] } quanto [...] diretamente
+    const exams: AdminExamSummary[] = Array.isArray(response)
+        ? response
+        : Array.isArray((response as any)?.data)
+            ? (response as any).data
+            : [];
+    const lastPage: number = (response as any)?.last_page ?? 1;
+    const currentPage: number = (response as any)?.current_page ?? page;
 
     const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFilters({ ...filters, [e.target.name]: e.target.value });
@@ -79,14 +88,20 @@ export default function AdminExamsList() {
                                     Carregando provas...
                                 </td>
                             </tr>
-                        ) : response?.data.length === 0 ? (
+                        ) : error ? (
+                            <tr>
+                                <td colSpan={4} className="px-6 py-8 text-center text-red-500 font-semibold">
+                                    Erro ao carregar provas. Tente novamente.
+                                </td>
+                            </tr>
+                        ) : exams.length === 0 ? (
                             <tr>
                                 <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
                                     Nenhuma prova encontrada.
                                 </td>
                             </tr>
                         ) : (
-                            response?.data.map((exam, idx) => {
+                            exams.map((exam, idx) => {
                                 // Encode for URL mapping
                                 const idParam = exam.arquivo_origem
                                     ? btoa(exam.arquivo_origem)
@@ -143,11 +158,10 @@ export default function AdminExamsList() {
                 </table>
             </div>
 
-            {/* Pagination */}
-            {response && response.last_page > 1 && (
+            {lastPage > 1 && (
                 <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                     <span className="text-sm text-gray-700">
-                        Mostrando página <span className="font-semibold">{response.current_page}</span> de <span className="font-semibold">{response.last_page}</span>
+                        Mostrando página <span className="font-semibold">{currentPage}</span> de <span className="font-semibold">{lastPage}</span>
                     </span>
                     <div className="flex space-x-2">
                         <button
@@ -158,8 +172,8 @@ export default function AdminExamsList() {
                             Anterior
                         </button>
                         <button
-                            onClick={() => setPage(p => Math.min(response.last_page, p + 1))}
-                            disabled={page === response.last_page}
+                            onClick={() => setPage(p => Math.min(lastPage, p + 1))}
+                            disabled={page === lastPage}
                             className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Próxima
