@@ -48,7 +48,7 @@ Schedule::call(function () {
 
     Log::info('[Scheduler] Backup automático agendado. Job ID: ' . $backupJob->id);
 
-})->dailyAt(Cache::get('setting_backup_schedule_time', config('backup.schedule_time', '00:00')))
-    ->name('database-backup-scheduled')
+})->name('database-backup-scheduled')
+    ->dailyAt(Cache::get('setting_backup_schedule_time', config('backup.schedule_time', '00:00')))
     ->withoutOverlapping();
 
