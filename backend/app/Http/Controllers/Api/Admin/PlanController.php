@@ -15,10 +15,18 @@ class PlanController extends Controller
         return response()->json($plans);
     }
 
-    private function normalizeInterval(string $interval): string
+    private function normalizeInterval($interval): string
     {
-        $map = ['monthly' => 'month', 'yearly' => 'year'];
-        return $map[strtolower(trim($interval))] ?? strtolower(trim($interval));
+        if (!$interval)
+            return 'month';
+        $interval = strtolower(trim((string) $interval));
+        $map = [
+            'monthly' => 'month',
+            'yearly' => 'year',
+            'mensal' => 'month',
+            'anual' => 'year'
+        ];
+        return $map[$interval] ?? $interval;
     }
 
     public function store(Request $request)
@@ -30,7 +38,7 @@ class PlanController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
-            'interval' => 'required|in:month,year',
+            'interval' => 'required|string|in:month,year,monthly,yearly',
             'simulations_limit' => 'required|integer|min:0',
             'essays_limit' => 'required|integer|min:0',
             'daily_question_limit' => 'required|integer|min:0',
@@ -38,7 +46,9 @@ class PlanController extends Controller
             'is_active' => 'boolean',
         ]);
 
+        $data['interval'] = $this->normalizeInterval($data['interval']);
         $data['slug'] = Str::slug($data['name']);
+
         if (Plan::where('slug', $data['slug'])->exists()) {
             $data['slug'] .= '-' . uniqid();
         }
@@ -53,7 +63,6 @@ class PlanController extends Controller
 
     public function show(Plan $plan)
     {
-        // Normaliza o intervalo na leitura para caso haja dados legados no banco
         $data = $plan->toArray();
         $data['interval'] = $this->normalizeInterval($data['interval'] ?? 'month');
         return response()->json($data);
@@ -61,6 +70,8 @@ class PlanController extends Controller
 
     public function update(Request $request, Plan $plan)
     {
+        \Log::info('Updating plan ' . $plan->id, ['request' => $request->all()]);
+
         if ($request->has('interval')) {
             $request->merge(['interval' => $this->normalizeInterval($request->interval)]);
         }
@@ -68,7 +79,7 @@ class PlanController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
-            'interval' => 'required|in:month,year',
+            'interval' => 'required|string|in:month,year,monthly,yearly',
             'simulations_limit' => 'required|integer|min:0',
             'essays_limit' => 'required|integer|min:0',
             'daily_question_limit' => 'required|integer|min:0',
@@ -76,6 +87,7 @@ class PlanController extends Controller
             'is_active' => 'boolean',
         ]);
 
+        $data['interval'] = $this->normalizeInterval($data['interval']);
         $plan->update($data);
 
         return response()->json([
