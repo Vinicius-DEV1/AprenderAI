@@ -30,6 +30,8 @@ class Plan extends Model
         'price' => 'decimal:2',
         'monthly_price' => 'decimal:2',
         'annual_price' => 'decimal:2',
+        'simulations_limit' => 'integer',
+        'essays_limit' => 'integer',
         'daily_question_limit' => 'integer',
         'features' => 'array',
         'is_active' => 'boolean',

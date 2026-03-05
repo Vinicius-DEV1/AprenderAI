@@ -24,7 +24,6 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
     const [progress, setProgress] = useState<any>(null);
     const [lastProgressRecord, setLastProgressRecord] = useState<{ processed: number; time: number } | null>(null);
     const [etaSeconds, setEtaSeconds] = useState<number | null>(null);
-    const [pollingErrors, setPollingErrors] = useState(0);
 
     // Persistência com Servidor (Recuperação no F5)
     useEffect(() => {
@@ -107,6 +106,7 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
         },
         onSuccess: (data) => {
             setBatchId(data.batch_id);
+            setStep('processing');
             onBatchStarted(data.batch_id);
         }
     });
@@ -121,7 +121,6 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                     const res = await api.get(`/api/v1/admin/triage/${batchId}/status`);
                     const data = res.data;
                     setProgress(data);
-                    setPollingErrors(0); // Reset error counter on success
 
                     // ETA Calculation
                     if (data.status === 'processing' && data.total > 0 && data.processed > 0) {
@@ -151,18 +150,9 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                         }
                     }
                 } catch (error: any) {
-                    const statusCode = error?.response?.status;
                     // Tolerance: up to 5 consecutive errors before giving up (helps with cache:clear / redis flush)
-                    setPollingErrors(prev => {
-                        const next = prev + 1;
-                        if (next >= 5) {
-                            console.error('Polling stopped after 5 consecutive errors:', error);
-                            clearInterval(interval);
-                        } else {
-                            console.warn(`Polling error #${next} (status: ${statusCode}), retrying...`);
-                        }
-                        return next;
-                    });
+                    console.error('Polling error:', error);
+                    clearInterval(interval);
                 }
             };
             checkStatus();
@@ -269,7 +259,7 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
 
                                     <div className="flex flex-col items-center gap-1">
                                         <p className={`text-xs font-bold uppercase tracking-widest ${progress?.status === 'failed' ? 'text-red-500' : 'text-indigo-500'}`}>
-                                            {progress?.message || 'Aguardando servidor...'}
+                                            {progress?.message || (batchId ? 'Conectando ao rastreador...' : 'Aguardando servidor...')}
                                         </p>
                                         {progress?.last_error && (
                                             <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded-xl max-w-md mx-auto">
