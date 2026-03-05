@@ -20,7 +20,7 @@ class IntegrationController extends Controller
         return response()->json([
             'google_login_enabled' => filter_var(Configuration::get('google_login_enabled', false), FILTER_VALIDATE_BOOLEAN),
             'google_client_id' => Configuration::get('google_client_id', ''),
-            'google_redirect_uri' => url('/api/v1/auth/google/callback'),
+            'google_redirect_uri' => url('/auth/google/callback'),
 
             'analytics_enabled' => filter_var(Configuration::get('analytics_enabled', false), FILTER_VALIDATE_BOOLEAN),
             'analytics_measurement_id' => Configuration::get('analytics_measurement_id', ''),
@@ -62,7 +62,7 @@ class IntegrationController extends Controller
         }
 
         // Ensure redirect URI is saved if not present (Auth controller uses it)
-        Configuration::set('google_redirect_uri', url('/api/v1/auth/google/callback'));
+        Configuration::set('google_redirect_uri', url('/auth/google/callback'));
 
         // Analytics Settings
         Configuration::set('analytics_enabled', $request->boolean('analytics_enabled'));
