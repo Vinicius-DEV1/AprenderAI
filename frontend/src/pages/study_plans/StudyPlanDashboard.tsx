@@ -68,11 +68,9 @@ export default function StudyPlanDashboard() {
     // ── Deterministic Rendering Flow ─────────────────────────────────────
     if (data?.view_state === 'dashboard') {
         // Continue and render the main dashboard below
-    } else if (hasPrereq) {
-        return <StudyPlanWizard />;
     } else if (isInsufficient) {
         return <StudyPlanEmpty />;
-    } else if (data?.view_state === 'wizard') {
+    } else if (data?.view_state === 'wizard' || hasPrereq) {
         return <StudyPlanWizard />;
     } else {
         return <StudyPlanEmpty />;
