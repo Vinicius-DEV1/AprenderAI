@@ -111,58 +111,58 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
         }
     });
 
-    // Polling logic
+    // ───────────────────────────────────────────────────────
+    // Polling do Status com React Query (Muito mais resiliente)
+    // ───────────────────────────────────────────────────────
+    const { data: queryProgress } = useQuery({
+        queryKey: ['admin-batch-status', batchId],
+        queryFn: async () => {
+            const res = await api.get(`/api/v1/admin/triage/${batchId}/status`);
+            return res.data;
+        },
+        enabled: !!(batchId && step === 'processing'),
+        refetchInterval: (queryData: any) => {
+            if (!queryData) return 2000;
+            if (['completed', 'failed', 'cancelled'].includes(queryData.status)) {
+                return false;
+            }
+            return 2000;
+        },
+        retry: 5,
+        retryDelay: 2000,
+    });
+
+    // Sincroniza o progress da query com o estado local para manter a lógica de cálculo de ETA
     useEffect(() => {
-        let interval: NodeJS.Timeout;
+        if (queryProgress) {
+            setProgress(queryProgress);
 
-        if (batchId && step === 'processing') {
-            const checkStatus = async () => {
-                try {
-                    const res = await api.get(`/api/v1/admin/triage/${batchId}/status`);
-                    const data = res.data;
-                    setProgress(data);
-
-                    // ETA Calculation
-                    if (data.status === 'processing' && data.total > 0 && data.processed > 0) {
-                        const now = Date.now();
-                        if (lastProgressRecord) {
-                            if (data.processed > lastProgressRecord.processed) {
-                                const itemsDelta = data.processed - lastProgressRecord.processed;
-                                const timeDeltaSeconds = (now - lastProgressRecord.time) / 1000;
-                                const secondsPerItem = timeDeltaSeconds / itemsDelta;
-                                const remainingItems = data.total - (data.processed + data.errors);
-                                setEtaSeconds(Math.round(remainingItems * secondsPerItem));
-                                setLastProgressRecord({ processed: data.processed, time: now });
-                            }
-                        } else {
-                            setLastProgressRecord({ processed: data.processed, time: now });
-                        }
+            // ETA Calculation
+            if (queryProgress.status === 'processing' && queryProgress.total > 0 && queryProgress.processed > 0) {
+                const now = Date.now();
+                if (lastProgressRecord) {
+                    if (queryProgress.processed > lastProgressRecord.processed) {
+                        const itemsDelta = queryProgress.processed - lastProgressRecord.processed;
+                        const timeDeltaSeconds = (now - lastProgressRecord.time) / 1000;
+                        const secondsPerItem = timeDeltaSeconds / itemsDelta;
+                        const remainingItems = queryProgress.total - (queryProgress.processed + queryProgress.errors);
+                        setEtaSeconds(Math.round(remainingItems * secondsPerItem));
+                        setLastProgressRecord({ processed: queryProgress.processed, time: now });
                     }
-
-                    if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
-                        clearInterval(interval);
-
-                        // Somente fecha automático se for SUCESSO total (sem erros)
-                        if (data.status === 'completed' && data.errors === 0) {
-                            setTimeout(() => {
-                                handleFinalize();
-                            }, 3000);
-                        }
-                    }
-                } catch (error: any) {
-                    // Tolerance: up to 5 consecutive errors before giving up (helps with cache:clear / redis flush)
-                    console.error('Polling error:', error);
-                    clearInterval(interval);
+                } else {
+                    setLastProgressRecord({ processed: queryProgress.processed, time: now });
                 }
-            };
-            checkStatus();
-            interval = setInterval(checkStatus, 2000);
-        }
+            }
 
-        return () => {
-            if (interval) clearInterval(interval);
-        };
-    }, [batchId, step, lastProgressRecord]);
+            // Finalização Automática
+            if (queryProgress.status === 'completed' && queryProgress.errors === 0) {
+                const timer = setTimeout(() => {
+                    handleFinalize();
+                }, 3000);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [queryProgress]);
 
     const handleFinalize = () => {
         onClose();
