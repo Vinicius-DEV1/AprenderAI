@@ -25,10 +25,13 @@ class GoogleAuthController extends Controller
     {
         $clientId = Configuration::get('google_client_id');
         $clientSecretEncrypted = Configuration::get('google_client_secret');
-        $redirectUri = Configuration::get('google_redirect_uri');
 
-        if (!$clientId || !$clientSecretEncrypted || !$redirectUri) {
-            abort(500, 'Google Login not configured.');
+        // Dynamically generate the redirect URI based on current server request.
+        // This ensures mismatch errors (http/https, domain) are avoided if the DB has stale data.
+        $redirectUri = url('/auth/google/callback');
+
+        if (!$clientId || !$clientSecretEncrypted) {
+            abort(500, 'Google Login not configured (missing Client ID or Secret).');
         }
 
         try {
