@@ -33,8 +33,15 @@ class GoogleAnalyticsService
         $this->propertyId = $propertyId;
 
         try {
-            $jsonCredentials = Crypt::decryptString($encryptedJson);
-            $credentialsArray = json_decode($jsonCredentials, true);
+            // First Priority: Try loading the JSON file directly from storage
+            $jsonFilePath = storage_path('app/google/service-account.json');
+            if (file_exists($jsonFilePath)) {
+                $credentialsArray = json_decode(file_get_contents($jsonFilePath), true);
+            } else {
+                // Secondary Priority: Load encrypted string from DB config
+                $jsonCredentials = Crypt::decryptString($encryptedJson);
+                $credentialsArray = json_decode($jsonCredentials, true);
+            }
 
             $this->client = new BetaAnalyticsDataClient([
                 'credentials' => $credentialsArray,
