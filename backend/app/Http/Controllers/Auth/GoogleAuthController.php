@@ -44,7 +44,9 @@ class GoogleAuthController extends Controller
 
     public function redirect()
     {
-        if (!Configuration::get('google_login_enabled', false)) {
+        $enabled = Configuration::get('google_login_enabled', false);
+        // Robust boolean check for DB values (might be '1', '0', 1, 0, or true/false)
+        if (!filter_var($enabled, FILTER_VALIDATE_BOOLEAN)) {
             return redirect(env('FRONTEND_URL', 'http://localhost:5174') . '/login?error=google_disabled');
         }
 
@@ -56,8 +58,9 @@ class GoogleAuthController extends Controller
     public function callback()
     {
         $frontendUrl = env('FRONTEND_URL', 'http://localhost:5174');
+        $enabled = Configuration::get('google_login_enabled', false);
 
-        if (!Configuration::get('google_login_enabled', false)) {
+        if (!filter_var($enabled, FILTER_VALIDATE_BOOLEAN)) {
             return redirect($frontendUrl . '/login?error=google_disabled');
         }
 

@@ -20,6 +20,10 @@ export default defineConfig({
                 target: 'http://webserver:80',
                 changeOrigin: true,
             },
+            '/auth': {
+                target: 'http://webserver:80',
+                changeOrigin: true,
+            },
         },
         watch: {
             usePolling: true
