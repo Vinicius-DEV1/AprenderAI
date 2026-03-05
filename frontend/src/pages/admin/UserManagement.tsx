@@ -133,7 +133,17 @@ export default function UserManagement() {
                                                 />
                                                 <div className="ml-4">
                                                     <div className="text-sm font-semibold text-gray-900">{user.name}</div>
-                                                    <div className="text-sm text-gray-500">{user.email}</div>
+                                                    <div className="text-sm text-gray-500 flex items-center gap-1.5">
+                                                        {user.email}
+                                                        {user.google_id && (
+                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-white border border-gray-200 text-gray-600 shadow-sm" title="Login via Google">
+                                                                <svg className="w-2.5 h-2.5 mr-0.5" viewBox="0 0 24 24" fill="currentColor">
+                                                                    <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.908 3.152-1.928 4.176-1.152 1.152-2.92 2.392-5.912 2.392-4.584 0-8.208-3.712-8.208-8.296s3.624-8.296 8.208-8.296c2.488 0 4.296.976 5.64 2.256l2.328-2.328C18.528 2.216 15.84 0 12.48 0 6.48 0 1.6 4.84 1.6 11.04s4.88 11.04 10.88 11.04c3.24 0 5.68-1.072 7.744-3.232 2.12-2.12 2.792-5.112 2.792-7.536 0-.72-.056-1.4-.16-2.024h-10.376z" />
+                                                                </svg>
+                                                                GOOGLE
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </td>

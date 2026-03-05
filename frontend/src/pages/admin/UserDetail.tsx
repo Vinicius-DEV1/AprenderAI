@@ -207,6 +207,19 @@ export default function UserDetail() {
                                 <span className={`font-bold text-xs uppercase ${user.role === 'admin' ? 'text-amber-600' : 'text-gray-600'}`}>{user.role}</span>
                             </div>
                             <div className="flex justify-between items-center px-4 py-2 bg-gray-50 rounded-lg text-sm">
+                                <span className="text-gray-500 font-medium text-xs">Login Via</span>
+                                <span className="font-bold text-gray-700 flex items-center gap-1">
+                                    {user.google_id ? (
+                                        <>
+                                            <svg className="w-3 h-3 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.908 3.152-1.928 4.176-1.152 1.152-2.92 2.392-5.912 2.392-4.584 0-8.208-3.712-8.208-8.296s3.624-8.296 8.208-8.296c2.488 0 4.296.976 5.64 2.256l2.328-2.328C18.528 2.216 15.84 0 12.48 0 6.48 0 1.6 4.84 1.6 11.04s4.88 11.04 10.88 11.04c3.24 0 5.68-1.072 7.744-3.232 2.12-2.12 2.792-5.112 2.792-7.536 0-.72-.056-1.4-.16-2.024h-10.376z" />
+                                            </svg>
+                                            Google
+                                        </>
+                                    ) : 'E-mail'}
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center px-4 py-2 bg-gray-50 rounded-lg text-sm">
                                 <span className="text-gray-500 font-medium text-xs">Cadastro</span>
                                 <span className="font-semibold text-gray-600 text-xs">{new Date(user.created_at).toLocaleDateString('pt-BR')}</span>
                             </div>
