@@ -49,6 +49,12 @@ class QuestionController extends Controller
         if ($userId && $request->boolean('favorites_only')) {
             $query->whereHas('favorites', fn($q) => $q->where('user_id', $userId));
         }
+
+        // Notes filter
+        if ($userId && $request->boolean('has_notes')) {
+            $query->whereHas('notes', fn($q) => $q->where('user_id', $userId));
+        }
+
         if ($userId && $request->boolean('exclude_favorites')) {
             $query->whereDoesntHave('favorites', fn($q) => $q->where('user_id', $userId));
         }
