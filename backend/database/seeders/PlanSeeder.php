@@ -87,7 +87,7 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'Plus Anual',
                 'slug' => 'plus-annual',
-                'price' => 480.00,
+                'price' => 40.00,
                 'monthly_price' => 40.00,
                 'annual_price' => 480.00,
                 'discount_percentage' => 20,
