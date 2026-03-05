@@ -24,6 +24,7 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
     const [progress, setProgress] = useState<any>(null);
     const [lastProgressRecord, setLastProgressRecord] = useState<{ processed: number; time: number } | null>(null);
     const [etaSeconds, setEtaSeconds] = useState<number | null>(null);
+    const [pollingErrors, setPollingErrors] = useState(0);
 
     // Persistência com Servidor (Recuperação no F5)
     useEffect(() => {
@@ -120,6 +121,7 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                     const res = await api.get(`/api/v1/admin/triage/${batchId}/status`);
                     const data = res.data;
                     setProgress(data);
+                    setPollingErrors(0); // Reset error counter on success
 
                     // ETA Calculation
                     if (data.status === 'processing' && data.total > 0 && data.processed > 0) {
@@ -148,9 +150,19 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                             }, 3000);
                         }
                     }
-                } catch (error) {
-                    console.error('Error fetching batch status', error);
-                    clearInterval(interval);
+                } catch (error: any) {
+                    const statusCode = error?.response?.status;
+                    // Tolerance: up to 5 consecutive errors before giving up (helps with cache:clear / redis flush)
+                    setPollingErrors(prev => {
+                        const next = prev + 1;
+                        if (next >= 5) {
+                            console.error('Polling stopped after 5 consecutive errors:', error);
+                            clearInterval(interval);
+                        } else {
+                            console.warn(`Polling error #${next} (status: ${statusCode}), retrying...`);
+                        }
+                        return next;
+                    });
                 }
             };
             checkStatus();

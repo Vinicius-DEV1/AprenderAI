@@ -18,6 +18,15 @@ use Illuminate\Support\Facades\Cache;
 class AdminAnalyticsController extends Controller
 {
     /**
+     * Manual Sync Trigger (Admin only)
+     */
+    public function syncNow()
+    {
+        \App\Jobs\SyncDailyAnalyticsJob::dispatch(\Illuminate\Support\Carbon::yesterday()->format('Y-m-d'));
+        return response()->json(['message' => 'Sincronização agendada para agora. Os dados aparecerão em breve.']);
+    }
+
+    /**
      * Visão Geral
      */
     public function index(AnalyticsInsightService $insightService, GoogleAnalyticsService $gaService)

@@ -19,6 +19,9 @@ Schedule::command('ai:reset-quotas')->daily();
 Schedule::command('ai_keys:recover')->hourly();
 Schedule::command('concursos:sync')->hourly();
 
+// Sync Google Analytics 4 data
+Schedule::job(new \App\Jobs\SyncDailyAnalyticsJob())->dailyAt('01:00');
+
 // -----------------------------------------------------------------------
 // Database Backup — scheduled daily at the time configured by the admin.
 // The schedule_enabled and schedule_time settings are stored in the cache

@@ -218,6 +218,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('/monetization', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'monetization']);
                 Route::get('/subscriptions', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'subscriptions']);
                 Route::get('/realtime', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'realtimeData']);
+                Route::post('/sync', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'syncNow']);
             });
 
             // Server Monitor
