@@ -24,7 +24,7 @@ export default function Profile() {
         password_confirmation: '',
     });
 
-    const [activeTab, setActiveTab] = useState<'summary' | 'favorites' | 'notebooks'>('summary');
+    const [activeTab, setActiveTab] = useState<'summary' | 'favorites' | 'notebooks' | 'notes'>('summary');
 
     // Favorites state
     const [favorites, setFavorites] = useState<any[]>([]);
@@ -40,13 +40,22 @@ export default function Profile() {
     const [newNbName, setNewNbName] = useState('');
     const [creatingNb, setCreatingNb] = useState(false);
 
+    // Annotations state
+    const [notes, setNotes] = useState<any[]>([]);
+    const [notesPage, setNotesPage] = useState(1);
+    const [notesTotal, setNotesTotal] = useState(0);
+    const [notesLoading, setNotesLoading] = useState(false);
+    const [notesHasNext, setNotesHasNext] = useState(false);
+
     useEffect(() => {
         if (activeTab === 'favorites') {
             loadFavorites();
         } else if (activeTab === 'notebooks') {
             loadNotebooks();
+        } else if (activeTab === 'notes') {
+            loadNotes();
         }
-    }, [activeTab, favPage]);
+    }, [activeTab, favPage, notesPage]);
 
     const loadFavorites = async () => {
         setFavLoading(true);
@@ -71,6 +80,20 @@ export default function Profile() {
             toast.error('Erro ao carregar cadernos');
         } finally {
             setNbLoading(false);
+        }
+    };
+
+    const loadNotes = async () => {
+        setNotesLoading(true);
+        try {
+            const res = await api.get(`/api/v1/questions?has_notes=1&page=${notesPage}`);
+            setNotes(res.data.data);
+            setNotesTotal(res.data.total);
+            setNotesHasNext(!!res.data.next_page_url);
+        } catch (e) {
+            toast.error('Erro ao carregar anotações');
+        } finally {
+            setNotesLoading(false);
         }
     };
 
@@ -277,6 +300,12 @@ export default function Profile() {
                         className={`px-4 py-3 text-sm font-bold transition-all border-b-2 gap-2 flex items-center ${activeTab === 'notebooks' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
                     >
                         📁 Meus Cadernos
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('notes')}
+                        className={`px-4 py-3 text-sm font-bold transition-all border-b-2 gap-2 flex items-center ${activeTab === 'notes' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                    >
+                        📝 Minhas Anotações {notesTotal > 0 && <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">{notesTotal}</span>}
                     </button>
                 </div>
 
