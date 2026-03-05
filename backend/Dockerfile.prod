@@ -58,7 +58,7 @@ RUN mkdir -p bootstrap/cache storage/framework/sessions storage/framework/views 
 
 # Install PHP dependencies
 ENV COMPOSER_MEMORY_LIMIT=-1
-RUN composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs
+RUN composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs --no-scripts
 
 # Create system user
 RUN useradd -G www-data,root -u $uid -d /home/$user $user
