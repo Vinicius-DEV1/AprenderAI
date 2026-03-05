@@ -84,7 +84,7 @@ class AIBatchTriageJob implements ShouldQueue
                 'errors' => count($result['errors'])
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error("[AIBATCH] Batch job failed", [
                 'batch_id' => $this->batchId,
                 'error' => $e->getMessage()
