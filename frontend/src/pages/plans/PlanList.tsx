@@ -263,8 +263,25 @@ export default function PlanList() {
         }
     }, [plans]);
 
+    const productSchema = {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": "Assinatura AprenderAI",
+        "description": "Planos de assinatura para a plataforma de estudos AprenderAI.",
+        "offers": {
+            "@type": "AggregateOffer",
+            "offerCount": plans?.length || 3,
+            "lowPrice": "0.00",
+            "highPrice": (getPlanPrice('plus') || 0).toString(),
+            "priceCurrency": "BRL"
+        }
+    };
+
     return (
         <div className="lp-wrapper bg-transparent py-8">
+            <script type="application/ld+json">
+                {JSON.stringify(productSchema)}
+            </script>
             <div className="max-w-7xl mx-auto px-4">
                 <div className="text-center mb-10">
                     <h3 className="text-3xl font-black text-slate-800 dark:text-white mb-2 uppercase tracking-tighter">Sua Aprovação Começa Aqui</h3>

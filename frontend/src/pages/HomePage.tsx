@@ -46,8 +46,23 @@ export default function HomePage() {
         }
     };
 
+    const orgSchema = {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "AprenderAI",
+        "url": typeof window !== 'undefined' ? window.location.origin : '',
+        "logo": typeof window !== 'undefined' ? `${window.location.origin}/logo.png` : '',
+        "sameAs": [
+            "https://www.instagram.com/aprenderai",
+            "https://www.facebook.com/aprenderai"
+        ]
+    };
+
     return (
         <div className="lp-wrapper">
+            <script type="application/ld+json">
+                {JSON.stringify(orgSchema)}
+            </script>
 
             {/* NAVBAR */}
             <nav className="lp-nav" id="top">
@@ -94,7 +109,7 @@ export default function HomePage() {
                     </div>
 
                     <div className="lp-hero-illus">
-                        <img src="/hero.png" alt="Painel Inteligente" />
+                        <img src="/hero.png" alt="Painel Inteligente" width="500" height="400" />
                     </div>
                 </div>
             </section>
@@ -417,7 +432,7 @@ export default function HomePage() {
                     <div className="lp-test-grid">
                         <div className="lp-test-card">
                             <div className="lp-test-avatar">
-                                <img src="https://i.pravatar.cc/96?img=12" alt="Lucas Andrade" />
+                                <img src="https://i.pravatar.cc/96?img=12" alt="Lucas Andrade" width="48" height="48" loading="lazy" />
                                 <div>
                                     <div className="lp-test-name">Lucas Andrade</div>
                                     <div className="lp-test-tag">ENEM</div>
@@ -430,7 +445,7 @@ export default function HomePage() {
                         </div>
                         <div className="lp-test-card">
                             <div className="lp-test-avatar">
-                                <img src="https://i.pravatar.cc/96?img=32" alt="Mary S." />
+                                <img src="https://i.pravatar.cc/96?img=32" alt="Mary S." width="48" height="48" loading="lazy" />
                                 <div>
                                     <div className="lp-test-name">Marian Silva</div>
                                     <div className="lp-test-tag">Concurso Administrativo</div>
@@ -442,7 +457,7 @@ export default function HomePage() {
                         </div>
                         <div className="lp-test-card">
                             <div className="lp-test-avatar">
-                                <img src="https://i.pravatar.cc/96?img=45" alt="Feeh Costa" />
+                                <img src="https://i.pravatar.cc/96?img=45" alt="Feeh Costa" width="48" height="48" loading="lazy" />
                                 <div>
                                     <div className="lp-test-name">Fernanda Costa</div>
                                     <div className="lp-test-tag">Redação</div>
@@ -454,7 +469,7 @@ export default function HomePage() {
                         </div>
                         <div className="lp-test-card">
                             <div className="lp-test-avatar">
-                                <img src="https://i.pravatar.cc/96?img=8" alt="Rafael Mendes" />
+                                <img src="https://i.pravatar.cc/96?img=8" alt="Rafael Mendes" width="48" height="48" loading="lazy" />
                                 <div>
                                     <div className="lp-test-name">Rafael Mendes</div>
                                     <div className="lp-test-tag">Polícia Militar</div>
