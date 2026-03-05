@@ -171,10 +171,11 @@ class AsaasService
      * @param array $cardData Dados do cartão (opcional) — NUNCA logados
      * @param array|null $discount Dados do desconto (opcional)
      * @param string|null $forceCustomerId ID forçado do cliente (Ghost Customer injection)
+     * @param string|null $idempotencyKey Chave de idempotência para evitar cobrança duplicada
      * @return array Dados da assinatura criada
      * @throws \Exception Se houver erro no processamento
      */
-    public function createSubscription(User $user, $plan, string $paymentMethod, array $cardData = [], ?array $discount = null, ?string $forceCustomerId = null): array
+    public function createSubscription(User $user, $plan, string $paymentMethod, array $cardData = [], ?array $discount = null, ?string $forceCustomerId = null, ?string $idempotencyKey = null): array
     {
         // Se um Ghost Customer foi injetado (fallback flow), usamos ele em vez do ID padrão salvo no BD
         $customerId = $forceCustomerId ?? $this->getOrCreateCustomer($user, $cardData['cpf'] ?? null);
@@ -216,8 +217,12 @@ class AsaasService
             ];
         }
 
-        $response = Http::withHeader('access_token', $this->apiKey)
-            ->post("{$this->baseUrl}/subscriptions", $data);
+        $request = Http::withHeader('access_token', $this->apiKey);
+        if ($idempotencyKey) {
+            $request->withHeader('idempotency-key', $idempotencyKey);
+        }
+
+        $response = $request->post("{$this->baseUrl}/subscriptions", $data);
 
         if ($response->failed()) {
             // ⚠️ PCI: Logar apenas o body de RESPOSTA da API (nunca o $data com cardData)
@@ -243,10 +248,11 @@ class AsaasService
      * @param string $description Descrição da cobrança
      * @param string $paymentMethod 'credit_card' ou 'pix'
      * @param array $cardData Dados do cartão — NUNCA logados
+     * @param string|null $idempotencyKey Chave de idempotência (opcional)
      * @return array Dados do pagamento criado
      * @throws \Exception Se houver erro no processamento
      */
-    public function createOneTimePayment(User $user, float $value, string $description, string $paymentMethod, array $cardData = []): array
+    public function createOneTimePayment(User $user, float $value, string $description, string $paymentMethod, array $cardData = [], ?string $idempotencyKey = null): array
     {
         $customerId = $this->getOrCreateCustomer($user, $cardData['cpf'] ?? null);
 
@@ -278,8 +284,12 @@ class AsaasService
             ];
         }
 
-        $response = Http::withHeader('access_token', $this->apiKey)
-            ->post("{$this->baseUrl}/payments", $data);
+        $request = Http::withHeader('access_token', $this->apiKey);
+        if ($idempotencyKey) {
+            $request->withHeader('idempotency-key', $idempotencyKey);
+        }
+
+        $response = $request->post("{$this->baseUrl}/payments", $data);
 
         if ($response->failed()) {
             Log::error('[Asaas] Erro ao criar pagamento avulso', [
