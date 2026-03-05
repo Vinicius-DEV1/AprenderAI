@@ -119,6 +119,9 @@ class SubscriptionController extends Controller
                 ]);
             }
 
+            // A idempotência aqui é baseada no tempo atualizado num espaço de 1 minuto, previnindo cliques seguidos do mesmo usuário para o mesmo pacote.
+            $idempotencyKey = md5($user->id . '_' . $plan->id . '_' . $request->payment_method . '_' . now()->format('Y-m-d H:i'));
+
             try {
                 // Tentativa normal de criar assinatura
                 $asaasSubscription = $this->asaasService->createSubscription(
@@ -126,7 +129,9 @@ class SubscriptionController extends Controller
                     $plan,
                     $request->payment_method,
                     $cardData,
-                    $discount
+                    $discount,
+                    null,
+                    $idempotencyKey
                 );
             } catch (\Exception $asaasEx) {
                 // Estratégia de Fallback (Ghost Customer) se o Asaas barrar por "Assinatura Única"
@@ -149,7 +154,8 @@ class SubscriptionController extends Controller
                         $request->payment_method,
                         $cardData,
                         $discount,
-                        $ghostCustomerId
+                        $ghostCustomerId,
+                        $idempotencyKey
                     );
 
                     // Se passar daqui, o Webhook fará a limpeza da assinatura antiga do ID velho automaticamente depois
