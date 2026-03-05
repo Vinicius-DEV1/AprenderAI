@@ -60,7 +60,7 @@ class GoogleAuthController extends Controller
 
     public function callback()
     {
-        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5174');
+        $frontendUrl = rtrim(env('FRONTEND_URL', 'http://localhost:5174'), '/');
         $enabled = Configuration::get('google_login_enabled', false);
 
         if (!filter_var($enabled, FILTER_VALIDATE_BOOLEAN)) {
