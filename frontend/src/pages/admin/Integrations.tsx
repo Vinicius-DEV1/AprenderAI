@@ -19,6 +19,19 @@ export default function Integrations() {
     const [hasServiceAccount, setHasServiceAccount] = useState(false);
 
     const [serviceAccountFile, setServiceAccountFile] = useState<File | null>(null);
+    const [syncing, setSyncing] = useState(false);
+
+    const handleSync = async () => {
+        setSyncing(true);
+        try {
+            const res = await api.post('/api/v1/admin/analytics/sync');
+            toast.success(res.data.message || 'Sincronização iniciada!');
+        } catch {
+            toast.error('Erro ao iniciar sincronização.');
+        } finally {
+            setSyncing(false);
+        }
+    };
 
     const { data, isLoading } = useQuery({
         queryKey: ['admin-integrations'],
@@ -163,15 +176,32 @@ export default function Integrations() {
                                 <p className="text-sm text-gray-500">Acompanhe o tráfego do site com o Google Analytics 4.</p>
                             </div>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={analyticsEnabled}
-                                onChange={(e) => setAnalyticsEnabled(e.target.checked)}
-                                className="sr-only peer"
-                            />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
+                        <div className="flex items-center gap-3">
+                            {analyticsEnabled && hasServiceAccount && (
+                                <button
+                                    type="button"
+                                    onClick={handleSync}
+                                    disabled={syncing}
+                                    className="px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-bold rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    {syncing ? (
+                                        <span className="w-3 h-3 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                    )}
+                                    Sincronizar Agora
+                                </button>
+                            )}
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={analyticsEnabled}
+                                    onChange={(e) => setAnalyticsEnabled(e.target.checked)}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
                     </div>
 
                     <div className="p-6">

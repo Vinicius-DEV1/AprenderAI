@@ -85,6 +85,7 @@ export default function Analytics() {
                 </div>
             )}
 
+
             {/* Warning */}
             {!analyticsEnabled && (
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg shadow-sm">
