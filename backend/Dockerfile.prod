@@ -31,8 +31,8 @@ RUN apt-get update && apt-get install -y \
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions (Added opcache and redis) temporarilly commented out opcache below
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip intl \
+# Install PHP extensions (Added opcache and redis)
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip intl xml curl \
     && pecl install redis \
     && docker-php-ext-enable redis
 
@@ -58,7 +58,7 @@ RUN mkdir -p bootstrap/cache storage/framework/sessions storage/framework/views 
 
 # Install PHP dependencies
 ENV COMPOSER_MEMORY_LIMIT=-1
-RUN composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-req=php+
+RUN composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs
 
 # Create system user
 RUN useradd -G www-data,root -u $uid -d /home/$user $user
