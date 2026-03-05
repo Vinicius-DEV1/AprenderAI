@@ -87,7 +87,8 @@ import Analytics from './components/Analytics';
 
 function App() {
     // Unificar o estado de carregamento inicial para evitar transições bruscas e race conditions.
-    const { isLoading: configLoading } = useConfig();
+    // Carrega a config em paralelo — não bloqueia o bootstrap
+    useConfig();
     const { setUser, setLoading: setAuthLoading, isLoading: authLoading } = useAuthStore();
     const [bootstrapTimedOut, setBootstrapTimedOut] = useState(false);
 
@@ -121,8 +122,10 @@ function App() {
         return () => clearTimeout(timer);
     }, [setAuthLoading]);
 
-    // O spinner é desbloqueado se: ambos terminaram, ou timeout
-    const isBootstrapping = (configLoading || authLoading) && !bootstrapTimedOut;
+    // O spinner é desbloqueado quando: auth termina, ou timeout de segurança.
+    // Config é carregada em paralelo e NÃO bloqueia o render —
+    // se falhar, os defaults do configStore são usados automaticamente.
+    const isBootstrapping = authLoading && !bootstrapTimedOut;
 
     // Sincroniza a flag global do Axios com o estado de React
     useEffect(() => {

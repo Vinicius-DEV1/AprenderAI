@@ -9,25 +9,31 @@ export function useConfig() {
     const query = useQuery({
         queryKey: ['systemConfig'],
         queryFn: async () => {
-            const response = await api.get('/api/v1/config', { _quiet: true } as any);
-            // Defesa extra: garante que `data.data` existe antes de retornar
-            if (!response.data || !response.data.data) {
-                throw new Error(`["systemConfig"] data is undefined`);
+            try {
+                const response = await api.get('/api/v1/config', { _quiet: true } as any);
+                // Valida estrutura da resposta antes de usar
+                const data = response?.data?.data;
+                if (!data || typeof data !== 'object') {
+                    console.warn('[useConfig] API returned unexpected structure:', response?.data);
+                    return null; // retorna null, não lança erro — bootstrap não trava
+                }
+                return data;
+            } catch (err: any) {
+                // Loga o erro mas NÃO propaga — o bootstrap continua com defaults
+                console.error('[useConfig] Failed to load config from API:', err?.message ?? err);
+                return null;
             }
-            return response.data.data;
         },
         staleTime: 1000 * 60 * 60, // 1 hour
-        retry: 2, // retry up to 2 times if config API fails temporarily
+        retry: 1,
     });
 
     useEffect(() => {
-        if (query.error) {
-            console.error('Config fetch error:', query.error);
-        }
         if (query.data) {
             setConfig(query.data);
         }
-    }, [query.data, query.error, setConfig]);
+        // Não loga erro aqui — já foi logado no queryFn
+    }, [query.data, setConfig]);
 
     return query;
 }
