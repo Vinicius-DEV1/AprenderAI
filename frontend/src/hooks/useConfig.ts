@@ -10,10 +10,14 @@ export function useConfig() {
         queryKey: ['systemConfig'],
         queryFn: async () => {
             const response = await api.get('/api/v1/config', { _quiet: true } as any);
+            // Defesa extra: garante que `data.data` existe antes de retornar
+            if (!response.data || !response.data.data) {
+                throw new Error(`["systemConfig"] data is undefined`);
+            }
             return response.data.data;
         },
         staleTime: 1000 * 60 * 60, // 1 hour
-        retry: false, // Don't retry on bootstrap — unblock rendering fast
+        retry: 2, // retry up to 2 times if config API fails temporarily
     });
 
     useEffect(() => {
