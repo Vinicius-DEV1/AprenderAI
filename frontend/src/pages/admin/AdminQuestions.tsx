@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
 import AdminBatchModal from './components/AdminBatchModal';
@@ -33,8 +33,27 @@ export default function AdminQuestions() {
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean, id: number | null }>({ isOpen: false, id: null });
 
     // NEW STATES FOR REPORTS TABS
-    const [activeTab, setActiveTab] = useState<'all' | 'reported'>('all');
+    const [activeTab, setActiveTab] = useState<'all' | 'reported' | 'trashed'>('all');
     const [reportsPage, setReportsPage] = useState(1);
+    const [trashedPage, setTrashedPage] = useState(1);
+    const [trashedSearch, setTrashedSearch] = useState('');
+    // Verificação de Lote Ativo no Servidor
+    const { data: activeBatchData } = useQuery({
+        queryKey: ['admin-triage-active'],
+        queryFn: async () => {
+            const res = await api.get('/api/v1/admin/triage/active');
+            return res.data;
+        },
+        refetchInterval: isBatchModalOpen ? false : 30000 // Verifica a cada 30s se o modal estiver fechado
+    });
+
+    useEffect(() => {
+        if (activeBatchData?.success && activeBatchData?.batch_id) {
+            // Se detectar um lote ativo pela primeira vez na montagem ou refresh, podemos abrir o modal
+            // Mas talvez seja melhor apenas mostrar o widget flutuante para não ser invasivo
+            // setIsBatchModalOpen(true); 
+        }
+    }, [activeBatchData]);
 
     const { data, isLoading } = useQuery({
         queryKey: ['admin-questions', filters, page, triageFilters, triagePage],
@@ -82,6 +101,31 @@ export default function AdminQuestions() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-reports'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-questions'] });
+        }
+    });
+
+    const { data: trashedData, isLoading: trashedLoading } = useQuery({
+        queryKey: ['admin-trashed', trashedPage, trashedSearch],
+        queryFn: async () => {
+            const res = await api.get('/api/v1/admin/questions/trashed', {
+                params: { page: trashedPage, search: trashedSearch }
+            });
+            return res.data;
+        },
+        enabled: activeTab === 'trashed'
+    });
+
+    const trashedActions = useMutation({
+        mutationFn: async ({ id, action }: { id: number, action: 'restore' | 'force' }) => {
+            if (action === 'restore') {
+                return (await api.post(`/api/v1/admin/questions/${id}/restore`)).data;
+            } else {
+                return (await api.delete(`/api/v1/admin/questions/${id}/force`)).data;
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-trashed'] });
             queryClient.invalidateQueries({ queryKey: ['admin-questions'] });
         }
     });
@@ -398,6 +442,12 @@ export default function AdminQuestions() {
                                 <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{reportsData.total}</span>
                             )}
                         </button>
+                        <button
+                            onClick={() => setActiveTab('trashed')}
+                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'trashed' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            🗑️ Lixeira
+                        </button>
                     </div>
                 </div>
 
@@ -617,17 +667,126 @@ export default function AdminQuestions() {
                         )}
                     </>
                 )}
+
+                {activeTab === 'trashed' && (
+                    <div className="p-4 border-b border-gray-50 bg-white flex flex-wrap gap-2 items-center justify-end">
+                        <input
+                            name="search"
+                            placeholder="Buscar na Lixeira..."
+                            className="px-4 py-2 bg-white rounded-xl text-sm font-bold border border-gray-200 focus:ring-2 focus:ring-indigo-500 min-w-[300px]"
+                            value={trashedSearch}
+                            onChange={e => setTrashedSearch(e.target.value)}
+                        />
+                    </div>
+                )}
+
+                {activeTab === 'trashed' && (
+                    <>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="bg-gray-50/80">
+                                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase w-16">ID</th>
+                                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase">Questão</th>
+                                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase w-32">Matéria</th>
+                                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase w-48 text-right">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {trashedLoading && <tr><td colSpan={4} className="p-8 text-center text-gray-400 font-bold">Carregando lixeira...</td></tr>}
+                                    {!trashedLoading && (!trashedData?.questions?.data || trashedData.questions.data.length === 0) && (
+                                        <tr><td colSpan={4} className="p-8 text-center text-gray-400 font-bold">A lixeira está vazia.</td></tr>
+                                    )}
+                                    {trashedData?.questions?.data?.map((q: any) => (
+                                        <tr key={q.id} className="hover:bg-gray-50/50 transition opacity-80">
+                                            <td className="px-4 py-4 text-xs font-mono font-bold text-gray-400">#{q.id}</td>
+                                            <td className="px-4 py-4">
+                                                <div className="text-sm text-gray-600 line-clamp-2" dangerouslySetInnerHTML={{ __html: q.statement }}></div>
+                                                <div className="mt-1 flex items-center gap-2">
+                                                    <span className="text-[10px] px-2 py-0.5 bg-red-50 text-red-500 rounded font-bold uppercase">Deletada em {new Date(q.deleted_at).toLocaleDateString()}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <span className="text-[10px] font-black bg-gray-100 text-gray-500 px-2 py-1 rounded uppercase tracking-tighter truncate max-w-[120px] inline-block">
+                                                    {q.subjects?.[0]?.name || 'N/A'}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <div className="flex items-center gap-2 justify-end">
+                                                    <button
+                                                        onClick={() => {
+                                                            if (confirm('Restaurar esta questão de volta ao banco?')) {
+                                                                trashedActions.mutate({ id: q.id, action: 'restore' });
+                                                            }
+                                                        }}
+                                                        disabled={trashedActions.isPending}
+                                                        className="px-3 py-1.5 bg-green-50 text-green-700 text-[10px] font-bold rounded hover:bg-green-100"
+                                                    >
+                                                        Restaurar
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (confirm('ATENÇÃO: ATITUDE DESTRUTIVA!\nIso removerá a questão permanentemente do banco, perdendo inclusive respostas em simulados conectadas a ela.\n\nTem certeza absoluta?')) {
+                                                                trashedActions.mutate({ id: q.id, action: 'force' });
+                                                            }
+                                                        }}
+                                                        disabled={trashedActions.isPending}
+                                                        className="px-3 py-1.5 bg-red-600 text-white text-[10px] font-bold rounded hover:bg-red-700 flex items-center gap-1"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                        Purgar
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {trashedData?.questions && trashedData.questions.last_page > 1 && (
+                            <div className="p-6 bg-gray-50/50 border-t items-center justify-between flex">
+                                <span className="text-xs font-black text-gray-500 uppercase">Página {trashedPage} de {trashedData.questions.last_page}</span>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setTrashedPage(p => Math.max(1, p - 1))}
+                                        disabled={trashedPage === 1}
+                                        className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-gray-50 transition"
+                                    >Anterior</button>
+                                    <button
+                                        onClick={() => setTrashedPage(p => p + 1)}
+                                        disabled={trashedPage >= trashedData.questions.last_page}
+                                        className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-gray-50 transition"
+                                    >Próxima</button>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
             </div>
 
             <AdminBatchModal
                 isOpen={isBatchModalOpen}
                 onClose={() => setIsBatchModalOpen(false)}
-                pendingCount={counts.pending_total}
-                onBatchStarted={(bid) => {
-                    console.log('Batch started:', bid);
+                pendingCount={counts.pending_total || 0}
+                onBatchStarted={(batchId) => {
+                    console.log(`Lote ${batchId} iniciado.`);
                     queryClient.invalidateQueries({ queryKey: ['admin-questions'] });
                 }}
             />
+
+            {!isBatchModalOpen && activeBatchData?.success && activeBatchData?.batch_id && (
+                <div
+                    onClick={() => setIsBatchModalOpen(true)}
+                    className="fixed bottom-6 right-6 z-50 bg-indigo-600 text-white px-5 py-3 rounded-full shadow-2xl cursor-pointer hover:bg-indigo-700 hover:scale-105 transition-all flex items-center gap-3 animate-bounce border-2 border-indigo-400 group"
+                >
+                    <span className="text-xl">⏳</span>
+                    <span className="font-black text-sm tracking-wide">
+                        Restaurar Painel IA
+                    </span>
+                    <div className="absolute inset-0 rounded-full border-4 border-white opacity-20 -z-10 group-hover:animate-ping"></div>
+                </div>
+            )}
 
             <AdminDeleteQuestionModal
                 isOpen={deleteModal.isOpen}

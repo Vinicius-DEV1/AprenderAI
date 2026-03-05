@@ -167,16 +167,22 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function activePlan()
     {
-        // Try to get from active subscription first (the source of truth)
-        $activeSub = $this->subscriptions()
-            ->where('status', 'active')
+        // Pega todas as assinaturas válidas (ativas ou canceladas mas ainda no prazo)
+        $validSubs = $this->subscriptions()
+            ->whereIn('status', ['active', 'canceled'])
             ->where('current_period_end', '>', now())
             ->with('plan')
-            ->latest()
-            ->first();
+            ->get();
 
-        if ($activeSub && $activeSub->plan) {
-            return $activeSub->plan;
+        if ($validSubs->isNotEmpty()) {
+            // Prioriza o plano mais caro (para casos de downgrade agendado)
+            $bestSub = $validSubs->sortByDesc(function ($sub) {
+                return $sub->plan ? $sub->plan->price : 0;
+            })->first();
+
+            if ($bestSub && $bestSub->plan) {
+                return $bestSub->plan;
+            }
         }
 
         // Fallback to the plan_id on user table

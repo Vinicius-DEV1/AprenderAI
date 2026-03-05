@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../api/axios';
 
 interface BatchModalProps {
@@ -10,6 +10,7 @@ interface BatchModalProps {
 }
 
 export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatchStarted }: BatchModalProps) {
+    const queryClient = useQueryClient();
     const [step, setStep] = useState<'config' | 'preview' | 'processing'>('config');
     const [quantity, setQuantity] = useState(10);
     const [type, setType] = useState('complete');
@@ -21,6 +22,27 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
 
     const [batchId, setBatchId] = useState<string | null>(null);
     const [progress, setProgress] = useState<any>(null);
+    const [lastProgressRecord, setLastProgressRecord] = useState<{ processed: number; time: number } | null>(null);
+    const [etaSeconds, setEtaSeconds] = useState<number | null>(null);
+
+    // Persistência com Servidor (Recuperação no F5)
+    useEffect(() => {
+        if (isOpen && !batchId) {
+            const checkActiveBatch = async () => {
+                try {
+                    const res = await api.get('/api/v1/admin/triage/active');
+                    if (res.data.success && res.data.batch_id) {
+                        setBatchId(res.data.batch_id);
+                        setStep('processing');
+                        onBatchStarted(res.data.batch_id); // Notify parent component if needed
+                    }
+                } catch (error) {
+                    console.error('Erro ao buscar lote ativo:', error);
+                }
+            };
+            checkActiveBatch();
+        }
+    }, [isOpen, batchId]);
 
     // Fetch dynamically configured models from API Keys vault
     const { data: availableModels = [] } = useQuery({
@@ -88,40 +110,84 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
         }
     });
 
-    // Polling for progress
+    // Polling logic
     useEffect(() => {
-        let interval: any;
-        if (batchId) {
-            interval = setInterval(async () => {
+        let interval: NodeJS.Timeout;
+
+        if (batchId && step === 'processing') {
+            const checkStatus = async () => {
                 try {
                     const res = await api.get(`/api/v1/admin/triage/${batchId}/status`);
-                    setProgress(res.data);
+                    const data = res.data;
+                    setProgress(data);
 
-                    const isDone = res.data.status === 'completed' || res.data.status === 'failed' || res.data.status === 'cancelled';
+                    // ETA Calculation
+                    if (data.status === 'processing' && data.total > 0 && data.processed > 0) {
+                        const now = Date.now();
+                        if (lastProgressRecord) {
+                            if (data.processed > lastProgressRecord.processed) {
+                                const itemsDelta = data.processed - lastProgressRecord.processed;
+                                const timeDeltaSeconds = (now - lastProgressRecord.time) / 1000;
+                                const secondsPerItem = timeDeltaSeconds / itemsDelta;
+                                const remainingItems = data.total - (data.processed + data.errors);
+                                setEtaSeconds(Math.round(remainingItems * secondsPerItem));
+                                setLastProgressRecord({ processed: data.processed, time: now });
+                            }
+                        } else {
+                            setLastProgressRecord({ processed: data.processed, time: now });
+                        }
+                    }
 
-                    if (isDone) {
+                    if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
                         clearInterval(interval);
 
                         // Somente fecha automático se for SUCESSO total (sem erros)
-                        if (res.data.status === 'completed' && res.data.errors === 0) {
+                        if (data.status === 'completed' && data.errors === 0) {
                             setTimeout(() => {
                                 handleFinalize();
                             }, 3000);
                         }
                     }
-                } catch (e) {
+                } catch (error) {
+                    console.error('Error fetching batch status', error);
                     clearInterval(interval);
                 }
-            }, 2000);
+            };
+            checkStatus();
+            interval = setInterval(checkStatus, 2000);
         }
-        return () => clearInterval(interval);
-    }, [batchId]);
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [batchId, step, lastProgressRecord]);
 
     const handleFinalize = () => {
         onClose();
         setBatchId(null);
         setProgress(null);
+        setLastProgressRecord(null);
+        setEtaSeconds(null);
         setStep('config');
+    };
+
+    const handleMinimize = () => {
+        onClose(); // Just close visually, keep background
+    };
+
+    const handleCancelAndRevert = async () => {
+        if (!window.confirm("Isso interromperá o lote imediatamente e reverterá as questões já modificadas de volta para o estado original. Tem certeza?")) {
+            return;
+        }
+
+        try {
+            await api.post(`/api/v1/admin/triage/${batchId}/cancel-and-revert`);
+            alert("Lote cancelado e revertido com sucesso.");
+            queryClient.invalidateQueries({ queryKey: ['admin-questions'] });
+            handleFinalize();
+        } catch (error: any) {
+            alert(error.response?.data?.message || 'Erro ao cancelar o lote.');
+        }
     };
 
     if (!isOpen) return null;
@@ -129,7 +195,7 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
     return (
         <div className="fixed inset-0 z-50 overflow-y-auto">
             <div className="flex items-center justify-center min-h-screen px-4">
-                <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={batchId ? undefined : onClose}></div>
+                <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={batchId ? handleMinimize : onClose}></div>
 
                 <div className="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col max-h-[90vh]">
 
@@ -141,37 +207,50 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                 {batchId ? 'Processando Lote...' : step === 'config' ? 'Configurar Lote de IA' : 'Pré-visualização do Lote'}
                             </h3>
                         </div>
-                        {!batchId && <button onClick={onClose} className="text-gray-400 hover:text-gray-600 font-bold">✕</button>}
+                        {batchId ? (
+                            <button onClick={handleMinimize} className="text-gray-400 hover:text-gray-600 font-bold p-2 bg-white rounded-full border border-gray-200 shadow-sm" title="Minimizar para plano de fundo">➖ Ocultar (Segundo Plano)</button>
+                        ) : (
+                            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 font-bold">✕</button>
+                        )}
                     </div>
 
                     {/* Body */}
                     <div className="p-6 overflow-y-auto flex-grow">
                         {batchId ? (
                             <div className="flex flex-col items-center justify-center py-10 space-y-6">
-                                <div className={`text-6xl ${progress?.status === 'failed' ? '' : 'animate-bounce'}`}>
-                                    {progress?.status === 'failed' ? '❌' : '🚀'}
+                                <div className={`text-6xl ${progress?.status === 'failed' || progress?.status === 'cancelled' ? '' : 'animate-bounce'}`}>
+                                    {progress?.status === 'failed' ? '❌' : progress?.status === 'cancelled' ? '🛑' : '🚀'}
                                 </div>
-                                <div className="w-full max-w-md bg-gray-100 h-4 rounded-full overflow-hidden">
+                                <div className="w-full max-w-md bg-gray-100 h-4 rounded-full overflow-hidden relative">
+                                    {progress?.status === 'processing' && (
+                                        <div className="absolute inset-0 bg-indigo-100 animate-pulse"></div>
+                                    )}
                                     <div
-                                        className={`h-full transition-all duration-500 ${progress?.status === 'failed' ? 'bg-red-500' : 'bg-indigo-600'}`}
-                                        style={{ width: `${progress ? (progress.processed / progress.total) * 100 : 0}%` }}
+                                        className={`absolute top-0 left-0 h-full transition-all duration-500 ease-out shadow-inner ${progress?.status === 'failed' ? 'bg-red-500' : progress?.status === 'cancelled' ? 'bg-amber-500' : 'bg-gradient-to-r from-indigo-500 to-purple-600'}`}
+                                        style={{ width: `${progress && progress.total > 0 ? ((progress.processed + progress.errors) / progress.total) * 100 : 0}%` }}
                                     ></div>
                                 </div>
                                 <div className="text-center w-full">
-                                    <p className={`font-black text-3xl mb-1 ${progress?.status === 'failed' ? 'text-red-600' : 'text-gray-900'}`}>
-                                        {progress ? `${progress.processed} / ${progress.total}` : 'Iniciando...'}
+                                    <p className={`font-black text-4xl mb-1 tracking-tight ${progress?.status === 'failed' ? 'text-red-600' : progress?.status === 'cancelled' ? 'text-amber-500' : 'text-gray-900'}`}>
+                                        {progress ? `${progress.processed + progress.errors} / ${progress.total}` : 'Iniciando...'}
                                     </p>
 
+                                    {progress?.status === 'processing' && etaSeconds !== null && (
+                                        <p className="text-xs font-bold tracking-widest text-indigo-500 mb-3 animate-pulse">
+                                            ⏳ FALTAM ~{etaSeconds > 60 ? `${Math.floor(etaSeconds / 60)}m ` : ''}{etaSeconds % 60}s
+                                        </p>
+                                    )}
+
                                     {/* Contador de Tokens */}
-                                    {progress && (progress.input_tokens > 0 || progress.output_tokens > 0) && (
-                                        <div className="flex justify-center gap-3 mb-4">
-                                            <div className="bg-blue-50 border border-blue-100 px-3 py-1 rounded-full flex items-center gap-2 shadow-sm">
-                                                <span className="text-[10px] font-black text-blue-400 uppercase">Input</span>
-                                                <span className="text-xs font-black text-blue-600">{progress.input_tokens.toLocaleString()}</span>
+                                    {progress && progress.input_tokens !== undefined && progress.output_tokens !== undefined && (
+                                        <div className="flex justify-center gap-3 mb-6">
+                                            <div className="bg-blue-50 border border-blue-100 px-4 py-1.5 rounded-full flex items-center gap-2 shadow-sm">
+                                                <span className="text-[10px] font-black text-blue-400 uppercase tracking-wider">Input Tokens</span>
+                                                <span className="text-sm font-black text-blue-600">{progress.input_tokens.toLocaleString()}</span>
                                             </div>
-                                            <div className="bg-purple-50 border border-purple-100 px-3 py-1 rounded-full flex items-center gap-2 shadow-sm">
-                                                <span className="text-[10px] font-black text-purple-400 uppercase">Output</span>
-                                                <span className="text-xs font-black text-purple-600">{progress.output_tokens.toLocaleString()}</span>
+                                            <div className="bg-purple-50 border border-purple-100 px-4 py-1.5 rounded-full flex items-center gap-2 shadow-sm">
+                                                <span className="text-[10px] font-black text-purple-400 uppercase tracking-wider">Output Tokens</span>
+                                                <span className="text-sm font-black text-purple-600">{progress.output_tokens.toLocaleString()}</span>
                                             </div>
                                         </div>
                                     )}
@@ -338,12 +417,19 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                     {/* Footer */}
                     {batchId ? (
                         <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
-                            {(progress?.status === 'completed' || progress?.status === 'failed' || progress?.status === 'cancelled') && (
+                            {(progress?.status === 'completed' || progress?.status === 'failed' || progress?.status === 'cancelled') ? (
                                 <button
                                     onClick={handleFinalize}
                                     className="px-8 py-2.5 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-black transition shadow-lg"
                                 >
                                     Fechar Lote
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleCancelAndRevert}
+                                    className="px-8 py-2.5 bg-white border border-red-200 text-red-600 rounded-xl font-bold text-sm hover:bg-red-50 transition shadow-lg"
+                                >
+                                    🛑 Cancelar e Reverter
                                 </button>
                             )}
                         </div>

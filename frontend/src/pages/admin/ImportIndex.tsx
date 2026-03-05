@@ -142,6 +142,22 @@ export default function ImportIndex() {
         setFile(null);
     };
 
+    const handleDeleteBatch = async (id: number) => {
+        if (!window.confirm('ATENÇÃO: Desfazer um lote apagará TODAS as questões vinculadas a ele de forma permanente, incluindo respostas, marcações de favoritos e notas, se houver. O sistema reverterá eventuais quebras em cascata no banco. Tem certeza absoluta que deseja EXCLUIR?')) return;
+
+        try {
+            const res = await api.delete(`/api/v1/admin/import/${id}`);
+            if (res.data.success) {
+                toast.success('Lote revertido e excluído com sucesso.');
+                refetch();
+            } else {
+                toast.error(res.data.message || 'Falha ao reverter lote.');
+            }
+        } catch (e: any) {
+            toast.error(e.response?.data?.message || 'Erro ao reverter lote no servidor.');
+        }
+    };
+
     if (isLoading) return <div className="p-8">Carregando painel de importação...</div>;
 
     const pendingCount = data?.stats?.pending_import || 0;
@@ -306,7 +322,7 @@ export default function ImportIndex() {
                                         <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aprovadas</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
-                                        <th className="px-4 py-3"></th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
@@ -333,11 +349,21 @@ export default function ImportIndex() {
                                                 </td>
                                                 <td className="px-4 py-3 text-xs text-gray-500">{imp.created_at ? new Date(imp.created_at).toLocaleDateString() : 'N/A'}</td>
                                                 <td className="px-4 py-3">
-                                                    {(imp.pending_count || 0) > 0 && (
-                                                        <Link to={`/admin/import/review?import_id=${imp.id}`} className="px-3 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600 font-medium">
-                                                            Revisar
-                                                        </Link>
-                                                    )}
+                                                    <div className="flex items-center gap-2 justify-end">
+                                                        {(imp.pending_count || 0) > 0 && (
+                                                            <Link to={`/admin/import/review?import_id=${imp.id}`} className="px-3 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600 font-medium">
+                                                                Revisar
+                                                            </Link>
+                                                        )}
+                                                        <button
+                                                            onClick={() => handleDeleteBatch(imp.id)}
+                                                            className="px-3 py-1 bg-red-50 text-red-600 text-xs rounded hover:bg-red-100 font-medium flex items-center gap-1 border border-red-200 transition-colors whitespace-nowrap"
+                                                            title="Desfazer e excluir pacote completo"
+                                                        >
+                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                            Desfazer
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );

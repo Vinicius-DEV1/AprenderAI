@@ -281,7 +281,7 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                                                     type="text" name="card_number" required
                                                     value={formData.card_number} onAccept={(val) => handleMaskChange(val, 'card_number')}
                                                     placeholder="0000 0000 0000 0000"
-                                                    className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-mono tracking-widest"
+                                                    className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-mono tracking-widest"
                                                 />
                                             </div>
                                             <div className="md:col-span-2">
@@ -290,7 +290,7 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                                                     type="text" name="card_name" required
                                                     value={formData.card_name} onChange={(e) => setFormData({ ...formData, card_name: e.target.value.toUpperCase() })}
                                                     placeholder="JOAO A SILVA"
-                                                    className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold uppercase"
+                                                    className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold uppercase"
                                                 />
                                             </div>
                                             <div>
@@ -301,14 +301,14 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                                                         type="text" name="card_expiry_month" required
                                                         value={formData.card_expiry_month} onAccept={(val) => handleMaskChange(val, 'card_expiry_month')}
                                                         placeholder="MM"
-                                                        className="w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm text-center focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                        className="w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg sm:text-sm text-center focus:ring-blue-500 focus:border-blue-500 font-bold"
                                                     />
                                                     <IMaskInput
                                                         mask="00" unmask={true}
                                                         type="text" name="card_expiry_year" required
                                                         value={formData.card_expiry_year} onAccept={(val) => handleMaskChange(val, 'card_expiry_year')}
                                                         placeholder="AA"
-                                                        className="w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm text-center focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                        className="w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg sm:text-sm text-center focus:ring-blue-500 focus:border-blue-500 font-bold"
                                                     />
                                                 </div>
                                             </div>
@@ -319,7 +319,7 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                                                     type="text" name="card_ccv" required
                                                     value={formData.card_ccv} onAccept={(val) => handleMaskChange(val, 'card_ccv')}
                                                     placeholder="CVC"
-                                                    className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                    className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
                                                 />
                                             </div>
                                         </div>
@@ -349,7 +349,7 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                                                 type="text" name="cpf" required
                                                 value={formData.cpf} onAccept={(val) => handleMaskChange(val, 'cpf')}
                                                 placeholder="000.000.000-00"
-                                                className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
                                             />
                                         </div>
 
@@ -362,7 +362,7 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                                                         type="text" name="phone" required={method === 'credit_card'}
                                                         value={formData.phone} onAccept={(val) => handleMaskChange(val, 'phone')}
                                                         placeholder="(11) 99999-9999"
-                                                        className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                        className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
                                                     />
                                                 </div>
                                                 <div>
@@ -372,7 +372,7 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                                                         type="text" name="postal_code" required={method === 'credit_card'}
                                                         value={formData.postal_code} onAccept={(val) => handleMaskChange(val, 'postal_code')}
                                                         placeholder="00000-000"
-                                                        className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                        className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
                                                     />
                                                 </div>
                                                 <div>
@@ -381,7 +381,7 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                                                         type="text" name="address_number" required={method === 'credit_card'}
                                                         value={formData.address_number} onChange={(e) => setFormData({ ...formData, address_number: e.target.value })}
                                                         placeholder="Número ou SN"
-                                                        className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-50 text-slate-900 dark:text-slate-900 rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                                        className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
                                                     />
                                                 </div>
                                             </>

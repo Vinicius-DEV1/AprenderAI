@@ -4,7 +4,11 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Question;
+use App\Models\Subject;
+use App\Models\Topic;
 use App\Jobs\AIBatchTriageJob;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\AiProcessingBatch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -188,6 +192,82 @@ class AIBatchTriageController extends Controller
     }
 
     /**
+     * Cancel an active batch AND revert all processed items so far.
+     */
+    public function cancelAndRevert($batchId)
+    {
+        $batch = AiProcessingBatch::where('batch_id', $batchId)->first();
+
+        if (!$batch) {
+            return response()->json(['success' => false, 'message' => 'Lote não encontrado.'], 404);
+        }
+
+        // 1. Cancels future jobs
+        $batch->update(['status' => 'cancelled']);
+        Cache::forget("batch_progress_{$batchId}");
+
+        // 2. Perform Undo on all already processed items
+        try {
+            DB::beginTransaction();
+            $items = \App\Models\AiBatchItem::where('batch_id', $batchId)
+                ->where('status', 'success')
+                ->get();
+
+            $revertedCount = 0;
+            foreach ($items as $item) {
+                $question = \App\Models\Question::find($item->question_id);
+                if ($question && $item->snapshot_before) {
+                    $snap = $item->snapshot_before;
+
+                    $question->update([
+                        'difficulty' => $snap['difficulty'] ?? null,
+                        'difficulty_reasoning' => $snap['difficulty_reasoning'] ?? null,
+                        'explanation' => $snap['explanation'] ?? null,
+                    ]);
+
+                    if (isset($snap['subjects'])) {
+                        $question->subjects()->sync($snap['subjects']);
+                    }
+                    if (isset($snap['topics'])) {
+                        $question->topics()->sync($snap['topics']);
+                    }
+
+                    $item->update(['status' => 'reverted']);
+                    $revertedCount++;
+                }
+            }
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Lote cancelado. {$revertedCount} questões processadas foram revertidas com sucesso."
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("[AIBATCH] Error during cancelAndRevert: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Erro ao reverter questões do lote.'], 500);
+        }
+    }
+
+    /**
+     * Get the currently active batch (processing).
+     */
+    public function active()
+    {
+        $batch = AiProcessingBatch::where('status', 'processing')->latest()->first();
+
+        if ($batch) {
+            return response()->json([
+                'success' => true,
+                'batch_id' => $batch->batch_id
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Nenhum lote ativo.']);
+    }
+
+    /**
      * Get progress for a batch.
      */
     public function status($batchId)
@@ -204,6 +284,8 @@ class AIBatchTriageController extends Controller
                     'total' => $batch->total_count,
                     'processed' => $batch->processed_count,
                     'errors' => $batch->error_count,
+                    'input_tokens' => $batch->input_tokens ?? 0,
+                    'output_tokens' => $batch->output_tokens ?? 0,
                     'status' => $batch->status,
                     'last_error' => $lastError,
                     'message' => $lastError ? "Finalizado com Erros" : "Concluído",
@@ -213,5 +295,139 @@ class AIBatchTriageController extends Controller
         }
 
         return response()->json($data);
+    }
+
+    /**
+     * Get batch history (paginated)
+     */
+    public function history(Request $request)
+    {
+        $batches = \App\Models\AiProcessingBatch::orderBy('created_at', 'desc')->paginate(15);
+        return response()->json($batches);
+    }
+
+    /**
+     * Get details (items) of a specific batch
+     */
+    public function details($batchId)
+    {
+        $batch = \App\Models\AiProcessingBatch::where('batch_id', $batchId)->firstOrFail();
+        $items = \App\Models\AiBatchItem::with('question')->where('batch_id', $batchId)->get()->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'question_id' => $item->question_id,
+                'statement' => $item->question ? \Illuminate\Support\Str::limit(strip_tags($item->question->statement), 100) : 'Questão excluída',
+                'status' => $item->status,
+                'before' => $item->snapshot_before,
+                'after' => $item->snapshot_after,
+            ];
+        });
+
+        return response()->json([
+            'batch' => $batch,
+            'items' => $items
+        ]);
+    }
+
+    /**
+     * Undo all processed items in a batch
+     */
+    public function undoBatch($batchId)
+    {
+        $batch = \App\Models\AiProcessingBatch::where('batch_id', $batchId)->firstOrFail();
+        $items = \App\Models\AiBatchItem::where('batch_id', $batchId)->where('status', 'processed')->get();
+
+        foreach ($items as $item) {
+            $this->performUndo($item);
+        }
+
+        $batch->update(['status' => 'reverted']);
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Undo a specific item in a batch
+     */
+    public function undoItem($itemId)
+    {
+        $item = \App\Models\AiBatchItem::findOrFail($itemId);
+
+        if ($item->status === 'processed') {
+            $this->performUndo($item);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Retry failed items in a batch
+     */
+    public function retry($batchId)
+    {
+        $batch = \App\Models\AiProcessingBatch::where('batch_id', $batchId)->firstOrFail();
+
+        $failedItems = \App\Models\AiBatchItem::where('batch_id', $batchId)
+            ->whereIn('status', ['failed', 'pending'])
+            ->get();
+
+        if ($failedItems->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'Nenhuma questão pendente ou com falha neste lote.']);
+        }
+
+        $batch->update([
+            'status' => 'processing',
+        ]);
+
+        Cache::put("batch_progress_{$batchId}", [
+            'total' => $batch->total_count,
+            'processed' => 0, // Reset progress for the retry view
+            'errors' => 0,
+            'input_tokens' => $batch->input_tokens,
+            'output_tokens' => $batch->output_tokens,
+            'status' => 'processing',
+            'message' => "Reprocessando " . $failedItems->count() . " questões...",
+            'last_error' => null
+        ], now()->addHours(2));
+
+        $failedItems->chunk(5)->each(function ($chunk, $index) use ($batchId, $batch) {
+            $job = new \App\Jobs\AIBatchTriageJob(
+                $batchId,
+                $chunk->pluck('question_id')->toArray(),
+                $batch->type,
+                $batch->model,
+                false // reprocess
+            );
+            $job->onQueue('ai-batches');
+            dispatch($job);
+        });
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Revert AI changes for a single item by re-applying the snapshot_before.
+     */
+    protected function performUndo($item)
+    {
+        $question = \App\Models\Question::find($item->question_id);
+        if ($question && $item->snapshot_before) {
+            $before = $item->snapshot_before;
+
+            $question->update([
+                'difficulty' => $before['difficulty'] ?? $question->difficulty,
+                'difficulty_reasoning' => $before['difficulty_reasoning'] ?? $question->difficulty_reasoning,
+                'explanation' => $before['explanation'] ?? $question->explanation,
+                // optionally review_status => 'pending' could be applied, but keeping original behavior is safer unless tracked
+            ]);
+
+            if (isset($before['subjects']) && is_array($before['subjects'])) {
+                $question->subjects()->sync($before['subjects']);
+            }
+            if (isset($before['topics']) && is_array($before['topics'])) {
+                $question->topics()->sync($before['topics']);
+            }
+
+            $item->update(['status' => 'reverted']);
+        }
     }
 }
