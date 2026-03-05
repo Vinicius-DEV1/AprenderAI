@@ -82,6 +82,7 @@ import AdminSubscriptions from './pages/admin/AdminSubscriptions';
 import AdminXavierInsights from './pages/admin/XavierInsights';
 import AdminExamsList from './pages/admin/exams/AdminExamsList';
 import AdminExamDetails from './pages/admin/exams/AdminExamDetails';
+import AdminBackups from './pages/admin/Backups';
 import Analytics from './components/Analytics';
 
 function App() {
@@ -240,6 +241,9 @@ function App() {
                             {/* Exams (Provas) */}
                             <Route path="provas" element={<><MetaTags title="Admin: Provas (PDFs)" /><AdminExamsList /></>} />
                             <Route path="provas/:id" element={<><MetaTags title="Admin: Detalhes da Prova" /><AdminExamDetails /></>} />
+
+                            {/* Backups */}
+                            <Route path="backups" element={<><MetaTags title="Admin: Backup do Banco" /><AdminBackups /></>} />
 
                         </Route>
                     </Route>
