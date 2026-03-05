@@ -15,8 +15,18 @@ class PlanController extends Controller
         return response()->json($plans);
     }
 
+    private function normalizeInterval(string $interval): string
+    {
+        $map = ['monthly' => 'month', 'yearly' => 'year'];
+        return $map[strtolower(trim($interval))] ?? strtolower(trim($interval));
+    }
+
     public function store(Request $request)
     {
+        if ($request->has('interval')) {
+            $request->merge(['interval' => $this->normalizeInterval($request->interval)]);
+        }
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
@@ -43,13 +53,16 @@ class PlanController extends Controller
 
     public function show(Plan $plan)
     {
-        return response()->json($plan);
+        // Normaliza o intervalo na leitura para caso haja dados legados no banco
+        $data = $plan->toArray();
+        $data['interval'] = $this->normalizeInterval($data['interval'] ?? 'month');
+        return response()->json($data);
     }
 
     public function update(Request $request, Plan $plan)
     {
         if ($request->has('interval')) {
-            $request->merge(['interval' => strtolower(trim($request->interval))]);
+            $request->merge(['interval' => $this->normalizeInterval($request->interval)]);
         }
 
         $data = $request->validate([
