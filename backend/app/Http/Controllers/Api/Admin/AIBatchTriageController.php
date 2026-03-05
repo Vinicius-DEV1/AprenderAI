@@ -215,6 +215,7 @@ class AIBatchTriageController extends Controller
 
             $revertedCount = 0;
             foreach ($items as $item) {
+                /** @var \App\Models\AiBatchItem $item */
                 $question = \App\Models\Question::find($item->question_id);
                 if ($question && $item->snapshot_before) {
                     $snap = $item->snapshot_before;
@@ -280,15 +281,26 @@ class AIBatchTriageController extends Controller
                 $logs = $batch->errors_log ?? [];
                 $lastError = count($logs) > 0 ? end($logs)['error'] : null;
 
+                $status = $batch->status;
+                $message = "Processando...";
+                if ($status === 'completed')
+                    $message = "Concluído";
+                if ($status === 'failed')
+                    $message = "Falha no Processamento";
+                if ($status === 'cancelled')
+                    $message = "Cancelado";
+                if ($lastError)
+                    $message = "Finalizado com Erros";
+
                 return response()->json([
                     'total' => $batch->total_count,
                     'processed' => $batch->processed_count,
                     'errors' => $batch->error_count,
                     'input_tokens' => $batch->input_tokens ?? 0,
                     'output_tokens' => $batch->output_tokens ?? 0,
-                    'status' => $batch->status,
+                    'status' => $status,
                     'last_error' => $lastError,
-                    'message' => $lastError ? "Finalizado com Erros" : "Concluído",
+                    'message' => $message,
                 ]);
             }
             return response()->json(['message' => 'Lote não encontrado.'], 404);

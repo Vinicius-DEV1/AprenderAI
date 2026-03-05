@@ -48,6 +48,10 @@ class PlanController extends Controller
 
     public function update(Request $request, Plan $plan)
     {
+        if ($request->has('interval')) {
+            $request->merge(['interval' => strtolower(trim($request->interval))]);
+        }
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',

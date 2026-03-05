@@ -109,21 +109,28 @@ class AIBatchTriageJob implements ShouldQueue
             $lock->block(5); // Wait up to 5s for lock
 
             // 1. Atualiza o Cache (para o SSE em tempo real ser rápido)
-            $data = \Illuminate\Support\Facades\Cache::get($key, [
-                'total' => 0,
-                'processed' => 0,
-                'errors' => 0,
-                'input_tokens' => 0,
-                'output_tokens' => 0,
-                'status' => 'processing',
-                'last_error' => null,
-                'errors_log' => []
-            ]);
+            $data = \Illuminate\Support\Facades\Cache::get($key);
+
+            // Se cache sumiu (ex: redis flush), tenta recuperar o estado atual do banco
+            if (!$data) {
+                $dbBatch = \App\Models\AiProcessingBatch::where('batch_id', $this->batchId)->first();
+                $data = [
+                    'total' => $dbBatch ? $dbBatch->total_count : 0,
+                    'processed' => $dbBatch ? $dbBatch->processed_count : 0,
+                    'errors' => $dbBatch ? $dbBatch->error_count : 0,
+                    'input_tokens' => $dbBatch ? $dbBatch->input_tokens : 0,
+                    'output_tokens' => $dbBatch ? $dbBatch->output_tokens : 0,
+                    'status' => $dbBatch ? $dbBatch->status : 'processing',
+                    'last_error' => null,
+                    'errors_log' => $dbBatch ? ($dbBatch->errors_log ?? []) : []
+                ];
+            }
 
             $data['processed'] += $applied;
             $data['errors'] += $errors;
             $data['input_tokens'] = ($data['input_tokens'] ?? 0) + $inputTokens;
             $data['output_tokens'] = ($data['output_tokens'] ?? 0) + $outputTokens;
+            $data['message'] = "Processando " . ($data['processed'] + $data['errors']) . " de " . $data['total'] . "...";
 
             if (!empty($detailedErrors) || $errorMessage) {
                 if ($errorMessage) {
@@ -139,6 +146,7 @@ class AIBatchTriageJob implements ShouldQueue
             }
             if ($data['status'] !== 'failed' && ($data['processed'] + $data['errors'] >= $data['total'])) {
                 $data['status'] = 'completed';
+                $data['message'] = "Concluído!";
             }
 
             \Illuminate\Support\Facades\Cache::put($key, $data, now()->addHours(2));

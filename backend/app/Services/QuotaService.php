@@ -107,16 +107,21 @@ class QuotaService
      */
     public function createOrRenewCycle(Subscription $subscription): SubscriptionCycle
     {
-        // Pega os limites default da tabela Plan que amarrou com a subscription
-        $planLimits = $subscription->plan->default_limits ?? [];
+        // Pega os limites das colunas do modelo Plan associado
+        $plan = $subscription->plan;
+
+        $limits = [
+            'simulations' => $plan->simulations_limit === 9999 ? 'unlimited' : $plan->simulations_limit,
+            'essays' => $plan->essays_limit === 9999 ? 'unlimited' : $plan->essays_limit,
+            'daily_questions' => $plan->daily_question_limit === 9999 ? 'unlimited' : $plan->daily_question_limit,
+        ];
 
         return SubscriptionCycle::create([
             'user_id' => $subscription->user_id,
             'subscription_id' => $subscription->id,
             'start_date' => now(),
-            // O serviço é renovado com "ciclo" de 1 mês, mesmo se o plano contratado for anual
             'end_date' => now()->addMonth(),
-            'limits' => $planLimits,
+            'limits' => $limits,
             'has_used_cumulative_bonus' => false
         ]);
     }
@@ -126,14 +131,20 @@ class QuotaService
      */
     public function createPostponedCycle(Subscription $subscription, Carbon $startDate): SubscriptionCycle
     {
-        $planLimits = $subscription->plan->default_limits ?? [];
+        $plan = $subscription->plan;
+
+        $limits = [
+            'simulations' => $plan->simulations_limit === 9999 ? 'unlimited' : $plan->simulations_limit,
+            'essays' => $plan->essays_limit === 9999 ? 'unlimited' : $plan->essays_limit,
+            'daily_questions' => $plan->daily_question_limit === 9999 ? 'unlimited' : $plan->daily_question_limit,
+        ];
 
         return SubscriptionCycle::create([
             'user_id' => $subscription->user_id,
             'subscription_id' => $subscription->id,
             'start_date' => $startDate,
             'end_date' => $startDate->copy()->addMonth(),
-            'limits' => $planLimits,
+            'limits' => $limits,
             'has_used_cumulative_bonus' => false
         ]);
     }
