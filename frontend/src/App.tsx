@@ -87,7 +87,7 @@ import Analytics from './components/Analytics';
 
 function App() {
     // Unificar o estado de carregamento inicial para evitar transições bruscas e race conditions.
-    const { isLoading: configLoading, isError: configError } = useConfig();
+    const { isLoading: configLoading } = useConfig();
     const { setUser, setLoading: setAuthLoading, isLoading: authLoading } = useAuthStore();
     const [bootstrapTimedOut, setBootstrapTimedOut] = useState(false);
 
@@ -105,8 +105,6 @@ function App() {
             } catch {
                 setUser(null);
             } finally {
-                // Desativa as flags de bootstrap APENAS após o término real
-                setBootstrapping(false);
                 setAuthLoading(false);
             }
         };
@@ -118,16 +116,21 @@ function App() {
     useEffect(() => {
         const timer = setTimeout(() => {
             setBootstrapTimedOut(true);
-            // Garante que o loading do auth também é desativado
             setAuthLoading(false);
-            setBootstrapping(false);
         }, 8000);
         return () => clearTimeout(timer);
     }, [setAuthLoading]);
 
-    // Mostra spinner unificado enquanto carrega config OU auth
-    // O spinner é desbloqueado se: ambos terminaram, ou houve erro no config, ou timeout
-    const isBootstrapping = (configLoading || authLoading) && !bootstrapTimedOut && !configError;
+    // O spinner é desbloqueado se: ambos terminaram, ou timeout
+    const isBootstrapping = (configLoading || authLoading) && !bootstrapTimedOut;
+
+    // Sincroniza a flag global do Axios com o estado de React
+    useEffect(() => {
+        if (!isBootstrapping) {
+            setBootstrapping(false);
+        }
+    }, [isBootstrapping]);
+
     if (isBootstrapping) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">

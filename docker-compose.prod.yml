@@ -95,7 +95,7 @@ services:
       - /proc:/host_proc:ro
     env_file: ./backend/.env
     # Fila exclusiva para triagem em lote do Xavier (evita travar o sistema principal)
-    command: php artisan queue:work --queue=ai-batches --sleep=3 --tries=3 --max-time=3600
+    command: php artisan queue:work --queue=ai-batches --sleep=3 --tries=3 --timeout=360 --max-time=3600
     deploy:
       replicas: 2
     depends_on:
