@@ -252,26 +252,37 @@ export default function PlanList() {
 
     const getPlanBySlug = (slugKeyword: string) => {
         if (!plans || plans.length === 0) return null;
+        const isAnual = periodo === 'anual';
+        // Exact match first; fallback to substring only for 'free'
         return plans.find(p => {
-            const isMatchSlug = p.slug?.toLowerCase().includes(slugKeyword.toLowerCase());
-            const isAnual = periodo === 'anual';
+            const slug = p.slug?.toLowerCase() ?? '';
+            const isExactMatch = slug === slugKeyword.toLowerCase();
+            const isAnnualVariant = slug === `${slugKeyword.toLowerCase()}-annual`;
+            const isMatchSlug = isAnual ? (isExactMatch || isAnnualVariant) : isExactMatch;
             const isMatchInterval = isAnual
                 ? (p.interval === 'year' || p.interval === 'yearly')
                 : (p.interval === 'month' || p.interval === 'monthly');
             return isMatchSlug && isMatchInterval;
-        });
+        })
+            // Fallback: if no interval-matched plan found, try any plan with that slug prefix
+            ?? plans.find(p => p.slug?.toLowerCase().includes(slugKeyword.toLowerCase()));
     };
 
-    // Para plano anual: exibe o valor mensal equivalente (price / 12 ou monthly_price)
+    // Para plano mensal: exibe monthly_price (fonte autoritativa) ou price como fallback.
+    // Para plano anual: exibe o valor mensal equivalente (monthly_price) e o total anual (annual_price ou price).
     const getDisplayPrice = (slugKeyword: string) => {
         const p = getPlanBySlug(slugKeyword);
         if (!p) return { monthly: 0, total: null };
         if (periodo === 'anual') {
-            // Se o backend fornece monthly_price no plano anual, usa ele; caso contrário divide por 12
-            const monthly = p.monthly_price ? Number(p.monthly_price) : Number(p.price) / 12;
-            return { monthly, total: Number(p.price) };
+            // monthly_price = mensalidade equivalente ao desconto anual (ex: R$20)
+            const monthly = p.monthly_price ? Number(p.monthly_price) : Number(p.price);
+            // annual_price = total cobrado no ano; fallback para price * 12
+            const total = p.annual_price ? Number(p.annual_price) : Number(p.price) * 12;
+            return { monthly, total };
         }
-        return { monthly: Number(p.price), total: null };
+        // Modo mensal: monthly_price é o campo correto; price pode estar desatualizado no DB
+        const monthly = p.monthly_price ? Number(p.monthly_price) : Number(p.price);
+        return { monthly, total: null };
     };
 
     useEffect(() => {
