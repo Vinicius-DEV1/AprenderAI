@@ -7,8 +7,11 @@ use App\Jobs\DatabaseBackupJob;
 use App\Models\BackupJob;
 use App\Services\BackupService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BackupController extends Controller
 {
@@ -52,7 +55,7 @@ class BackupController extends Controller
         if (empty($settings['s3_bucket'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'Configure o nome do Bucket S3 antes de fazer o backup.',
+                'message' => 'Nenhum Bucket S3 configurado. Use "Download Direto" para baixar o backup sem S3.',
             ], 422);
         }
 
@@ -112,12 +115,118 @@ class BackupController extends Controller
     }
 
     /**
+     * Direct local dump — streams mysqldump output (.sql.gz) directly to the
+     * admin's browser. Does NOT require S3 configuration.
+     *
+     * Security:
+     *  - Requires authenticated admin session (is.admin middleware).
+     *  - Every request is logged: who, from which IP, and when — BEFORE the dump starts.
+     *  - The DB password is never exposed in headers or responses.
+     *  - Data is piped through gzip before transmission (compressed in-flight).
+     */
+    public function localDump(Request $request): StreamedResponse
+    {
+        $user = $request->user();
+        $ip = $request->ip();
+        $timestamp = Carbon::now()->format('Y-m-d_H-i-s');
+        $filename = "backup_local_{$timestamp}.sql.gz";
+
+        // -----------------------------------------------------------------------
+        // AUDIT LOG — registrado ANTES do dump para capturar qualquer tentativa
+        // -----------------------------------------------------------------------
+        Log::channel('stack')->warning('[BackupController::localDump] Download direto solicitado.', [
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'user_email' => $user->email,
+            'ip' => $ip,
+            'user_agent' => $request->userAgent(),
+            'requested_at' => now()->toIso8601String(),
+            'filename' => $filename,
+        ]);
+
+        $dbHost = env('DB_HOST', 'db');
+        $dbPort = env('DB_PORT', '3306');
+        $dbDatabase = env('DB_DATABASE');
+        $dbUsername = env('DB_USERNAME');
+        $dbPassword = env('DB_PASSWORD');
+
+        $command = sprintf(
+            'mysqldump --host=%s --port=%s --user=%s --password=%s --single-transaction --skip-lock-tables --routines --triggers --set-gtid-purged=OFF %s | gzip',
+            escapeshellarg($dbHost),
+            escapeshellarg($dbPort),
+            escapeshellarg($dbUsername),
+            escapeshellarg($dbPassword),
+            escapeshellarg($dbDatabase)
+        );
+
+        return response()->stream(function () use ($command, $user, $ip, $filename) {
+            $descriptorspec = [
+                0 => ['pipe', 'r'],
+                1 => ['pipe', 'w'],
+                2 => ['pipe', 'w'],
+            ];
+
+            $process = proc_open($command, $descriptorspec, $pipes);
+
+            if (!is_resource($process)) {
+                Log::error('[BackupController::localDump] Falha ao iniciar proc_open.', [
+                    'user_id' => $user->id,
+                    'ip' => $ip,
+                ]);
+                echo 'ERRO: Falha ao iniciar o processo de dump.';
+                return;
+            }
+
+            fclose($pipes[0]); // Fecha stdin — não escrevemos no processo
+
+            $totalBytes = 0;
+            while (!feof($pipes[1])) {
+                $chunk = fread($pipes[1], 65536); // 64 KB por vez
+                if ($chunk !== false && strlen($chunk) > 0) {
+                    echo $chunk;
+                    flush();
+                    $totalBytes += strlen($chunk);
+                }
+            }
+
+            $stderr = stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            $exitCode = proc_close($process);
+
+            if ($exitCode !== 0) {
+                Log::error('[BackupController::localDump] mysqldump encerrou com erro.', [
+                    'exit_code' => $exitCode,
+                    'stderr' => substr($stderr, 0, 500),
+                    'user_id' => $user->id,
+                    'ip' => $ip,
+                ]);
+            } else {
+                Log::info('[BackupController::localDump] Download direto concluído com sucesso.', [
+                    'user_id' => $user->id,
+                    'user_name' => $user->name,
+                    'ip' => $ip,
+                    'bytes_sent' => $totalBytes,
+                    'filename' => $filename,
+                ]);
+            }
+        }, 200, [
+            'Content-Type' => 'application/gzip',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            'X-Content-Type-Options' => 'nosniff',
+            'X-Frame-Options' => 'DENY',
+            'Pragma' => 'no-cache',
+        ]);
+    }
+
+    /**
      * Save backup configuration settings (bucket name, schedule, etc.).
      */
     public function updateSettings(Request $request)
     {
         $request->validate([
-            's3_bucket' => ['required', 'string', 'max:255'],
+            's3_bucket' => ['nullable', 'string', 'max:255'],
             's3_prefix' => ['nullable', 'string', 'max:255'],
             'schedule_enabled' => ['required', 'boolean'],
             'schedule_time' => ['required', 'string', 'regex:/^\d{2}:\d{2}$/'],

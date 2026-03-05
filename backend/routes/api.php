@@ -312,6 +312,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('/{id}/status', [BackupController::class, 'show']);
                 Route::get('/{id}/download', [BackupController::class, 'download']);
                 Route::post('/settings', [BackupController::class, 'updateSettings']);
+                Route::get('/local-dump', [BackupController::class, 'localDump']);
             });
         });
     });

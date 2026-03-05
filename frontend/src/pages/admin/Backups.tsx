@@ -53,6 +53,7 @@ export default function AdminBackups() {
     const [savingSettings, setSavingSettings] = useState(false);
     const [activeJobId, setActiveJobId] = useState<number | null>(null);
     const [downloadingId, setDownloadingId] = useState<number | null>(null);
+    const [localDumping, setLocalDumping] = useState(false);
 
     // -------------------------------------------------------------------------
     // Fetch history + settings
@@ -168,6 +169,39 @@ export default function AdminBackups() {
     };
 
     // -------------------------------------------------------------------------
+    // Local dump — streams .sql.gz directly from server to browser (no S3)
+    // Every request is logged on the server with the admin's name, IP and time.
+    // -------------------------------------------------------------------------
+    const handleLocalDump = async () => {
+        setLocalDumping(true);
+        toast.info('Gerando dump... o download iniciará em breve.');
+        try {
+            const res = await api.get('/api/v1/admin/backups/local-dump', {
+                responseType: 'blob',
+                timeout: 600_000, // 10 minutos — tempo para bancos grandes
+            });
+
+            // Create a temporary <a> element to trigger the browser download
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const filename = `backup_local_${timestamp}.sql.gz`;
+            const url = URL.createObjectURL(new Blob([res.data], { type: 'application/gzip' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+
+            toast.success('Download do banco concluído!');
+        } catch (err: any) {
+            toast.error(err?.response?.data?.message ?? 'Erro ao gerar o dump local. Verifique os logs.');
+        } finally {
+            setLocalDumping(false);
+        }
+    };
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
     const formatDate = (dt: string | null) => {
@@ -199,27 +233,55 @@ export default function AdminBackups() {
                     <p className="text-gray-500 text-sm">Gerencie backups MySQL → S3. O processo é assíncrono e não impacta a performance do sistema.</p>
                 </div>
 
-                <button
-                    onClick={handleTrigger}
-                    disabled={triggering || !!activeJobId || !settings.s3_bucket}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg font-semibold text-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
-                >
-                    {triggering ? (
-                        <>
-                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            Backup em andamento...
-                        </>
-                    ) : (
-                        <>
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                            </svg>
-                            Fazer Backup Agora
-                        </>
-                    )}
-                </button>
+                <div className="flex flex-wrap items-center gap-3">
+                    {/* Download Direto (sem S3) */}
+                    <button
+                        onClick={handleLocalDump}
+                        disabled={localDumping}
+                        title="Faz o dump do banco e baixa diretamente no seu navegador. Não precisa de S3 configurado. Toda solicitação é registrada nos logs."
+                        className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-semibold text-sm hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                    >
+                        {localDumping ? (
+                            <>
+                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Gerando dump...
+                            </>
+                        ) : (
+                            <>
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Download Direto
+                            </>
+                        )}
+                    </button>
+
+                    {/* Backup para S3 */}
+                    <button
+                        onClick={handleTrigger}
+                        disabled={triggering || !!activeJobId || !settings.s3_bucket}
+                        title={!settings.s3_bucket ? 'Configure o Bucket S3 para ativar esta opção' : 'Envia o backup para o Amazon S3'}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg font-semibold text-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                    >
+                        {triggering ? (
+                            <>
+                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Backup em andamento...
+                            </>
+                        ) : (
+                            <>
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                Backup para S3
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
 
             {/* IAM Role info banner */}
@@ -246,16 +308,15 @@ export default function AdminBackups() {
 
                         <form onSubmit={handleSaveSettings} className="space-y-5">
                             <div>
-                                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nome do Bucket S3 *</label>
+                                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nome do Bucket S3 <span className="text-gray-400 font-normal">(opcional)</span></label>
                                 <input
                                     type="text"
                                     placeholder="meu-bucket-de-backup"
                                     value={settings.s3_bucket}
                                     onChange={e => setSettings(s => ({ ...s, s3_bucket: e.target.value }))}
                                     className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50"
-                                    required
                                 />
-                                <p className="text-xs text-gray-400 mt-1">Apenas o nome do bucket, sem s3:// ou ARN.</p>
+                                <p className="text-xs text-gray-400 mt-1">Sem bucket S3? Use o botão "Download Direto" para baixar o .sql.gz no navegador.</p>
                             </div>
 
                             <div>
@@ -337,8 +398,8 @@ export default function AdminBackups() {
                                 <svg className="w-12 h-12 mb-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
                                 </svg>
-                                <p className="font-medium text-sm">Nenhum backup realizado ainda</p>
-                                <p className="text-xs mt-1">Configure o bucket S3 e clique em "Fazer Backup Agora"</p>
+                                <p className="font-medium text-sm">Nenhum backup para S3 realizado ainda</p>
+                                <p className="text-xs mt-1">Configure o bucket e clique em "Backup para S3", ou use "Download Direto" para baixar agora.</p>
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
