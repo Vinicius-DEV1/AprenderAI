@@ -1,10 +1,23 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useConfigStore } from '../stores/configStore';
 import '../styles/landing-page.css';
 
 export default function HomePage() {
     const [faqOpen, setFaqOpen] = useState<number | null>(null);
     const [periodo, setPeriodo] = useState<'mensal' | 'anual'>('mensal');
+    const { plans } = useConfigStore();
+
+    const getPlanPrice = (slugKeyword: string) => {
+        if (!plans || plans.length === 0) return null;
+        const p = plans.find(p => p.slug?.includes(slugKeyword) && (periodo === 'anual' ? p.interval === 'yearly' : p.interval === 'monthly'));
+        return p ? Number(p.price) : null;
+    };
+
+    const formatPrice = (price: number | null): string => {
+        if (price === null) return '--';
+        return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(price);
+    };
 
     const faqs = [
         { q: 'A plataforma é totalmente online?', a: 'Sim. O AprenderAI funciona 100% online. Você pode acessar de qualquer lugar, pelo computador ou celular, sem necessidade de instalação.' },
@@ -227,18 +240,18 @@ export default function HomePage() {
 
                             <div style={{ marginBottom: '.25rem' }}>
                                 <span className="lp-plan-price-paid">
-                                    R$&nbsp;{periodo === 'anual' ? '20,00' : '25,00'}
+                                    R$&nbsp;{formatPrice(getPlanPrice('basic'))}
                                 </span>
                                 <span className="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
                             </div>
 
                             {periodo === 'anual' ? (
                                 <div className="lp-plan-annual-note lp-plan-annual-note-paid">
-                                    Ou R$ 240,00/ano — economize R$ 60,00
+                                    Ou R$ {formatPrice((getPlanPrice('basic') || 0) * 12)}/ano
                                 </div>
                             ) : (
                                 <div className="lp-plan-annual-note lp-plan-annual-note-paid">
-                                    Ou R$ 240,00 no plano anual (20% OFF)
+                                    Assine agora e acelere seus estudos
                                 </div>
                             )}
 
@@ -287,18 +300,18 @@ export default function HomePage() {
 
                             <div style={{ marginBottom: '.25rem' }}>
                                 <span className="lp-plan-price-paid">
-                                    R$&nbsp;{periodo === 'anual' ? '40,00' : '49,90'}
+                                    R$&nbsp;{formatPrice(getPlanPrice('plus'))}
                                 </span>
                                 <span className="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
                             </div>
 
                             {periodo === 'anual' ? (
                                 <div className="lp-plan-annual-note lp-plan-annual-note-paid">
-                                    Ou R$ 480,00/ano — economize R$ 118,80
+                                    Ou R$ {formatPrice((getPlanPrice('plus') || 0) * 12)}/ano
                                 </div>
                             ) : (
                                 <div className="lp-plan-annual-note lp-plan-annual-note-paid">
-                                    Ou R$ 480,00 no plano anual (20% OFF)
+                                    O plano definitivo para aprovação
                                 </div>
                             )}
 
