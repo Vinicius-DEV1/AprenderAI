@@ -1,10 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { getDashboardData } from '../api/dashboard';
 
-export function useDashboard(userId?: number) {
+export function useDashboard() {
     return useQuery({
-        queryKey: ['dashboard', userId],
+        queryKey: ['dashboard'],
         queryFn: getDashboardData,
-        enabled: !!userId,
     });
 }

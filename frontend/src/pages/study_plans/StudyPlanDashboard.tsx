@@ -104,8 +104,8 @@ export default function StudyPlanDashboard() {
     };
 
     return (
-        <div className="space-y-8 pb-24 -mt-[50px]">
-            {/* Header */}
+        <div className="space-y-8 pb-24 mt-5 pt-5">
+            {/* 1. Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h2 className="font-extrabold text-3xl text-slate-900 dark:text-white tracking-tight">
@@ -140,7 +140,7 @@ export default function StudyPlanDashboard() {
                 </div>
             </div>
 
-            {/* Introductory Message & Diagnostic Summary */}
+            {/* 2. Introductory Message & Diagnostic Summary */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-8 shadow-xl shadow-slate-200/50 dark:shadow-none">
                 <h4 className="text-[10px] uppercase font-black text-blue-600 mb-4 tracking-[0.2em] flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
@@ -156,7 +156,165 @@ export default function StudyPlanDashboard() {
                 )}
             </div>
 
-            {/* Diagnóstico */}
+            {/* 3. Pontos Fracos e Fortes */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3 bg-slate-50/50 dark:bg-slate-800/30">
+                    <div className="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center">
+                        <svg className="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base">Pontos Fracos e Fortes</h3>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Mínimo 5 questões por tópico para classificação</p>
+                    </div>
+                </div>
+
+                <div className="p-6 grid md:grid-cols-2 gap-8">
+                    {/* Weak */}
+                    <div>
+                        <h4 className="text-xs font-black text-red-600 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+                            Pontos Fracos <span className="text-slate-400 font-normal lowercase tracking-normal">(abaixo de 60%)</span>
+                        </h4>
+                        <div className="space-y-3">
+                            {weak_strong.weak.length > 0 ? weak_strong.weak.map((item: any, i: number) => (
+                                <div key={i} className="p-4 bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-2xl">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{item.topic}</p>
+                                            <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tighter">{item.subject}</p>
+                                        </div>
+                                        <span className="text-sm font-black text-red-600">{item.accuracy}%</span>
+                                    </div>
+                                    <div className="w-full bg-red-100 dark:bg-red-900/30 rounded-full h-1.5 overflow-hidden">
+                                        <div className="bg-red-500 h-full rounded-full transition-all" style={{ width: `${item.accuracy}%` }}></div>
+                                    </div>
+                                    <p className="text-[10px] text-red-400/80 mt-1.5 font-bold uppercase">{item.attempts} questões respondidas</p>
+                                </div>
+                            )) : (
+                                <p className="text-sm text-slate-400 italic text-center py-8 bg-slate-50/50 dark:bg-slate-800/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">Dados insuficientes para tópicos fracos.</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Strong */}
+                    <div>
+                        <h4 className="text-xs font-black text-green-600 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+                            Pontos Fortes <span className="text-slate-400 font-normal lowercase tracking-normal">(acima de 75%)</span>
+                        </h4>
+                        <div className="space-y-3">
+                            {weak_strong.strong.length > 0 ? weak_strong.strong.map((item: any, i: number) => (
+                                <div key={i} className="p-4 bg-green-50/50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/20 rounded-2xl">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{item.topic}</p>
+                                            <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tighter">{item.subject}</p>
+                                        </div>
+                                        <span className="text-sm font-black text-green-600">{item.accuracy}%</span>
+                                    </div>
+                                    <div className="w-full bg-green-100 dark:bg-green-900/30 rounded-full h-1.5 overflow-hidden">
+                                        <div className="bg-green-500 h-full rounded-full transition-all" style={{ width: `${item.accuracy}%` }}></div>
+                                    </div>
+                                    <p className="text-[10px] text-green-400/80 mt-1.5 font-bold uppercase">{item.attempts} questões respondidas</p>
+                                </div>
+                            )) : (
+                                <p className="text-sm text-slate-400 italic text-center py-8 bg-slate-50/50 dark:bg-slate-800/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">Continue praticando para consolidar forças.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* 4. Schedule */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden shadow-sm">
+                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-slate-900 dark:text-white">Cronograma Semanal</h3>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Seu roteiro de estudos sugerido</p>
+                        </div>
+                    </div>
+                    {!can_update && (
+                        <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-full text-[10px] font-black tracking-widest uppercase">Plano Fixo</span>
+                    )}
+                </div>
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                    {Object.entries(plan?.plan_json?.weekly_schedule?.days || plan?.plan_json?.weekly_schedule || {}).map(([day, tasks]: [string, any]) => (
+                        <div key={day} className="bg-slate-50/50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800 p-5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                            <h4 className="text-sm font-black text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2 capitalize">
+                                <span className="text-xl">{getDayIcon(day)}</span>
+                                {day}
+                            </h4>
+                            <ul className="space-y-4">
+                                {Array.isArray(tasks) ? tasks.map((task: any, i: number) => (
+                                    <li key={i} className="group/task">
+                                        {typeof task === 'object' ? (
+                                            <div className="flex gap-3">
+                                                <div className="flex flex-col items-center gap-1 mt-1 shrink-0">
+                                                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full group-hover/task:scale-150 transition-transform"></span>
+                                                    <div className="w-px h-full bg-slate-200 dark:bg-slate-700"></div>
+                                                </div>
+                                                <div className="space-y-1 pb-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded leading-none">{task.time || 'Bloco'}</span>
+                                                        <span className="text-[10px] font-bold text-slate-500 uppercase px-1">{task.subject || ''}</span>
+                                                        <span className="text-sm font-extrabold text-slate-800 dark:text-slate-200 leading-tight">{task.activity || task.topic}</span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug">{task.reason}</p>
+                                                    <div className="flex flex-wrap gap-2 pt-1">
+                                                        <span className="text-[9px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full uppercase">{task.method || task.action}</span>
+                                                        <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full uppercase">Meta: {task.goal}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex gap-3">
+                                                <span className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 shrink-0"></span>
+                                                <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{typeof task === 'string' ? task : '-'}</span>
+                                            </div>
+                                        )}
+                                    </li>
+                                )) : (
+                                    <li className="p-4 text-center bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/20">
+                                        <p className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">🛋️ Rest Day</p>
+                                        <p className="text-[10px] text-blue-400 mt-1">{typeof tasks === 'string' ? tasks : '-'}</p>
+                                    </li>
+                                )}
+                            </ul>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* 5. Recommendations / Priority Actions */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-8 shadow-sm">
+                <div className="flex items-center gap-3 mb-8">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                        <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-lg text-slate-900 dark:text-white">Ações Prioritárias da Semana</h3>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Não altera seu cronograma principal</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {recommendations.map((rec: any) => (
+                        <div key={rec.priority} className="flex gap-5 p-5 border border-emerald-50 dark:border-emerald-900/10 bg-emerald-50/30 dark:bg-emerald-900/5 rounded-2xl group hover:scale-[1.01] transition-transform">
+                            <span className="text-3xl font-black text-emerald-600/20 group-hover:text-emerald-600/30 transition-colors mt-0.5">#{rec.priority}</span>
+                            <div>
+                                <p className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">{rec.title}</p>
+                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{rec.detail}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* 6. Diagnóstico Atual */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden shadow-sm">
                 <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
                     <div className="flex items-center gap-3">
@@ -226,78 +384,6 @@ export default function StudyPlanDashboard() {
                     </div>
                 </div>
             </div>
-
-
-            {/* Pontos Fracos e Fortes */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3 bg-slate-50/50 dark:bg-slate-800/30">
-                    <div className="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center">
-                        <svg className="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base">Pontos Fracos e Fortes</h3>
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Mínimo 5 questões por tópico para classificação</p>
-                    </div>
-                </div>
-
-                <div className="p-6 grid md:grid-cols-2 gap-8">
-                    {/* Weak */}
-                    <div>
-                        <h4 className="text-xs font-black text-red-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
-                            Pontos Fracos <span className="text-slate-400 font-normal lowercase tracking-normal">(abaixo de 60%)</span>
-                        </h4>
-                        <div className="space-y-3">
-                            {weak_strong.weak.length > 0 ? weak_strong.weak.map((item: any, i: number) => (
-                                <div key={i} className="p-4 bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-2xl">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{item.topic}</p>
-                                            <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tighter">{item.subject}</p>
-                                        </div>
-                                        <span className="text-sm font-black text-red-600">{item.accuracy}%</span>
-                                    </div>
-                                    <div className="w-full bg-red-100 dark:bg-red-900/30 rounded-full h-1.5 overflow-hidden">
-                                        <div className="bg-red-500 h-full rounded-full transition-all" style={{ width: `${item.accuracy}%` }}></div>
-                                    </div>
-                                    <p className="text-[10px] text-red-400/80 mt-1.5 font-bold uppercase">{item.attempts} questões respondidas</p>
-                                </div>
-                            )) : (
-                                <p className="text-sm text-slate-400 italic text-center py-8 bg-slate-50/50 dark:bg-slate-800/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">Dados insuficientes para tópicos fracos.</p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Strong */}
-                    <div>
-                        <h4 className="text-xs font-black text-green-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
-                            Pontos Fortes <span className="text-slate-400 font-normal lowercase tracking-normal">(acima de 75%)</span>
-                        </h4>
-                        <div className="space-y-3">
-                            {weak_strong.strong.length > 0 ? weak_strong.strong.map((item: any, i: number) => (
-                                <div key={i} className="p-4 bg-green-50/50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/20 rounded-2xl">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{item.topic}</p>
-                                            <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tighter">{item.subject}</p>
-                                        </div>
-                                        <span className="text-sm font-black text-green-600">{item.accuracy}%</span>
-                                    </div>
-                                    <div className="w-full bg-green-100 dark:bg-green-900/30 rounded-full h-1.5 overflow-hidden">
-                                        <div className="bg-green-500 h-full rounded-full transition-all" style={{ width: `${item.accuracy}%` }}></div>
-                                    </div>
-                                    <p className="text-[10px] text-green-400/80 mt-1.5 font-bold uppercase">{item.attempts} questões respondidas</p>
-                                </div>
-                            )) : (
-                                <p className="text-sm text-slate-400 italic text-center py-8 bg-slate-50/50 dark:bg-slate-800/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">Continue praticando para consolidar forças.</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Projection & Strategy Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Projeção */}
                 <div className="lg:col-span-2 bg-slate-900 text-white rounded-3xl overflow-hidden shadow-2xl p-8 relative group">
@@ -508,7 +594,7 @@ export default function StudyPlanDashboard() {
                 </div>
             </div>
 
-            {/* Methodology & Motivation Footer */}
+            {/* 10. Methodology & Motivation Footer */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-slate-900 text-white rounded-[40px] p-10 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
                     <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-blue-500 rounded-full blur-[100px]"></div>

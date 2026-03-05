@@ -28,7 +28,7 @@ class StudyPlanController extends Controller
         $user = Auth::user();
 
         // 1. Check Plan (Plus only)
-        if (!$user->hasPlusPlan()) {
+        if (!$user->isAdmin() && !$user->hasPlusPlan()) {
             return response()->json([
                 'view_state' => 'paywall',
                 'code' => 'PAYWALL',
@@ -37,7 +37,7 @@ class StudyPlanController extends Controller
         }
 
         // 2. Check Prerequisites (50 questions or 1 large sim)
-        if (!$user->hasStudyPlanPrerequisites()) {
+        if (!$user->isAdmin() && !$user->hasStudyPlanPrerequisites()) {
             return response()->json([
                 'view_state' => 'empty',
                 'code' => 'INSUFFICIENT_DATA',
@@ -76,12 +76,12 @@ class StudyPlanController extends Controller
         $user = Auth::user();
 
         // 1. Check Plan (Plus only)
-        if (!$user->hasPlusPlan()) {
+        if (!$user->isAdmin() && !$user->hasPlusPlan()) {
             return response()->json(['code' => 'PAYWALL', 'message' => 'Faça upgrade para o Plus.'], 403);
         }
 
         // 2. Check Prerequisites
-        if (!$user->hasStudyPlanPrerequisites()) {
+        if (!$user->isAdmin() && !$user->hasStudyPlanPrerequisites()) {
             return response()->json(['code' => 'INSUFFICIENT_DATA', 'message' => 'Dados insuficientes.'], 403);
         }
 
@@ -148,11 +148,11 @@ class StudyPlanController extends Controller
         $user = Auth::user();
 
         // All validations same as store
-        if (!$user->hasPlusPlan()) {
+        if (!$user->isAdmin() && !$user->hasPlusPlan()) {
             return response()->json(['code' => 'PAYWALL', 'message' => 'Faça upgrade para o Plus.'], 403);
         }
 
-        if (!$user->hasStudyPlanPrerequisites()) {
+        if (!$user->isAdmin() && !$user->hasStudyPlanPrerequisites()) {
             return response()->json(['code' => 'INSUFFICIENT_DATA', 'message' => 'Dados insuficientes.'], 403);
         }
 

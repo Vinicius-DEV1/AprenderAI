@@ -36,7 +36,7 @@ class PlanSeeder extends Seeder
                 'interval' => 'monthly',
                 'simulations_limit' => 10,
                 'essays_limit' => 5,
-                'daily_question_limit' => 10,
+                'daily_question_limit' => 30,
                 'features' => [
                     'detailed_correction',
                     'improvement_points',
@@ -76,7 +76,7 @@ class PlanSeeder extends Seeder
                 'interval' => 'yearly',
                 'simulations_limit' => 10,
                 'essays_limit' => 5,
-                'daily_question_limit' => 10,
+                'daily_question_limit' => 30,
                 'features' => [
                     'detailed_correction',
                     'improvement_points',

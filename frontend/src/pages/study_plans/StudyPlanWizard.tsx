@@ -117,94 +117,111 @@ export default function StudyPlanWizard() {
                     <div className="p-6">
                         <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-6">Gerar Seu Plano de Estudos</h2>
 
-                        <form onSubmit={handleSubmit}>
-                            {error && (
-                                <div className="mb-6 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 text-red-700 dark:text-red-400">
-                                    <p>{error}</p>
+                        {loading ? (
+                            <div className="py-12 px-4 text-center">
+                                <div className="w-24 h-24 mx-auto mb-6 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center relative">
+                                    <div className="absolute inset-0 rounded-full border-4 border-blue-100 dark:border-blue-900/40"></div>
+                                    <div className="absolute inset-0 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
+                                    <span className="text-4xl">🤖</span>
                                 </div>
-                            )}
-
-                            {/* Step 1: Availability */}
-                            <div className="mb-8">
-                                <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-4">Disponibilidade</h3>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                                    Quantas horas por dia você pode estudar?
-                                </label>
-                                <select
-                                    value={hours}
-                                    onChange={e => setHours(parseInt(e.target.value))}
-                                    className="mt-1 block w-full pl-3 pr-10 py-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                                >
-                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(h => (
-                                        <option key={h} value={h}>{h} hora{h > 1 ? 's' : ''}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Step 2: Goal */}
-                            <div className="mb-8">
-                                <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-4">Objetivo Principal</h3>
-                                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Tipo de Prova</label>
-                                        <select
-                                            value={examType}
-                                            onChange={e => setExamType(e.target.value)}
-                                            className="mt-1 block w-full pl-3 pr-10 py-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                                        >
-                                            <option value="enem">ENEM</option>
-                                            <option value="concurso">Concurso Público</option>
-                                        </select>
-                                    </div>
-                                    {examType === 'concurso' && (
-                                        <div className="animate-xavier-pop">
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Nome do Concurso (opcional)</label>
-                                            <input
-                                                type="text"
-                                                value={examName}
-                                                onChange={e => setExamName(e.target.value)}
-                                                className="mt-1 block w-full border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                                placeholder="Ex: Receita Federal"
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Step 3: Date */}
-                            <div className="mb-8">
-                                <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-4">Data da Prova (Opcional)</h3>
-                                <div className="max-w-xs">
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Quando será a prova?</label>
-                                    <input
-                                        type="date"
-                                        value={examDate}
-                                        onChange={e => setExamDate(e.target.value)}
-                                        className="mt-1 block w-full border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="pt-5 border-t border-slate-200 dark:border-slate-700">
-                                <div className="flex justify-end">
-                                    <button
-                                        type="submit"
-                                        disabled={loading}
-                                        className={`inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 transition-all ${loading ? 'opacity-75 cursor-not-allowed' : 'hover:bg-blue-700 hover:scale-105'}`}
-                                    >
-                                        {!loading ? 'Gerar Plano ✨' : (
-                                            <span className="flex items-center">
-                                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" strokeWidth="4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                                Gerando...
-                                            </span>
-                                        )}
-                                    </button>
-                                </div>
-                                <p className="mt-4 text-xs text-slate-500 text-center">
-                                    O sistema analisará seus simulados anteriores para criar a melhor estratégia. Isso pode levar alguns segundos.
+                                <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-3">
+                                    Xavier está analisando seus dados...
+                                </h3>
+                                <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-md mx-auto leading-relaxed">
+                                    A Inteligência Artificial está cruzando seu histórico de erros e acertos para montar o cronograma perfeito. Isso leva cerca de 10 a 30 segundos.
                                 </p>
+                                <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 inline-flex items-center gap-3">
+                                    <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    <span className="text-sm font-bold text-emerald-800 dark:text-emerald-300">
+                                        Você pode sair desta página! Seu plano continuará sendo gerado.
+                                    </span>
+                                </div>
                             </div>
-                        </form>
+                        ) : (
+                            <form onSubmit={handleSubmit}>
+                                {error && (
+                                    <div className="mb-6 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 text-red-700 dark:text-red-400">
+                                        <p>{error}</p>
+                                    </div>
+                                )}
+
+                                {/* Step 1: Availability */}
+                                <div className="mb-8">
+                                    <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-4">Disponibilidade</h3>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                        Quantas horas por dia você pode estudar?
+                                    </label>
+                                    <select
+                                        value={hours}
+                                        onChange={e => setHours(parseInt(e.target.value))}
+                                        className="mt-1 block w-full pl-3 pr-10 py-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                                    >
+                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(h => (
+                                            <option key={h} value={h}>{h} hora{h > 1 ? 's' : ''}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Step 2: Goal */}
+                                <div className="mb-8">
+                                    <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-4">Objetivo Principal</h3>
+                                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Tipo de Prova</label>
+                                            <select
+                                                value={examType}
+                                                onChange={e => setExamType(e.target.value)}
+                                                className="mt-1 block w-full pl-3 pr-10 py-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                                            >
+                                                <option value="enem">ENEM</option>
+                                                <option value="concurso">Concurso Público</option>
+                                            </select>
+                                        </div>
+                                        {examType === 'concurso' && (
+                                            <div className="animate-xavier-pop">
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Nome do Concurso (opcional)</label>
+                                                <input
+                                                    type="text"
+                                                    value={examName}
+                                                    onChange={e => setExamName(e.target.value)}
+                                                    className="mt-1 block w-full border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                    placeholder="Ex: Receita Federal"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Step 3: Date */}
+                                <div className="mb-8">
+                                    <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-4">Data da Prova (Opcional)</h3>
+                                    <div className="max-w-xs">
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Quando será a prova?</label>
+                                        <input
+                                            type="date"
+                                            value={examDate}
+                                            onChange={e => setExamDate(e.target.value)}
+                                            className="mt-1 block w-full border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="pt-5 border-t border-slate-200 dark:border-slate-700">
+                                    <div className="flex justify-end">
+                                        <button
+                                            type="submit"
+                                            disabled={loading}
+                                            className={`inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 transition-all ${loading ? 'opacity-75 cursor-not-allowed' : 'hover:bg-blue-700 hover:scale-105'}`}
+                                        >
+                                            Gerar Plano ✨
+                                        </button>
+                                    </div>
+                                    <p className="mt-4 text-xs text-slate-500 text-center">
+                                        O sistema analisará seus simulados anteriores para criar a melhor estratégia. Isso pode levar alguns segundos.
+                                    </p>
+                                </div>
+                            </form>
+                        )}
                     </div>
                 </div>
             </div>

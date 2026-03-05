@@ -64,6 +64,7 @@ class TempTestingSeeder extends Seeder
                 'organization' => 'Banca X',
                 'institution' => 'Órgão Y',
                 'review_status' => 'approved',
+                'external_id' => 'TEMP_' . Str::upper(Str::random(10)),
             ]);
 
             $question->subjects()->attach($subject->id);

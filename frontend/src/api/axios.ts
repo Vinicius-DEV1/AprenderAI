@@ -9,7 +9,7 @@ let _isBootstrapping = true;
 export const setBootstrapping = (value: boolean) => { _isBootstrapping = value; };
 
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000'),
+    baseURL: import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : '/'),
     withCredentials: true,
     headers: {
         'Accept': 'application/json',
@@ -93,7 +93,10 @@ api.interceptors.response.use(
             });
 
             if (error.message === 'Network Error') {
-                toast.error('Falha na conexão de rede. Verifique sua internet.');
+                const isLoginPage = window.location.pathname === '/login' || window.location.pathname === '/login/';
+                if (!isLoginPage) {
+                    toast.error('Falha na conexão de rede. Verifique sua internet.');
+                }
             }
         }
 
