@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 
@@ -12,9 +13,15 @@ export default function PrivateRoute() {
         );
     }
 
-    // Se estiver em um estado inconsistente (logado mas sem dados de usuário), limpa e redireciona
+    useEffect(() => {
+        // Limpa estado se logado sem usuário
+        if (!isLoading && isAuthenticated && !user) {
+            logout();
+        }
+    }, [isLoading, isAuthenticated, user, logout]);
+
+    // Se estiver em um estado inconsistente (logado mas sem dados de usuário), redireciona
     if (isAuthenticated && !user) {
-        logout();
         return <Navigate to="/login" replace />;
     }
 

@@ -371,7 +371,7 @@ EOT;
 
         $response = Http::withToken($apiKey->decrypted_key)
             ->connectTimeout(15)
-            ->timeout(60)
+            ->timeout(300)
             ->post($url, [
                 'model' => $model,
                 'messages' => [
@@ -518,7 +518,7 @@ EOT;
         $decryptedKey = $apiKey->decrypted_key;
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$decryptedKey}";
 
-        $response = Http::timeout(120)
+        $response = Http::timeout(300)
             ->connectTimeout(15)
             ->withoutVerifying()
             ->withHeaders(['Content-Type' => 'application/json'])
