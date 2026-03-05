@@ -6,7 +6,15 @@ use Illuminate\Support\Facades\Route;
 // ROOT — Serve the React SPA
 // -------------------------------------------------------
 Route::get('/', function () {
-    return response()->file(public_path('index.html'));
+    $indexPath = public_path('index.html');
+    if (file_exists($indexPath)) {
+        return response()->file($indexPath);
+    }
+    return response()->json([
+        'message' => 'AprenderAI Backend API is running.',
+        'frontend_url' => config('app.frontend_url'),
+        'environment' => config('app.env')
+    ]);
 });
 
 // -------------------------------------------------------

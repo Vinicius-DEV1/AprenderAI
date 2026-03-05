@@ -234,11 +234,12 @@
 }
 
 /* ✅ REGRA: no mobile a imagem não aparece */
-@media (max-width: 1200px) {
+@media (max-width: 768px) {
     .lp-hero-illus {
         display: none !important;
     }
 }
+
 
 .lp-hero-btns {
     display: flex;

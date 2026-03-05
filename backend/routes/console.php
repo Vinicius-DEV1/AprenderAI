@@ -13,3 +13,4 @@ Schedule::command('metrics:collect')->everyMinute();
 Schedule::command('api:check-health')->everyThirtyMinutes();
 Schedule::command('ai:reset-quotas')->daily();
 Schedule::command('ai_keys:recover')->hourly();
+Schedule::command('concursos:sync')->hourly();
