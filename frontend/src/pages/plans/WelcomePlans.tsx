@@ -118,7 +118,6 @@ export default function WelcomePlans() {
                             </button>
                             <PlanCheckout
                                 embeddedPlanId={selectedPlanId}
-                                onSuccess={() => navigate('/dashboard')}
                                 onCancel={() => setSelectedPlanId(null)}
                             />
                         </div>
