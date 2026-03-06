@@ -27,6 +27,7 @@ class Subscription extends Model
         'current_period_start',
         'current_period_end',
         'canceled_at',
+        'installment_count',
     ];
 
     protected $casts = [

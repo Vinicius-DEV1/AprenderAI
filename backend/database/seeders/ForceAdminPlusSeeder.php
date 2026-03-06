@@ -55,7 +55,7 @@ class ForceAdminPlusSeeder extends Seeder
             ->where('status', 'active')
             ->where('plan_id', '!=', $plan->id)
             ->update([
-                'status'      => 'canceled',
+                'status' => 'canceled',
                 'canceled_at' => now(),
             ]);
 
@@ -72,31 +72,35 @@ class ForceAdminPlusSeeder extends Seeder
         if ($subscription) {
             // Já existe — apenas garantir que está ativa e com expiry no futuro
             $subscription->update([
-                'status'               => 'active',
+                'status' => 'active',
+                'is_manual_grant' => true,
+                'is_sandbox' => true,
                 'current_period_start' => now(),
-                'current_period_end'   => now()->addYears(10),
-                'canceled_at'          => null,
+                'current_period_end' => now()->addYears(10),
+                'canceled_at' => null,
             ]);
             $this->command->info('Subscription Plus existente reativada e atualizada.');
         } else {
             // Criar nova subscription
             Subscription::create([
-                'user_id'              => $user->id,
-                'plan_id'              => $plan->id,
-                'status'               => 'active',
-                'gateway'              => 'manual',
-                'gateway_id'           => 'force-admin-plus-' . now()->format('Ymd'),
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+                'status' => 'active',
+                'is_manual_grant' => true,
+                'is_sandbox' => true,
+                'gateway' => 'manual',
+                'gateway_id' => 'force-admin-plus-' . now()->format('Ymd'),
                 'current_period_start' => now(),
-                'current_period_end'   => now()->addYears(10),
+                'current_period_end' => now()->addYears(10),
             ]);
             $this->command->info('Nova subscription Plus criada com vigência de 10 anos.');
         }
 
         // ── 5. Sincronizar plan_id no user (fallback do activePlan()) ─────────
         $user->update([
-            'plan_id'          => $plan->id,
-            'plan_started_at'  => now(),
-            'plan_expires_at'  => now()->addYears(10),
+            'plan_id' => $plan->id,
+            'plan_started_at' => now(),
+            'plan_expires_at' => now()->addYears(10),
         ]);
         $this->command->info('plan_id, plan_started_at e plan_expires_at atualizados no user.');
 
@@ -108,10 +112,10 @@ class ForceAdminPlusSeeder extends Seeder
         $this->command->table(
             ['Campo', 'Valor'],
             [
-                ['Usuário',           $user->email],
-                ['plan_id (user)',    $user->plan_id],
-                ['Plano ativo',       $user->activePlan()?->name ?? 'NENHUM'],
-                ['hasPlusPlan()',     $hasPlusPlan ? 'TRUE ✓' : 'FALSE ✗'],
+                ['Usuário', $user->email],
+                ['plan_id (user)', $user->plan_id],
+                ['Plano ativo', $user->activePlan()?->name ?? 'NENHUM'],
+                ['hasPlusPlan()', $hasPlusPlan ? 'TRUE ✓' : 'FALSE ✗'],
                 ['hasActiveSubscription()', $user->hasActiveSubscription() ? 'TRUE ✓' : 'FALSE ✗'],
             ]
         );

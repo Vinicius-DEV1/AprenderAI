@@ -69,6 +69,16 @@ class Plan extends Model
         };
     }
 
+    public function isAnnual(): bool
+    {
+        return $this->interval === 'yearly';
+    }
+
+    public function isInstallmentEligible(): bool
+    {
+        return $this->isAnnual() && $this->annual_price > 0;
+    }
+
     public function hasFeature(string $feature): bool
     {
         return in_array($feature, $this->features ?? []);
