@@ -53,12 +53,12 @@ export default function StudyPlanDashboard() {
                         <svg className="w-24 h-24 text-purple-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
                     </div>
                     <div className="relative z-10 text-center">
-                        <div className="w-20 h-20 bg-purple-600 text-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-purple-500/40 transform -rotate-3 hover:rotate-0 transition-transform">
+                        <div className="w-20 h-20 bg-blue-600 text-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/40 transform -rotate-3 hover:rotate-0 transition-transform">
                             <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
                         </div>
                         <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">Evolua para o Plano Plus 🚀</h2>
                         <p className="text-slate-600 dark:text-slate-400 mb-8 text-lg leading-relaxed">O <strong>Plano de Estudos Premium</strong> do Xavier analisa suas fraquezas reais e cria um cronograma dinâmico de alta performance.</p>
-                        <button onClick={() => window.location.href = '/plans'} className="px-10 py-4 bg-purple-600 hover:bg-purple-700 text-white font-black rounded-2xl transition-all shadow-xl shadow-purple-500/30 active:scale-95">QUERO SER PLUS</button>
+                        <button onClick={() => window.location.href = '/plans'} className="px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl transition-all shadow-xl shadow-blue-500/30 active:scale-95">QUERO SER PLUS</button>
                     </div>
                 </div>
             </div>
