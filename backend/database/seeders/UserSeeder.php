@@ -56,6 +56,8 @@ class UserSeeder extends Seeder
                 'status' => 'active',
                 'gateway' => 'manual',
                 'gateway_id' => 'manual_plus_admin',
+                'is_manual_grant' => true,
+                'is_sandbox' => true,
                 'current_period_start' => now(),
                 'current_period_end' => now()->addMonth()
             ]
@@ -101,6 +103,8 @@ class UserSeeder extends Seeder
                 'status' => 'active',
                 'gateway' => 'manual',
                 'gateway_id' => 'manual_plus_' . $uPlus->id,
+                'is_manual_grant' => true,
+                'is_sandbox' => true,
                 'current_period_start' => now(),
                 'current_period_end' => now()->addMonth()
             ]
