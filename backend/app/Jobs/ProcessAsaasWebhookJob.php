@@ -38,6 +38,8 @@ class ProcessAsaasWebhookJob implements ShouldQueue
     public function handle(QuotaService $quotaService)
     {
         $data = $this->data;
+        $isSandbox = clone $data['is_sandbox_webhook'] ?? false;
+        unset($data['is_sandbox_webhook']); // Remove internally before saving to DB
         $event = $data['event'] ?? null;
         $payment = $data['payment'] ?? [];
 
@@ -71,6 +73,7 @@ class ProcessAsaasWebhookJob implements ShouldQueue
 
         $auditData = [
             'gateway' => 'asaas',
+            'is_sandbox' => $isSandbox,
             'gateway_payment_id' => $paymentId,
             'gateway_subscription_id' => $subscriptionId,
             'event' => $event,
@@ -159,6 +162,7 @@ class ProcessAsaasWebhookJob implements ShouldQueue
                             $previousActiveSubscriptions = Subscription::where('user_id', $user->id)
                                 ->where('id', '!=', $subscription->id)
                                 ->where('status', 'active')
+                                ->where('is_manual_grant', false) // NEVER cancel a manual grant via Webhook
                                 ->whereNotNull('gateway_id')
                                 ->get();
 

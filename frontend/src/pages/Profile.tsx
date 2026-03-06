@@ -420,7 +420,14 @@ export default function Profile() {
                                 <div className="space-y-6">
                                     {/* Plan Status */}
                                     <div className="profile-card" style={{ background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%)', borderColor: 'rgba(99, 102, 241, 0.2)' }}>
-                                        <h3 className="text-lg font-bold mb-4">Seu Plano</h3>
+                                        <div className="flex justify-between items-start mb-4">
+                                            <h3 className="text-lg font-bold">Seu Plano</h3>
+                                            {user.subscriptions?.some((s: any) => s.status === 'active' && s.is_manual_grant) && (
+                                                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-200 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300">
+                                                    Acesso Concedido
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className="mb-6">
                                             <span className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">{user.plan?.name || 'Grátis'}</span>
                                             <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Uso ilimitado das ferramentas principais.</p>

@@ -28,10 +28,13 @@ class WebhookController extends Controller
         $receivedToken = $request->header('asaas-access-token', '');
 
         $isValid = false;
+        $isSandbox = false;
         if (!empty($productionToken) && hash_equals($productionToken, $receivedToken)) {
             $isValid = true;
+            $isSandbox = false;
         } elseif (!empty($sandboxToken) && hash_equals($sandboxToken, $receivedToken)) {
             $isValid = true;
+            $isSandbox = true;
         }
 
         if (!$isValid && (!empty($productionToken) || !empty($sandboxToken))) {
@@ -44,10 +47,11 @@ class WebhookController extends Controller
 
         // ---- 2. Extrair dados e despachar para fila (Async) -------------
         $data = $request->all();
+        $data['is_sandbox_webhook'] = $isSandbox; // Injected for the Job to know
         $event = $data['event'] ?? null;
         $paymentId = $data['payment']['id'] ?? null;
 
-        Log::info('[Webhook] Recebido e enfileirado', ['event' => $event, 'payment_id' => $paymentId]);
+        Log::info('[Webhook] Recebido e enfileirado', ['event' => $event, 'payment_id' => $paymentId, 'is_sandbox' => $isSandbox]);
 
         dispatch(new \App\Jobs\ProcessAsaasWebhookJob($data));
 

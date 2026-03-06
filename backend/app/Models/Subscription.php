@@ -13,6 +13,10 @@ class Subscription extends Model
         'user_id',
         'plan_id',
         'status',
+        'is_manual_grant',
+        'is_sandbox',
+        'granted_by',
+        'granted_reason',
         'gateway',
         'gateway_id',
         'billing_type',
@@ -27,6 +31,8 @@ class Subscription extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'is_manual_grant' => 'boolean',
+        'is_sandbox' => 'boolean',
         'pix_expires_at' => 'datetime',
         'current_period_start' => 'datetime',
         'current_period_end' => 'datetime',
@@ -56,5 +62,20 @@ class Subscription extends Model
             'status' => 'canceled',
             'canceled_at' => now(),
         ]);
+    }
+
+    public function grantedBy()
+    {
+        return $this->belongsTo(User::class, 'granted_by');
+    }
+
+    public function scopePaid($query)
+    {
+        return $query->where('is_manual_grant', false)->where('is_sandbox', false);
+    }
+
+    public function scopeGrants($query)
+    {
+        return $query->where('is_manual_grant', true);
     }
 }
