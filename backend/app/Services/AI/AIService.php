@@ -61,11 +61,9 @@ REGRAS OBRIGATÓRIAS
 
 SE off_topic = true:
 - overall_score = 0
-- c1 = 0
-- c2 = 0
-- c3 = 0
-- c4 = 0
-- c5 = 0
+- c1 = 0, c2 = 0, c3 = 0, c4 = 0, c5 = 0
+- competence_feedback: preencha cada campo com "Fuga ao tema detectada."
+- summary: explique brevemente que houve fuga ao tema e que a nota foi zerada
 - "improved_version" deve ser uma NOVA redação escrita DO ZERO
 - NÃO reutilize trechos do texto do usuário
 - Baseie-se EXCLUSIVAMENTE no TEMA_OFICIAL
@@ -97,6 +95,26 @@ Para ENEM:
 Se ficar menor que isso, reescreva até atingir extensão adequada.
 
 ========================
+REGRAS PARA summary E competence_feedback
+========================
+"summary" DEVE ser:
+- Um parágrafo narrativo de 2 a 4 frases
+- Tom profissional, analítico e humano, como um avaliador inteligente
+- Reconhecer pontos positivos antes de apontar melhorias
+- Referir-se diretamente ao desempenho DESTA redação específica
+- Não ser uma lista de recomendações frias
+- Não ser genérico
+- Exemplo de tom: "Você demonstrou compreensão clara do tema e construiu uma argumentação que sustenta bem a tese central. No entanto, a proposta de intervenção ainda carece de especificidade quanto a agente, ação e meios."
+
+"competence_feedback" DEVE conter:
+- Uma única frase por competência
+- Específica para o desempenho DESTA redação
+- Analisa o porquê da nota atribuída, não explica o conceito da competência
+- NÃO usar linguagem genérica como "a competência foi avaliada com base em..."
+- Exemplo: c1: "Há bom domínio da norma culta, com pequenos desvios gramaticais isolados."
+- Exemplo: c2: "O tema foi abordado corretamente, mas o repertório poderia ser mais produtivo."
+
+========================
 VALIDAÇÃO INTERNA OBRIGATÓRIA
 ========================
 Antes de finalizar o JSON:
@@ -104,6 +122,8 @@ Antes de finalizar o JSON:
 2) Confirme se improved_version está preenchido e coerente.
 3) Confirme se overall_score é coerente com as competências.
 4) Se off_topic=true, confirme que todos os scores são 0.
+5) Confirme que summary é um parágrafo narrativo (não uma lista).
+6) Confirme que cada campo de competence_feedback é específico desta redação.
 
 Somente então gere o JSON final.
 
@@ -123,6 +143,14 @@ FORMATO DE SAÍDA (EXATO)
     "c4": number,
     "c5": number
   },
+  "competence_feedback": {
+    "c1": "frase única explicando o porquê da nota em C1 para esta redação",
+    "c2": "frase única explicando o porquê da nota em C2 para esta redação",
+    "c3": "frase única explicando o porquê da nota em C3 para esta redação",
+    "c4": "frase única explicando o porquê da nota em C4 para esta redação",
+    "c5": "frase única explicando o porquê da nota em C5 para esta redação"
+  },
+  "summary": "parágrafo narrativo analítico de 2 a 4 frases sobre o desempenho geral",
   "strengths": ["item1", "item2", "item3"],
   "weaknesses": ["item1", "item2", "item3"],
   "actionable_feedback": [
@@ -133,7 +161,6 @@ FORMATO DE SAÍDA (EXATO)
   "improved_version": "texto completo aqui"
 }
 
-Não adicione nenhuma chave extra.
 Não omita nenhuma chave.
 Não escreva nada fora desse JSON.
 EOT;

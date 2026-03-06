@@ -260,24 +260,27 @@ class EvaluateEssayJob implements ShouldQueue
             $response['score'] = $response['overall_score'];
         }
 
-        // 2. Map actionable_feedback to summary
+        // 2. Preserve explicit 'summary' from AI if present; otherwise fall back to joining actionable_feedback
         if (!isset($response['summary']) && isset($response['actionable_feedback'])) {
             $feedback = $response['actionable_feedback'];
             $response['summary'] = is_array($feedback) ? implode("\n\n", $feedback) : (string) $feedback;
         }
 
         // 3. Map competence_scores to competencies matching frontend schema {c1: ...}
+        //    Picks up per-competency justification from new 'competence_feedback' field if available.
         if (isset($response['competence_scores']) && is_array($response['competence_scores'])) {
             $maxScore = $type === 'enem' ? 200 : 20;
             $competencies = [];
+            $feedbackPerComp = isset($response['competence_feedback']) && is_array($response['competence_feedback'])
+                ? $response['competence_feedback']
+                : [];
 
-            // Expected frontend format: competencies object keyed 'c1'..'c5', each with 'score'
             foreach (['c1', 'c2', 'c3', 'c4', 'c5'] as $c) {
                 if (isset($response['competence_scores'][$c])) {
                     $competencies[$c] = [
                         'score' => (int) $response['competence_scores'][$c],
                         'max_score' => $maxScore,
-                        'justification' => $response['actionable_feedback'][$c] ?? '' // fallback
+                        'justification' => $feedbackPerComp[$c] ?? ($response['actionable_feedback'][$c] ?? ''),
                     ];
                 }
             }
