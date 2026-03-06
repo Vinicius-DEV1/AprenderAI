@@ -23,7 +23,7 @@ export default function EssayReview({
         queryFn: () => getEssay(id!),
         refetchInterval: (query) => {
             const status = query.state.data?.data?.status;
-            return status === 'evaluating' ? 5000 : false;
+            return ['pending', 'in_progress', 'evaluating'].includes(status) ? 5000 : false;
         },
         enabled: !!id
     });
@@ -215,39 +215,7 @@ export default function EssayReview({
     const displayScore = essay.status === 'completed' ? (competenciesData?.computedTotal ?? (essay.score || 0)) : (essay.score || 0);
     const scoreMaxDenominator = (essay.type === 'concurso') ? 100 : 1000;
 
-    const generateNarrativeSummary = () => {
-        const maxScore = essay.type === 'concurso' ? 100 : 1000;
-        const scorePct = displayScore / maxScore;
-        const strengths = feedback.strengths || [];
-        const weaknesses = feedback.weaknesses || [];
 
-        const sTxt = strengths.length > 0 ? strengths.slice(0, 2).map((s: string) => String(s).replace(/[.;]$/, '').toLowerCase()).join(' e ') : '';
-        const wTxt = weaknesses.length > 0 ? weaknesses.slice(0, 2).map((w: string) => String(w).replace(/[.;]$/, '').toLowerCase()).join(' e ') : '';
-
-        if (essay.off_topic || feedback.off_topic) {
-            return "Atenção: Sua redação foi identificada como fuga ao tema. É imprescindível ler atentamente a proposta e garantir que a discussão central e a sua tese dialoguem diretamente com o que foi solicitado. Rever sua estratégia de interpretação da coletânea é o primeiro e mais importante passo para a evolução estrutural.";
-        }
-
-        let intro = '';
-        let body = '';
-        let conclusion = '';
-
-        if (scorePct >= 0.8) {
-            intro = `Excelente trabalho! Sua redação demonstra um nível elevado de proficiência e expressiva maturidade argumentativa. Fica evidente o esforço direcionado e a compreensão sólida da estrutura textual.`;
-            body = sTxt ? ` Notamos forte consistência técnica, especialmente em aspectos pontuais como ${sTxt}.` : ` A arquitetura geral do texto está muito bem consolidada, respeitando integralmente o gênero exigido.`;
-            conclusion = wTxt ? ` Contudo, a busca pela perfeição exige rigor. Sugerimos direcionar sua atenção cirúrgica para refinar áreas como ${wTxt}. Ajustando esses detalhes anatômicos, a excelência máxima estará assegurada.` : ` Continue mantendo esse padrão irretocável nas próximas produções.`;
-        } else if (scorePct >= 0.5) {
-            intro = `Avaliamos sua redação e identificamos um desempenho sólido, porém intermediário. O texto reflete um bom entendimento básico, mas possui generosa margem para evolução analítica e estrutural rumo às notas de elite.`;
-            body = sTxt ? ` É um excelente ponto de partida saber que você já estabilizou competências valiosas como ${sTxt}.` : ` O esqueleto argumentativo da sua redação está presente, mas ainda demanda maior aprofundamento crítico.`;
-            conclusion = wTxt ? ` O verdadeiro salto de qualidade nas próximas resoluções acontecerá exclusivamente quando você atacar de frente as fragilidades relacionadas a ${wTxt}. Trabalhando essas lacunas operacionais com objetividade, sua evolução narrativa será drástica.` : ` Dedique tempo para revisar e fortalecer suas competências consideradas mais instáveis.`;
-        } else {
-            intro = `Analisamos detalhadamente sua redação e o resultado final evidencia desafios estruturais sensíveis e severos. Você está em uma fase embrionária de construção de repertório e fixação de fundamentos.`;
-            body = sTxt ? ` Apesar das instabilidades latentes, houve tentativas frutíferas que merecem créditos, tais como ${sTxt}.` : ` Torna-se indispensável e vital revisitar as bases elementares da coesão, elaboração coesa de argumentos e fiel interpretação do direcionamento temático.`;
-            conclusion = wTxt ? ` Neste exato momento, encare este resultado provisório como um mapa diagnóstico claro: sua prioridade singular deve focar categoricamente em superar as debilidades ativas em ${wTxt}. O realinhamento deve ocorrer passo a passo.` : ` A sugestão primordial é promover um recuo defensivo estratégico, focando incondicionalmente na formatação correta do parágrafo antes de almejar construções mais complexas.`;
-        }
-
-        return `${intro}${body}${conclusion}`;
-    };
 
     return (
         <div className="py-12">
@@ -344,22 +312,9 @@ export default function EssayReview({
                                     <div className="animate-fade-in-up">
                                         <h3 className="text-xl font-bold mb-6 text-gray-800 dark:text-gray-100">Resumo da Avaliação</h3>
 
-                                        <div className="mb-8 p-5 sm:p-6 bg-blue-50/80 dark:bg-blue-900/10 border-l-4 border-blue-500 rounded-r-xl shadow-sm">
-                                            <p className="text-base sm:text-lg leading-relaxed text-blue-900 dark:text-blue-100 font-medium md:tracking-wide">
-                                                {generateNarrativeSummary()}
-                                            </p>
+                                        <div className="prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300 whitespace-pre-line text-base sm:text-lg leading-relaxed mb-8">
+                                            {feedback.summary || essay.feedback || 'Sem resumo disponível.'}
                                         </div>
-
-                                        {(feedback.summary || essay.feedback) && (
-                                            <div className="mt-8">
-                                                <h4 className="font-bold mb-4 text-gray-700 dark:text-gray-300 uppercase tracking-widest text-sm flex items-center gap-2">
-                                                    <span className="text-blue-500">⚡</span> Diretrizes Práticas de Execução
-                                                </h4>
-                                                <div className="prose dark:prose-invert max-w-none text-gray-600 dark:text-gray-400 whitespace-pre-line text-sm sm:text-base bg-white dark:bg-gray-800/50 p-5 border border-gray-100 dark:border-gray-700/60 rounded-xl shadow-sm">
-                                                    {feedback.summary || essay.feedback}
-                                                </div>
-                                            </div>
-                                        )}
 
                                         {feedback.checklist && (
                                             <>
