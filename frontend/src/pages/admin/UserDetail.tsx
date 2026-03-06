@@ -42,7 +42,6 @@ export default function UserDetail() {
         role: 'user',
         ai_questions_count: 0,
         max_ai_questions_override: '',
-        max_ai_questions_override: '',
         max_simulations_override: '',
         max_essays_override: ''
     });
@@ -481,8 +480,8 @@ export default function UserDetail() {
                                                         className="w-full rounded-lg border-gray-300 text-sm py-2"
                                                     >
                                                         <option value="">Selecione um plano...</option>
-                                                        {plansData?.data?.filter((p: any) => p.price > 0).map((p: any) => (
-                                                            <option key={p.id} value={p.id}>{p.name} - R$ {Number(p.price).toFixed(2)}</option>
+                                                        {(Array.isArray(plansData) ? plansData : plansData?.data ?? []).map((p: any) => (
+                                                            <option key={p.id} value={p.id}>{p.name}{p.price > 0 ? ` - R$ ${Number(p.price).toFixed(2)}` : ' (Gratuito)'}</option>
                                                         ))}
                                                     </select>
                                                 </div>

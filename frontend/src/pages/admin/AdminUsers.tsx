@@ -25,7 +25,7 @@ export default function AdminUsers() {
     if (isLoading) return <AdminPageSkeleton />;
 
     const users = data?.data || [];
-    const meta = data?.meta || { last_page: 1, current_page: 1, total: 0 };
+    const meta = data || { last_page: 1, current_page: 1, total: 0 };
 
     return (
         <div className="p-6 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500 bg-gray-50/30 min-h-screen">
