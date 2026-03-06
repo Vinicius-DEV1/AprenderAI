@@ -620,6 +620,7 @@ export default function UserDetail() {
                                                             <td className="px-4 py-3 font-semibold text-gray-800">
                                                                 {sub.plan?.name || 'Desconhecido'}
                                                                 {sub.is_manual_grant && <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-indigo-100 text-indigo-700">Grant</span>}
+                                                                {sub.installment_count && <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-emerald-100 text-emerald-700">{sub.installment_count}x</span>}
                                                             </td>
                                                             <td className="px-4 py-3">
                                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${sub.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}>

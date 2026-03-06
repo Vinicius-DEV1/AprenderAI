@@ -122,73 +122,132 @@ class SubscriptionController extends Controller
             // A idempotência aqui é baseada no tempo atualizado num espaço de 1 minuto, previnindo cliques seguidos do mesmo usuário para o mesmo pacote.
             $idempotencyKey = md5($user->id . '_' . $plan->id . '_' . $request->payment_method . '_' . now()->format('Y-m-d H:i'));
 
-            try {
-                // Tentativa normal de criar assinatura
-                $asaasSubscription = $this->asaasService->createSubscription(
-                    $user,
-                    $plan,
-                    $request->payment_method,
-                    $cardData,
-                    $discount,
-                    null,
-                    $idempotencyKey
-                );
-            } catch (\Exception $asaasEx) {
-                // Estratégia de Fallback (Ghost Customer) se o Asaas barrar por "Assinatura Única"
-                $errorMsg = strtolower($asaasEx->getMessage());
-                $isDuplicateError = str_contains($errorMsg, 'assinatura') || str_contains($errorMsg, 'já possui') || str_contains($errorMsg, 'uma transação');
+            $isInstallment = $plan->isInstallmentEligible() && $request->payment_method === 'credit_card';
 
-                if ($isDuplicateError) {
-                    Log::warning('[Asaas] Bloqueado por limite de assinaturas. Executando estratégia Ghost Customer.', [
-                        'user_id' => $user->id,
-                        'error' => $errorMsg
-                    ]);
+            if ($isInstallment) {
+                // ── FLUXO PARCELADO (Plano Anual + Cartão) ──
+                $installmentCount = 12;
 
-                    // 1. Criamos um cliente secundário, desvinculado das amarras do cliente primário
-                    $ghostCustomerId = $this->asaasService->createGhostCustomer($user, $cardData['cpf'] ?? null);
+                try {
+                    $asaasPayment = $this->asaasService->createInstallmentPayment(
+                        $user,
+                        $plan,
+                        $installmentCount,
+                        $request->payment_method,
+                        $cardData,
+                        $discount,
+                        null,
+                        $idempotencyKey
+                    );
+                } catch (\Exception $asaasEx) {
+                    $errorMsg = strtolower($asaasEx->getMessage());
+                    $isDuplicateError = str_contains($errorMsg, 'assinatura') || str_contains($errorMsg, 'já possui') || str_contains($errorMsg, 'uma transação');
 
-                    // 2. Tentamos assinar obrigando o uso desse cliente novo
+                    if ($isDuplicateError) {
+                        Log::warning('[Asaas] Bloqueado por limite. Tentando Ghost Customer (installment).', ['user_id' => $user->id]);
+                        $ghostCustomerId = $this->asaasService->createGhostCustomer($user, $cardData['cpf'] ?? null);
+                        $asaasPayment = $this->asaasService->createInstallmentPayment(
+                            $user,
+                            $plan,
+                            $installmentCount,
+                            $request->payment_method,
+                            $cardData,
+                            $discount,
+                            $ghostCustomerId,
+                            $idempotencyKey
+                        );
+                    } else {
+                        throw $asaasEx;
+                    }
+                }
+
+                // O Asaas retorna 'installment' como ID agrupador das parcelas
+                $gatewayId = $asaasPayment['installment'] ?? $asaasPayment['id'];
+
+                $subscription = Subscription::create([
+                    'user_id' => $user->id,
+                    'plan_id' => $plan->id,
+                    'status' => 'pending',
+                    'gateway' => 'asaas',
+                    'gateway_id' => $gatewayId,
+                    'billing_type' => 'installment',
+                    'installment_count' => $installmentCount,
+                    'amount' => $plan->annual_price,
+                    'current_period_start' => now(),
+                    'current_period_end' => now()->addYear(),
+                ]);
+
+                PaymentLog::create([
+                    'user_id' => $user->id,
+                    'gateway' => 'asaas',
+                    'gateway_payment_id' => $asaasPayment['id'] ?? null,
+                    'gateway_subscription_id' => $gatewayId,
+                    'event' => 'CHECKOUT_INSTALLMENT',
+                    'status' => 'success',
+                    'raw_response' => PaymentLog::sanitize($asaasPayment),
+                ]);
+
+            } else {
+                // ── FLUXO RECORRÊNCIA (Mensal ou Anual PIX) ──
+                try {
                     $asaasSubscription = $this->asaasService->createSubscription(
                         $user,
                         $plan,
                         $request->payment_method,
                         $cardData,
                         $discount,
-                        $ghostCustomerId,
+                        null,
                         $idempotencyKey
                     );
+                } catch (\Exception $asaasEx) {
+                    $errorMsg = strtolower($asaasEx->getMessage());
+                    $isDuplicateError = str_contains($errorMsg, 'assinatura') || str_contains($errorMsg, 'já possui') || str_contains($errorMsg, 'uma transação');
 
-                    // Se passar daqui, o Webhook fará a limpeza da assinatura antiga do ID velho automaticamente depois
-                    Log::info('[Asaas] Estratégia Ghost Customer bem sucedida.', ['new_customer_id' => $ghostCustomerId]);
-                } else {
-                    // Erro normal (ex: Saldo insuficiente, Cartão recusado)
-                    throw $asaasEx;
+                    if ($isDuplicateError) {
+                        Log::warning('[Asaas] Bloqueado por limite de assinaturas. Executando estratégia Ghost Customer.', [
+                            'user_id' => $user->id,
+                            'error' => $errorMsg
+                        ]);
+                        $ghostCustomerId = $this->asaasService->createGhostCustomer($user, $cardData['cpf'] ?? null);
+                        $asaasSubscription = $this->asaasService->createSubscription(
+                            $user,
+                            $plan,
+                            $request->payment_method,
+                            $cardData,
+                            $discount,
+                            $ghostCustomerId,
+                            $idempotencyKey
+                        );
+                        Log::info('[Asaas] Estratégia Ghost Customer bem sucedida.', ['new_customer_id' => $ghostCustomerId]);
+                    } else {
+                        throw $asaasEx;
+                    }
                 }
+
+                $subscription = Subscription::create([
+                    'user_id' => $user->id,
+                    'plan_id' => $plan->id,
+                    'status' => 'pending',
+                    'gateway' => 'asaas',
+                    'gateway_id' => $asaasSubscription['id'],
+                    'amount' => $plan->price,
+                    'current_period_start' => now(),
+                    'current_period_end' => $plan->interval === 'yearly' ? now()->addYear() : now()->addMonth(),
+                ]);
+
+                PaymentLog::create([
+                    'user_id' => $user->id,
+                    'gateway' => 'asaas',
+                    'gateway_subscription_id' => $asaasSubscription['id'],
+                    'event' => 'CHECKOUT_' . strtoupper($request->payment_method),
+                    'status' => 'success',
+                    'raw_response' => PaymentLog::sanitize($asaasSubscription),
+                ]);
             }
-
-            $subscription = Subscription::create([
-                'user_id' => $user->id,
-                'plan_id' => $plan->id,
-                'status' => 'pending',
-                'gateway' => 'asaas',
-                'gateway_id' => $asaasSubscription['id'],
-                'amount' => $plan->price,
-                'current_period_start' => now(),
-                'current_period_end' => $plan->interval === 'yearly' ? now()->addYear() : now()->addMonth(),
-            ]);
-
-            PaymentLog::create([
-                'user_id' => $user->id,
-                'gateway' => 'asaas',
-                'gateway_subscription_id' => $asaasSubscription['id'],
-                'event' => 'CHECKOUT_' . strtoupper($request->payment_method),
-                'status' => 'success',
-                'raw_response' => PaymentLog::sanitize($asaasSubscription),
-            ]);
 
             if ($coupon && $discount) {
                 $coupon->increment('used_count');
-                $coupon->users()->attach($user->id, ['order_id' => $asaasSubscription['id']]);
+                $coupon->users()->attach($user->id, ['order_id' => $subscription->gateway_id]);
             }
 
             $responseData = [
@@ -197,8 +256,9 @@ class SubscriptionController extends Controller
                 'payment_method' => $request->payment_method,
             ];
 
-            if ($request->payment_method === 'pix') {
-                $payment = $this->asaasService->getFirstPendingPayment($asaasSubscription['id']);
+            // PIX flow — somente para recorrência (parcelamento não suporta PIX)
+            if (!$isInstallment && $request->payment_method === 'pix') {
+                $payment = $this->asaasService->getFirstPendingPayment($subscription->gateway_id);
                 if ($payment) {
                     $pixData = $this->asaasService->getPixQrCode($payment['id']);
                     if ($pixData) {

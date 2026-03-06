@@ -306,6 +306,97 @@ class AsaasService
     }
 
     /**
+     * Cria um pagamento PARCELADO no Asaas (não recorrente).
+     * O valor total é comprometido no limite do cartão do cliente,
+     * garantindo o recebimento integral independente do pagamento da fatura.
+     *
+     * @param User $user Usuário pagante
+     * @param mixed $plan Plano escolhido
+     * @param int $installmentCount Número de parcelas (ex: 12)
+     * @param string $paymentMethod 'credit_card' (PIX não suporta parcelamento)
+     * @param array $cardData Dados do cartão — NUNCA logados
+     * @param array|null $discount Dados do desconto (opcional)
+     * @param string|null $forceCustomerId ID forçado do cliente (Ghost Customer)
+     * @param string|null $idempotencyKey Chave de idempotência
+     * @return array Dados do pagamento criado
+     * @throws \Exception Se houver erro no processamento
+     */
+    public function createInstallmentPayment(
+        User $user,
+        $plan,
+        int $installmentCount,
+        string $paymentMethod,
+        array $cardData = [],
+        ?array $discount = null,
+        ?string $forceCustomerId = null,
+        ?string $idempotencyKey = null
+    ): array {
+        $customerId = $forceCustomerId ?? $this->getOrCreateCustomer($user, $cardData['cpf'] ?? null);
+
+        $totalValue = (float) $plan->annual_price;
+
+        // Aplica desconto ao valor total, se houver
+        if ($discount) {
+            if ($discount['type'] === 'percent') {
+                $totalValue = $totalValue * (1 - ($discount['value'] / 100));
+            } else {
+                $totalValue = max(0, $totalValue - $discount['value']);
+            }
+        }
+
+        $installmentValue = round($totalValue / $installmentCount, 2);
+
+        $data = [
+            'customer' => $customerId,
+            'billingType' => 'CREDIT_CARD',
+            'value' => $totalValue,
+            'dueDate' => now()->format('Y-m-d'),
+            'description' => "Plano {$plan->name} - Parcelado em {$installmentCount}x",
+            'externalReference' => (string) $user->id,
+            'installmentCount' => $installmentCount,
+            'installmentValue' => $installmentValue,
+            'notificationDisabled' => true,
+        ];
+
+        // ⚠️ PCI: Dados do cartão são enviados ao Asaas mas NUNCA persistidos/logados
+        $data['creditCard'] = [
+            'holderName' => $cardData['holder_name'],
+            'number' => $cardData['number'],
+            'expiryMonth' => $cardData['expiry_month'],
+            'expiryYear' => $cardData['expiry_year'],
+            'ccv' => $cardData['ccv'],
+        ];
+        $data['creditCardHolderInfo'] = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'cpfCnpj' => $cardData['cpf'],
+            'postalCode' => $cardData['postal_code'] ?? '00000000',
+            'addressNumber' => $cardData['address_number'] ?? '0',
+            'phone' => $cardData['phone'] ?? '0000000000',
+        ];
+
+        $request = Http::withHeader('access_token', $this->apiKey);
+        if ($idempotencyKey) {
+            $request->withHeader('idempotency-key', $idempotencyKey);
+        }
+
+        $response = $request->post("{$this->baseUrl}/payments", $data);
+
+        if ($response->failed()) {
+            Log::error('[Asaas] Erro ao criar pagamento parcelado', [
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+                'installment_count' => $installmentCount,
+                'response' => $response->body(),
+            ]);
+            $errorMsg = $response->json()['errors'][0]['description'] ?? 'Erro no processamento do pagamento parcelado.';
+            throw new \Exception($errorMsg);
+        }
+
+        return $response->json();
+    }
+
+    /**
      * Busca a primeira cobrança pendente de uma assinatura.
      * Útil para obter o ID do pagamento gerado e consequentemente o Pix.
      *

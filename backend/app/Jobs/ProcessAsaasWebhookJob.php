@@ -67,11 +67,17 @@ class ProcessAsaasWebhookJob implements ShouldQueue
         }
 
         $subscriptionId = $payment['subscription'] ?? null;
+        $installmentId = $payment['installment'] ?? null;
         $paymentId = $payment['id'] ?? null;
 
         $subscription = null;
         if ($subscriptionId) {
             $subscription = Subscription::where('gateway_id', $subscriptionId)->first();
+        }
+
+        // Fallback: busca por installment ID (pagamentos parcelados)
+        if (!$subscription && $installmentId) {
+            $subscription = Subscription::where('gateway_id', $installmentId)->first();
         }
 
         $externalRef = $payment['externalReference'] ?? ($data['subscription']['externalReference'] ?? null);
@@ -85,6 +91,9 @@ class ProcessAsaasWebhookJob implements ShouldQueue
             if ($subscription && $subscriptionId) {
                 $subscription->update(['gateway_id' => $subscriptionId]);
                 Log::info('[Webhook Job] Vinculou gateway_id via externalReference', ['sub_id' => $subscription->id]);
+            } elseif ($subscription && $installmentId) {
+                $subscription->update(['gateway_id' => $installmentId]);
+                Log::info('[Webhook Job] Vinculou gateway_id (installment) via externalReference', ['sub_id' => $subscription->id]);
             }
         }
 
