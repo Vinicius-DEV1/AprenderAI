@@ -103,6 +103,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/', [SubscriptionController::class, 'index']);
             Route::post('/{plan}/validate-coupon', [SubscriptionController::class, 'validateCoupon']);
             Route::post('/{plan}/checkout', [SubscriptionController::class, 'store']);
+            Route::get('/{plan}/upgrade-preview', [SubscriptionController::class, 'upgradePreview']);
             Route::get('/check-status', [SubscriptionController::class, 'checkStatus']);
             Route::get('/{subscription}/receipt', [SubscriptionController::class, 'receiptUrl']);
         });
