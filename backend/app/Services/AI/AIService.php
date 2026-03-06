@@ -193,7 +193,12 @@ EOT;
      */
     public function hasActiveKey(string $capability = ApiKey::CAPABILITY_GENERAL): bool
     {
-        return ApiKey::getKeyForCapability($capability) !== null;
+        try {
+            return ApiKey::getKeyForCapability($capability) !== null;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Erro ao validar chave para $capability: " . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -741,6 +746,9 @@ EOT;
                 \Log::warning('System prompt missing for essay_topic_generator. Using fallback.');
                 $prompt = "Você é um especialista em elaboração de temas de redação no padrão ENEM e concursos públicos brasileiros. Gere um tema atual, relevante, claro e desafiador. Retorne APENAS um objeto JSON válido com: { \"title\": \"Titulo\", \"description\": \"Texto\" }.";
             }
+
+            // FIX: Ensure the AI ALWAYS outputs strict JSON containing 'title' and 'description' to avoid parsing errors
+            $prompt .= "\n\n⚠️ REGRA CRÍTICA ABSOLUTA: A sua resposta DEVE ser EXCLUSIVAMENTE um objeto JSON válido. NÃO inclua saudações, reflexões ou qualquer outro texto antes ou depois do JSON. O JSON OBRIGATORIAMENTE deve conter exatas duas chaves: \"title\" e \"description\". Exemplo do formato exigido:\n{\n  \"title\": \"O título do tema gerado\",\n  \"description\": \"O texto motivador completo ou descrição do tema\"\n}";
 
             $maxAttempts = 2;
             $content = null;
