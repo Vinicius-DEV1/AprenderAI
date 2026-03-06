@@ -169,33 +169,50 @@ class QuotaService
             return $cycle;
         }
 
-        // Se não tem ciclo, mas tem um plano, criamos um ciclo sob demanda para o mês atual
+        // RES-2 FIX: Use a transaction + lockForUpdate for the on-demand cycle creation
+        // to prevent race conditions where two concurrent requests both find "no cycle"
+        // and both try to create one, resulting in two active cycles for the same user.
         if (!$user->plan) {
             Log::info("QuotaService: No active cycle and no plan loaded for User #{$user->id}. returning NULL.");
             return null;
         }
 
-        if ($user->plan->essays_limit === 0 && ($user->essay_credits ?? 0) === 0) {
-            Log::info("QuotaService: User #{$user->id} has plan '{$user->plan->slug}' with 0 essay limit and no credits.");
-        }
+        return DB::transaction(function () use ($user) {
+            // Re-check inside the transaction with a lock to prevent duplicate creation
+            $existingCycle = SubscriptionCycle::where('user_id', $user->id)
+                ->where('start_date', '<=', now())
+                ->where('end_date', '>=', now())
+                ->lockForUpdate()
+                ->first();
 
-        $limits = [
-            'simulations' => $user->simulationQuotaLimit() === 0 ? 0 : ($user->simulationQuotaLimit() === 9999 ? 'unlimited' : $user->simulationQuotaLimit()),
-            'essays' => $user->essayQuotaLimit() === 0 ? 0 : ($user->essayQuotaLimit() === 9999 ? 'unlimited' : $user->essayQuotaLimit()),
-            'daily_questions' => $user->dailyQuestionQuotaLimit() === 0 ? 0 : ($user->dailyQuestionQuotaLimit() === 9999 ? 'unlimited' : $user->dailyQuestionQuotaLimit()),
-        ];
+            if ($existingCycle) {
+                // Another request already created it between our first check and the lock — return it
+                return $existingCycle;
+            }
 
-        Log::info("QuotaService: Creating on-demand cycle for User #{$user->id} (Plan: {$user->plan->slug}). Limits: " . json_encode($limits));
+            if ($user->plan->essays_limit === 0 && ($user->essay_credits ?? 0) === 0) {
+                Log::info("QuotaService: User #{$user->id} has plan '{$user->plan->slug}' with 0 essay limit and no credits.");
+            }
 
-        return SubscriptionCycle::create([
-            'user_id' => $user->id,
-            'subscription_id' => null, // No formal subscription
-            'start_date' => now(),
-            'end_date' => now()->addMonth(),
-            'limits' => $limits,
-            'has_used_cumulative_bonus' => false
-        ]);
+            $limits = [
+                'simulations' => $user->simulationQuotaLimit() === 0 ? 0 : ($user->simulationQuotaLimit() === 9999 ? 'unlimited' : $user->simulationQuotaLimit()),
+                'essays' => $user->essayQuotaLimit() === 0 ? 0 : ($user->essayQuotaLimit() === 9999 ? 'unlimited' : $user->essayQuotaLimit()),
+                'daily_questions' => $user->dailyQuestionQuotaLimit() === 0 ? 0 : ($user->dailyQuestionQuotaLimit() === 9999 ? 'unlimited' : $user->dailyQuestionQuotaLimit()),
+            ];
+
+            Log::info("QuotaService: Creating on-demand cycle for User #{$user->id} (Plan: {$user->plan->slug}). Limits: " . json_encode($limits));
+
+            return SubscriptionCycle::create([
+                'user_id' => $user->id,
+                'subscription_id' => null, // No formal subscription
+                'start_date' => now(),
+                'end_date' => now()->addMonth(),
+                'limits' => $limits,
+                'has_used_cumulative_bonus' => false
+            ]);
+        });
     }
+
 
 
     /**
