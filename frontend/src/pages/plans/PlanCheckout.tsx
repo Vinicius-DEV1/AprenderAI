@@ -28,6 +28,11 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
     const [couponSuccess, setCouponSuccess] = useState(false);
     const [finalPrice, setFinalPrice] = useState<number>(Number(plan?.price) || 0);
 
+    const isAnnualPlan = plan?.interval === 'yearly';
+    const isInstallment = isAnnualPlan && method === 'credit_card';
+    const annualPrice = Number(plan?.annual_price) || 0;
+    const installmentValue = isInstallment && annualPrice > 0 ? annualPrice / 12 : 0;
+
     const [isLoading, setIsLoading] = useState(false);
     const [checkoutResult, setCheckoutResult] = useState<any>(null);
 
@@ -119,11 +124,14 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
         e.preventDefault();
         setIsLoading(true);
         try {
-            const payload = {
+            const payload: any = {
                 ...formData,
                 payment_method: method,
                 coupon_code: couponSuccess ? couponCode : null
             };
+            if (isInstallment) {
+                payload.installment_count = 12;
+            }
             const response = await processCheckout(plan!.id, payload);
             if (response.data.success) {
                 if (method === 'pix') {
@@ -197,14 +205,29 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                         <div className="mb-6">
                             <span className="text-slate-500 dark:text-slate-400 block text-[11px] font-bold uppercase tracking-wider mb-1">Assinatura Escolhida</span>
                             <h2 className="text-xl font-black text-slate-900 dark:text-white">{plan.name}</h2>
+                            {isInstallment && (
+                                <span className="inline-flex items-center gap-1 mt-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold px-2 py-1 rounded-full uppercase">
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                                    Recebimento Garantido em 12x
+                                </span>
+                            )}
                         </div>
 
                         <div className="mb-6 pb-6 border-b border-slate-200 dark:border-slate-700">
-                            <span className="text-slate-500 dark:text-slate-400 block text-[11px] font-bold uppercase tracking-wider mb-1">Total a Pagar</span>
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-3xl font-black text-slate-900 dark:text-white">R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(finalPrice)}</span>
-                                <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">/{plan.interval === 'yearly' ? 'ano' : 'mês'}</span>
-                            </div>
+                            <span className="text-slate-500 dark:text-slate-400 block text-[11px] font-bold uppercase tracking-wider mb-1">{isInstallment ? 'Parcelamento' : 'Total a Pagar'}</span>
+                            {isInstallment ? (
+                                <>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-3xl font-black text-slate-900 dark:text-white">12x de R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(couponSuccess ? finalPrice / 12 : installmentValue)}</span>
+                                    </div>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Total: R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(couponSuccess ? finalPrice : annualPrice)}</p>
+                                </>
+                            ) : (
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-3xl font-black text-slate-900 dark:text-white">R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(finalPrice)}</span>
+                                    <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">/{plan.interval === 'yearly' ? 'ano' : 'mês'}</span>
+                                </div>
+                            )}
                             {couponSuccess && (
                                 <span className="inline-block mt-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold px-2 py-0.5 rounded">Desconto Aplicado</span>
                             )}
@@ -397,7 +420,10 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                                     ) : (
                                         <>
-                                            Confirmar Assinatura — R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(finalPrice)}
+                                            {isInstallment
+                                                ? `Confirmar 12x de R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(couponSuccess ? finalPrice / 12 : installmentValue)}`
+                                                : `Confirmar Assinatura — R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(finalPrice)}`
+                                            }
                                             <svg className="w-5 h-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                                         </>
                                     )}
