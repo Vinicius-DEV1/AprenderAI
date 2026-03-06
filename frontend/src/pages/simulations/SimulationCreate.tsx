@@ -98,21 +98,21 @@ export default function SimulationCreate() {
     const [selectedEnemMode, setSelectedEnemMode] = useState('mixed');
     const enemModes = [
         { value: 'mixed', label: 'Prova Completa', desc: '45 Mat + 45 Port' },
-        { value: 'math', label: 'SÛ Matem·tica', desc: '90 Questıes' },
-        { value: 'portuguese', label: 'SÛ LÌngua Portuguesa', desc: '90 Questıes' }
+        { value: 'math', label: 'S√≥ Matem√°tica', desc: '90 Quest√µes' },
+        { value: 'portuguese', label: 'S√≥ L√≠ngua Portuguesa', desc: '90 Quest√µes' }
     ];
 
     const getEnemDistribution = () => {
-        if (selectedEnemMode === 'math') return { 'MATEM¡TICA': 90, 'LÕNGUA PORTUGUESA': 0 };
-        if (selectedEnemMode === 'portuguese') return { 'MATEM¡TICA': 0, 'LÕNGUA PORTUGUESA': 90 };
-        return { 'MATEM¡TICA': 45, 'LÕNGUA PORTUGUESA': 45 };
+        if (selectedEnemMode === 'math') return { 'MATEM√ÅTICA': 90, 'L√çNGUA PORTUGUESA': 0 };
+        if (selectedEnemMode === 'portuguese') return { 'MATEM√ÅTICA': 0, 'L√çNGUA PORTUGUESA': 90 };
+        return { 'MATEM√ÅTICA': 45, 'L√çNGUA PORTUGUESA': 45 };
     };
 
     // Concurso State
     const [totalQuestions, setTotalQuestions] = useState(60);
     const [subjects, setSubjects] = useState<{ name: string; qty: number; isManual: boolean }[]>([
-        { name: 'Matem·tica', qty: 30, isManual: false },
-        { name: 'LÌngua Portuguesa', qty: 30, isManual: false }
+        { name: 'Matem√°tica', qty: 30, isManual: false },
+        { name: 'L√≠ngua Portuguesa', qty: 30, isManual: false }
     ]);
 
     // Data from backend for filters
@@ -128,7 +128,7 @@ export default function SimulationCreate() {
                 }
             } catch (e) {
                 // fallback
-                setAvailableSubjects(['Matem·tica', 'LÌngua Portuguesa', 'FÌsica', 'QuÌmica', 'Biologia', 'HistÛria', 'Geografia', 'Direito Constitucional', 'Direito Administrativo', 'Inform·tica']);
+                setAvailableSubjects(['Matem√°tica', 'L√≠ngua Portuguesa', 'F√≠sica', 'Qu√≠mica', 'Biologia', 'Hist√≥ria', 'Geografia', 'Direito Constitucional', 'Direito Administrativo', 'Inform√°tica']);
             }
         };
         fetchSubjects();
@@ -323,7 +323,7 @@ export default function SimulationCreate() {
             <div className="max-w-4xl mx-auto py-8">
                 <div className="mb-8 text-center">
                     <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2">Configurar Simulado</h1>
-                    <p className="text-slate-500">Personalize sua experiÍncia de treino com foco total.</p>
+                    <p className="text-slate-500">Personalize sua experi√™ncia de treino com foco total.</p>
                 </div>
 
                 {error && (
@@ -353,7 +353,7 @@ export default function SimulationCreate() {
                                             <span className="text-xs font-semibold px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">Selecionado</span>
                                         )}
                                     </div>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">Padr„o oficial. 90 questıes fixas (Matem·tica e Linguagens).</p>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">Padr√£o oficial. 90 quest√µes fixas (Matem√°tica e Linguagens).</p>
                                 </div>
                             </label>
 
@@ -371,7 +371,7 @@ export default function SimulationCreate() {
                                             <span className="text-xs font-semibold px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">Selecionado</span>
                                         )}
                                     </div>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">Totalmente flexÌvel. Escolha disciplinas, bancas e quantidade.</p>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">Totalmente flex√≠vel. Escolha disciplinas, bancas e quantidade.</p>
                                 </div>
                             </label>
                         </div>
@@ -385,7 +385,7 @@ export default function SimulationCreate() {
                                     <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                                     </svg>
-                                    Modo de AplicaÁ„o
+                                    Modo de Aplica√ß√£o
                                 </h3>
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -418,7 +418,7 @@ export default function SimulationCreate() {
                                             <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                                             </svg>
-                                            Volume Total de Questıes
+                                            Volume Total de Quest√µes
                                         </label>
                                         <div className="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold px-4 py-1.5 rounded-lg text-xl flex items-center gap-2">
                                             {totalQuestions}
@@ -436,7 +436,7 @@ export default function SimulationCreate() {
                                     />
                                     <div className="flex justify-between text-xs text-slate-400 font-medium px-1">
                                         <span>Curto (10)</span>
-                                        <span>Padr„o (60)</span>
+                                        <span>Padr√£o (60)</span>
                                         <span>Longo (120)</span>
                                     </div>
                                 </div>
@@ -450,7 +450,7 @@ export default function SimulationCreate() {
                                             <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                                             </svg>
-                                            DistribuiÁ„o
+                                            Distribui√ß√£o
                                         </h3>
                                         <div className={`text-sm font-medium px-3 py-1 rounded-full ${totalAllocated === totalQuestions ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
                                             {totalAllocated} / {totalQuestions}
@@ -508,7 +508,7 @@ export default function SimulationCreate() {
 
                                     {totalAllocated !== totalQuestions && (
                                         <div className="mt-4 text-xs font-medium text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/20 p-2.5 rounded-lg border border-amber-200 dark:border-amber-800/50">
-                                            A soma das disciplinas ({totalAllocated}) diverge do volume desejado ({totalQuestions}). RefaÁa a distribuiÁ„o ou ajuste as quantidades.
+                                            A soma das disciplinas ({totalAllocated}) diverge do volume desejado ({totalQuestions}). Refa√ßa a distribui√ß√£o ou ajuste as quantidades.
                                         </div>
                                     )}
                                 </div>
@@ -520,7 +520,7 @@ export default function SimulationCreate() {
                                     <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                                     </svg>
-                                    Filtros EspecÌficos do Edital
+                                    Filtros Espec√≠ficos do Edital
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
@@ -538,7 +538,7 @@ export default function SimulationCreate() {
                                             value={institutions.join(', ')}
                                             onChange={(e) => setInstitutions(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
                                             className="w-full text-sm rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 focus:bg-white focus:border-indigo-500 py-2.5 px-4"
-                                            placeholder="”rg„o (Ex: TRF)"
+                                            placeholder="√ìrg√£o (Ex: TRF)"
                                         />
                                     </div>
                                     <div>
@@ -547,7 +547,7 @@ export default function SimulationCreate() {
                                             value={roles.join(', ')}
                                             onChange={(e) => setRoles(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
                                             className="w-full text-sm rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 focus:bg-white focus:border-indigo-500 py-2.5 px-4"
-                                            placeholder="Cargo (Ex: TÈcnico)"
+                                            placeholder="Cargo (Ex: T√©cnico)"
                                         />
                                     </div>
                                 </div>
@@ -569,7 +569,7 @@ export default function SimulationCreate() {
                                 </div>
                             </div>
                             <div>
-                                <span className="block text-sm font-semibold text-slate-800 dark:text-slate-200">Adicionar RedaÁ„o Extra</span>
+                                <span className="block text-sm font-semibold text-slate-800 dark:text-slate-200">Adicionar Reda√ß√£o Extra</span>
                                 <span className="block text-xs text-slate-500">Gera um tema dissertativo extra</span>
                             </div>
                         </label>
