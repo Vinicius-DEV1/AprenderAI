@@ -10,6 +10,18 @@ class Plan extends Model
 {
     use HasFactory;
 
+    /**
+     * Sentinel value representing an unlimited quota.
+     *
+     * Using 9999 (instead of 0 or null) avoids ambiguity:
+     *   - Plan::UNLIMITED  → unlimited (admin or premium feature)
+     *   - 0                → feature blocked / not included in plan
+     *   - null             → not set (different from unlimited or blocked)
+     *
+     * All quota comparisons across the codebase must use this constant.
+     */
+    public const UNLIMITED = 9999;
+
     protected $fillable = [
         'name',
         'slug',
@@ -50,9 +62,9 @@ class Plan extends Model
     public function isUnlimited(string $feature): bool
     {
         return match ($feature) {
-            'simulations' => $this->simulations_limit === 9999,
-            'essays' => $this->essays_limit === 9999,
-            'daily_questions' => $this->daily_question_limit === 9999,
+            'simulations' => $this->simulations_limit === self::UNLIMITED,
+            'essays' => $this->essays_limit === self::UNLIMITED,
+            'daily_questions' => $this->daily_question_limit === self::UNLIMITED,
             default => false,
         };
     }
@@ -62,3 +74,4 @@ class Plan extends Model
         return in_array($feature, $this->features ?? []);
     }
 }
+

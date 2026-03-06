@@ -119,7 +119,7 @@ class PlanService
 
         $limit = $user->simulationQuotaLimit();
         $used = $user->monthlySimulationUsed();
-        $remaining = ($limit === 9999) ? 'ilimitado' : max(0, $limit - $used);
+        $remaining = ($limit === Plan::UNLIMITED) ? 'ilimitado' : max(0, $limit - $used);
 
         if (!$user->plan && !$user->isAdmin()) {
             return [
@@ -170,7 +170,7 @@ class PlanService
 
         $limit = $user->essayQuotaLimit();
         $used = $user->monthlyEssayUsed();
-        $remaining = ($limit === 9999) ? 'ilimitado' : max(0, $limit - $used);
+        $remaining = ($limit === Plan::UNLIMITED) ? 'ilimitado' : max(0, $limit - $used);
 
         if (!$user->plan && !$user->isAdmin()) {
             return [
@@ -219,7 +219,7 @@ class PlanService
 
         $limit = $user->dailyQuestionQuotaLimit();
         $used = $user->dailyQuestionUsed();
-        $remaining = ($limit === 9999) ? 'ilimitado' : max(0, $limit - $used);
+        $remaining = ($limit === Plan::UNLIMITED) ? 'ilimitado' : max(0, $limit - $used);
 
         if (!$user->plan && !$user->isAdmin()) {
             return [
