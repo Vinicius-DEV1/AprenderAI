@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Jobs\CancelAsaasSubscriptionJob; // Added this line
 
+use Illuminate\Support\Facades\Mail;
+use App\Mail\SubscriptionConfirmedMail;
+
 class ProcessAsaasWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -162,6 +165,20 @@ class ProcessAsaasWebhookJob implements ShouldQueue
                         'plan_started_at' => now(),
                         'plan_expires_at' => $periodEnd,
                     ]);
+
+                    // Send Subscription Confirmation Email
+                    try {
+                        Mail::to($user->email)->send(new SubscriptionConfirmedMail(
+                            $user,
+                            $plan->name,
+                            $plan->features ?? []
+                        ));
+                    } catch (\Exception $e) {
+                        Log::error('[Webhook Job] Falha ao enviar e-mail de confirmação', [
+                            'user_id' => $user->id,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
 
                     try {
                         if ($oldPlanId && $oldPlanId != $plan->id && $oldPlanId != 1) {

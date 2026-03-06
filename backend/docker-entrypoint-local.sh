@@ -68,7 +68,7 @@ if [ -f .env ]; then
     php artisan storage:link --force || true
 
     echo "📂 Rodando migrações de banco..."
-    php artisan migrate --force
+    php artisan migrate --force || true
 
     echo "🧹 Limpando caches de desenvolvimento..."
     php artisan config:clear
