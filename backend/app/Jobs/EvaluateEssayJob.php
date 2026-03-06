@@ -16,9 +16,10 @@ class EvaluateEssayJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $essay;
+    public $queue = 'ai-batches';
 
     public $tries = 5;
-    public $timeout = 120;
+    public $timeout = 360; // Increased to be > AIService HTTP timeout (300s)
 
     public function __construct(Essay $essay)
     {
