@@ -36,7 +36,7 @@ export default function Coupons() {
     if (isLoading) return <AdminPageSkeleton />;
 
     const coupons = data?.data || [];
-    const meta = data?.meta || { last_page: 1, current_page: 1 };
+    const meta = data || { last_page: 1, current_page: 1 };
 
     return (
         <div className="py-6 px-4 md:px-6 w-full animate-in fade-in duration-500">

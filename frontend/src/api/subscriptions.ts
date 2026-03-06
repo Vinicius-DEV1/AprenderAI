@@ -19,3 +19,7 @@ export const getSubscriptions = () => {
 export const getPaymentReceipt = (subscriptionId: number | string) => {
     return axios.get(`/api/v1/subscriptions/${subscriptionId}/receipt`);
 };
+
+export const getUpgradePreview = (planId: number | string) => {
+    return axios.get(`/api/v1/subscriptions/${planId}/upgrade-preview`);
+};

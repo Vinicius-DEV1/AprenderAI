@@ -85,6 +85,168 @@ class SubscriptionController extends Controller
 
         $user = Auth::user();
 
+        // ── GUARD: Detectar assinatura parcelada ativa para upgrade/downgrade ──
+        $activeInstallment = Subscription::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->whereNotNull('installment_count')
+            ->where('current_period_end', '>', now())
+            ->with('plan')
+            ->first();
+
+        if ($activeInstallment) {
+            $currentPlanPrice = (float) $activeInstallment->plan->annual_price;
+            $newPlanPrice = (float) $plan->annual_price;
+
+            // BLOQUEAR DOWNGRADE: plano novo tem preço <= atual
+            if ($newPlanPrice <= $currentPlanPrice) {
+                return response()->json([
+                    'message' => 'Você possui um plano anual parcelado ativo até ' .
+                        $activeInstallment->current_period_end->format('d/m/Y') .
+                        '. Não é possível fazer downgrade durante este período.'
+                ], 400);
+            }
+
+            // UPGRADE PRO-RATA: cobrar diferença parcelada nos meses restantes
+            $remainingMonths = (int) ceil(now()->diffInDays($activeInstallment->current_period_end) / 30);
+            $remainingMonths = max(1, min(12, $remainingMonths));
+
+            $currentMonthly = $currentPlanPrice / 12;
+            $newMonthly = $newPlanPrice / 12;
+            $deltaPerMonth = round($newMonthly - $currentMonthly, 2);
+            $upgradeTotal = round($deltaPerMonth * $remainingMonths, 2);
+
+            if ($upgradeTotal <= 0) {
+                return response()->json(['message' => 'Valor do upgrade calculado como zero ou negativo.'], 400);
+            }
+
+            if (!in_array($request->payment_method, ['credit_card', 'pix'])) {
+                return response()->json(['message' => 'Método de pagamento inválido para upgrade.'], 400);
+            }
+
+            // A flag is_installment no request define se o usuário escolheu parcelar ou pagar à vista
+            $isInstallmentUpgrade = $request->payment_method === 'credit_card' && filter_var($request->is_installment, FILTER_VALIDATE_BOOLEAN);
+
+            try {
+                $cardData = [
+                    'cpf' => $request->cpf,
+                    'holder_name' => $request->card_name,
+                    'number' => $request->card_number,
+                    'expiry_month' => $request->card_expiry_month,
+                    'expiry_year' => $request->card_expiry_year,
+                    'ccv' => $request->card_ccv,
+                    'postal_code' => $request->postal_code,
+                    'address_number' => $request->address_number,
+                    'phone' => $request->phone,
+                ];
+
+                $idempotencyKey = md5($user->id . '_upgrade_' . $plan->id . '_' . now()->format('Y-m-d H:i'));
+
+                if ($isInstallmentUpgrade) {
+                    // Criar um plano "virtual" com o preço delta para reusar createInstallmentPayment
+                    $upgradePlan = new \stdClass();
+                    $upgradePlan->name = "Upgrade {$activeInstallment->plan->name} → {$plan->name}";
+                    $upgradePlan->annual_price = $upgradeTotal;
+                    $upgradePlan->id = $plan->id;
+
+                    $asaasPayment = $this->asaasService->createInstallmentPayment(
+                        $user,
+                        $upgradePlan,
+                        $remainingMonths,
+                        'credit_card',
+                        $cardData,
+                        null,
+                        null,
+                        $idempotencyKey
+                    );
+                    $upgradeGatewayId = $asaasPayment['installment'] ?? $asaasPayment['id'];
+                    $billingType = 'installment';
+                } else {
+                    $description = "Upgrade Pro-rata: {$activeInstallment->plan->name} → {$plan->name}";
+                    $asaasPayment = $this->asaasService->createSinglePayment(
+                        $user,
+                        $upgradeTotal,
+                        $description,
+                        $request->payment_method,
+                        $cardData,
+                        null,
+                        $idempotencyKey
+                    );
+                    $upgradeGatewayId = $asaasPayment['id'];
+                    $billingType = $request->payment_method === 'pix' ? 'pix' : 'credit_card';
+                }
+
+                // Atualizar a subscription existente para o novo plano
+                $activeInstallment->update([
+                    'plan_id' => $plan->id,
+                    'amount' => (float) $plan->annual_price,
+                ]);
+
+                // Atualizar o user para o novo plano
+                $user->update([
+                    'plan_id' => $plan->id,
+                ]);
+
+                // Criar subscription de upgrade para rastrear o pagamento delta
+                Subscription::create([
+                    'user_id' => $user->id,
+                    'plan_id' => $plan->id,
+                    'status' => 'pending',
+                    'gateway' => 'asaas',
+                    'gateway_id' => $upgradeGatewayId,
+                    'billing_type' => $billingType,
+                    'installment_count' => $isInstallmentUpgrade ? $remainingMonths : null,
+                    'amount' => $upgradeTotal,
+                    'current_period_start' => now(),
+                    'current_period_end' => $activeInstallment->current_period_end,
+                ]);
+
+                PaymentLog::create([
+                    'user_id' => $user->id,
+                    'gateway' => 'asaas',
+                    'gateway_payment_id' => $asaasPayment['id'] ?? null,
+                    'gateway_subscription_id' => $upgradeGatewayId,
+                    'event' => $isInstallmentUpgrade ? 'CHECKOUT_UPGRADE_INSTALLMENT' : 'CHECKOUT_UPGRADE_SINGLE',
+                    'status' => 'success',
+                    'raw_response' => PaymentLog::sanitize($asaasPayment),
+                ]);
+
+                Log::info('[API Checkout] Upgrade pro-rata processado com sucesso.', [
+                    'user_id' => $user->id,
+                    'from_plan' => $activeInstallment->plan->name,
+                    'to_plan' => $plan->name,
+                    'delta_total' => $upgradeTotal,
+                    'remaining_months' => $remainingMonths,
+                    'payment_method' => $request->payment_method,
+                    'is_installment' => $isInstallmentUpgrade,
+                ]);
+
+                $responseData = [
+                    'success' => true,
+                    'upgrade' => true,
+                    'payment_method' => $request->payment_method,
+                ];
+
+                if ($request->payment_method === 'pix') {
+                    $pixData = $this->asaasService->getPixQrCode($asaasPayment['id']);
+                    $responseData['pix'] = [
+                        'payload' => $pixData['payload'] ?? '',
+                        'image' => $pixData['encodedImage'] ?? '',
+                        'expirationDate' => $pixData['expirationDate'] ?? '',
+                    ];
+                }
+
+                return response()->json($responseData);
+
+            } catch (\Exception $e) {
+                Log::error('[API Checkout] Erro no upgrade pro-rata', [
+                    'user_id' => $user->id,
+                    'plan_id' => $plan->id,
+                    'error' => $e->getMessage(),
+                ]);
+                return response()->json(['message' => 'Erro ao processar upgrade: ' . $e->getMessage()], 500);
+            }
+        }
+
         // Evita duplicidade apenas se o usuário já tem EXATAMENTE o mesmo plano ativo
         // Isso permite upgrades, downgrades ou mudanças para planos diferentes.
         if ($user->plan_id === $plan->id && $user->plan_expires_at && $user->plan_expires_at->isFuture()) {
@@ -122,73 +284,132 @@ class SubscriptionController extends Controller
             // A idempotência aqui é baseada no tempo atualizado num espaço de 1 minuto, previnindo cliques seguidos do mesmo usuário para o mesmo pacote.
             $idempotencyKey = md5($user->id . '_' . $plan->id . '_' . $request->payment_method . '_' . now()->format('Y-m-d H:i'));
 
-            try {
-                // Tentativa normal de criar assinatura
-                $asaasSubscription = $this->asaasService->createSubscription(
-                    $user,
-                    $plan,
-                    $request->payment_method,
-                    $cardData,
-                    $discount,
-                    null,
-                    $idempotencyKey
-                );
-            } catch (\Exception $asaasEx) {
-                // Estratégia de Fallback (Ghost Customer) se o Asaas barrar por "Assinatura Única"
-                $errorMsg = strtolower($asaasEx->getMessage());
-                $isDuplicateError = str_contains($errorMsg, 'assinatura') || str_contains($errorMsg, 'já possui') || str_contains($errorMsg, 'uma transação');
+            $isInstallment = $plan->isInstallmentEligible() && $request->payment_method === 'credit_card';
 
-                if ($isDuplicateError) {
-                    Log::warning('[Asaas] Bloqueado por limite de assinaturas. Executando estratégia Ghost Customer.', [
-                        'user_id' => $user->id,
-                        'error' => $errorMsg
-                    ]);
+            if ($isInstallment) {
+                // ── FLUXO PARCELADO (Plano Anual + Cartão) ──
+                $installmentCount = 12;
 
-                    // 1. Criamos um cliente secundário, desvinculado das amarras do cliente primário
-                    $ghostCustomerId = $this->asaasService->createGhostCustomer($user, $cardData['cpf'] ?? null);
+                try {
+                    $asaasPayment = $this->asaasService->createInstallmentPayment(
+                        $user,
+                        $plan,
+                        $installmentCount,
+                        $request->payment_method,
+                        $cardData,
+                        $discount,
+                        null,
+                        $idempotencyKey
+                    );
+                } catch (\Exception $asaasEx) {
+                    $errorMsg = strtolower($asaasEx->getMessage());
+                    $isDuplicateError = str_contains($errorMsg, 'assinatura') || str_contains($errorMsg, 'já possui') || str_contains($errorMsg, 'uma transação');
 
-                    // 2. Tentamos assinar obrigando o uso desse cliente novo
+                    if ($isDuplicateError) {
+                        Log::warning('[Asaas] Bloqueado por limite. Tentando Ghost Customer (installment).', ['user_id' => $user->id]);
+                        $ghostCustomerId = $this->asaasService->createGhostCustomer($user, $cardData['cpf'] ?? null);
+                        $asaasPayment = $this->asaasService->createInstallmentPayment(
+                            $user,
+                            $plan,
+                            $installmentCount,
+                            $request->payment_method,
+                            $cardData,
+                            $discount,
+                            $ghostCustomerId,
+                            $idempotencyKey
+                        );
+                    } else {
+                        throw $asaasEx;
+                    }
+                }
+
+                // O Asaas retorna 'installment' como ID agrupador das parcelas
+                $gatewayId = $asaasPayment['installment'] ?? $asaasPayment['id'];
+
+                $subscription = Subscription::create([
+                    'user_id' => $user->id,
+                    'plan_id' => $plan->id,
+                    'status' => 'pending',
+                    'gateway' => 'asaas',
+                    'gateway_id' => $gatewayId,
+                    'billing_type' => 'installment',
+                    'installment_count' => $installmentCount,
+                    'amount' => $plan->annual_price,
+                    'current_period_start' => now(),
+                    'current_period_end' => now()->addYear(),
+                ]);
+
+                PaymentLog::create([
+                    'user_id' => $user->id,
+                    'gateway' => 'asaas',
+                    'gateway_payment_id' => $asaasPayment['id'] ?? null,
+                    'gateway_subscription_id' => $gatewayId,
+                    'event' => 'CHECKOUT_INSTALLMENT',
+                    'status' => 'success',
+                    'raw_response' => PaymentLog::sanitize($asaasPayment),
+                ]);
+
+            } else {
+                // ── FLUXO RECORRÊNCIA (Mensal ou Anual PIX) ──
+                try {
                     $asaasSubscription = $this->asaasService->createSubscription(
                         $user,
                         $plan,
                         $request->payment_method,
                         $cardData,
                         $discount,
-                        $ghostCustomerId,
+                        null,
                         $idempotencyKey
                     );
+                } catch (\Exception $asaasEx) {
+                    $errorMsg = strtolower($asaasEx->getMessage());
+                    $isDuplicateError = str_contains($errorMsg, 'assinatura') || str_contains($errorMsg, 'já possui') || str_contains($errorMsg, 'uma transação');
 
-                    // Se passar daqui, o Webhook fará a limpeza da assinatura antiga do ID velho automaticamente depois
-                    Log::info('[Asaas] Estratégia Ghost Customer bem sucedida.', ['new_customer_id' => $ghostCustomerId]);
-                } else {
-                    // Erro normal (ex: Saldo insuficiente, Cartão recusado)
-                    throw $asaasEx;
+                    if ($isDuplicateError) {
+                        Log::warning('[Asaas] Bloqueado por limite de assinaturas. Executando estratégia Ghost Customer.', [
+                            'user_id' => $user->id,
+                            'error' => $errorMsg
+                        ]);
+                        $ghostCustomerId = $this->asaasService->createGhostCustomer($user, $cardData['cpf'] ?? null);
+                        $asaasSubscription = $this->asaasService->createSubscription(
+                            $user,
+                            $plan,
+                            $request->payment_method,
+                            $cardData,
+                            $discount,
+                            $ghostCustomerId,
+                            $idempotencyKey
+                        );
+                        Log::info('[Asaas] Estratégia Ghost Customer bem sucedida.', ['new_customer_id' => $ghostCustomerId]);
+                    } else {
+                        throw $asaasEx;
+                    }
                 }
+
+                $subscription = Subscription::create([
+                    'user_id' => $user->id,
+                    'plan_id' => $plan->id,
+                    'status' => 'pending',
+                    'gateway' => 'asaas',
+                    'gateway_id' => $asaasSubscription['id'],
+                    'amount' => $plan->price,
+                    'current_period_start' => now(),
+                    'current_period_end' => $plan->interval === 'yearly' ? now()->addYear() : now()->addMonth(),
+                ]);
+
+                PaymentLog::create([
+                    'user_id' => $user->id,
+                    'gateway' => 'asaas',
+                    'gateway_subscription_id' => $asaasSubscription['id'],
+                    'event' => 'CHECKOUT_' . strtoupper($request->payment_method),
+                    'status' => 'success',
+                    'raw_response' => PaymentLog::sanitize($asaasSubscription),
+                ]);
             }
-
-            $subscription = Subscription::create([
-                'user_id' => $user->id,
-                'plan_id' => $plan->id,
-                'status' => 'pending',
-                'gateway' => 'asaas',
-                'gateway_id' => $asaasSubscription['id'],
-                'amount' => $plan->price,
-                'current_period_start' => now(),
-                'current_period_end' => $plan->interval === 'yearly' ? now()->addYear() : now()->addMonth(),
-            ]);
-
-            PaymentLog::create([
-                'user_id' => $user->id,
-                'gateway' => 'asaas',
-                'gateway_subscription_id' => $asaasSubscription['id'],
-                'event' => 'CHECKOUT_' . strtoupper($request->payment_method),
-                'status' => 'success',
-                'raw_response' => PaymentLog::sanitize($asaasSubscription),
-            ]);
 
             if ($coupon && $discount) {
                 $coupon->increment('used_count');
-                $coupon->users()->attach($user->id, ['order_id' => $asaasSubscription['id']]);
+                $coupon->users()->attach($user->id, ['order_id' => $subscription->gateway_id]);
             }
 
             $responseData = [
@@ -197,8 +418,9 @@ class SubscriptionController extends Controller
                 'payment_method' => $request->payment_method,
             ];
 
-            if ($request->payment_method === 'pix') {
-                $payment = $this->asaasService->getFirstPendingPayment($asaasSubscription['id']);
+            // PIX flow — somente para recorrência (parcelamento não suporta PIX)
+            if (!$isInstallment && $request->payment_method === 'pix') {
+                $payment = $this->asaasService->getFirstPendingPayment($subscription->gateway_id);
                 if ($payment) {
                     $pixData = $this->asaasService->getPixQrCode($payment['id']);
                     if ($pixData) {
@@ -241,6 +463,58 @@ class SubscriptionController extends Controller
 
             return response()->json(['message' => 'Erro ao processar pagamento: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Retorna preview do custo de upgrade pro-rata para planos parcelados.
+     */
+    public function upgradePreview(Plan $plan)
+    {
+        $user = Auth::user();
+
+        $activeInstallment = Subscription::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->whereNotNull('installment_count')
+            ->where('current_period_end', '>', now())
+            ->with('plan')
+            ->first();
+
+        if (!$activeInstallment) {
+            return response()->json(['has_active_installment' => false]);
+        }
+
+        $currentPlanPrice = (float) $activeInstallment->plan->annual_price;
+        $newPlanPrice = (float) $plan->annual_price;
+
+        if ($newPlanPrice <= $currentPlanPrice) {
+            return response()->json([
+                'has_active_installment' => true,
+                'is_downgrade' => true,
+                'blocked' => true,
+                'message' => 'Não é possível fazer downgrade durante plano anual parcelado.',
+                'current_plan_name' => $activeInstallment->plan->name,
+                'expires_at' => $activeInstallment->current_period_end->format('d/m/Y'),
+            ]);
+        }
+
+        $remainingMonths = (int) ceil(now()->diffInDays($activeInstallment->current_period_end) / 30);
+        $remainingMonths = max(1, min(12, $remainingMonths));
+
+        $currentMonthly = $currentPlanPrice / 12;
+        $newMonthly = $newPlanPrice / 12;
+        $deltaPerMonth = round($newMonthly - $currentMonthly, 2);
+        $upgradeTotal = round($deltaPerMonth * $remainingMonths, 2);
+
+        return response()->json([
+            'has_active_installment' => true,
+            'is_upgrade' => true,
+            'current_plan_name' => $activeInstallment->plan->name,
+            'new_plan_name' => $plan->name,
+            'remaining_months' => $remainingMonths,
+            'delta_per_month' => $deltaPerMonth,
+            'upgrade_total' => $upgradeTotal,
+            'expires_at' => $activeInstallment->current_period_end->format('d/m/Y'),
+        ]);
     }
 
     /**
