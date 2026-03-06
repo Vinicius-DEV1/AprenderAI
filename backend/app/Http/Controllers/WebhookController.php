@@ -28,26 +28,36 @@ class WebhookController extends Controller
         $receivedToken = $request->header('asaas-access-token', '');
 
         $isValid = false;
+        $isSandbox = false;
+
         if (!empty($productionToken) && hash_equals($productionToken, $receivedToken)) {
             $isValid = true;
+            $isSandbox = false;
         } elseif (!empty($sandboxToken) && hash_equals($sandboxToken, $receivedToken)) {
             $isValid = true;
+            $isSandbox = true;
         }
 
-        if (!$isValid && (!empty($productionToken) || !empty($sandboxToken))) {
-            Log::warning('[Webhook] Token inválido recebido', [
+        // SECURITY: Always reject if token is invalid — no exceptions.
+        // The previous code had a bypass: if BOTH tokens were empty, the webhook
+        // would accept ANY payload, allowing fake payment fraud.
+        if (!$isValid) {
+            Log::warning('[Webhook] Token inválido ou ausente', [
                 'ip' => $request->ip(),
                 'received_token' => $receivedToken ? substr($receivedToken, 0, 8) . '...' : null,
+                'production_token_configured' => !empty($productionToken),
+                'sandbox_token_configured' => !empty($sandboxToken),
             ]);
             return response()->json(['status' => 'unauthorized'], 403);
         }
 
         // ---- 2. Extrair dados e despachar para fila (Async) -------------
         $data = $request->all();
+        $data['is_sandbox_webhook'] = $isSandbox; // Injected for the Job to know
         $event = $data['event'] ?? null;
         $paymentId = $data['payment']['id'] ?? null;
 
-        Log::info('[Webhook] Recebido e enfileirado', ['event' => $event, 'payment_id' => $paymentId]);
+        Log::info('[Webhook] Recebido e enfileirado', ['event' => $event, 'payment_id' => $paymentId, 'is_sandbox' => $isSandbox]);
 
         dispatch(new \App\Jobs\ProcessAsaasWebhookJob($data));
 

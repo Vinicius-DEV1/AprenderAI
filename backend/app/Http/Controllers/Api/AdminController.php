@@ -15,9 +15,10 @@ class AdminController extends Controller
     public function dashboard()
     {
         // 1. KPIs
-        $activeSubscriptions = Subscription::where('status', 'active')->count();
+        $activeSubscriptions = Subscription::where('status', 'active')->paid()->count();
 
         $revenue = Subscription::where('status', 'active')
+            ->paid()
             ->join('plans', 'subscriptions.plan_id', '=', 'plans.id')
             ->sum('plans.price');
 
@@ -38,6 +39,7 @@ class AdminController extends Controller
             $months->push($date->format('M/Y'));
             $subscriptionsGrowth->push(
                 Subscription::where('created_at', '<=', $date->endOfMonth())
+                    ->paid()
                     ->where(function ($query) use ($date) {
                         $query->whereNull('canceled_at')
                             ->orWhere('canceled_at', '>', $date->endOfMonth());
@@ -47,8 +49,8 @@ class AdminController extends Controller
         }
 
         $userStats = [
-            'active' => User::whereHas('subscriptions', fn($q) => $q->where('status', 'active'))->count(),
-            'inactive' => User::doesntHave('subscriptions')->count(),
+            'active' => User::whereHas('subscriptions', fn($q) => $q->where('status', 'active')->paid())->count(),
+            'inactive' => User::doesntHave('subscriptions', 'and', fn($q) => $q->where('status', 'active')->paid())->count(),
         ];
 
         // 3. Activity Feed
@@ -66,9 +68,12 @@ class AdminController extends Controller
         });
 
         $latestSubs = Subscription::with(['user', 'plan'])->latest()->take(5)->get()->map(function ($sub) {
+            $typeString = $sub->is_manual_grant ? 'ganhou o plano' : 'assinou o plano';
+            if ($sub->is_sandbox)
+                $typeString .= ' (Sandbox)';
             return [
                 'type' => 'subscription',
-                'message' => ($sub->user->name ?? 'Usuário') . " assinou o plano " . ($sub->plan->name ?? 'Grátis'),
+                'message' => ($sub->user->name ?? 'Usuário') . " {$typeString} " . ($sub->plan->name ?? 'Grátis'),
                 'created_at' => $sub->created_at->toIso8601String(),
                 'user' => [
                     'id' => $sub->user->id ?? 0,

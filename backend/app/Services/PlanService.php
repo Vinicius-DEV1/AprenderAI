@@ -36,6 +36,70 @@ class PlanService
         ]);
     }
 
+    /**
+     * Grant a plan manually to a user (Admin feature).
+     */
+    public function grantPlanToUser(
+        User $user,
+        Plan $plan,
+        int $adminId,
+        string $durationType,
+        int $durationValue,
+        ?string $reason = null
+    ): \App\Models\Subscription {
+        // 1. Cancel previous manual grants for this user if they exist
+        $user->subscriptions()
+            ->where('is_manual_grant', true)
+            ->where('status', 'active')
+            ->update([
+                'status' => 'canceled',
+                'canceled_at' => now()
+            ]);
+
+        // 2. Calculate expiration
+        $expiresAt = now();
+        if ($durationType === 'days') {
+            $expiresAt->addDays($durationValue);
+        } else {
+            $expiresAt->addMonths($durationValue);
+        }
+
+        // 3. Create the manual grant subscription
+        $subscription = \App\Models\Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'status' => 'active', // Grants are immediately active
+            'is_manual_grant' => true,
+            'is_sandbox' => false,
+            'granted_by' => $adminId,
+            'granted_reason' => $reason,
+            'gateway' => 'manual_grant',
+            'amount' => 0.00,
+            'current_period_start' => now(),
+            'current_period_end' => $expiresAt,
+        ]);
+
+        // 4. Update user only if the grant gives them more time or they don't have an active paid plan
+        $hasActivePaid = $user->subscriptions()
+            ->where('is_manual_grant', false)
+            ->where('status', 'active')
+            ->where('current_period_end', '>', now())
+            ->exists();
+
+        if (!$hasActivePaid || !$user->plan_expires_at || $user->plan_expires_at < $expiresAt) {
+            $user->update([
+                'plan_id' => $plan->id,
+                'plan_started_at' => now(),
+                'plan_expires_at' => $expiresAt,
+            ]);
+        }
+
+        // 5. Create the quota cycle representing this new grant
+        app(\App\Services\QuotaService::class)->createOrRenewCycle($subscription);
+
+        return $subscription;
+    }
+
     // =========================================================================
     // SIMULATION LIMIT CHECK
     // =========================================================================
@@ -55,7 +119,7 @@ class PlanService
 
         $limit = $user->simulationQuotaLimit();
         $used = $user->monthlySimulationUsed();
-        $remaining = ($limit === 9999) ? 'ilimitado' : max(0, $limit - $used);
+        $remaining = ($limit === Plan::UNLIMITED) ? 'ilimitado' : max(0, $limit - $used);
 
         if (!$user->plan && !$user->isAdmin()) {
             return [
@@ -106,7 +170,7 @@ class PlanService
 
         $limit = $user->essayQuotaLimit();
         $used = $user->monthlyEssayUsed();
-        $remaining = ($limit === 9999) ? 'ilimitado' : max(0, $limit - $used);
+        $remaining = ($limit === Plan::UNLIMITED) ? 'ilimitado' : max(0, $limit - $used);
 
         if (!$user->plan && !$user->isAdmin()) {
             return [
@@ -155,7 +219,7 @@ class PlanService
 
         $limit = $user->dailyQuestionQuotaLimit();
         $used = $user->dailyQuestionUsed();
-        $remaining = ($limit === 9999) ? 'ilimitado' : max(0, $limit - $used);
+        $remaining = ($limit === Plan::UNLIMITED) ? 'ilimitado' : max(0, $limit - $used);
 
         if (!$user->plan && !$user->isAdmin()) {
             return [

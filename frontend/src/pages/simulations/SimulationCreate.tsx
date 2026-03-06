@@ -1,7 +1,88 @@
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createSimulation } from '../../api/simulations';
 import QuotaLimitModal from '../../components/QuotaLimitModal';
+import api from '../../api/axios';
+import { motion, AnimatePresence } from 'framer-motion';
+
+// --- Subject Search Component ---
+function SubjectSearch({ availableSubjects, onSelect }: { availableSubjects: string[], onSelect: (sub: string) => void }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [search, setSearch] = useState('');
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    const filteredOptions = availableSubjects.filter(sub => 
+        sub.toLowerCase().includes(search.toLowerCase())
+    );
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleSelect = (sub: string) => {
+        onSelect(sub);
+        setIsOpen(false);
+        setSearch('');
+    };
+
+    return (
+        <div className="relative" ref={containerRef}>
+            <div 
+                className={`flex items-center gap-2 px-4 py-3 bg-white dark:bg-slate-900 border rounded-xl cursor-text transition-all duration-200 ${isOpen ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-700'}`}
+                onClick={() => setIsOpen(true)}
+            >
+                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input 
+                    type="text" 
+                    placeholder="Adicionar disciplina..." 
+                    className="flex-1 bg-transparent border-none p-0 focus:ring-0 text-sm font-medium text-slate-700 dark:text-slate-200 placeholder-slate-400"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onFocus={() => setIsOpen(true)}
+                />
+            </div>
+
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute z-50 w-full mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto"
+                    >
+                        {filteredOptions.length > 0 ? (
+                            filteredOptions.map((sub, idx) => (
+                                <div
+                                    key={idx}
+                                    onClick={() => handleSelect(sub)}
+                                    className="px-4 py-3 text-sm cursor-pointer transition-colors text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 flex items-center gap-2"
+                                >
+                                    <div className="w-6 h-6 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
+                                        {sub.charAt(0)}
+                                    </div>
+                                    {sub}
+                                </div>
+                            ))
+                        ) : (
+                            <div className="px-4 py-6 text-center text-sm text-slate-500 italic">
+                                Nenhuma disciplina encontrada
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+
 
 export default function SimulationCreate() {
     const navigate = useNavigate();
@@ -29,39 +110,118 @@ export default function SimulationCreate() {
 
     // Concurso State
     const [totalQuestions, setTotalQuestions] = useState(60);
-    const [subjects, setSubjects] = useState<{ name: string; qty: number }[]>([
-        { name: 'Matemática', qty: 30 },
-        { name: 'Língua Portuguesa', qty: 30 }
+    const [subjects, setSubjects] = useState<{ name: string; qty: number; isManual: boolean }[]>([
+        { name: 'Matemática', qty: 30, isManual: false },
+        { name: 'Língua Portuguesa', qty: 30, isManual: false }
     ]);
+
+    // Data from backend for filters
+    const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
+    
+    useEffect(() => {
+        const fetchSubjects = async () => {
+            try {
+                const res = await api.get('/api/v1/questions/subjects?type=concurso');
+                // The API returns an array of objects like { id: "Biologia", name: "Biologia" } or just strings.
+                if (res.data && Array.isArray(res.data)) {
+                    setAvailableSubjects(res.data.map((item: any) => typeof item === 'string' ? item : item.name));
+                }
+            } catch (e) {
+                // fallback
+                setAvailableSubjects(['Matemática', 'Língua Portuguesa', 'Física', 'Química', 'Biologia', 'História', 'Geografia', 'Direito Constitucional', 'Direito Administrativo', 'Informática']);
+            }
+        };
+        fetchSubjects();
+    }, []);
 
     // Filters State
     const [organizations, setOrganizations] = useState<string[]>([]);
     const [institutions, setInstitutions] = useState<string[]>([]);
     const [roles, setRoles] = useState<string[]>([]);
-    const [filtersExpanded, setFiltersExpanded] = useState(false);
 
     const [includeEssay, setIncludeEssay] = useState(false);
 
-    // Computed
-    const totalAllocated = subjects.reduce((sum, sub) => sum + (Number(sub.qty) || 0), 0);
-    const isValid = type === 'enem' || totalAllocated === totalQuestions;
+    // --- Auto-Balancing Logic ---
+    const rebalance = (currentSubjects: { name: string; qty: number; isManual: boolean }[], newTotal: number) => {
+        if (currentSubjects.length === 0) return currentSubjects;
 
-    // Handlers
-    const handleAddSubject = () => {
-        setSubjects([...subjects, { name: '', qty: 0 }]);
+        let lockedSum = 0;
+        let flexibleCount = 0;
+
+        // Count what is locked vs flexible
+        currentSubjects.forEach(sub => {
+            if (sub.isManual) {
+                lockedSum += sub.qty;
+            } else {
+                flexibleCount++;
+            }
+        });
+
+        // If manual inputs exceed total OR nothing is flexible, unlock everything to prevent freezing
+        if (lockedSum >= newTotal || flexibleCount === 0) {
+            currentSubjects = currentSubjects.map(sub => ({ ...sub, isManual: false }));
+            lockedSum = 0;
+            flexibleCount = currentSubjects.length;
+        }
+
+        const remainingQty = Math.max(0, newTotal - lockedSum);
+        const baseShare = Math.floor(remainingQty / flexibleCount);
+        let remainder = remainingQty % flexibleCount;
+
+        return currentSubjects.map(sub => {
+            if (sub.isManual) return sub;
+            let qty = baseShare;
+            if (remainder > 0) {
+                qty++;
+                remainder--;
+            }
+            return { ...sub, qty };
+        });
     };
 
+    // When total changes
+    const handleTotalChange = (newTotal: number) => {
+        setTotalQuestions(newTotal);
+        setSubjects(prev => rebalance(prev, newTotal));
+    };
+
+    // When adding a new subject
+    const handleAddSubject = (name: string) => {
+        if (subjects.some(s => s.name.toLowerCase() === name.toLowerCase())) return; // Avoid duplicates
+        
+        const newSubjects = [...subjects, { name, qty: 0, isManual: false }];
+        setSubjects(rebalance(newSubjects, totalQuestions));
+    };
+
+    // When removing a subject
     const handleRemoveSubject = (index: number) => {
-        if (subjects.length > 1) {
-            setSubjects(subjects.filter((_, i) => i !== index));
+        const newSubjects = subjects.filter((_, i) => i !== index);
+        setSubjects(rebalance(newSubjects, totalQuestions));
+    };
+
+    // When manually changing a subject's quantity
+    const handleSubjectQtyChange = (index: number, newQty: number) => {
+        let safeQty = Math.min(Math.max(1, newQty), totalQuestions);
+        
+        const updatedSubjects = subjects.map((sub, i) => {
+            if (i === index) return { ...sub, qty: safeQty, isManual: true };
+            return sub;
+        });
+
+        // Enforce total max
+        const totalNow = updatedSubjects.reduce((sum, s) => sum + s.qty, 0);
+        if (totalNow > totalQuestions) {
+            // Need to reduce others to compensate. Let rebalance handle it by unlocking everything except the one just changed if needed
+            setSubjects(rebalance(updatedSubjects, totalQuestions));
+        } else {
+            // Valid manual change, but we have leftovers. Let's auto-fill non-manual ones or unlock something
+            setSubjects(rebalance(updatedSubjects, totalQuestions));
         }
     };
 
-    const handleSubjectChange = (index: number, field: 'name' | 'qty', value: string | number) => {
-        const newSubjects = [...subjects];
-        newSubjects[index] = { ...newSubjects[index], [field]: value };
-        setSubjects(newSubjects);
-    };
+    // Computed
+    const totalAllocated = subjects.reduce((sum, sub) => sum + (Number(sub.qty) || 0), 0);
+    const isValid = type === 'enem' || (totalAllocated === totalQuestions && subjects.length > 0);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -106,7 +266,8 @@ export default function SimulationCreate() {
         }
     };
 
-    const availableSubjects = ['Matemática', 'Língua Portuguesa', 'Física', 'Química', 'Biologia', 'História', 'Geografia'];
+    // Filter out already selected subjects for the dropdown
+    const unselectedSubjects = availableSubjects.filter(sub => !subjects.some(s => s.name === sub));
 
     return (
         <>
@@ -173,14 +334,14 @@ export default function SimulationCreate() {
 
                 <form onSubmit={handleSubmit} className="glass-card rounded-2xl p-6 md:p-10">
                     {/* Type Selector */}
-                    <div className="mb-10">
+                    <div className="mb-8">
                         <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 uppercase tracking-wider">
                             Tipo de Prova
                         </label>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <label
                                 className={`relative flex items-center p-4 cursor-pointer rounded-xl border-2 transition-all duration-200 ${type === 'enem'
-                                    ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20'
+                                    ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 shadow-sm'
                                     : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                                     }`}
                                 onClick={() => setType('enem')}
@@ -198,7 +359,7 @@ export default function SimulationCreate() {
 
                             <label
                                 className={`relative flex items-center p-4 cursor-pointer rounded-xl border-2 transition-all duration-200 ${type === 'concurso'
-                                    ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20'
+                                    ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 shadow-sm'
                                     : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                                     }`}
                                 onClick={() => setType('concurso')}
@@ -247,178 +408,156 @@ export default function SimulationCreate() {
                     {/* Concurso Configuration */}
                     {type === 'concurso' && (
                         <div className="animate-fade-in-up">
-                            {/* Question Slider */}
-                            <div className="mb-10 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                                <div className="flex justify-between items-end mb-6">
-                                    <label className="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
-                                        <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                                        </svg>
-                                        Volume de Questões
-                                    </label>
-                                    <span className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{totalQuestions} questões</span>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="5"
-                                    max="120"
-                                    step="5"
-                                    value={totalQuestions}
-                                    onChange={(e) => setTotalQuestions(Number(e.target.value))}
-                                    className="mb-2"
-                                />
-                                <div className="flex justify-between text-xs text-slate-400 font-medium px-1">
-                                    <span>5</span>
-                                    <span>60</span>
-                                    <span>120</span>
-                                </div>
-                            </div>
-
-                            {/* Dynamic Subject Selector */}
-                            <div className="mb-10">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="font-semibold text-slate-800 dark:text-white uppercase tracking-wider text-sm">Distribuição de Disciplinas</h3>
-                                    <div className={`text-sm font-medium ${totalAllocated === totalQuestions ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                        <span>{totalAllocated}</span> / <span>{totalQuestions}</span> alocadas
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3">
-                                    {subjects.map((subject, index) => (
-                                        <div key={index} className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm group">
-                                            <div className="text-slate-300 dark:text-slate-600 cursor-grab">
-                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8h16M4 16h16" />
-                                                </svg>
-                                            </div>
-
-                                            <div className="flex-1 relative">
-                                                <input
-                                                    type="text"
-                                                    className="w-full border-0 border-b border-transparent focus:border-indigo-500 focus:ring-0 bg-transparent font-medium text-slate-700 dark:text-slate-200 placeholder-slate-400 p-0"
-                                                    value={subject.name}
-                                                    onChange={(e) => handleSubjectChange(index, 'name', e.target.value)}
-                                                    placeholder="Digite a disciplina (ex: Direito Administrativo...)"
-                                                    list={`sub-${index}`}
-                                                    required
-                                                />
-                                                <datalist id={`sub-${index}`}>
-                                                    {availableSubjects.map(sub => (
-                                                        <option key={sub} value={sub} />
-                                                    ))}
-                                                </datalist>
-                                            </div>
-
-                                            <div className="w-24">
-                                                <input
-                                                    type="number"
-                                                    className="w-full text-center rounded-md border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                                    value={subject.qty}
-                                                    min="1"
-                                                    max={totalQuestions}
-                                                    onChange={(e) => handleSubjectChange(index, 'qty', parseInt(e.target.value) || 0)}
-                                                />
-                                            </div>
-
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRemoveSubject(index)}
-                                                className="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <button
-                                    type="button"
-                                    onClick={handleAddSubject}
-                                    className="mt-4 flex items-center gap-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 px-4 py-2 rounded-lg transition-colors"
-                                >
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                                    </svg>
-                                    Adicionar Disciplina
-                                </button>
-
-                                {totalAllocated !== totalQuestions && (
-                                    <div className="mt-2 text-sm text-amber-600 dark:text-amber-500 flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
-                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                        </svg>
-                                        A soma das questões ({totalAllocated}) deve ser igual ao volume total ({totalQuestions}). Ajuste as quantidades.
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Advanced Filters */}
-                            <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
-                                <button
-                                    type="button"
-                                    onClick={() => setFiltersExpanded(!filtersExpanded)}
-                                    className="flex items-center justify-between w-full text-left group"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <span className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-indigo-600 transition-colors">
-                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            {/* NEW: Compact Layout Combining Volume and Subjects */}
+                            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 p-6 mb-8">
+                                
+                                {/* 1. Master Control: Question Volume */}
+                                <div className="mb-8">
+                                    <div className="flex justify-between items-end mb-4">
+                                        <label className="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+                                            <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                                             </svg>
-                                        </span>
-                                        <div>
-                                            <h4 className="font-semibold text-slate-800 dark:text-white group-hover:text-indigo-600 transition-colors">Filtros do Edital (Opcional)</h4>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400">Restringir por Banca, Órgão ou Cargo</p>
+                                            Volume Total de Questões
+                                        </label>
+                                        <div className="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold px-4 py-1.5 rounded-lg text-xl flex items-center gap-2">
+                                            {totalQuestions}
+                                            <span className="text-sm font-medium opacity-70">qts</span>
                                         </div>
                                     </div>
-                                    <svg className={`w-5 h-5 text-slate-400 transform transition-transform duration-200 ${filtersExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </button>
+                                    <input
+                                        type="range"
+                                        min="5"
+                                        max="120"
+                                        step="5"
+                                        value={totalQuestions}
+                                        onChange={(e) => handleTotalChange(Number(e.target.value))}
+                                        className="mb-2"
+                                    />
+                                    <div className="flex justify-between text-xs text-slate-400 font-medium px-1">
+                                        <span>Curto (10)</span>
+                                        <span>Padrão (60)</span>
+                                        <span>Longo (120)</span>
+                                    </div>
+                                </div>
 
-                                {filtersExpanded && (
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6 animate-fade-in-up">
-                                        {/* Basic implementation for multiple selects without full TomSelect library */}
-                                        <div>
-                                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Bancas (Separadas por vírgula)</label>
-                                            <input
-                                                type="text"
-                                                value={organizations.join(', ')}
-                                                onChange={(e) => setOrganizations(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-                                                className="w-full rounded-md border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-indigo-500 focus:ring-indigo-500"
-                                                placeholder="Ex: CESPE, FGV"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Órgãos</label>
-                                            <input
-                                                type="text"
-                                                value={institutions.join(', ')}
-                                                onChange={(e) => setInstitutions(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-                                                className="w-full rounded-md border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-indigo-500 focus:ring-indigo-500"
-                                                placeholder="Ex: Polícia Federal"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Cargos</label>
-                                            <input
-                                                type="text"
-                                                value={roles.join(', ')}
-                                                onChange={(e) => setRoles(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-                                                className="w-full rounded-md border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-indigo-500 focus:ring-indigo-500"
-                                                placeholder="Ex: Agente, Escrivão"
-                                            />
+                                <hr className="border-slate-200 dark:border-slate-700 mb-6" />
+
+                                {/* 2. Subjects Distribution */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+                                            <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                            </svg>
+                                            Distribuição
+                                        </h3>
+                                        <div className={`text-sm font-medium px-3 py-1 rounded-full ${totalAllocated === totalQuestions ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
+                                            {totalAllocated} / {totalQuestions}
                                         </div>
                                     </div>
-                                )}
+
+                                    {/* Subject Tags Grid */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+                                        <AnimatePresence>
+                                            {subjects.map((sub, index) => (
+                                                <motion.div 
+                                                    key={sub.name}
+                                                    initial={{ opacity: 0, scale: 0.95 }}
+                                                    animate={{ opacity: 1, scale: 1 }}
+                                                    exit={{ opacity: 0, scale: 0.9 }}
+                                                    className={`flex items-center justify-between p-3 rounded-xl border ${sub.isManual ? 'bg-indigo-50/50 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800/50' : 'bg-white border-slate-200 dark:bg-slate-900 dark:border-slate-700'} shadow-sm group`}
+                                                >
+                                                    <div className="flex-1 min-w-0 mr-3">
+                                                        <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate" title={sub.name}>
+                                                            {sub.name}
+                                                        </div>
+                                                        {sub.isManual && <div className="text-[10px] text-indigo-500 font-medium">Ajuste manual</div>}
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="number"
+                                                            className="w-14 text-center rounded-lg border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-sm font-bold focus:ring-1 focus:ring-indigo-500 py-1 px-1"
+                                                            value={sub.qty}
+                                                            min="1"
+                                                            max={totalQuestions}
+                                                            onChange={(e) => handleSubjectQtyChange(index, parseInt(e.target.value) || 0)}
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveSubject(index)}
+                                                            className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </motion.div>
+                                            ))}
+                                        </AnimatePresence>
+                                    </div>
+
+                                    {/* Subject Search/Add */}
+                                    {unselectedSubjects.length > 0 && (
+                                        <div className="mt-2 text-sm">
+                                            <SubjectSearch availableSubjects={unselectedSubjects} onSelect={handleAddSubject} />
+                                        </div>
+                                    )}
+
+                                    {totalAllocated !== totalQuestions && (
+                                        <div className="mt-4 text-xs font-medium text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/20 p-2.5 rounded-lg border border-amber-200 dark:border-amber-800/50">
+                                            A soma das disciplinas ({totalAllocated}) diverge do volume desejado ({totalQuestions}). Refaça a distribuição ou ajuste as quantidades.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Advanced Filters (Compact) */}
+                            <div>
+                                <h3 className="font-semibold text-slate-800 dark:text-white flex items-center gap-2 mb-3 px-1 text-sm uppercase tracking-wider">
+                                    <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                    </svg>
+                                    Filtros Específicos do Edital
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <input
+                                            type="text"
+                                            value={organizations.join(', ')}
+                                            onChange={(e) => setOrganizations(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                                            className="w-full text-sm rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 focus:bg-white focus:border-indigo-500 py-2.5 px-4"
+                                            placeholder="Banca (Ex: CESPE)"
+                                        />
+                                    </div>
+                                    <div>
+                                        <input
+                                            type="text"
+                                            value={institutions.join(', ')}
+                                            onChange={(e) => setInstitutions(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                                            className="w-full text-sm rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 focus:bg-white focus:border-indigo-500 py-2.5 px-4"
+                                            placeholder="Órgão (Ex: TRF)"
+                                        />
+                                    </div>
+                                    <div>
+                                        <input
+                                            type="text"
+                                            value={roles.join(', ')}
+                                            onChange={(e) => setRoles(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                                            className="w-full text-sm rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 focus:bg-white focus:border-indigo-500 py-2.5 px-4"
+                                            placeholder="Cargo (Ex: Técnico)"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Footer */}
-                    <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700 flex flex-col md:flex-row items-center justify-between gap-4">
-                        <label className="flex items-center gap-3 cursor-pointer group">
+                    {/* Footer / Actions */}
+                    <div className="mt-10 pt-6 border-t border-slate-200 dark:border-slate-700 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <label className="flex items-center gap-3 cursor-pointer group bg-slate-50 dark:bg-slate-800/50 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 w-full md:w-auto hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                             <div className="relative">
                                 <input
                                     type="checkbox"
@@ -426,24 +565,32 @@ export default function SimulationCreate() {
                                     onChange={(e) => setIncludeEssay(e.target.checked)}
                                     className="sr-only peer"
                                 />
-                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600">
+                                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full dark:bg-slate-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-500 peer-checked:bg-indigo-600">
                                 </div>
                             </div>
                             <div>
-                                <span className="block text-sm font-medium text-slate-700 dark:text-slate-300">Incluir Redação</span>
-                                <span className="block text-xs text-slate-500 dark:text-slate-400">Gera um tema dissertativo extra</span>
+                                <span className="block text-sm font-semibold text-slate-800 dark:text-slate-200">Adicionar Redação Extra</span>
+                                <span className="block text-xs text-slate-500">Gera um tema dissertativo extra</span>
                             </div>
                         </label>
 
                         <button
                             type="submit"
                             disabled={!isValid || submitting}
-                            className="w-full md:w-auto px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/30 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2"
+                            className={`w-full md:w-auto px-10 py-3.5 font-bold rounded-xl text-white transition-all transform flex items-center justify-center gap-2 ${isValid ? 'bg-indigo-600 hover:bg-indigo-700 shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:-translate-y-0.5' : 'bg-slate-300 dark:bg-slate-700 cursor-not-allowed opacity-70'}`}
                         >
                             {!submitting ? (
-                                <span>Iniciar Simulado</span>
+                                <>
+                                    <span>Iniciar Simulado</span>
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                    </svg>
+                                </>
                             ) : (
-                                <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
+                                <>
+                                    <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
+                                    <span>Gerando...</span>
+                                </>
                             )}
                         </button>
                     </div>

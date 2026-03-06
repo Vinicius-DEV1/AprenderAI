@@ -16,12 +16,17 @@ class PaymentLog extends Model
     protected $fillable = [
         'user_id',
         'gateway',
+        'is_sandbox',
         'gateway_payment_id',
         'gateway_subscription_id',
         'event',
         'status',
         'raw_response',
         'error_message',
+    ];
+
+    protected $casts = [
+        'is_sandbox' => 'boolean',
     ];
 
     // -------------------------------------------------------------------------
@@ -31,6 +36,11 @@ class PaymentLog extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function scopePaid($query)
+    {
+        return $query->where('is_sandbox', false);
     }
 
     // -------------------------------------------------------------------------
