@@ -29,6 +29,7 @@ class WebhookController extends Controller
 
         $isValid = false;
         $isSandbox = false;
+
         if (!empty($productionToken) && hash_equals($productionToken, $receivedToken)) {
             $isValid = true;
             $isSandbox = false;
@@ -37,10 +38,15 @@ class WebhookController extends Controller
             $isSandbox = true;
         }
 
-        if (!$isValid && (!empty($productionToken) || !empty($sandboxToken))) {
-            Log::warning('[Webhook] Token inválido recebido', [
+        // SECURITY: Always reject if token is invalid — no exceptions.
+        // The previous code had a bypass: if BOTH tokens were empty, the webhook
+        // would accept ANY payload, allowing fake payment fraud.
+        if (!$isValid) {
+            Log::warning('[Webhook] Token inválido ou ausente', [
                 'ip' => $request->ip(),
                 'received_token' => $receivedToken ? substr($receivedToken, 0, 8) . '...' : null,
+                'production_token_configured' => !empty($productionToken),
+                'sandbox_token_configured' => !empty($sandboxToken),
             ]);
             return response()->json(['status' => 'unauthorized'], 403);
         }

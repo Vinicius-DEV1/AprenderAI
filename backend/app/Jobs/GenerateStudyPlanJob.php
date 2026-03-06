@@ -16,6 +16,18 @@ class GenerateStudyPlanJob implements ShouldQueue
 
     protected $studyPlanId;
 
+    /** Maximum number of attempts before calling failed(). */
+    public int $tries = 3;
+
+    /** Timeout per attempt (5 minutes). */
+    public int $timeout = 300;
+
+    /** Exponential backoff: 1min → 5min → 15min. */
+    public function backoff(): array
+    {
+        return [60, 300, 900];
+    }
+
     public function __construct(int $studyPlanId)
     {
         $this->studyPlanId = $studyPlanId;

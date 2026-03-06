@@ -13,12 +13,28 @@ use App\Models\Configuration;
 use App\Services\QuotaService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use App\Jobs\CancelAsaasSubscriptionJob; // Added this line
 
 class ProcessAsaasWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected array $data;
+
+    /**
+     * Maximum number of attempts before calling failed().
+     * Webhook processing is idempotent — safe to retry.
+     */
+    public int $tries = 5;
+
+    /** Timeout per attempt (60 seconds). */
+    public int $timeout = 60;
+
+    /** Exponential backoff: 30s → 2min → 10min → 30min → 1h. */
+    public function backoff(): array
+    {
+        return [30, 120, 600, 1800, 3600];
+    }
 
     /**
      * Create a new job instance.
@@ -38,7 +54,8 @@ class ProcessAsaasWebhookJob implements ShouldQueue
     public function handle(QuotaService $quotaService)
     {
         $data = $this->data;
-        $isSandbox = clone $data['is_sandbox_webhook'] ?? false;
+        // FIX: Remove 'clone' on a boolean — scalar values don't need cloning.
+        $isSandbox = (bool) ($data['is_sandbox_webhook'] ?? false);
         unset($data['is_sandbox_webhook']); // Remove internally before saving to DB
         $event = $data['event'] ?? null;
         $payment = $data['payment'] ?? [];
@@ -95,7 +112,8 @@ class ProcessAsaasWebhookJob implements ShouldQueue
         }
 
         // Executa todo o tratamento dentro de uma Transação para evitar Race Conditions
-        DB::transaction(function () use ($subscription, $event, $paymentId, $payment, $quotaService, $auditData) {
+        // The closure returns the list of Asaas subscriptions to cancel AFTER the commit.
+        $subscriptionsToCancel = DB::transaction(function () use ($subscription, $event, $paymentId, $payment, $quotaService, $auditData) {
             $user = $subscription->user;
             $plan = $subscription->plan;
 
@@ -166,14 +184,21 @@ class ProcessAsaasWebhookJob implements ShouldQueue
                                 ->whereNotNull('gateway_id')
                                 ->get();
 
+                            // ARCH FIX: Only mark as canceled in DB inside the transaction.
+                            // The actual HTTP call to Asaas is dispatched as a separate job
+                            // AFTER the transaction commits, preventing lock contention and
+                            // data inconsistency from failed HTTP calls holding open DB locks.
+                            $subscriptionsToCancel = [];
                             foreach ($previousActiveSubscriptions as $oldSub) {
-                                Log::info('[Webhook Job] Cancelando assinatura antiga no Asaas devido a upgrade', [
-                                    'user_id' => $user->id,
-                                    'old_gateway_id' => $oldSub->gateway_id
-                                ]);
-                                $asaasService = app(\App\Services\AsaasService::class);
-                                $asaasService->cancelSubscription($oldSub->gateway_id);
                                 $oldSub->update(['status' => 'canceled']);
+                                $subscriptionsToCancel[] = [
+                                    'gateway_id' => $oldSub->gateway_id,
+                                    'subscription_id' => $oldSub->id,
+                                ];
+                                Log::info('[Webhook Job] Assinatura antiga marcada como cancelada no DB (cancelamento no Asaas via job)', [
+                                    'user_id' => $user->id,
+                                    'old_gateway_id' => $oldSub->gateway_id,
+                                ]);
                             }
                         } else {
                             Log::info('[Webhook Job] Renovacão normal, compra inicial ou upgrade vindo do Grátis.', ['user_id' => $user->id]);
@@ -192,27 +217,58 @@ class ProcessAsaasWebhookJob implements ShouldQueue
                     ]);
 
                     PaymentLog::create(array_merge($auditData, ['status' => 'success']));
-                    break;
+
+                    // Return the list of subscriptions to cancel outside the transaction
+                    return $subscriptionsToCancel ?? [];
 
                 case 'PAYMENT_OVERDUE':
                     $subscription->update(['status' => 'past_due']);
                     PaymentLog::create(array_merge($auditData, ['status' => 'overdue']));
-                    break;
+                    return [];
 
                 case 'PAYMENT_REFUNDED':
                     $subscription->update(['status' => 'refunded']);
                     PaymentLog::create(array_merge($auditData, ['status' => 'refunded']));
-                    break;
+                    return [];
 
                 case 'PAYMENT_DELETED':
                     $subscription->update(['status' => 'canceled']);
                     PaymentLog::create(array_merge($auditData, ['status' => 'canceled']));
-                    break;
+                    return [];
 
                 default:
                     PaymentLog::create(array_merge($auditData, ['status' => 'ignored']));
-                    break;
+                    return [];
             }
         });
+
+        // ARCH FIX: Dispatch Asaas HTTP cancellations OUTSIDE the DB transaction.
+        // This prevents network latency from holding DB locks and avoids
+        // data inconsistency when the HTTP call fails mid-transaction.
+        foreach ($subscriptionsToCancel ?? [] as $toCancel) {
+            dispatch(new CancelAsaasSubscriptionJob(
+                $toCancel['gateway_id'],
+                $toCancel['subscription_id']
+            ));
+        }
+    }
+
+    /**
+     * Handle a job failure after all retries are exhausted.
+     * At this point, the payment event was NOT fully processed.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        $event = $this->data['event'] ?? 'UNKNOWN';
+        $payment = $this->data['payment'] ?? [];
+        $paymentId = $payment['id'] ?? null;
+
+        Log::critical('[ProcessAsaasWebhookJob] FALHOU definitivamente após todas as tentativas!', [
+            'event' => $event,
+            'payment_id' => $paymentId,
+            'error' => $exception->getMessage(),
+        ]);
+
+        // TODO: Send alert to Slack/e-mail here for manual intervention.
     }
 }

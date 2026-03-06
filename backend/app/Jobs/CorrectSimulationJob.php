@@ -19,6 +19,18 @@ class CorrectSimulationJob implements ShouldQueue
 
     protected $simulation;
 
+    /** Maximum number of attempts before marking as definitively failed. */
+    public int $tries = 3;
+
+    /** Timeout per attempt (10 minutes — AI batching can be slow). */
+    public int $timeout = 600;
+
+    /** Exponential backoff: 1min → 5min → 15min. */
+    public function backoff(): array
+    {
+        return [60, 300, 900];
+    }
+
     public function __construct(Simulation $simulation)
     {
         $this->simulation = $simulation;
@@ -38,38 +50,38 @@ class CorrectSimulationJob implements ShouldQueue
         $questionsToProcess = $this->simulation->answers->map(function ($answer) {
             $question = $answer->question;
             return [
-                'question_id'   => $answer->question_id,
-                'statement'     => $question->statement,
+                'question_id' => $answer->question_id,
+                'statement' => $question->statement,
                 // alternativesAsMap(): ['A'=>'texto', 'B'=>'texto'...]
                 // Substituições da Collection Eloquent crua — formato correto para o prompt da IA
-                'alternatives'  => $question->alternativesAsMap(),
-                'user_answer'   => $answer->user_answer,
+                'alternatives' => $question->alternativesAsMap(),
+                'user_answer' => $answer->user_answer,
                 // correct_answer: resolvido pelo accessor virtual em Question.php
                 // que lê is_correct=true na tabela question_alternatives
                 'correct_answer' => $question->correct_answer,
-                'organization'  => $question->organization,
-                'source'        => $question->source,
+                'organization' => $question->organization,
+                'source' => $question->source,
             ];
         })->toArray();
 
         // 2. Criar/Recuperar Registro de Correção (Inicialização)
         $correction = Correction::updateOrCreate(
-        [
-            'correctable_type' => Simulation::class ,
-            'correctable_id' => $this->simulation->id,
-        ],
-        [
-            'ai_provider' => 'pending',
-            'correction_data' => [
-                'total_correct' => 0,
-                'total_questions' => $totalQuestions,
-                'errors_explanation' => []
+            [
+                'correctable_type' => Simulation::class,
+                'correctable_id' => $this->simulation->id,
             ],
-            'input_tokens' => 0,
-            'output_tokens' => 0,
-            'total_tokens' => 0,
-            'created_at' => now(),
-        ]
+            [
+                'ai_provider' => 'pending',
+                'correction_data' => [
+                    'total_correct' => 0,
+                    'total_questions' => $totalQuestions,
+                    'errors_explanation' => []
+                ],
+                'input_tokens' => 0,
+                'output_tokens' => 0,
+                'total_tokens' => 0,
+                'created_at' => now(),
+            ]
         );
 
         // 3. Correção via AI com Batching
@@ -119,7 +131,7 @@ class CorrectSimulationJob implements ShouldQueue
                 // Normalize IDs
                 foreach ($newExplanations as &$explanation) {
                     if (isset($explanation['question_id'])) {
-                        $explanation['question_id'] = (string)$explanation['question_id'];
+                        $explanation['question_id'] = (string) $explanation['question_id'];
                     }
                 }
 
@@ -138,8 +150,7 @@ class CorrectSimulationJob implements ShouldQueue
                     ]
                 ]);
 
-            }
-            catch (\Exception $e) {
+            } catch (\Exception $e) {
                 if (str_contains($e->getMessage(), '429')) {
                     Log::warning("JOB: 429 Quota Exceeded. Releasing for 60s.");
                     $this->release(60);
@@ -181,9 +192,19 @@ class CorrectSimulationJob implements ShouldQueue
             $statsService = app(StudyStatsService::class);
             $statsService->updateUserStats($user, $this->simulation);
             Log::info("Estatísticas do usuário {$user->id} atualizadas com sucesso.");
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             Log::error("Falha ao atualizar estatísticas do usuário: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Handle a job failure after all retries are exhausted.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error("[CorrectSimulationJob] Simulação #{$this->simulation->id} FALHOU após todas as tentativas: " . $exception->getMessage());
+
+        // Mark simulation as error so user sees a proper message instead of stuck "correcting"
+        $this->simulation->update(['status' => 'error']);
     }
 }
