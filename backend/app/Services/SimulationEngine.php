@@ -105,20 +105,7 @@ class SimulationEngine
             if ($subjectTotal <= 0)
                 continue;
 
-            // Subject Normalization
-            $subjectUpper = mb_strtoupper(trim($subject), 'UTF-8');
-            $subjectSanitized = str_replace(
-                ['Á', 'À', 'Â', 'Ã', 'É', 'Ê', 'Í', 'Ó', 'Ô', 'Õ', 'Ú', 'Ç'],
-                ['A', 'A', 'A', 'A', 'E', 'E', 'I', 'O', 'O', 'O', 'U', 'C'],
-                $subjectUpper
-            );
-
-            if (str_contains($subjectSanitized, 'PORTUGU'))
-                $subjectNorm = "LINGUA PORTUGUESA";
-            elseif (str_contains($subjectSanitized, 'MATEM'))
-                $subjectNorm = "MATEMATICA";
-            else
-                $subjectNorm = $subjectSanitized;
+            $subjectNorm = $this->normalizeSubjectName($subject);
 
             // Count real questions available for this subject+type combination
             $query = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subjectNorm));
@@ -168,20 +155,7 @@ class SimulationEngine
             if ($subjectTotal <= 0)
                 continue;
 
-            // Subject Normalization
-            $subjectUpper = mb_strtoupper(trim($subject), 'UTF-8');
-            $subjectSanitized = str_replace(
-                ['Á', 'À', 'Â', 'Ã', 'É', 'Ê', 'Í', 'Ó', 'Ô', 'Õ', 'Ú', 'Ç'],
-                ['A', 'A', 'A', 'A', 'E', 'E', 'I', 'O', 'O', 'O', 'U', 'C'],
-                $subjectUpper
-            );
-
-            if (str_contains($subjectSanitized, 'PORTUGU'))
-                $subjectNorm = "LINGUA PORTUGUESA";
-            elseif (str_contains($subjectSanitized, 'MATEM'))
-                $subjectNorm = "MATEMATICA";
-            else
-                $subjectNorm = $subjectSanitized;
+            $subjectNorm = $this->normalizeSubjectName($subject);
 
             $countAiTarget = (int) ceil($subjectTotal * $aiRatio);
             $countRealTarget = $subjectTotal - $countAiTarget;
@@ -379,5 +353,34 @@ class SimulationEngine
         }
 
         return $generated;
+    }
+
+    /**
+     * Normalize a subject name for use in database queries.
+     *
+     * Converts accented characters to ASCII, uppercases, and maps
+     * common abbreviations to canonical names used in the database.
+     *
+     * Extracted from the duplicate blocks that existed in
+     * validateQuestionAvailability() and selectQuestions().
+     */
+    private function normalizeSubjectName(string $subject): string
+    {
+        $upper = mb_strtoupper(trim($subject), 'UTF-8');
+        $sanitized = str_replace(
+            ['Á', 'À', 'Â', 'Ã', 'É', 'Ê', 'Í', 'Ó', 'Ô', 'Õ', 'Ú', 'Ç'],
+            ['A', 'A', 'A', 'A', 'E', 'E', 'I', 'O', 'O', 'O', 'U', 'C'],
+            $upper
+        );
+
+        if (str_contains($sanitized, 'PORTUGU')) {
+            return 'LINGUA PORTUGUESA';
+        }
+
+        if (str_contains($sanitized, 'MATEM')) {
+            return 'MATEMATICA';
+        }
+
+        return $sanitized;
     }
 }
