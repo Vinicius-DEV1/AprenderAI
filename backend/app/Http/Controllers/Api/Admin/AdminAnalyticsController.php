@@ -189,12 +189,12 @@ class AdminAnalyticsController extends Controller
         $totalUsers = \App\Models\User::count();
         $activeSubscriptions = \App\Models\Subscription::with('plan')->where('status', 'active')->get();
         $paidSubscriptionsCount = $activeSubscriptions->filter(function ($sub) {
-            return $sub->plan && $sub->plan->price > 0;
+            return $sub->plan && $sub->plan->price > 0 && !$sub->is_sandbox && !$sub->is_manual_grant;
         })->count();
 
-        // MRR
+        // MRR (Exclude sandbox and grants)
         $mrr = $activeSubscriptions->reduce(function ($carry, $sub) {
-            if ($sub->plan) {
+            if ($sub->plan && !$sub->is_sandbox && !$sub->is_manual_grant) {
                 if ($sub->plan->interval === 'yearly') {
                     return $carry + ($sub->plan->price / 12);
                 }
