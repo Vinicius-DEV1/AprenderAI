@@ -306,6 +306,81 @@ class AsaasService
     }
 
     /**
+     * Cria um pagamento ÚNICO (à vista) no Asaas.
+     * Pode ser Crédito (1x) ou PIX.
+     *
+     * @param User $user Usuário pagante
+     * @param float $value Valor total a ser cobrado
+     * @param string $description Descrição da cobrança
+     * @param string $paymentMethod 'credit_card' ou 'pix' 
+     * @param array $cardData Dados do cartão (quando crédito)
+     * @param string|null $forceCustomerId ID forçado do cliente (Ghost Customer)
+     * @param string|null $idempotencyKey Chave de idempotência
+     * @return array Dados do pagamento criado
+     * @throws \Exception Se houver erro
+     */
+    public function createSinglePayment(
+        User $user,
+        float $value,
+        string $description,
+        string $paymentMethod,
+        array $cardData = [],
+        ?string $forceCustomerId = null,
+        ?string $idempotencyKey = null
+    ): array {
+        $customerId = $forceCustomerId ?? $this->getOrCreateCustomer($user, $cardData['cpf'] ?? null);
+
+        $billingType = $paymentMethod === 'credit_card' ? 'CREDIT_CARD' : 'PIX';
+
+        $data = [
+            'customer' => $customerId,
+            'billingType' => $billingType,
+            'value' => round($value, 2),
+            'dueDate' => now()->format('Y-m-d'),
+            'description' => $description,
+            'externalReference' => (string) $user->id,
+            'notificationDisabled' => true,
+        ];
+
+        // ⚠️ PCI: Dados do cartão
+        if ($billingType === 'CREDIT_CARD') {
+            $data['creditCard'] = [
+                'holderName' => $cardData['holder_name'],
+                'number' => $cardData['number'],
+                'expiryMonth' => $cardData['expiry_month'],
+                'expiryYear' => $cardData['expiry_year'],
+                'ccv' => $cardData['ccv'],
+            ];
+            $data['creditCardHolderInfo'] = [
+                'name' => $user->name,
+                'email' => $user->email,
+                'cpfCnpj' => $cardData['cpf'],
+                'postalCode' => $cardData['postal_code'] ?? '00000000',
+                'addressNumber' => $cardData['address_number'] ?? '0',
+                'phone' => $cardData['phone'] ?? '0000000000',
+            ];
+        }
+
+        $request = Http::withHeader('access_token', $this->apiKey);
+        if ($idempotencyKey) {
+            $request->withHeader('idempotency-key', $idempotencyKey);
+        }
+
+        $response = $request->post("{$this->baseUrl}/payments", $data);
+
+        if ($response->failed()) {
+            Log::error('[Asaas] Erro ao criar pagamento único', [
+                'user_id' => $user->id,
+                'response' => $response->body(),
+            ]);
+            $errorMsg = $response->json()['errors'][0]['description'] ?? 'Erro no processamento do pagamento.';
+            throw new \Exception($errorMsg);
+        }
+
+        return $response->json();
+    }
+
+    /**
      * Cria um pagamento PARCELADO no Asaas (não recorrente).
      * O valor total é comprometido no limite do cartão do cliente,
      * garantindo o recebimento integral independente do pagamento da fatura.

@@ -119,10 +119,12 @@ class SubscriptionController extends Controller
                 return response()->json(['message' => 'Valor do upgrade calculado como zero ou negativo.'], 400);
             }
 
-            // O upgrade precisa ser via cartão de crédito
-            if ($request->payment_method !== 'credit_card') {
-                return response()->json(['message' => 'Upgrade pro-rata só é possível via cartão de crédito.'], 400);
+            if (!in_array($request->payment_method, ['credit_card', 'pix'])) {
+                return response()->json(['message' => 'Método de pagamento inválido para upgrade.'], 400);
             }
+
+            // A flag is_installment no request define se o usuário escolheu parcelar ou pagar à vista
+            $isInstallmentUpgrade = $request->payment_method === 'credit_card' && filter_var($request->is_installment, FILTER_VALIDATE_BOOLEAN);
 
             try {
                 $cardData = [
@@ -139,24 +141,39 @@ class SubscriptionController extends Controller
 
                 $idempotencyKey = md5($user->id . '_upgrade_' . $plan->id . '_' . now()->format('Y-m-d H:i'));
 
-                // Criar um plano "virtual" com o preço delta para reusar createInstallmentPayment
-                $upgradePlan = new \stdClass();
-                $upgradePlan->name = "Upgrade {$activeInstallment->plan->name} → {$plan->name}";
-                $upgradePlan->annual_price = $upgradeTotal;
-                $upgradePlan->id = $plan->id;
+                if ($isInstallmentUpgrade) {
+                    // Criar um plano "virtual" com o preço delta para reusar createInstallmentPayment
+                    $upgradePlan = new \stdClass();
+                    $upgradePlan->name = "Upgrade {$activeInstallment->plan->name} → {$plan->name}";
+                    $upgradePlan->annual_price = $upgradeTotal;
+                    $upgradePlan->id = $plan->id;
 
-                $asaasPayment = $this->asaasService->createInstallmentPayment(
-                    $user,
-                    $upgradePlan,
-                    $remainingMonths,
-                    'credit_card',
-                    $cardData,
-                    null,
-                    null,
-                    $idempotencyKey
-                );
-
-                $upgradeGatewayId = $asaasPayment['installment'] ?? $asaasPayment['id'];
+                    $asaasPayment = $this->asaasService->createInstallmentPayment(
+                        $user,
+                        $upgradePlan,
+                        $remainingMonths,
+                        'credit_card',
+                        $cardData,
+                        null,
+                        null,
+                        $idempotencyKey
+                    );
+                    $upgradeGatewayId = $asaasPayment['installment'] ?? $asaasPayment['id'];
+                    $billingType = 'installment';
+                } else {
+                    $description = "Upgrade Pro-rata: {$activeInstallment->plan->name} → {$plan->name}";
+                    $asaasPayment = $this->asaasService->createSinglePayment(
+                        $user,
+                        $upgradeTotal,
+                        $description,
+                        $request->payment_method,
+                        $cardData,
+                        null,
+                        $idempotencyKey
+                    );
+                    $upgradeGatewayId = $asaasPayment['id'];
+                    $billingType = $request->payment_method === 'pix' ? 'pix' : 'credit_card';
+                }
 
                 // Atualizar a subscription existente para o novo plano
                 $activeInstallment->update([
@@ -176,8 +193,8 @@ class SubscriptionController extends Controller
                     'status' => 'pending',
                     'gateway' => 'asaas',
                     'gateway_id' => $upgradeGatewayId,
-                    'billing_type' => 'installment',
-                    'installment_count' => $remainingMonths,
+                    'billing_type' => $billingType,
+                    'installment_count' => $isInstallmentUpgrade ? $remainingMonths : null,
                     'amount' => $upgradeTotal,
                     'current_period_start' => now(),
                     'current_period_end' => $activeInstallment->current_period_end,
@@ -188,24 +205,37 @@ class SubscriptionController extends Controller
                     'gateway' => 'asaas',
                     'gateway_payment_id' => $asaasPayment['id'] ?? null,
                     'gateway_subscription_id' => $upgradeGatewayId,
-                    'event' => 'CHECKOUT_UPGRADE_INSTALLMENT',
+                    'event' => $isInstallmentUpgrade ? 'CHECKOUT_UPGRADE_INSTALLMENT' : 'CHECKOUT_UPGRADE_SINGLE',
                     'status' => 'success',
                     'raw_response' => PaymentLog::sanitize($asaasPayment),
                 ]);
 
-                Log::info('[API Checkout] Upgrade pro-rata parcelado com sucesso.', [
+                Log::info('[API Checkout] Upgrade pro-rata processado com sucesso.', [
                     'user_id' => $user->id,
                     'from_plan' => $activeInstallment->plan->name,
                     'to_plan' => $plan->name,
                     'delta_total' => $upgradeTotal,
                     'remaining_months' => $remainingMonths,
+                    'payment_method' => $request->payment_method,
+                    'is_installment' => $isInstallmentUpgrade,
                 ]);
 
-                return response()->json([
+                $responseData = [
                     'success' => true,
                     'upgrade' => true,
-                    'payment_method' => 'credit_card',
-                ]);
+                    'payment_method' => $request->payment_method,
+                ];
+
+                if ($request->payment_method === 'pix') {
+                    $pixData = $this->asaasService->getPixQrCode($asaasPayment['id']);
+                    $responseData['pix'] = [
+                        'payload' => $pixData['payload'] ?? '',
+                        'image' => $pixData['encodedImage'] ?? '',
+                        'expirationDate' => $pixData['expirationDate'] ?? '',
+                    ];
+                }
+
+                return response()->json($responseData);
 
             } catch (\Exception $e) {
                 Log::error('[API Checkout] Erro no upgrade pro-rata', [
