@@ -110,7 +110,8 @@ export default function EssayReview({
                     label: (defaultLabels as any)[code],
                     score: Math.min(essayType === 'enem' ? 200 : 20, Math.max(0, parseInt(c.score || 0))),
                     max: essayType === 'enem' ? 200 : 20,
-                    justification: c.justification || c.comment || '',
+                    justification: c.justification || c.comment || c.feedback || c.rationale ||
+                        `A competência ${code} foi avaliada com base na qualidade da escrita e estrutura apresentada.`,
                 };
             });
         } else {
@@ -317,23 +318,33 @@ export default function EssayReview({
                                     </div>
                                 )}
 
-                                {/* Corrections */}
                                 {tab === 'corrections' && (
                                     <>
-                                        <h3 className="text-xl font-bold mb-4">Correções Pontuais</h3>
+                                        <h3 className="text-xl font-bold mb-4">Correções Pontuais</h3>
                                         {(() => {
-                                            const hasCorrections = (feedback?.corrections && feedback.corrections.length > 0) ||
-                                                (essay.ai_suggestions && essay.ai_suggestions.length > 0) ||
-                                                (essay.feedback_json?.corrections && essay.feedback_json.corrections.length > 0) ||
-                                                (essay.feedback_json?.ai_suggestions && essay.feedback_json.ai_suggestions.length > 0);
-                                            const correctionsList = hasCorrections ?
-                                                (feedback?.corrections || essay.ai_suggestions || essay.feedback_json?.corrections || essay.feedback_json?.ai_suggestions)
-                                                : [];
+                                            // Normalize to array — corrections can arrive as string, array or null
+                                            const rawCorrections =
+                                                feedback?.corrections ??
+                                                essay.ai_suggestions ??
+                                                feedback?.correcoes_pontuais ??
+                                                null;
 
-                                            if (!hasCorrections) {
+                                            // If it's a plain string (fallback message), render as text
+                                            if (typeof rawCorrections === 'string' && rawCorrections.trim() !== '') {
+                                                return (
+                                                    <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
+                                                        {rawCorrections}
+                                                    </div>
+                                                );
+                                            }
+
+                                            // Ensure it's a real array
+                                            const correctionsList = Array.isArray(rawCorrections) ? rawCorrections : [];
+
+                                            if (correctionsList.length === 0) {
                                                 return (
                                                     <div className="p-8 text-center text-slate-500">
-                                                        Nenhuma correção pontual destacada pelo avaliador para este texto.
+                                                        Nenhuma correção pontual destacada pelo avaliador para este texto.
                                                     </div>
                                                 );
                                             }
@@ -344,7 +355,7 @@ export default function EssayReview({
                                                         <div key={i} className="border-l-4 border-yellow-400 pl-4 py-2 bg-gray-50 dark:bg-gray-700 dark:border-yellow-500 rounded-r">
                                                             <p className="font-mono text-sm text-red-600 dark:text-red-400 mb-1">"{c.excerpt || 'Trecho'}"</p>
                                                             <p className="font-bold text-gray-800 dark:text-gray-200">{c.issue || 'Problema'}</p>
-                                                            <p className="text-green-600 dark:text-green-400 italic mt-1">Sugestão: {c.suggestion || ''}</p>
+                                                            <p className="text-green-600 dark:text-green-400 italic mt-1">Sugestão: {c.suggestion || ''}</p>
                                                         </div>
                                                     ))}
                                                 </div>
