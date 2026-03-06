@@ -24,7 +24,6 @@ class SendWelcomeEmail implements ShouldQueue
     {
         /** @var User $user */
         $user = $event->user;
-        // TEMPORARILY DISABLED as per requirements
-        // \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\WelcomeEmail($user));
+        \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\WelcomeEmail($user));
     }
 }
