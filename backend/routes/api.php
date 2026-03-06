@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\Admin\CuradoriaController;
 use App\Http\Controllers\Api\Admin\QuestionController as AdminQuestionController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\Admin\PlanController as AdminPlanController;
+use App\Http\Controllers\Api\Admin\AdminGrantController;
 use App\Http\Controllers\Api\Admin\CouponController as AdminCouponController;
 use App\Http\Controllers\Api\Admin\SystemPromptController as AdminSystemPromptController;
 use App\Http\Controllers\Api\Admin\SettingController as AdminSettingController;
@@ -183,6 +184,9 @@ Route::prefix('v1')->group(function () {
             Route::patch('users/{user}/toggle-status', [AdminUserController::class, 'toggleStatus']);
             Route::post('users/{user}/reset-password', [AdminUserController::class, 'resetPassword']);
             Route::post('users/{user}/refund', [AdminUserController::class, 'refundAndCancel']);
+            Route::post('users/{user}/grant-plan', [AdminGrantController::class, 'grant']);
+            Route::delete('users/{user}/revoke-grant', [AdminGrantController::class, 'revoke']);
+            Route::get('users/grants', [AdminGrantController::class, 'index']);
             Route::get('users/{user}/stats', [AdminUserController::class, 'stats']);
             Route::apiResource('users', AdminUserController::class);
             Route::apiResource('plans', AdminPlanController::class);
