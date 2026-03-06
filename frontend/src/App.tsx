@@ -183,6 +183,7 @@ function App() {
                             {/* Essays */}
                             <Route path="/essays" element={<><MetaTags title="Minhas Redações" /><EssayList /></>} />
                             <Route path="/essays/create" element={<><MetaTags title="Escrever Redação" /><EssayWrite /></>} />
+                            <Route path="/redacao/correcao/:id" element={<><MetaTags title="Correção de Redação" /><EssayReview /></>} />
                             <Route path="/essays/:id" element={<><MetaTags title="Correção de Redação" /><EssayReview /></>} />
 
                             {/* Question Bank & Notebooks */}

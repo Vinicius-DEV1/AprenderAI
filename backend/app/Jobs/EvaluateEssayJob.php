@@ -195,6 +195,8 @@ class EvaluateEssayJob implements ShouldQueue
                 }
                 $response['correcoes_pontuais'] = $fixes;
 
+                $response = $this->normalizeAiResponse($response, $this->essay->type);
+
                 // --- FAIL-CLOSED GATE FINAL (MODEL LEVEL) ---
                 if ($isOffTopicNormalPath) {
                     $this->essay->score = 0;
@@ -246,5 +248,49 @@ class EvaluateEssayJob implements ShouldQueue
             // but requirement says "without forbidden terms". 
             // 'feedback' => 'Não foi possível corrigir agora. Tente novamente.' 
         ]);
+    }
+
+    /**
+     * Normalizes AI JSON response keys to match what the React frontend expects.
+     */
+    private function normalizeAiResponse(array $response, string $type): array
+    {
+        // 1. Map overall_score to score
+        if (!isset($response['score']) && isset($response['overall_score'])) {
+            $response['score'] = $response['overall_score'];
+        }
+
+        // 2. Map actionable_feedback to summary
+        if (!isset($response['summary']) && isset($response['actionable_feedback'])) {
+            $feedback = $response['actionable_feedback'];
+            $response['summary'] = is_array($feedback) ? implode("\n\n", $feedback) : (string) $feedback;
+        }
+
+        // 3. Map competence_scores to competencies matching frontend schema {c1: ...}
+        if (isset($response['competence_scores']) && is_array($response['competence_scores'])) {
+            $maxScore = $type === 'enem' ? 200 : 20;
+            $competencies = [];
+
+            // Expected frontend format: competencies object keyed 'c1'..'c5', each with 'score'
+            foreach (['c1', 'c2', 'c3', 'c4', 'c5'] as $c) {
+                if (isset($response['competence_scores'][$c])) {
+                    $competencies[$c] = [
+                        'score' => (int) $response['competence_scores'][$c],
+                        'max_score' => $maxScore,
+                        'justification' => $response['actionable_feedback'][$c] ?? '' // fallback
+                    ];
+                }
+            }
+            if (!empty($competencies)) {
+                $response['competencies'] = $competencies;
+            }
+        }
+
+        // 4. Map corrections
+        if (!isset($response['corrections'])) {
+            $response['corrections'] = $response['correcoes_pontuais'] ?? [];
+        }
+
+        return $response;
     }
 }

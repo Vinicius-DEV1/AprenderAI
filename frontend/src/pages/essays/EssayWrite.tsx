@@ -312,7 +312,7 @@ export default function EssayWrite({
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['essays'] });
             queryClient.invalidateQueries({ queryKey: ['essays-meta'] }); // Refetch limit
-            navigate(data?.data?.id ? `/essays/${data.data.id}` : '/essays');
+            navigate(data?.data?.id ? `/redacao/correcao/${data.data.id}` : '/essays');
         },
         onError: (err: any) => {
             const code = err.response?.data?.code;
