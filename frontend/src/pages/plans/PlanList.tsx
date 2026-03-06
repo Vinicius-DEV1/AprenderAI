@@ -160,6 +160,8 @@ export default function PlanList() {
     const userPlanId = user?.plan_id || (user?.plan as any)?.id;
     const currentPlan = plans?.find((p: any) => String(p.id) === String(userPlanId));
 
+    const activeInstallment = history.find((sub: any) => sub.status === 'active' && sub.installment_count && new Date(sub.current_period_end).getTime() > Date.now());
+
     const getPlanLevel = (name?: string) => {
         if (!name) return 0;
         const low = name.toLowerCase();
@@ -178,7 +180,9 @@ export default function PlanList() {
         }
         if (String(userPlanId) === String(cardPlan.id)) return 'Seu Plano Atual';
         const cardLevel = getPlanLevel(cardPlan.name);
-        if (currentPlanLevel > cardLevel && currentPlanLevel > 0) return 'Fazer Downgrade';
+        if (currentPlanLevel > cardLevel && currentPlanLevel > 0) {
+            return activeInstallment ? 'Bloqueado (Parcelado)' : 'Fazer Downgrade';
+        }
         if (currentPlanLevel < cardLevel && currentPlanLevel > 0) return 'Fazer Upgrade';
         return 'Assinar';
     };
@@ -189,8 +193,15 @@ export default function PlanList() {
         // Se o plano atual for o novo plano, não faz nada
         if (String(userPlanId) === String(plan.id)) return;
 
+        // Regra Especial: Bloqueio de Downgrade para parcelamentos ativos
+        const cardLevel = getPlanLevel(plan.name);
+        if (activeInstallment && currentPlanLevel > cardLevel && currentPlanLevel > 0) {
+            toast.error(`Você possui o plano anual parcelado ativo. O downgrade está bloqueado até o fim do período.`);
+            return;
+        }
+
         // Regra Especial: De Gratuito (Preço 0) para qualquer Pago -> Checkout Direto
-        // Se for de Pago para Pago -> Abre Modal para explicar que é ACUMULATIVO
+        // Se for de Pago para Pago -> Abre Modal para explicar que é ACUMULATIVO (ou redireciona no caso do parcelamento)
         const isCurrentFree = !currentPlan || Number(currentPlan.price) === 0;
 
         if (isCurrentFree) {

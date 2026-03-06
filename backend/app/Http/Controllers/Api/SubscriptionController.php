@@ -85,6 +85,138 @@ class SubscriptionController extends Controller
 
         $user = Auth::user();
 
+        // ── GUARD: Detectar assinatura parcelada ativa para upgrade/downgrade ──
+        $activeInstallment = Subscription::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->whereNotNull('installment_count')
+            ->where('current_period_end', '>', now())
+            ->with('plan')
+            ->first();
+
+        if ($activeInstallment) {
+            $currentPlanPrice = (float) $activeInstallment->plan->annual_price;
+            $newPlanPrice = (float) $plan->annual_price;
+
+            // BLOQUEAR DOWNGRADE: plano novo tem preço <= atual
+            if ($newPlanPrice <= $currentPlanPrice) {
+                return response()->json([
+                    'message' => 'Você possui um plano anual parcelado ativo até ' .
+                        $activeInstallment->current_period_end->format('d/m/Y') .
+                        '. Não é possível fazer downgrade durante este período.'
+                ], 400);
+            }
+
+            // UPGRADE PRO-RATA: cobrar diferença parcelada nos meses restantes
+            $remainingMonths = (int) ceil(now()->diffInDays($activeInstallment->current_period_end) / 30);
+            $remainingMonths = max(1, min(12, $remainingMonths));
+
+            $currentMonthly = $currentPlanPrice / 12;
+            $newMonthly = $newPlanPrice / 12;
+            $deltaPerMonth = round($newMonthly - $currentMonthly, 2);
+            $upgradeTotal = round($deltaPerMonth * $remainingMonths, 2);
+
+            if ($upgradeTotal <= 0) {
+                return response()->json(['message' => 'Valor do upgrade calculado como zero ou negativo.'], 400);
+            }
+
+            // O upgrade precisa ser via cartão de crédito
+            if ($request->payment_method !== 'credit_card') {
+                return response()->json(['message' => 'Upgrade pro-rata só é possível via cartão de crédito.'], 400);
+            }
+
+            try {
+                $cardData = [
+                    'cpf' => $request->cpf,
+                    'holder_name' => $request->card_name,
+                    'number' => $request->card_number,
+                    'expiry_month' => $request->card_expiry_month,
+                    'expiry_year' => $request->card_expiry_year,
+                    'ccv' => $request->card_ccv,
+                    'postal_code' => $request->postal_code,
+                    'address_number' => $request->address_number,
+                    'phone' => $request->phone,
+                ];
+
+                $idempotencyKey = md5($user->id . '_upgrade_' . $plan->id . '_' . now()->format('Y-m-d H:i'));
+
+                // Criar um plano "virtual" com o preço delta para reusar createInstallmentPayment
+                $upgradePlan = new \stdClass();
+                $upgradePlan->name = "Upgrade {$activeInstallment->plan->name} → {$plan->name}";
+                $upgradePlan->annual_price = $upgradeTotal;
+                $upgradePlan->id = $plan->id;
+
+                $asaasPayment = $this->asaasService->createInstallmentPayment(
+                    $user,
+                    $upgradePlan,
+                    $remainingMonths,
+                    'credit_card',
+                    $cardData,
+                    null,
+                    null,
+                    $idempotencyKey
+                );
+
+                $upgradeGatewayId = $asaasPayment['installment'] ?? $asaasPayment['id'];
+
+                // Atualizar a subscription existente para o novo plano
+                $activeInstallment->update([
+                    'plan_id' => $plan->id,
+                    'amount' => (float) $plan->annual_price,
+                ]);
+
+                // Atualizar o user para o novo plano
+                $user->update([
+                    'plan_id' => $plan->id,
+                ]);
+
+                // Criar subscription de upgrade para rastrear o pagamento delta
+                Subscription::create([
+                    'user_id' => $user->id,
+                    'plan_id' => $plan->id,
+                    'status' => 'pending',
+                    'gateway' => 'asaas',
+                    'gateway_id' => $upgradeGatewayId,
+                    'billing_type' => 'installment',
+                    'installment_count' => $remainingMonths,
+                    'amount' => $upgradeTotal,
+                    'current_period_start' => now(),
+                    'current_period_end' => $activeInstallment->current_period_end,
+                ]);
+
+                PaymentLog::create([
+                    'user_id' => $user->id,
+                    'gateway' => 'asaas',
+                    'gateway_payment_id' => $asaasPayment['id'] ?? null,
+                    'gateway_subscription_id' => $upgradeGatewayId,
+                    'event' => 'CHECKOUT_UPGRADE_INSTALLMENT',
+                    'status' => 'success',
+                    'raw_response' => PaymentLog::sanitize($asaasPayment),
+                ]);
+
+                Log::info('[API Checkout] Upgrade pro-rata parcelado com sucesso.', [
+                    'user_id' => $user->id,
+                    'from_plan' => $activeInstallment->plan->name,
+                    'to_plan' => $plan->name,
+                    'delta_total' => $upgradeTotal,
+                    'remaining_months' => $remainingMonths,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'upgrade' => true,
+                    'payment_method' => 'credit_card',
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('[API Checkout] Erro no upgrade pro-rata', [
+                    'user_id' => $user->id,
+                    'plan_id' => $plan->id,
+                    'error' => $e->getMessage(),
+                ]);
+                return response()->json(['message' => 'Erro ao processar upgrade: ' . $e->getMessage()], 500);
+            }
+        }
+
         // Evita duplicidade apenas se o usuário já tem EXATAMENTE o mesmo plano ativo
         // Isso permite upgrades, downgrades ou mudanças para planos diferentes.
         if ($user->plan_id === $plan->id && $user->plan_expires_at && $user->plan_expires_at->isFuture()) {
@@ -301,6 +433,58 @@ class SubscriptionController extends Controller
 
             return response()->json(['message' => 'Erro ao processar pagamento: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Retorna preview do custo de upgrade pro-rata para planos parcelados.
+     */
+    public function upgradePreview(Plan $plan)
+    {
+        $user = Auth::user();
+
+        $activeInstallment = Subscription::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->whereNotNull('installment_count')
+            ->where('current_period_end', '>', now())
+            ->with('plan')
+            ->first();
+
+        if (!$activeInstallment) {
+            return response()->json(['has_active_installment' => false]);
+        }
+
+        $currentPlanPrice = (float) $activeInstallment->plan->annual_price;
+        $newPlanPrice = (float) $plan->annual_price;
+
+        if ($newPlanPrice <= $currentPlanPrice) {
+            return response()->json([
+                'has_active_installment' => true,
+                'is_downgrade' => true,
+                'blocked' => true,
+                'message' => 'Não é possível fazer downgrade durante plano anual parcelado.',
+                'current_plan_name' => $activeInstallment->plan->name,
+                'expires_at' => $activeInstallment->current_period_end->format('d/m/Y'),
+            ]);
+        }
+
+        $remainingMonths = (int) ceil(now()->diffInDays($activeInstallment->current_period_end) / 30);
+        $remainingMonths = max(1, min(12, $remainingMonths));
+
+        $currentMonthly = $currentPlanPrice / 12;
+        $newMonthly = $newPlanPrice / 12;
+        $deltaPerMonth = round($newMonthly - $currentMonthly, 2);
+        $upgradeTotal = round($deltaPerMonth * $remainingMonths, 2);
+
+        return response()->json([
+            'has_active_installment' => true,
+            'is_upgrade' => true,
+            'current_plan_name' => $activeInstallment->plan->name,
+            'new_plan_name' => $plan->name,
+            'remaining_months' => $remainingMonths,
+            'delta_per_month' => $deltaPerMonth,
+            'upgrade_total' => $upgradeTotal,
+            'expires_at' => $activeInstallment->current_period_end->format('d/m/Y'),
+        ]);
     }
 
     /**

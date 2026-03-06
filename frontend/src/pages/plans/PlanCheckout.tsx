@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
-import { validateCoupon, processCheckout } from '../../api/subscriptions';
+import { validateCoupon, processCheckout, getUpgradePreview } from '../../api/subscriptions';
 import { getUser } from '../../api/auth';
 import { IMaskInput } from 'react-imask';
 
@@ -17,7 +17,7 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
     const { planId: paramPlanId } = useParams();
     const navigate = useNavigate();
     const { plans } = useConfigStore();
-    const { setUser } = useAuthStore();
+    const { user, setUser } = useAuthStore();
 
     const resolvedPlanId = embeddedPlanId || paramPlanId;
     const plan = plans.find((p: any) => p.id === Number(resolvedPlanId) || p.slug === String(resolvedPlanId));
@@ -35,6 +35,9 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
 
     const [isLoading, setIsLoading] = useState(false);
     const [checkoutResult, setCheckoutResult] = useState<any>(null);
+
+    const [upgradeData, setUpgradeData] = useState<any>(null);
+    const [isLoadingUpgrade, setIsLoadingUpgrade] = useState(false);
 
     const [formData, setFormData] = useState({
         card_name: '',
@@ -55,8 +58,24 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
     useEffect(() => {
         if (plan) {
             setFinalPrice(Number(plan.price) || 0);
+
+            const fetchUpgrade = async () => {
+                if (!user) return;
+                setIsLoadingUpgrade(true);
+                try {
+                    const res = await getUpgradePreview(plan.id);
+                    if (res.data?.has_active_installment) {
+                        setUpgradeData(res.data);
+                    }
+                } catch (err) {
+                    console.error('Erro ao verificar upgrade:', err);
+                } finally {
+                    setIsLoadingUpgrade(false);
+                }
+            };
+            fetchUpgrade();
         }
-    }, [plan]);
+    }, [plan, user]);
 
     useEffect(() => {
         let interval: ReturnType<typeof setInterval>;
@@ -132,15 +151,21 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
             if (isInstallment) {
                 payload.installment_count = 12;
             }
+            if (upgradeData?.is_upgrade) {
+                payload.is_upgrade = true;
+                // Upgrade sempre precisa ser cartão
+                payload.payment_method = 'credit_card';
+            }
+
             const response = await processCheckout(plan!.id, payload);
             if (response.data.success) {
-                if (method === 'pix') {
+                if (method === 'pix' && !upgradeData?.is_upgrade) {
                     setCheckoutResult(response.data);
                 } else {
                     if (onSuccess) {
                         onSuccess();
                     } else {
-                        navigate(`/checkout/success?planName=${encodeURIComponent(plan!.name)}`);
+                        navigate(`/checkout/success?planName=${encodeURIComponent(plan!.name)}&upgrade=${upgradeData?.is_upgrade ? 'true' : 'false'}`);
                     }
                 }
             }
@@ -214,50 +239,73 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                         </div>
 
                         <div className="mb-6 pb-6 border-b border-slate-200 dark:border-slate-700">
-                            <span className="text-slate-500 dark:text-slate-400 block text-[11px] font-bold uppercase tracking-wider mb-1">{isInstallment ? 'Parcelamento' : 'Total a Pagar'}</span>
-                            {isInstallment ? (
+                            {isLoadingUpgrade ? (
+                                <div className="animate-pulse text-sm text-slate-500">Calculando valores...</div>
+                            ) : upgradeData?.is_upgrade ? (
                                 <>
+                                    <span className="text-slate-500 dark:text-slate-400 block text-[11px] font-bold uppercase tracking-wider mb-1">Upgrade Pro-rata ({upgradeData.remaining_months} meses restantes)</span>
                                     <div className="flex items-baseline gap-1">
-                                        <span className="text-3xl font-black text-slate-900 dark:text-white">12x de R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(couponSuccess ? finalPrice / 12 : installmentValue)}</span>
+                                        <span className="text-3xl font-black text-slate-900 dark:text-white">{upgradeData.remaining_months}x de R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(upgradeData.delta_per_month)}</span>
                                     </div>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Total: R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(couponSuccess ? finalPrice : annualPrice)}</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Diferença total: R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(upgradeData.upgrade_total)}</p>
+                                    <p className="text-[10px] text-slate-400 mt-2 bg-slate-100 dark:bg-slate-800 p-2 rounded">
+                                        Você pagará apenas a diferença entre o plano <strong>{upgradeData.current_plan_name}</strong> e o <strong>{upgradeData.new_plan_name}</strong> pelos meses que restam na sua assinatura (até {upgradeData.expires_at}).
+                                    </p>
                                 </>
-                            ) : (
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-3xl font-black text-slate-900 dark:text-white">R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(finalPrice)}</span>
-                                    <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">/{plan.interval === 'yearly' ? 'ano' : 'mês'}</span>
+                            ) : upgradeData?.is_downgrade ? (
+                                <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-4 rounded-xl text-sm font-medium border border-red-100 dark:border-red-800">
+                                    {upgradeData.message}
                                 </div>
-                            )}
-                            {couponSuccess && (
-                                <span className="inline-block mt-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold px-2 py-0.5 rounded">Desconto Aplicado</span>
+                            ) : (
+                                <>
+                                    <span className="text-slate-500 dark:text-slate-400 block text-[11px] font-bold uppercase tracking-wider mb-1">{isInstallment ? 'Parcelamento' : 'Total a Pagar'}</span>
+                                    {isInstallment ? (
+                                        <>
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-3xl font-black text-slate-900 dark:text-white">12x de R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(couponSuccess ? finalPrice / 12 : installmentValue)}</span>
+                                            </div>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Total: R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(couponSuccess ? finalPrice : annualPrice)}</p>
+                                        </>
+                                    ) : (
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-3xl font-black text-slate-900 dark:text-white">R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(finalPrice)}</span>
+                                            <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">/{plan.interval === 'yearly' ? 'ano' : 'mês'}</span>
+                                        </div>
+                                    )}
+                                    {couponSuccess && (
+                                        <span className="inline-block mt-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold px-2 py-0.5 rounded">Desconto Aplicado</span>
+                                    )}
+                                </>
                             )}
                         </div>
 
                         {/* Cupom embutido harmoniosamente */}
-                        <div>
-                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Possui Cupom?</label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={couponCode}
-                                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                                    placeholder="CÓDIGO"
-                                    className="flex-1 block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white sm:text-sm focus:border-blue-500 focus:ring-blue-500 uppercase"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleValidateCoupon}
-                                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 text-sm font-bold rounded-lg transition-colors"
-                                >
-                                    Aplicar
-                                </button>
+                        {!upgradeData?.is_upgrade && !upgradeData?.is_downgrade && (
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Possui Cupom?</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={couponCode}
+                                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                        placeholder="CÓDIGO"
+                                        className="flex-1 block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white sm:text-sm focus:border-blue-500 focus:ring-blue-500 uppercase"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleValidateCoupon}
+                                        className="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 text-sm font-bold rounded-lg transition-colors"
+                                    >
+                                        Aplicar
+                                    </button>
+                                </div>
+                                {couponMessage && (
+                                    <p className={`mt-2 text-xs font-semibold ${couponSuccess ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                                        {couponMessage}
+                                    </p>
+                                )}
                             </div>
-                            {couponMessage && (
-                                <p className={`mt-2 text-xs font-semibold ${couponSuccess ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
-                                    {couponMessage}
-                                </p>
-                            )}
-                        </div>
+                        )}
 
                         <div className="mt-8 flex items-center justify-start gap-2 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
                             <svg className="w-4 h-4 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
@@ -413,16 +461,18 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                                 </div>
 
                                 <button
-                                    type="submit" disabled={isLoading}
+                                    type="submit" disabled={isLoading || isLoadingUpgrade}
                                     className="mt-8 w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold text-base rounded-xl shadow-sm transition-all flex justify-center items-center gap-2 transform active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed"
                                 >
                                     {isLoading ? (
                                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                                     ) : (
                                         <>
-                                            {isInstallment
-                                                ? `Confirmar 12x de R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(couponSuccess ? finalPrice / 12 : installmentValue)}`
-                                                : `Confirmar Assinatura — R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(finalPrice)}`
+                                            {upgradeData?.is_upgrade
+                                                ? `Confirmar Upgrade — ${upgradeData.remaining_months}x de R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(upgradeData.delta_per_month)}`
+                                                : isInstallment
+                                                    ? `Confirmar 12x de R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(couponSuccess ? finalPrice / 12 : installmentValue)}`
+                                                    : `Confirmar Assinatura — R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(finalPrice)}`
                                             }
                                             <svg className="w-5 h-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                                         </>
