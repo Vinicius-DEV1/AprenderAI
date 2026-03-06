@@ -17,7 +17,7 @@ services:
     # environment:
     #   - APP_NAME=aprenderAI
     #   - APP_ENV=local
-    #   - APP_KEY=base64:cwLoa7etFk8s4DQ8goS72l6OyFF41/Qwy84zfacp5xs=
+    #   - APP_KEY=base64:8RP5v67UCv73luvg2Muzu26DL/mWB8nPJKa/Jo8kV/E=
     #   - APP_DEBUG=true
     #   - APP_URL=http://localhost:8000
     #   - FRONTEND_URL=http://localhost:5174
@@ -94,7 +94,7 @@ services:
     environment:
       - APP_NAME=aprenderAI
       - APP_ENV=local
-      - APP_KEY=base64:cwLoa7etFk8s4DQ8goS72l6OyFF41/Qwy84zfacp5xs=
+      - APP_KEY=base64:8RP5v67UCv73luvg2Muzu26DL/mWB8nPJKa/Jo8kV/E=
       - DB_CONNECTION=mysql
       - DB_HOST=db
       - DB_PORT=3306
@@ -128,7 +128,7 @@ services:
     environment:
       - APP_NAME=aprenderAI
       - APP_ENV=local
-      - APP_KEY=base64:cwLoa7etFk8s4DQ8goS72l6OyFF41/Qwy84zfacp5xs=
+      - APP_KEY=base64:8RP5v67UCv73luvg2Muzu26DL/mWB8nPJKa/Jo8kV/E=
       - DB_CONNECTION=mysql
       - DB_HOST=db
       - DB_PORT=3306

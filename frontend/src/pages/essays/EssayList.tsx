@@ -337,7 +337,7 @@ export default function EssayList() {
                                                             {essay.score ?? '-'}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                            <Link to={`/essays/${essay.id}`} className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300">
+                                                            <Link to={`/redacao/correcao/${essay.id}`} className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300">
                                                                 Abrir
                                                             </Link>
                                                         </td>
