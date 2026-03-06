@@ -153,8 +153,9 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
             }
             if (upgradeData?.is_upgrade) {
                 payload.is_upgrade = true;
-                // Upgrade sempre precisa ser cartão
-                payload.payment_method = 'credit_card';
+                // Envia a flag is_installment (true para cartão e false para pix, ou configurável se o usuário decidir não parcelar no cartão)
+                // Por padrão, se for cartão, vamos parcelar. Se for PIX, será à vista.
+                payload.is_installment = method === 'credit_card';
             }
 
             const response = await processCheckout(plan!.id, payload);
@@ -249,7 +250,8 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                                     </div>
                                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Diferença total: R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(upgradeData.upgrade_total)}</p>
                                     <p className="text-[10px] text-slate-400 mt-2 bg-slate-100 dark:bg-slate-800 p-2 rounded">
-                                        Você pagará apenas a diferença entre o plano <strong>{upgradeData.current_plan_name}</strong> e o <strong>{upgradeData.new_plan_name}</strong> pelos meses que restam na sua assinatura (até {upgradeData.expires_at}).
+                                        Você pagará apenas a diferença entre o plano <strong>{upgradeData.current_plan_name}</strong> e o <strong>{upgradeData.new_plan_name}</strong> pelos meses que restam na sua assinatura (até {upgradeData.expires_at}). <br />
+                                        <strong>Cartão:</strong> Pague em até {upgradeData.remaining_months}x. <strong>PIX:</strong> Pague à vista.
                                     </p>
                                 </>
                             ) : upgradeData?.is_downgrade ? (
@@ -333,12 +335,21 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                             <button
                                 type="button"
                                 onClick={() => setMethod('pix')}
-                                className={`flex-1 py-2.5 px-3 rounded-md font-bold text-sm transition-all flex items-center justify-center gap-2 ${method === 'pix' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                disabled={isInstallment && !upgradeData?.is_upgrade}
+                                className={`flex-1 py-2.5 px-3 rounded-md font-bold text-sm transition-all flex items-center justify-center gap-2 ${isInstallment && !upgradeData?.is_upgrade ? 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-800/50' : ''} ${method === 'pix' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                             >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                                 Pix
                             </button>
                         </div>
+
+                        {/* (Message for Pix disabled) */}
+                        {isInstallment && !upgradeData?.is_upgrade && method === 'credit_card' && (
+                            <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 p-3 rounded-lg text-xs font-semibold flex gap-2 mb-6">
+                                <svg className="flex-shrink-0 w-4 h-4 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                O plano anual parcelado em 12x garantido está disponível apenas via cartão. Se deseja pagar via PIX (à vista ou recorrente), escolha a opção mensal ou altere as abas.
+                            </div>
+                        )}
 
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <fieldset disabled={isLoading} className="space-y-6">
@@ -469,7 +480,9 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                                     ) : (
                                         <>
                                             {upgradeData?.is_upgrade
-                                                ? `Confirmar Upgrade — ${upgradeData.remaining_months}x de R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(upgradeData.delta_per_month)}`
+                                                ? method === 'credit_card'
+                                                    ? `Confirmar Upgrade — ${upgradeData.remaining_months}x de R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(upgradeData.delta_per_month)}`
+                                                    : `Confirmar Upgrade à vista — R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(upgradeData.upgrade_total)}`
                                                 : isInstallment
                                                     ? `Confirmar 12x de R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(couponSuccess ? finalPrice / 12 : installmentValue)}`
                                                     : `Confirmar Assinatura — R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(finalPrice)}`
