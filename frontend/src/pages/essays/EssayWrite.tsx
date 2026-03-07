@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     createEssayDraft, startTopicGeneration, getTopicStatus,
-    submitEssay, getEssayThemes, getEssayRule, getEssays,
+    submitEssay, getEssayThemes, getEssayRule, getEssays, updateEssayDraft
 } from '../../api/essays';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -164,6 +164,8 @@ function ThemeSearchModal({
 interface EssayWriteProps {
     isSimulationMode?: boolean;
     simulationEssayId?: number;
+    /** When set, the writer resumes an existing draft instead of creating a new one. */
+    resumeEssayId?: number;
     initialTheme?: string;
     initialThemeDescription?: string;
     initialType?: string;
@@ -176,6 +178,7 @@ interface EssayWriteProps {
 export default function EssayWrite({
     isSimulationMode = false,
     simulationEssayId,
+    resumeEssayId,
     initialTheme,
     initialThemeDescription,
     initialType,
@@ -188,9 +191,12 @@ export default function EssayWrite({
     const queryClient = useQueryClient();
 
     // Wizard State
-    // Bypass step 1 and 2 if simulation mode
-    const [step, setStep] = useState<1 | 2 | 3>(isSimulationMode ? 3 : 1);
-    const [essayId, setEssayId] = useState<number | null>(isSimulationMode ? (simulationEssayId || null) : null);
+    // Bypass step 1 and 2 if simulation mode or resuming a draft
+    const isResumingDraft = !!resumeEssayId;
+    const [step, setStep] = useState<1 | 2 | 3>((isSimulationMode || isResumingDraft) ? 3 : 1);
+    const [essayId, setEssayId] = useState<number | null>(
+        resumeEssayId ?? (isSimulationMode ? (simulationEssayId || null) : null)
+    );
 
     // Step 1 State
     const [type, setType] = useState(initialType || 'enem');
@@ -212,6 +218,12 @@ export default function EssayWrite({
     const [lineWarning, setLineWarning] = useState('');
     const charWarningTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lineWarningTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Auto-save State
+    const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const autoSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Track the last saved content to avoid redundant saves
+    const lastSavedContent = useRef(initialContent || '');
 
     // WritingRule (fetched on entering step 3)
     const [rule, setRule] = useState<WritingRule>({ min_chars: 1500, max_chars: 3000, max_lines: 30 });
@@ -250,8 +262,8 @@ export default function EssayWrite({
         mutationFn: () => createEssayDraft({ type, time_limit: timeLimit }),
         onSuccess: (data) => {
             setEssayId(data.data.id);
-            setStep(2);
             setError(null);
+            // If theme was already selected or we are startting generation, flow continues
         },
         onError: (err: any) => {
             const code = err.response?.data?.code;
@@ -264,7 +276,15 @@ export default function EssayWrite({
     });
 
     const generateMutation = useMutation({
-        mutationFn: () => startTopicGeneration(essayId!),
+        mutationFn: async () => {
+            let currentEssayId = essayId;
+            if (!currentEssayId) {
+                const draft = await createEssayDraft({ type, time_limit: timeLimit });
+                currentEssayId = draft.data.id;
+                setEssayId(currentEssayId);
+            }
+            return startTopicGeneration(currentEssayId!);
+        },
         onSuccess: () => {
             setIsGenerating(true);
             setError(null);
@@ -328,16 +348,34 @@ export default function EssayWrite({
     const handleStep1Submit = (e: FormEvent) => {
         e.preventDefault();
         setRemainingSeconds(timeLimit * 60);
-        draftMutation.mutate();
+        setStep(2); // Just move to step 2, don't create draft yet
     };
 
-    const handleStep2Submit = (e: FormEvent) => {
+    const handleStep2Submit = async (e: FormEvent) => {
         e.preventDefault();
         if (!theme.trim()) {
             setError('Defina um tema antes de continuar.');
             return;
         }
+
         setError(null);
+
+        // If no essayId yet (and not resuming), create the draft now before moving to Step 3
+        if (!essayId && !isResumingDraft) {
+            try {
+                const data = await createEssayDraft({ type, time_limit: timeLimit });
+                setEssayId(data.data.id);
+            } catch (err: any) {
+                const code = err.response?.data?.code;
+                if (code === 'QUOTA_EXCEEDED') {
+                    setError('Você atingiu seu limite mensal de redações.');
+                } else {
+                    setError('Falha interna ao criar rascunho. Tente novamente.');
+                }
+                return;
+            }
+        }
+
         setStep(3);
     };
 
@@ -372,6 +410,24 @@ export default function EssayWrite({
         setContent(text);
         if (onDraftUpdate) {
             onDraftUpdate(text);
+        }
+
+        // Trigger Auto-save
+        if (essayId && inputType === 'text') {
+            setAutoSaveStatus('idle'); // clear saved status so the user knows it changed
+            if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
+            autoSaveTimeout.current = setTimeout(async () => {
+                if (text !== lastSavedContent.current) {
+                    setAutoSaveStatus('saving');
+                    try {
+                        await updateEssayDraft(essayId, text);
+                        lastSavedContent.current = text;
+                        setAutoSaveStatus('saved');
+                    } catch (err) {
+                        setAutoSaveStatus('error');
+                    }
+                }
+            }, 2000); // 2 seconds debounce
         }
     };
 
@@ -753,8 +809,34 @@ export default function EssayWrite({
                                         <div
                                             className={`flex justify-between items-center mt-2 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${isNearLimit ? 'text-red-600 dark:text-red-400 font-bold border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20' : 'text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'}`}
                                         >
-                                            <span>Caracteres: <strong>{charCount.toLocaleString('pt-BR')}</strong> / {rule.max_chars.toLocaleString('pt-BR')}</span>
-                                            <span>Palavras: <strong>{wordCount}</strong></span>
+                                            <div className="flex gap-4">
+                                                <span>Caracteres: <strong>{charCount.toLocaleString('pt-BR')}</strong> / {rule.max_chars.toLocaleString('pt-BR')}</span>
+                                                <span>Palavras: <strong>{wordCount}</strong></span>
+                                            </div>
+
+                                            {/* Auto-save Indicator */}
+                                            {essayId && (
+                                                <div className="text-xs flex items-center gap-1.5 opacity-80">
+                                                    {autoSaveStatus === 'saving' && (
+                                                        <>
+                                                            <div className="animate-spin h-3 w-3 border-b-2 border-indigo-500 rounded-full" />
+                                                            <span className="text-indigo-600 dark:text-indigo-400">Salvando rascunho...</span>
+                                                        </>
+                                                    )}
+                                                    {autoSaveStatus === 'saved' && (
+                                                        <>
+                                                            <span className="text-emerald-500">✔</span>
+                                                            <span className="text-emerald-600 dark:text-emerald-400">Rascunho salvo</span>
+                                                        </>
+                                                    )}
+                                                    {autoSaveStatus === 'error' && (
+                                                        <>
+                                                            <span className="text-red-500">⚠️</span>
+                                                            <span className="text-red-600 dark:text-red-400">Falha ao salvar</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 ) : (

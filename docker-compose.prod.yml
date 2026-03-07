@@ -1,3 +1,4 @@
+name: aprender-ai
 services:
   # PHP-FPM Application
   app:
