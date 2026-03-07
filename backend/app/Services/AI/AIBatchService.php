@@ -27,8 +27,10 @@ class AIBatchService
             $result = $this->aiService->generateJson($prompt, $model, $userId);
             $data = $result['data'] ?? [];
             $usage = $result['usage'] ?? ['input_tokens' => 0, 'output_tokens' => 0];
+            $cost = $result['estimated_cost'] ?? 0;
             $appliedData = $this->applyResults($questions, $data, $type, $reprocess, $batchId);
             $appliedData['usage'] = $usage;
+            $appliedData['estimated_cost'] = $cost;
 
             \Illuminate\Support\Facades\DB::flushQueryLog();
             if (gc_enabled())

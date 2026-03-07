@@ -258,12 +258,21 @@ class AIBatchTriageController extends Controller
      */
     public function active()
     {
-        $batch = AiProcessingBatch::where('status', 'processing')->latest()->first();
+        // Pega o lote em processamento ou o último concluído nos últimos 15 minutos
+        // Isso mantém o ícone flutuante visível para o usuário ver o resumo após terminar.
+        $batch = AiProcessingBatch::where('status', 'processing')
+            ->orWhere(function ($q) {
+                $q->whereIn('status', ['completed', 'failed', 'cancelled'])
+                    ->where('updated_at', '>=', now()->subMinutes(15));
+            })
+            ->latest()
+            ->first();
 
         if ($batch) {
             return response()->json([
                 'success' => true,
-                'batch_id' => $batch->batch_id
+                'batch_id' => $batch->batch_id,
+                'status' => $batch->status
             ]);
         }
 
@@ -300,6 +309,7 @@ class AIBatchTriageController extends Controller
                     'errors' => $batch->error_count,
                     'input_tokens' => $batch->input_tokens ?? 0,
                     'output_tokens' => $batch->output_tokens ?? 0,
+                    'estimated_cost' => $batch->estimated_cost ?? 0,
                     'status' => $status,
                     'last_error' => $lastError,
                     'message' => $message,

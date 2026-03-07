@@ -837,11 +837,14 @@ export default function AdminQuestions() {
             {!isBatchModalOpen && activeBatchData?.success && activeBatchData?.batch_id && (
                 <div
                     onClick={() => setIsBatchModalOpen(true)}
-                    className="fixed bottom-6 right-6 z-50 bg-indigo-600 text-white px-5 py-3 rounded-full shadow-2xl cursor-pointer hover:bg-indigo-700 hover:scale-105 transition-all flex items-center gap-3 animate-bounce border-2 border-indigo-400 group"
+                    className={`fixed bottom-6 right-6 z-50 ${activeBatchData.status === 'processing' ? 'bg-indigo-600 animate-bounce' : 'bg-green-600'
+                        } text-white px-5 py-3 rounded-full shadow-2xl cursor-pointer hover:scale-105 transition-all flex items-center gap-3 border-2 border-white group`}
                 >
-                    <span className="text-xl">⏳</span>
+                    <span className="text-xl">
+                        {activeBatchData.status === 'processing' ? '⏳' : '✅'}
+                    </span>
                     <span className="font-black text-sm tracking-wide">
-                        Restaurar Painel IA
+                        {activeBatchData.status === 'processing' ? 'PAINEL IA' : 'LOTE CONCLUÍDO'}
                     </span>
                     <div className="absolute inset-0 rounded-full border-4 border-white opacity-20 -z-10 group-hover:animate-ping"></div>
                 </div>

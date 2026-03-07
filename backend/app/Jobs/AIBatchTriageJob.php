@@ -77,7 +77,8 @@ class AIBatchTriageJob implements ShouldQueue
                 null,
                 $result['errors'] ?? [],
                 $result['usage']['input_tokens'] ?? 0,
-                $result['usage']['output_tokens'] ?? 0
+                $result['usage']['output_tokens'] ?? 0,
+                $result['estimated_cost'] ?? 0
             );
 
             Log::info("[AIBATCH] Batch job finished", [
@@ -102,7 +103,8 @@ class AIBatchTriageJob implements ShouldQueue
         ?string $errorMessage = null,
         array $detailedErrors = [],
         int $inputTokens = 0,
-        int $outputTokens = 0
+        int $outputTokens = 0,
+        float $estimatedCost = 0
     ): void {
         $key = "batch_progress_{$this->batchId}";
         $lock = \Illuminate\Support\Facades\Cache::lock($key . "_lock", 10);
@@ -132,6 +134,7 @@ class AIBatchTriageJob implements ShouldQueue
             $data['errors'] += $errors;
             $data['input_tokens'] = ($data['input_tokens'] ?? 0) + $inputTokens;
             $data['output_tokens'] = ($data['output_tokens'] ?? 0) + $outputTokens;
+            $data['estimated_cost'] = ($data['estimated_cost'] ?? 0) + $estimatedCost;
             $data['message'] = "Processando " . ($data['processed'] + $data['errors']) . " de " . $data['total'] . "...";
 
             if (!empty($detailedErrors) || $errorMessage) {
@@ -160,6 +163,7 @@ class AIBatchTriageJob implements ShouldQueue
                 $dbBatch->error_count += $errors;
                 $dbBatch->input_tokens += $inputTokens;
                 $dbBatch->output_tokens += $outputTokens;
+                $dbBatch->estimated_cost += $estimatedCost;
                 $dbBatch->status = $data['status'];
 
                 if (!empty($detailedErrors) || $errorMessage) {
