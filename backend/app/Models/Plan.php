@@ -83,5 +83,21 @@ class Plan extends Model
     {
         return in_array($feature, $this->features ?? []);
     }
+
+    public function getLevel(): int
+    {
+        $name = strtolower($this->name);
+        if (str_contains($name, 'plus'))
+            return 3;
+        if (str_contains($name, 'básico') || str_contains($name, 'basico'))
+            return 2;
+        if (str_contains($name, 'gratuito'))
+            return 1;
+
+        // Custom plans or edge cases
+        if ($this->price == 0)
+            return 1;
+        return 0; // Unknown
+    }
 }
 

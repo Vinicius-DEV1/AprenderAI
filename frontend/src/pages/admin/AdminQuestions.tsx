@@ -30,7 +30,17 @@ export default function AdminQuestions() {
     const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
     const [removingIds, setRemovingIds] = useState<number[]>([]);
     const [activeMenu, setActiveMenu] = useState<number | null>(null);
+    const [mainActiveMenu, setMainActiveMenu] = useState<number | null>(null);
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean, id: number | null }>({ isOpen: false, id: null });
+
+    // Reset pagination when filters change
+    useEffect(() => {
+        setPage(1);
+    }, [filters]);
+
+    useEffect(() => {
+        setTriagePage(1);
+    }, [triageFilters]);
 
     // NEW STATES FOR REPORTS TABS
     const [activeTab, setActiveTab] = useState<'all' | 'reported' | 'trashed'>('all');
@@ -500,7 +510,7 @@ export default function AdminQuestions() {
                                         <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase w-16">ID</th>
                                         <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase">Enunciado / Disciplina</th>
                                         <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase w-28">Dificuldade</th>
-                                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase text-right">Ações</th>
+                                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase text-center w-24">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
@@ -530,14 +540,63 @@ export default function AdminQuestions() {
                                             <td className="px-4 py-3">
                                                 <DifficultyBadge level={q.difficulty} />
                                             </td>
-                                            <td className="px-4 py-3 text-right">
-                                                <div className="flex justify-end gap-1.5 items-center">
-                                                    <button className="px-2 py-1 bg-indigo-100 text-indigo-700 text-[9px] rounded-lg hover:bg-indigo-200 font-black uppercase tracking-tighter" title="Ver">👁️ Ver</button>
-                                                    <Link to={`/admin/questions/${q.id}/edit`} className="px-2 py-1 bg-blue-100 text-blue-700 text-[9px] rounded-lg hover:bg-blue-200 font-black uppercase tracking-tighter">✏️ Editar</Link>
-                                                    <button onClick={() => adminActions.mutate({ id: q.id, action: 'evaluate-difficulty' })} className="px-2 py-1 bg-purple-100 text-purple-700 text-[9px] rounded-lg hover:bg-purple-200 font-black uppercase tracking-tighter" title="Reavaliar IA">⚡ IA</button>
-                                                    <button onClick={() => adminActions.mutate({ id: q.id, action: 'retry-evaluation' })} className="px-2 py-1 bg-gray-100 text-gray-700 text-[9px] rounded-lg hover:bg-gray-200 font-black uppercase tracking-tighter" title="Reprocessar">🔄 Reset</button>
-                                                    <button onClick={() => setDeleteModal({ isOpen: true, id: q.id })} className="px-2 py-1 bg-red-100 text-red-700 text-[9px] rounded-lg hover:bg-red-200 font-black uppercase tracking-tighter" title="Excluir">🗑️ Excluir</button>
-                                                </div>
+                                            <td className="px-4 py-3 text-center relative">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setMainActiveMenu(mainActiveMenu === q.id ? null : q.id);
+                                                    }}
+                                                    className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center hover:bg-gray-100 transition-all ${mainActiveMenu === q.id ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400'}`}
+                                                >
+                                                    <span className="text-xl leading-none">⋮</span>
+                                                </button>
+
+                                                {mainActiveMenu === q.id && (
+                                                    <>
+                                                        <div
+                                                            className="fixed inset-0 z-[60]"
+                                                            onClick={() => setMainActiveMenu(null)}
+                                                        ></div>
+                                                        <div className="absolute right-8 top-1/2 -translate-y-1/2 z-[70] bg-white rounded-2xl shadow-2xl border border-gray-100 p-2 min-w-[200px] animate-in zoom-in-95 duration-200">
+                                                            <div className="flex flex-col gap-1 text-left">
+                                                                <div className="px-3 py-1.5 mb-1 border-b border-gray-50 flex justify-between items-center">
+                                                                    <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Ações da Questão</span>
+                                                                </div>
+
+                                                                <Link to={`/admin/questions/${q.id}/edit`} className="px-3 py-2 text-[10px] rounded-xl font-black transition flex items-center gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100 uppercase tracking-wider">
+                                                                    ✏️ Editar Manual
+                                                                </Link>
+
+                                                                <div className="h-0.5 bg-gray-50 my-1"></div>
+
+                                                                <TriageAction
+                                                                    icon="⚡ Avaliar IA"
+                                                                    onClick={() => adminActions.mutate({ id: q.id, action: 'evaluate-difficulty' })}
+                                                                    pending={adminActions.isPending && adminActions.variables?.id === q.id && adminActions.variables?.action === 'evaluate-difficulty'}
+                                                                    variant="blade-purple"
+                                                                />
+                                                                <TriageAction
+                                                                    icon="🔄 Reprocessar (Reset)"
+                                                                    onClick={() => adminActions.mutate({ id: q.id, action: 'retry-evaluation' })}
+                                                                    pending={adminActions.isPending && adminActions.variables?.id === q.id && adminActions.variables?.action === 'retry-evaluation'}
+                                                                    variant="blade-gray"
+                                                                />
+
+                                                                <div className="h-0.5 bg-gray-50 my-1"></div>
+
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setDeleteModal({ isOpen: true, id: q.id });
+                                                                        setMainActiveMenu(null);
+                                                                    }}
+                                                                    className="px-3 py-2 text-[10px] rounded-xl font-black transition flex items-center gap-2 bg-red-50 text-red-600 hover:bg-red-100 uppercase tracking-wider"
+                                                                >
+                                                                    🗑️ Excluir
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
@@ -807,6 +866,8 @@ function TriageAction({ icon, onClick, pending, variant = 'default' }: any) {
         'blade-yellow': 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200',
         'blade-indigo': 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200',
         'blade-green': 'bg-green-100 text-green-700 hover:bg-green-200',
+        'blade-purple': 'bg-purple-100 text-purple-700 hover:bg-purple-200',
+        'blade-gray': 'bg-gray-100 text-gray-700 hover:bg-gray-200',
         'primary': 'bg-indigo-600 text-white shadow-indigo-100 hover:bg-indigo-700',
         'default': 'bg-white border border-gray-100 text-gray-700 hover:border-indigo-200'
     };

@@ -71,7 +71,7 @@ export default function ImportIndex() {
                         }
                     } else if (data?.status === 'failed') {
                         clearInterval(interval);
-                        toast.error('A importação falhou no Job em Background: ' + (data.error || 'Erro Desconhecido'));
+                        toast.error('A importação falhou no Job em Background: ' + (data.error_message || 'Erro Desconhecido'));
                         resetUpload();
                     }
                 } catch (e) {

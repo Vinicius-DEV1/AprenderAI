@@ -36,6 +36,7 @@ import FairUsePolicy from './pages/legal/FairUsePolicy';
 import EssayList from './pages/essays/EssayList';
 import EssayWrite from './pages/essays/EssayWrite';
 import EssayReview from './pages/essays/EssayReview';
+import EssayResume from './pages/essays/EssayResume';
 
 import PlanList from './pages/plans/PlanList';
 import WelcomePlans from './pages/plans/WelcomePlans';
@@ -188,6 +189,8 @@ function App() {
                             <Route path="/redacao/correcao/:id" element={<><MetaTags title="Correção de Redação" /><EssayReview /></>} />
                             <Route path="/essays" element={<><MetaTags title="Minhas Redações" /><EssayList /></>} />
                             <Route path="/essays/create" element={<><MetaTags title="Escrever Redação" /><EssayWrite /></>} />
+                            <Route path="/redacoes/:id/continuar" element={<><MetaTags title="Continuar Rascunho" /><EssayResume /></>} />
+                            <Route path="/essays/:id/continue" element={<><MetaTags title="Continuar Rascunho" /><EssayResume /></>} />
                             <Route path="/essays/:id" element={<><MetaTags title="Correção de Redação" /><EssayReview /></>} />
 
                             {/* Question Bank & Notebooks */}

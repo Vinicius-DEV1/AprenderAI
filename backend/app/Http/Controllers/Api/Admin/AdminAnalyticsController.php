@@ -204,14 +204,27 @@ class AdminAnalyticsController extends Controller
         }, 0);
 
         // Users per plan
-        $usersPerPlanRaw = \App\Models\User::with('plan')->get()->groupBy('plan_id');
+        $usersPerPlanRaw = \App\Models\User::get()->groupBy('plan_id');
+        $sandboxSubs = \App\Models\Subscription::where('is_sandbox', true)
+            ->where('status', 'active')
+            ->get()
+            ->groupBy('user_id');
+
         $usersPerPlan = [];
         $plans = \App\Models\Plan::all();
         foreach ($plans as $plan) {
-            $count = isset($usersPerPlanRaw[$plan->id]) ? $usersPerPlanRaw[$plan->id]->count() : 0;
+            $usersInPlan = $usersPerPlanRaw[$plan->id] ?? collect();
+            $count = $usersInPlan->count();
+
+            // Count how many users in this plan have an active sandbox subscription
+            $sandboxCount = $usersInPlan->filter(function ($u) use ($sandboxSubs) {
+                return isset($sandboxSubs[$u->id]);
+            })->count();
+
             $usersPerPlan[] = [
                 'name' => $plan->name,
                 'count' => $count,
+                'sandbox_count' => $sandboxCount,
                 'color' => str_contains(strtolower($plan->name), 'plus') ? '#f59e0b' : (str_contains(strtolower($plan->name), 'básico') ? '#3b82f6' : '#94a3b8')
             ];
         }
@@ -231,6 +244,8 @@ class AdminAnalyticsController extends Controller
                     'user_email' => $sub->user->email ?? '',
                     'plan_name' => $sub->plan->name ?? 'N/A',
                     'status' => $sub->status,
+                    'is_sandbox' => (bool) $sub->is_sandbox,
+                    'is_manual_grant' => (bool) $sub->is_manual_grant,
                     'created_at' => $sub->created_at->format('Y-m-d H:i:s'),
                     'amount' => $sub->plan->price ?? 0,
                 ];

@@ -154,13 +154,13 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                 }
             }
 
-            // Finalização Automática
-            if (queryProgress.status === 'completed' && queryProgress.errors === 0) {
-                const timer = setTimeout(() => {
-                    handleFinalize();
-                }, 3000);
-                return () => clearTimeout(timer);
-            }
+            // Finalização Automática removida para permitir a visualização do resumo
+            // if (queryProgress.status === 'completed' && queryProgress.errors === 0) {
+            //     const timer = setTimeout(() => {
+            //         handleFinalize();
+            //     }, 3000);
+            //     return () => clearTimeout(timer);
+            // }
         }
     }, [queryProgress]);
 

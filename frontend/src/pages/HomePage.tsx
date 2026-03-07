@@ -8,10 +8,31 @@ export default function HomePage() {
     const [periodo, setPeriodo] = useState<'mensal' | 'anual'>('mensal');
     const { plans } = useConfigStore();
 
-    const getPlanPrice = (slugKeyword: string) => {
+    const getPlanBySlug = (slugKeyword: string) => {
         if (!plans || plans.length === 0) return null;
-        const p = plans.find(p => p.slug?.includes(slugKeyword) && (periodo === 'anual' ? p.interval === 'yearly' : p.interval === 'monthly'));
-        return p ? Number(p.price) : null;
+        const isAnual = periodo === 'anual';
+        return plans.find(p => {
+            const slug = p.slug?.toLowerCase() ?? '';
+            const isExactMatch = slug === slugKeyword.toLowerCase();
+            const isAnnualVariant = slug === `${slugKeyword.toLowerCase()}-annual`;
+            const isMatchSlug = isAnual ? (isExactMatch || isAnnualVariant) : isExactMatch;
+            const isMatchInterval = isAnual
+                ? (p.interval === 'year' || p.interval === 'yearly')
+                : (p.interval === 'month' || p.interval === 'monthly');
+            return isMatchSlug && isMatchInterval;
+        }) ?? plans.find(p => p.slug?.toLowerCase().includes(slugKeyword.toLowerCase()));
+    };
+
+    const getDisplayPrice = (slugKeyword: string) => {
+        const p = getPlanBySlug(slugKeyword);
+        if (!p) return { monthly: 0, total: null };
+        if (periodo === 'anual') {
+            const monthly = p.monthly_price ? Number(p.monthly_price) : Number(p.price);
+            const total = p.annual_price ? Number(p.annual_price) : Number(p.price) * 12;
+            return { monthly, total };
+        }
+        const monthly = p.monthly_price ? Number(p.monthly_price) : Number(p.price);
+        return { monthly, total: null };
     };
 
     const formatPrice = (price: number | null): string => {
@@ -248,124 +269,132 @@ export default function HomePage() {
                         </div>
 
                         {/* BÁSICO */}
-                        <div className="lp-plan-basic">
-                            <div className="lp-plan-name-paid">Básico</div>
-                            {/* tagline */}
-                            <div className="lp-plan-tagline-paid">Para evoluir com correção completa e redação guiada.</div>
+                        {(() => {
+                            const basicPrice = getDisplayPrice('basic');
+                            return (
+                                <div className="lp-plan-basic">
+                                    <div className="lp-plan-name-paid">Básico</div>
+                                    <div className="lp-plan-tagline-paid">Para evoluir com correção completa e redação guiada.</div>
 
-                            <div style={{ marginBottom: '.25rem' }}>
-                                <span className="lp-plan-price-paid">
-                                    R$&nbsp;{formatPrice(getPlanPrice('basic'))}
-                                </span>
-                                <span className="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
-                            </div>
+                                    <div style={{ marginBottom: '.25rem' }}>
+                                        <span className="lp-plan-price-paid">
+                                            R$&nbsp;{formatPrice(basicPrice.monthly)}
+                                        </span>
+                                        <span className="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
+                                    </div>
 
-                            {periodo === 'anual' ? (
-                                <div className="lp-plan-annual-note lp-plan-annual-note-paid">
-                                    Ou R$ {formatPrice((getPlanPrice('basic') || 0) * 12)}/ano
+                                    {periodo === 'anual' ? (
+                                        <div className="lp-plan-annual-note lp-plan-annual-note-paid">
+                                            Ou R$ {basicPrice.total !== null ? formatPrice(basicPrice.total) : formatPrice(basicPrice.monthly * 12)}/ano
+                                        </div>
+                                    ) : (
+                                        <div className="lp-plan-annual-note lp-plan-annual-note-paid">
+                                            Assine agora e acelere seus estudos
+                                        </div>
+                                    )}
+
+                                    <ul className="lp-plan-list lp-plan-list-paid">
+                                        <li><span className="lp-check-paid">✓</span> Correção detalhada (IA)</li>
+                                        <li><span className="lp-check-paid">✓</span> 5 redações/mês</li>
+                                        <li><span className="lp-check-paid">✓</span> Redação com Nota por Competência (C1–C5)</li>
+                                        <li><span className="lp-check-paid">✓</span> Radar de concursos</li>
+                                        <li><span className="lp-check-paid">✓</span> 10 provas/mês</li>
+                                        <li><span className="lp-check-paid">✓</span> +200 mil questões para praticar</li>
+                                        <li><span className="lp-check-paid">✓</span> Acesso ilimitado a todas as questões</li>
+
+                                        {/* Extras */}
+                                        <li className="lp-plan-extras">
+                                            <span style={{ fontWeight: 800, color: '#fff' }}>+ Benefícios</span>
+                                        </li>
+                                        <li><span className="lp-check-paid">✓</span> Estatísticas simples</li>
+                                        <li><span className="lp-check-paid">✓</span> Gabarito Comentado</li>
+                                        <li><span className="lp-check-paid">✓</span> Modo noturno</li>
+                                    </ul>
+
+                                    <Link
+                                        to={`/register?plan=${periodo === 'anual' ? 'basic-annual' : 'basic'}`}
+                                        className="lp-plan-btn-basic"
+                                        onClick={() => trackCTA('pricing_basic', periodo === 'anual' ? 'basic-annual' : 'basic')}
+                                    >
+                                        Assinar Agora
+                                    </Link>
+
+                                    {/* não tirar o anual */}
+                                    <Link
+                                        to="/register?plan=basic-annual"
+                                        className="lp-plan-btn-annual"
+                                        onClick={() => trackCTA('pricing_basic_annual', 'basic-annual')}
+                                    >
+                                        Assinar Plano Anual (20% OFF)
+                                    </Link>
                                 </div>
-                            ) : (
-                                <div className="lp-plan-annual-note lp-plan-annual-note-paid">
-                                    Assine agora e acelere seus estudos
-                                </div>
-                            )}
-
-                            <ul className="lp-plan-list lp-plan-list-paid">
-                                <li><span className="lp-check-paid">✓</span> Correção detalhada (IA)</li>
-                                <li><span className="lp-check-paid">✓</span> 5 redações/mês</li>
-                                <li><span className="lp-check-paid">✓</span> Redação com Nota por Competência (C1–C5)</li>
-                                <li><span className="lp-check-paid">✓</span> Radar de concursos</li>
-                                <li><span className="lp-check-paid">✓</span> 10 provas/mês</li>
-                                <li><span className="lp-check-paid">✓</span> +200 mil questões para praticar</li>
-                                <li><span className="lp-check-paid">✓</span> Acesso ilimitado a todas as questões</li>
-
-                                {/* Extras */}
-                                <li className="lp-plan-extras">
-                                    <span style={{ fontWeight: 800, color: '#fff' }}>+ Benefícios</span>
-                                </li>
-                                <li><span className="lp-check-paid">✓</span> Estatísticas simples</li>
-                                <li><span className="lp-check-paid">✓</span> Gabarito Comentado</li>
-                                <li><span className="lp-check-paid">✓</span> Modo noturno</li>
-                            </ul>
-
-                            <Link
-                                to={`/register?plan=${periodo === 'anual' ? 'basic-annual' : 'basic'}`}
-                                className="lp-plan-btn-basic"
-                                onClick={() => trackCTA('pricing_basic', periodo === 'anual' ? 'basic-annual' : 'basic')}
-                            >
-                                Assinar Agora
-                            </Link>
-
-                            {/* não tirar o anual */}
-                            <Link
-                                to="/register?plan=basic-annual"
-                                className="lp-plan-btn-annual"
-                                onClick={() => trackCTA('pricing_basic_annual', 'basic-annual')}
-                            >
-                                Assinar Plano Anual (20% OFF)
-                            </Link>
-                        </div>
+                            );
+                        })()}
 
                         {/* PLUS */}
-                        <div className="lp-plan-plus">
-                            <div className="lp-plan-badge lp-badge-popular">⭐ Mais Popular</div>
-                            <div className="lp-plan-name-paid">Plus</div>
-                            {/* tagline */}
-                            <div className="lp-plan-tagline-paid">Para acelerar no máximo com estratégia e simulados ilimitados.</div>
+                        {(() => {
+                            const plusPrice = getDisplayPrice('plus');
+                            return (
+                                <div className="lp-plan-plus">
+                                    <div className="lp-plan-badge lp-badge-popular">⭐ Mais Popular</div>
+                                    <div className="lp-plan-name-paid">Plus</div>
+                                    <div className="lp-plan-tagline-paid">Para acelerar no máximo com estratégia e simulados ilimitados.</div>
 
-                            <div style={{ marginBottom: '.25rem' }}>
-                                <span className="lp-plan-price-paid">
-                                    R$&nbsp;{formatPrice(getPlanPrice('plus'))}
-                                </span>
-                                <span className="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
-                            </div>
+                                    <div style={{ marginBottom: '.25rem' }}>
+                                        <span className="lp-plan-price-paid">
+                                            R$&nbsp;{formatPrice(plusPrice.monthly)}
+                                        </span>
+                                        <span className="lp-plan-price-unit lp-plan-price-unit-paid">/mês</span>
+                                    </div>
 
-                            {periodo === 'anual' ? (
-                                <div className="lp-plan-annual-note lp-plan-annual-note-paid">
-                                    Ou R$ {formatPrice((getPlanPrice('plus') || 0) * 12)}/ano
+                                    {periodo === 'anual' ? (
+                                        <div className="lp-plan-annual-note lp-plan-annual-note-paid">
+                                            Ou R$ {plusPrice.total !== null ? formatPrice(plusPrice.total) : formatPrice(plusPrice.monthly * 12)}/ano
+                                        </div>
+                                    ) : (
+                                        <div className="lp-plan-annual-note lp-plan-annual-note-paid">
+                                            O plano definitivo para aprovação
+                                        </div>
+                                    )}
+
+                                    <ul className="lp-plan-list lp-plan-list-paid">
+                                        <li><span className="lp-check-paid">✓</span> <strong style={{ color: '#fff' }}>Análise estratégica</strong></li>
+                                        <li><span className="lp-check-paid">✓</span> Cronograma de Estudos personalizado</li>
+                                        <li><span className="lp-check-paid">✓</span> <strong style={{ color: '#fff' }}>Simulados ilimitados</strong></li>
+                                        <li><span className="lp-check-paid">✓</span> <strong style={{ color: '#fff' }}>15 redações/mês</strong></li>
+                                        <li><span className="lp-check-paid">✓</span> Redação com Nota por Competência (C1–C5)</li>
+                                        <li><span className="lp-check-paid">✓</span> Estatísticas completas</li>
+                                        <li><span className="lp-check-paid">✓</span> Radar de concursos</li>
+                                        <li><span className="lp-check-paid">✓</span> +200 mil questões para praticar</li>
+                                        <li><span className="lp-check-paid">✓</span> Acesso ilimitado a todas as questões</li>
+
+                                        {/* Extras */}
+                                        <li className="lp-plan-extras">
+                                            <span style={{ fontWeight: 800, color: '#fff' }}>+ Benefícios</span>
+                                        </li>
+                                        <li><span className="lp-check-paid">✓</span> Gabarito Comentado</li>
+                                        <li><span className="lp-check-paid">✓</span> Modo noturno</li>
+                                    </ul>
+
+                                    <Link
+                                        to={`/register?plan=${periodo === 'anual' ? 'plus-annual' : 'plus'}`}
+                                        className="lp-plan-btn-plus"
+                                        onClick={() => trackCTA('pricing_plus', periodo === 'anual' ? 'plus-annual' : 'plus')}
+                                    >
+                                        Assinar Agora
+                                    </Link>
+
+                                    {/* não tirar o anual */}
+                                    <Link
+                                        to="/register?plan=plus-annual"
+                                        className="lp-plan-btn-annual"
+                                        onClick={() => trackCTA('pricing_plus_annual', 'plus-annual')}
+                                    >
+                                        Assinar Plano Anual (20% OFF)
+                                    </Link>
                                 </div>
-                            ) : (
-                                <div className="lp-plan-annual-note lp-plan-annual-note-paid">
-                                    O plano definitivo para aprovação
-                                </div>
-                            )}
-
-                            <ul className="lp-plan-list lp-plan-list-paid">
-                                <li><span className="lp-check-paid">✓</span> <strong style={{ color: '#fff' }}>Análise estratégica</strong></li>
-                                <li><span className="lp-check-paid">✓</span> Cronograma de Estudos personalizado</li>
-                                <li><span className="lp-check-paid">✓</span> <strong style={{ color: '#fff' }}>Simulados ilimitados</strong></li>
-                                <li><span className="lp-check-paid">✓</span> <strong style={{ color: '#fff' }}>15 redações/mês</strong></li>
-                                <li><span className="lp-check-paid">✓</span> Redação com Nota por Competência (C1–C5)</li>
-                                <li><span className="lp-check-paid">✓</span> Estatísticas completas</li>
-                                <li><span className="lp-check-paid">✓</span> Radar de concursos</li>
-                                <li><span className="lp-check-paid">✓</span> +200 mil questões para praticar</li>
-                                <li><span className="lp-check-paid">✓</span> Acesso ilimitado a todas as questões</li>
-
-                                {/* Extras */}
-                                <li className="lp-plan-extras">
-                                    <span style={{ fontWeight: 800, color: '#fff' }}>+ Benefícios</span>
-                                </li>
-                                <li><span className="lp-check-paid">✓</span> Gabarito Comentado</li>
-                                <li><span className="lp-check-paid">✓</span> Modo noturno</li>
-                            </ul>
-
-                            <Link
-                                to={`/register?plan=${periodo === 'anual' ? 'plus-annual' : 'plus'}`}
-                                className="lp-plan-btn-plus"
-                                onClick={() => trackCTA('pricing_plus', periodo === 'anual' ? 'plus-annual' : 'plus')}
-                            >
-                                Assinar Agora
-                            </Link>
-
-                            {/* não tirar o anual */}
-                            <Link
-                                to="/register?plan=plus-annual"
-                                className="lp-plan-btn-annual"
-                                onClick={() => trackCTA('pricing_plus_annual', 'plus-annual')}
-                            >
-                                Assinar Plano Anual (20% OFF)
-                            </Link>
-                        </div>
+                            );
+                        })()}
 
                     </div>
                 </div>

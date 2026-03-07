@@ -69,8 +69,8 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'Básico Anual',
                 'slug' => 'basic-annual',
-                'price' => 20.00,
-                'monthly_price' => 25.00,
+                'price' => 240.00,
+                'monthly_price' => 20.00,
                 'annual_price' => 240.00,
                 'discount_percentage' => 20,
                 'interval' => 'yearly',
@@ -87,7 +87,7 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'Plus Anual',
                 'slug' => 'plus-annual',
-                'price' => 40.00,
+                'price' => 480.00,
                 'monthly_price' => 40.00,
                 'annual_price' => 480.00,
                 'discount_percentage' => 20,

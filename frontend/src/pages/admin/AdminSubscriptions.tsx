@@ -112,7 +112,14 @@ export default function AdminSubscriptions() {
                                         <div key={idx}>
                                             <div className="flex justify-between items-center mb-1">
                                                 <span className="text-sm font-bold text-gray-700">{p.name}</span>
-                                                <span className="text-sm font-black" style={{ color: p.color }}>{p.count}</span>
+                                                <div className="flex items-center gap-2">
+                                                    {p.sandbox_count > 0 && (
+                                                        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100 uppercase">
+                                                            {p.sandbox_count} Sandbox
+                                                        </span>
+                                                    )}
+                                                    <span className="text-sm font-black" style={{ color: p.color }}>{p.count}</span>
+                                                </div>
                                             </div>
                                             <div className="w-full bg-gray-100 rounded-full h-2">
                                                 <div
@@ -150,8 +157,16 @@ export default function AdminSubscriptions() {
                                                     <div className="text-xs text-gray-500">{sub.user_email}</div>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <span className="font-bold text-gray-700 bg-gray-100 px-2 py-1 rounded">{sub.plan_name}</span>
-                                                    {sub.amount > 0 && <span className="ml-2 text-xs text-green-600 font-bold">{formatCurrency(sub.amount)}</span>}
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-gray-700 bg-gray-100 px-2 py-1 rounded">{sub.plan_name}</span>
+                                                        {sub.is_sandbox && (
+                                                            <span className="text-[9px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200">SANDBOX</span>
+                                                        )}
+                                                        {sub.is_manual_grant && (
+                                                            <span className="text-[9px] font-black bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200">GRANT</span>
+                                                        )}
+                                                    </div>
+                                                    {sub.amount > 0 && <div className="mt-1 text-xs text-green-600 font-bold">{formatCurrency(sub.amount)}</div>}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${sub.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>

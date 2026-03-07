@@ -124,7 +124,7 @@ class QuestionImportService
         $import->update(['status' => 'processing']);
 
         try {
-            $absoluteZipPath = Storage::disk('local')->path($zipPath);
+            $absoluteZipPath = Storage::disk('public')->path($zipPath);
             $this->extractZip($absoluteZipPath, $tmpDir);
 
             $dbPath = $this->findDatabaseFile($tmpDir);

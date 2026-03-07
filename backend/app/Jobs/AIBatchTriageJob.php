@@ -23,17 +23,19 @@ class AIBatchTriageJob implements ShouldQueue
     protected $type;
     protected $model;
     protected $reprocess;
+    protected $userId;
 
     /**
      * Create a new job instance.
      */
-    public function __construct(string $batchId, array $questionIds, string $type, ?string $model = null, bool $reprocess = false)
+    public function __construct(string $batchId, array $questionIds, string $type, ?string $model = null, bool $reprocess = false, ?int $userId = null)
     {
         $this->batchId = $batchId;
         $this->questionIds = $questionIds;
         $this->type = $type;
         $this->model = $model;
         $this->reprocess = $reprocess;
+        $this->userId = $userId;
     }
 
     /**
@@ -67,7 +69,7 @@ class AIBatchTriageJob implements ShouldQueue
                 'reprocess' => $this->reprocess
             ]);
 
-            $result = $batchService->processBatch($questions, $this->type, $this->model, $this->batchId, $this->reprocess);
+            $result = $batchService->processBatch($questions, $this->type, $this->model, $this->batchId, $this->reprocess, $this->userId);
 
             $this->updateProgress(
                 $result['applied'],
