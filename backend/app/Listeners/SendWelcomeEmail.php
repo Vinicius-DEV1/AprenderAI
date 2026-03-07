@@ -4,7 +4,7 @@ namespace App\Listeners;
 
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Auth\Events\Verified;
+use Illuminate\Auth\Events\Registered;
 use App\Models\User;
 
 class SendWelcomeEmail implements ShouldQueue
@@ -20,7 +20,7 @@ class SendWelcomeEmail implements ShouldQueue
     /**
      * Handle the event.
      */
-    public function handle(Verified $event): void
+    public function handle(Registered $event): void
     {
         /** @var User $user */
         $user = $event->user;

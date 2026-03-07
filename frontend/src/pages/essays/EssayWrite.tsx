@@ -312,7 +312,7 @@ export default function EssayWrite({
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['essays'] });
             queryClient.invalidateQueries({ queryKey: ['essays-meta'] }); // Refetch limit
-            navigate(data?.data?.id ? `/redacao/correcao/${data.data.id}` : '/essays');
+            navigate(data?.data?.id ? `/redacoes/correcao/${data.data.id}` : '/redacoes');
         },
         onError: (err: any) => {
             const code = err.response?.data?.code;
@@ -493,7 +493,7 @@ export default function EssayWrite({
 
                 {!isSimulationMode && (
                     <div className="mb-6 flex justify-between items-center">
-                        <Link to="/essays" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
+                        <Link to="/redacoes" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                             Voltar
                         </Link>

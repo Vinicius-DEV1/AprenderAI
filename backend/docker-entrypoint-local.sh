@@ -22,8 +22,8 @@ if [ -f .env ] || [ -f .env.example ]; then
 
     # Instala dependências do Composer se a pasta vendor/autoload.php não existir
     if [ ! -f "vendor/autoload.php" ]; then
-        echo "📦 Autoload não encontrado. Instalando dependências do Composer no volume interno..."
-        composer install --no-interaction --prefer-dist --optimize-autoloader
+        echo "📦 Autoload não encontrado. Instalando dependências do Composer..."
+        COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --optimize-autoloader
     fi
 
     # Instala dependências do Node se a pasta node_modules não existir ou estiver vazia

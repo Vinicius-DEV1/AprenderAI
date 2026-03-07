@@ -259,7 +259,7 @@ export default function EssayList() {
                         </div>
                         {canCreate ? (
                             <Link
-                                to="/essays/create"
+                                to="/redacoes/criar"
                                 className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-500 active:bg-blue-700 transition ease-in-out duration-150"
                             >
                                 Nova Redação
@@ -337,7 +337,7 @@ export default function EssayList() {
                                                             {(essay.score > 0 ? essay.score : (essay.feedback_json?.overall_score ?? essay.overall_score ?? essay.score ?? '-'))}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                            <Link to={`/redacao/correcao/${essay.id}`} className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300">
+                                                            <Link to={`/redacoes/correcao/${essay.id}`} className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300">
                                                                 Abrir
                                                             </Link>
                                                         </td>

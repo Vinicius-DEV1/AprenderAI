@@ -181,9 +181,13 @@ function App() {
                             <Route path="/concursos" element={<><MetaTags title="Radar de Concursos" /><ConcursoList /></>} />
 
                             {/* Essays */}
+                            <Route path="/redacoes" element={<><MetaTags title="Minhas Redações" /><EssayList /></>} />
+                            <Route path="/redacoes/criar" element={<><MetaTags title="Escrever Redação" /><EssayWrite /></>} />
+                            <Route path="/redacoes/correcao/:id" element={<><MetaTags title="Correção de Redação" /><EssayReview /></>} />
+                            {/* Aliases para manter compatibilidade com links antigos */}
+                            <Route path="/redacao/correcao/:id" element={<><MetaTags title="Correção de Redação" /><EssayReview /></>} />
                             <Route path="/essays" element={<><MetaTags title="Minhas Redações" /><EssayList /></>} />
                             <Route path="/essays/create" element={<><MetaTags title="Escrever Redação" /><EssayWrite /></>} />
-                            <Route path="/redacao/correcao/:id" element={<><MetaTags title="Correção de Redação" /><EssayReview /></>} />
                             <Route path="/essays/:id" element={<><MetaTags title="Correção de Redação" /><EssayReview /></>} />
 
                             {/* Question Bank & Notebooks */}
