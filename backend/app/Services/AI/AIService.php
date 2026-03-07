@@ -222,7 +222,7 @@ EOT;
                 'alternatives' => json_encode($question->alternativesAsMap())
             ]);
 
-            $result = $this->callAI($provider, $apiKey, $prompt, $userId);
+            $result = $this->callAI($provider, $apiKey, $prompt, $userId, ApiKey::CAPABILITY_TRIAGE);
             $apiKey->incrementUsage();
 
             $content = $result['content'];
@@ -268,7 +268,7 @@ EOT;
      * Orchestrates AI calls and logs execution details.
      * Captures non-200 responses for robust telemetry.
      */
-    protected function callAI(string $provider, ApiKey $apiKey, string $prompt, ?int $userId = null): array
+    protected function callAI(string $provider, ApiKey $apiKey, string $prompt, ?int $userId = null, ?string $module = null): array
     {
         $provider = $apiKey->effective_provider;
         Log::info("DEBUG: Using API Key ID: {$apiKey->id} for provider: {$provider}");
@@ -283,7 +283,7 @@ EOT;
             };
 
             $executionTime = microtime(true) - $startTime;
-            $cost = $this->telemetryService->logRequest($apiKey, $prompt, $result, $executionTime, $userId);
+            $cost = $this->telemetryService->logRequest($apiKey, $prompt, $result, $executionTime, $userId, null, $module);
 
             $result['estimated_cost'] = $cost;
             return $result;
@@ -320,7 +320,7 @@ EOT;
 
             // Conditional logging for AI Request Log (Transaction log)
             if ($statusCode !== 429) {
-                $this->telemetryService->logRequest($apiKey, $prompt, ['content' => ['error' => $e->getMessage()], 'usage' => []], $executionTime, $userId);
+                $this->telemetryService->logRequest($apiKey, $prompt, ['content' => ['error' => $e->getMessage()], 'usage' => []], $executionTime, $userId, null, $module);
             }
 
             throw $e;
@@ -330,7 +330,7 @@ EOT;
     /**
      * Orchestrates streaming AI calls. Yields chunks as they arrive.
      */
-    protected function callAIStream(string $provider, ApiKey $apiKey, string $prompt, ?int $userId = null): \Generator
+    protected function callAIStream(string $provider, ApiKey $apiKey, string $prompt, ?int $userId = null, ?string $module = null): \Generator
     {
         $provider = $apiKey->effective_provider;
         Log::info("DEBUG: Using Streaming API Key ID: {$apiKey->id} for provider: {$provider}");
@@ -358,7 +358,7 @@ EOT;
             $this->telemetryService->logRequest($apiKey, $prompt, [
                 'content' => $fullText,
                 'usage' => $usage
-            ], $executionTime, $userId);
+            ], $executionTime, $userId, null, $module);
 
         } catch (\Exception $e) {
             $executionTime = microtime(true) - $startTime;
@@ -757,7 +757,7 @@ EOT;
 
             for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
                 try {
-                    $result = $this->callAI($provider, $apiKey, $prompt, $userId);
+                    $result = $this->callAI($provider, $apiKey, $prompt, $userId, ApiKey::CAPABILITY_ESSAYS);
                     $apiKey->incrementUsage();
 
                     $content = $result['content'];
@@ -834,7 +834,7 @@ EOT;
                 $provider = $apiKey->provider;
                 $prompt = $this->buildOffTopicPrompt($title, $content, $type);
 
-                $result = $this->callAI($provider, $apiKey, $prompt, $userId);
+                $result = $this->callAI($provider, $apiKey, $prompt, $userId, ApiKey::CAPABILITY_ESSAYS);
                 $apiKey->incrementUsage();
 
                 $responseContent = $result['content'];
@@ -868,7 +868,7 @@ EOT;
                 $provider = $apiKey->provider;
                 $prompt = $this->buildXavierEvaluationPrompt($title, $content, $type);
 
-                $result = $this->callAI($provider, $apiKey, $prompt, $userId);
+                $result = $this->callAI($provider, $apiKey, $prompt, $userId, ApiKey::CAPABILITY_ESSAYS);
                 $apiKey->incrementUsage();
 
                 $responseContent = $result['content'];
@@ -925,7 +925,7 @@ EOT;
 
                 $prompt = "Você é um professor especialista. O aluno fugiu do tema ou o sistema precisa de um exemplo. Baseado APENAS no tema oficial: '{$topic}', escreva uma redação EXEMPLAR completa (adequada para '{$type}'). A resposta DEVE ser apenas o texto da redação, sem títulos, sem introduções explicativas e sem aspas. {$lengthInstruction}";
 
-                $result = $this->callAI($provider, $apiKey, $prompt);
+                $result = $this->callAI($provider, $apiKey, $prompt, null, ApiKey::CAPABILITY_ESSAYS);
                 $apiKey->incrementUsage();
 
                 $generated = trim((string) ($result['content']['text'] ?? $result['content'] ?? ''));
@@ -958,7 +958,7 @@ EOT;
             return $this->executeWithFailover(ApiKey::CAPABILITY_QUESTIONS, function ($apiKey) use ($subject, $quantity, $context, $userId) {
                 $provider = $apiKey->provider;
                 $prompt = $this->buildQuestionGenerationPrompt($subject, $quantity, $context);
-                $result = $this->callAI($provider, $apiKey, $prompt, $userId);
+                $result = $this->callAI($provider, $apiKey, $prompt, $userId, ApiKey::CAPABILITY_QUESTIONS);
                 $apiKey->incrementUsage();
 
                 $content = $result['content'];
@@ -1012,7 +1012,7 @@ EOT;
                     'user_answer' => $userAnswerText,
                     'chat_history' => $this->formatChatHistory($history),
                     'user_message' => $userMessage
-                ]), $simulation->user_id);
+                ]), $simulation->user_id, ApiKey::CAPABILITY_QUESTIONS);
                 $apiKey->incrementUsage();
                 $content = $result['content'];
 
@@ -1057,7 +1057,7 @@ EOT;
         foreach ($keys as $apiKey) {
             try {
                 $provider = $apiKey->provider;
-                $stream = $this->callAIStream($provider, $apiKey, $prompt, $simulation->user_id);
+                $stream = $this->callAIStream($provider, $apiKey, $prompt, $simulation->user_id, ApiKey::CAPABILITY_QUESTIONS);
                 // Testa se a primeira linha (conexão iterável) funciona sem erro de auth/quota.
                 // Como Generators não iniciam as exceções sem iteração, o callAIStream capta do $client->post.
 
@@ -1114,7 +1114,7 @@ EOT;
                     'user_answer' => $userAnswer,
                     'chat_history' => $this->formatChatHistory($history),
                     'user_message' => $userMessage
-                ]), $userId);
+                ]), $userId, ApiKey::CAPABILITY_QUESTIONS);
                 $apiKey->incrementUsage();
 
                 $content = $result['content'];
@@ -1160,7 +1160,7 @@ EOT;
         foreach ($keys as $apiKey) {
             try {
                 $provider = $apiKey->provider;
-                $stream = $this->callAIStream($provider, $apiKey, $prompt, $userId);
+                $stream = $this->callAIStream($provider, $apiKey, $prompt, $userId, ApiKey::CAPABILITY_QUESTIONS);
 
                 yield from $stream;
 
@@ -1214,7 +1214,7 @@ EOT;
                 $apiKey->preferred_model = $model;
             }
 
-            $result = $this->callAI($provider, $apiKey, $prompt, $userId);
+            $result = $this->callAI($provider, $apiKey, $prompt, $userId, ApiKey::CAPABILITY_GENERAL);
 
             // Decodifica o JSON retornado pela IA (pode vir como string bruta com markdown)
             $decoded = $this->responseSanitizer->sanitize($result['content']);
@@ -1279,7 +1279,7 @@ EOT;
                     'input' => json_encode($input)
                 ]);
 
-                $result = $this->callAI($provider, $apiKey, $prompt, $userId);
+                $result = $this->callAI($provider, $apiKey, $prompt, $userId, ApiKey::CAPABILITY_STUDY_PLANS);
                 $apiKey->incrementUsage();
 
                 return $result['content'];
@@ -1437,7 +1437,7 @@ Opções válidas (JSON): {filter_options}
 
 RETORNE APENAS O JSON:");
 
-                $result = $this->callAI($provider, $apiKey, $prompt, $userId);
+                $result = $this->callAI($provider, $apiKey, $prompt, $userId, ApiKey::CAPABILITY_SEARCH);
                 $apiKey->incrementUsage();
 
                 $content = $result['content'];

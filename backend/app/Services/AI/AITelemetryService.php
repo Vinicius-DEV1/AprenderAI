@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 
 class AITelemetryService
 {
-    public function logRequest(ApiKey $apiKey, string $prompt, array $result, float $executionTime, ?int $userId = null, ?int $questionId = null)
+    public function logRequest(ApiKey $apiKey, string $prompt, array $result, float $executionTime, ?int $userId = null, ?int $questionId = null, ?string $module = null)
     {
         try {
             $inputTokens = $result['usage']['input_tokens'] ?? 0;
@@ -47,6 +47,7 @@ class AITelemetryService
                 'api_key_name' => substr($apiKey->key, -4), // Optional hint
                 'provider' => $apiKey->provider,
                 'model' => $modelName,
+                'module' => $module,
                 'prompt_text' => $prompt,
                 'response_text' => is_string($result['content']) ? $result['content'] : json_encode($result['content']),
                 'tokens_used_input' => $inputTokens,

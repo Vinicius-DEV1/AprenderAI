@@ -72,6 +72,25 @@ class ApiKeyController extends Controller
                 ->get();
         });
 
+        $analyticsDaily = Cache::remember('api_keys_analytics_daily', 3600, function () {
+            return DB::table('ai_request_logs')
+                ->selectRaw('DATE(created_at) as date, provider, COUNT(*) as requests, SUM(estimated_cost) as cost')
+                ->where('created_at', '>=', now()->subDays(14))
+                ->groupBy('date', 'provider')
+                ->orderBy('date', 'asc')
+                ->get();
+        });
+
+        $analyticsModules = Cache::remember('api_keys_analytics_modules', 3600, function () {
+            return DB::table('ai_request_logs')
+                ->selectRaw('module, provider, COUNT(*) as requests, SUM(estimated_cost) as cost')
+                ->where('created_at', '>=', now()->subDays(14))
+                ->whereNotNull('module')
+                ->groupBy('module', 'provider')
+                ->orderByDesc('requests')
+                ->get();
+        });
+
         return response()->json([
             'vault_keys' => $vaultKeys->map(function ($vk) {
                 $vk->is_valid = (bool) $vk->is_valid;
@@ -94,6 +113,8 @@ class ApiKeyController extends Controller
             }),
             'ai_logs' => $aiLogs,
             'ai_ranking' => $aiRanking,
+            'analytics_daily' => $analyticsDaily,
+            'analytics_modules' => $analyticsModules,
             'has_recent_errors' => (bool) $logs->where('type', 'error')->where('created_at', '>=', now()->subHours(6))->isNotEmpty()
         ]);
     }

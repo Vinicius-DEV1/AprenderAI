@@ -2,6 +2,7 @@ import { toast } from 'sonner';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
+import Chart from 'react-apexcharts';
 import api from '../../api/axios';
 import { useConfigStore } from '../../stores/configStore';
 
@@ -59,6 +60,153 @@ interface ApiEvent {
     message: string;
     status_code: number | null;
     created_at: string;
+}
+
+interface AnalyticsDaily {
+    date: string;
+    provider: string;
+    requests: number;
+    cost: number;
+}
+
+interface AnalyticsModule {
+    module: string;
+    provider: string;
+    requests: number;
+    cost: number;
+}
+
+function ApiAnalyticsDash({ daily, modules, providers }: { daily: AnalyticsDaily[], modules: AnalyticsModule[], providers: string[] }) {
+    const [selectedProvider, setSelectedProvider] = useState<string>('all');
+    const [collapsed, setCollapsed] = useState(false);
+
+    // Filter Data
+    const filteredDaily = selectedProvider === 'all' ? daily : daily.filter(d => d.provider === selectedProvider);
+    const filteredModules = selectedProvider === 'all' ? modules : modules.filter(m => m.provider === selectedProvider);
+
+    // Grouping Daily Data
+    const datesMap = new Map<string, number>();
+    filteredDaily.forEach(d => {
+        datesMap.set(d.date, (datesMap.get(d.date) || 0) + Number(d.requests));
+    });
+    const sortedDates = Array.from(datesMap.keys()).sort();
+    const dailyRequests = sortedDates.map(date => datesMap.get(date) || 0);
+
+    const dailyChartOptions: ApexCharts.ApexOptions = {
+        chart: { type: 'area', fontFamily: 'Inter, sans-serif', toolbar: { show: false }, sparkline: { enabled: false }, zoom: { enabled: false } },
+        colors: ['#6366f1'],
+        fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 100] } },
+        dataLabels: { enabled: false },
+        stroke: { curve: 'smooth', width: 3 },
+        xaxis: { categories: sortedDates.map(d => new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })), tooltip: { enabled: false }, labels: { style: { colors: '#94a3b8', fontWeight: 600 } }, axisBorder: { show: false }, axisTicks: { show: false } },
+        yaxis: { labels: { style: { colors: '#94a3b8', fontWeight: 600 } } },
+        grid: { borderColor: '#f1f5f9', strokeDashArray: 4, padding: { top: 0, right: 0, bottom: 0, left: 10 } },
+        tooltip: { theme: 'light', y: { formatter: (val) => `${val} requisições` } }
+    };
+
+    // Grouping Module Data
+    const moduleMap = new Map<string, number>();
+    filteredModules.forEach(m => {
+        const modName = m.module || 'Geral';
+        moduleMap.set(modName, (moduleMap.get(modName) || 0) + Number(m.requests));
+    });
+    // Sort modules by requests descending
+    const sortedModulesEntries = Array.from(moduleMap.entries()).sort((a, b) => b[1] - a[1]);
+    const moduleNames = sortedModulesEntries.map(e => e[0].toUpperCase());
+    const moduleRequests = sortedModulesEntries.map(e => e[1]);
+
+    const moduleChartOptions: ApexCharts.ApexOptions = {
+        chart: { type: 'bar', fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+        plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '60%', distributed: true } },
+        colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'],
+        dataLabels: { enabled: true, textAnchor: 'start', style: { colors: ['#fff'] }, formatter: (val) => val.toString(), offsetX: 0 },
+        xaxis: { categories: moduleNames, labels: { show: false }, axisBorder: { show: false }, axisTicks: { show: false } },
+        yaxis: { labels: { style: { colors: '#475569', fontWeight: 700 } } },
+        grid: { show: false },
+        tooltip: { theme: 'light', y: { formatter: (val) => `${val} requisições` } },
+        legend: { show: false }
+    };
+
+    const totalRequests = dailyRequests.reduce((a, b) => a + b, 0);
+    const totalCost = filteredDaily.reduce((acc, curr) => acc + Number(curr.cost), 0);
+
+    return (
+        <section className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+            <div
+                onClick={() => setCollapsed(!collapsed)}
+                className="p-6 border-b border-slate-50 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition-colors">
+                <div className="flex items-center gap-4">
+                    <span className="p-3 bg-gradient-to-br from-indigo-50 to-blue-50 text-indigo-600 rounded-xl shadow-sm">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>
+                    </span>
+                    <div>
+                        <h3 className="text-xl font-black text-slate-800 tracking-tight">Analytics de Uso da IA</h3>
+                        <p className="text-xs font-bold text-slate-400 mt-0.5 uppercase tracking-wider">Visão dos últimos 14 dias</p>
+                    </div>
+                </div>
+                <motion.svg animate={{ rotate: collapsed ? 0 : 180 }} className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></motion.svg>
+            </div>
+
+            <AnimatePresence>
+                {!collapsed && (
+                    <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
+                        <div className="p-6 bg-slate-50/50">
+                            {/* Controls */}
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                                <div className="flex gap-2 bg-white p-1 rounded-xl shadow-sm border border-slate-100 inline-flex">
+                                    <button
+                                        onClick={() => setSelectedProvider('all')}
+                                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${selectedProvider === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>
+                                        Visão Geral
+                                    </button>
+                                    {providers.map(p => (
+                                        <button
+                                            key={p}
+                                            onClick={() => setSelectedProvider(p)}
+                                            className={`px-4 py-2 rounded-lg text-sm font-bold uppercase transition-all ${selectedProvider === p ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>
+                                            {p}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="flex gap-6 pr-4">
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Requisições</p>
+                                        <p className="text-2xl font-black text-slate-800">{totalRequests.toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Custo Estimado</p>
+                                        <p className="text-2xl font-black text-indigo-600">${totalCost.toFixed(5)}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Charts */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                                    <h4 className="text-sm font-bold text-slate-800 mb-4 bg-slate-50 inline-block px-3 py-1 rounded-lg">Uso Diário (Tendência)</h4>
+                                    <div className="h-[280px]">
+                                        <Chart options={dailyChartOptions} series={[{ name: 'Requisições', data: dailyRequests }]} type="area" height="100%" />
+                                    </div>
+                                </div>
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                                    <h4 className="text-sm font-bold text-slate-800 mb-4 bg-slate-50 inline-block px-3 py-1 rounded-lg">Consumo por Módulo</h4>
+                                    {moduleRequests.length > 0 ? (
+                                        <div className="h-[280px]">
+                                            <Chart options={moduleChartOptions} series={[{ name: 'Requisições', data: moduleRequests }]} type="bar" height="100%" />
+                                        </div>
+                                    ) : (
+                                        <div className="h-[280px] flex items-center justify-center">
+                                            <p className="text-slate-400 font-medium text-sm text-center">Nenhum dado de módulo<br />registrado neste período.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </section>
+    );
 }
 
 export default function AdminApiKeys() {
@@ -214,6 +362,15 @@ export default function AdminApiKeys() {
                     </motion.div>
                 )}
             </div>
+
+            {/* 0. ANALYTICS DASHBOARD */}
+            {data.analytics_daily && data.analytics_daily.length > 0 && (
+                <ApiAnalyticsDash
+                    daily={data.analytics_daily}
+                    modules={data.analytics_modules || []}
+                    providers={Array.from(new Set(data.analytics_daily.map((d: any) => d.provider)))}
+                />
+            )}
 
             {/* 1. KEY VAULT */}
             <section className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
