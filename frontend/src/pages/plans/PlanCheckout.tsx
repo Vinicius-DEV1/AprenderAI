@@ -23,15 +23,16 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
     const plan = plans.find((p: any) => p.id === Number(resolvedPlanId) || p.slug === String(resolvedPlanId));
 
     const [method, setMethod] = useState<'credit_card' | 'pix'>('credit_card');
+    const [installments, setInstallments] = useState<number>(12);
     const [couponCode, setCouponCode] = useState('');
     const [couponMessage, setCouponMessage] = useState('');
     const [couponSuccess, setCouponSuccess] = useState(false);
     const [finalPrice, setFinalPrice] = useState<number>(Number(plan?.price) || 0);
 
     const isAnnualPlan = plan?.interval === 'yearly';
-    const isInstallment = isAnnualPlan && method === 'credit_card';
+    const isInstallment = isAnnualPlan && method === 'credit_card' && installments > 1;
     const annualPrice = Number(plan?.annual_price) || 0;
-    const installmentValue = isInstallment && annualPrice > 0 ? annualPrice / 12 : 0;
+    const installmentValue = (isAnnualPlan && method === 'credit_card') && annualPrice > 0 ? annualPrice / installments : 0;
 
     const [isLoading, setIsLoading] = useState(false);
     const [checkoutResult, setCheckoutResult] = useState<any>(null);
@@ -148,14 +149,14 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                 payment_method: method,
                 coupon_code: couponSuccess ? couponCode : null
             };
-            if (isInstallment) {
-                payload.installment_count = 12;
+            if (isAnnualPlan && method === 'credit_card') {
+                payload.installment_count = installments;
             }
             if (upgradeData?.is_upgrade) {
                 payload.is_upgrade = true;
-                // Envia a flag is_installment (true para cartão e false para pix, ou configurável se o usuário decidir não parcelar no cartão)
-                // Por padrão, se for cartão, vamos parcelar. Se for PIX, será à vista.
-                payload.is_installment = method === 'credit_card';
+                // Se o usuário selecionou 1x, cai fora do fluxo estrito de parcelamento e vai pra fatura única.
+                payload.is_installment = method === 'credit_card' && installments > 1;
+                payload.installment_count = installments;
             }
 
             const response = await processCheckout(plan!.id, payload);
@@ -234,7 +235,7 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                             {isInstallment && (
                                 <span className="inline-flex items-center gap-1 mt-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold px-2 py-1 rounded-full uppercase">
                                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                                    Recebimento Garantido em 12x
+                                    Recebimento Garantido em {installments}x
                                 </span>
                             )}
                         </div>
@@ -264,7 +265,7 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                                     {isInstallment ? (
                                         <>
                                             <div className="flex items-baseline gap-1">
-                                                <span className="text-3xl font-black text-slate-900 dark:text-white">12x de R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(couponSuccess ? finalPrice / 12 : installmentValue)}</span>
+                                                <span className="text-3xl font-black text-slate-900 dark:text-white">{installments}x de R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(couponSuccess ? finalPrice / installments : installmentValue)}</span>
                                             </div>
                                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Total: R$ {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(couponSuccess ? finalPrice : annualPrice)}</p>
                                         </>
@@ -335,21 +336,12 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                             <button
                                 type="button"
                                 onClick={() => setMethod('pix')}
-                                disabled={isInstallment && !upgradeData?.is_upgrade}
-                                className={`flex-1 py-2.5 px-3 rounded-md font-bold text-sm transition-all flex items-center justify-center gap-2 ${isInstallment && !upgradeData?.is_upgrade ? 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-800/50' : ''} ${method === 'pix' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                className={`flex-1 py-2.5 px-3 rounded-md font-bold text-sm transition-all flex items-center justify-center gap-2 ${method === 'pix' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                             >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                                 Pix
                             </button>
                         </div>
-
-                        {/* (Message for Pix disabled) */}
-                        {isInstallment && !upgradeData?.is_upgrade && method === 'credit_card' && (
-                            <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 p-3 rounded-lg text-xs font-semibold flex gap-2 mb-6">
-                                <svg className="flex-shrink-0 w-4 h-4 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                O plano anual parcelado em 12x garantido está disponível apenas via cartão. Se deseja pagar via PIX (à vista ou recorrente), escolha a opção mensal ou altere as abas.
-                            </div>
-                        )}
 
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <fieldset disabled={isLoading} className="space-y-6">
@@ -404,6 +396,30 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                                                     className="block w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg sm:text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
                                                 />
                                             </div>
+
+                                            {isAnnualPlan && (
+                                                <div className="md:col-span-2 mt-2">
+                                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">Parcelas no Cartão</label>
+                                                    <select
+                                                        value={installments}
+                                                        onChange={(e) => setInstallments(Number(e.target.value))}
+                                                        className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white sm:text-sm focus:ring-blue-500 focus:border-blue-500 py-3 font-semibold"
+                                                    >
+                                                        {Array.from({ length: upgradeData?.is_upgrade ? upgradeData.remaining_months : 12 }).map((_, i) => {
+                                                            const count = i + 1;
+                                                            const isUpgrading = upgradeData?.is_upgrade;
+                                                            const rawTotal = isUpgrading ? upgradeData.upgrade_total : (couponSuccess ? finalPrice : annualPrice);
+                                                            const installmentVal = rawTotal / count;
+                                                            return (
+                                                                <option key={count} value={count}>
+                                                                    {count}x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(installmentVal)}
+                                                                    {count === 1 ? ' (À vista)' : ' sem juros'}
+                                                                </option>
+                                                            );
+                                                        })}
+                                                    </select>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 ) : (
@@ -481,10 +497,10 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                                         <>
                                             {upgradeData?.is_upgrade
                                                 ? method === 'credit_card'
-                                                    ? `Confirmar Upgrade — ${upgradeData.remaining_months}x de R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(upgradeData.delta_per_month)}`
+                                                    ? `Confirmar Upgrade — ${installments}x de R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(upgradeData.upgrade_total / installments)}`
                                                     : `Confirmar Upgrade à vista — R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(upgradeData.upgrade_total)}`
                                                 : isInstallment
-                                                    ? `Confirmar 12x de R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(couponSuccess ? finalPrice / 12 : installmentValue)}`
+                                                    ? `Confirmar ${installments}x de R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(couponSuccess ? finalPrice / installments : installmentValue)}`
                                                     : `Confirmar Assinatura — R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(finalPrice)}`
                                             }
                                             <svg className="w-5 h-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
