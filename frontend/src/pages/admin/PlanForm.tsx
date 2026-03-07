@@ -12,6 +12,9 @@ export default function PlanForm() {
     const [formState, setFormState] = useState({
         name: '',
         price: '',
+        monthly_price: '',
+        annual_price: '',
+        discount_percentage: '',
         interval: 'month',
         simulations_limit: '',
         essays_limit: '',
@@ -36,6 +39,9 @@ export default function PlanForm() {
             setFormState({
                 name: planData.name || '',
                 price: planData.price !== null && planData.price !== undefined ? String(planData.price) : '',
+                monthly_price: planData.monthly_price !== null && planData.monthly_price !== undefined ? String(planData.monthly_price) : '',
+                annual_price: planData.annual_price !== null && planData.annual_price !== undefined ? String(planData.annual_price) : '',
+                discount_percentage: planData.discount_percentage !== null && planData.discount_percentage !== undefined ? String(planData.discount_percentage) : '',
                 interval: planData.interval || 'month',
                 simulations_limit: planData.simulations_limit !== null && planData.simulations_limit !== undefined ? String(planData.simulations_limit) : '',
                 essays_limit: planData.essays_limit !== null && planData.essays_limit !== undefined ? String(planData.essays_limit) : '',
@@ -71,7 +77,7 @@ export default function PlanForm() {
         setValidationErrors({});
 
         // Convert string values to numbers where necessary, handle empty strings as 0 assuming 'limit' inputs don't accept empty
-        const payload = {
+        const payload: any = {
             ...formState,
             price: Number(formState.price),
             simulations_limit: Number(formState.simulations_limit),
@@ -80,6 +86,16 @@ export default function PlanForm() {
             max_ai_questions: Number(formState.max_ai_questions),
             is_active: formState.is_active ? 1 : 0
         };
+
+        if (formState.interval === 'year') {
+            payload.monthly_price = formState.monthly_price ? Number(formState.monthly_price) : null;
+            payload.annual_price = formState.annual_price ? Number(formState.annual_price) : null;
+            payload.discount_percentage = formState.discount_percentage ? Number(formState.discount_percentage) : null;
+        } else {
+            payload.monthly_price = null;
+            payload.annual_price = null;
+            payload.discount_percentage = null;
+        }
 
         saveMutation.mutate(payload);
     };
@@ -143,7 +159,9 @@ export default function PlanForm() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Preço (R$)</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Preço Base (No Gateway)
+                                        </label>
                                         <div className="relative rounded-md shadow-sm">
                                             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                                                 <span className="text-gray-500 sm:text-sm">R$</span>
@@ -174,6 +192,42 @@ export default function PlanForm() {
                                         {getError('interval') && <span className="text-xs text-red-500">{getError('interval')}</span>}
                                     </div>
                                 </div>
+
+                                {formState.interval === 'year' && (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                        <div className="md:col-span-3 mb-2">
+                                            <h4 className="text-sm font-bold text-blue-800">Preços de Vitrine (Exibição apenas)</h4>
+                                            <p className="text-xs text-blue-600">Usado na Landing Page para calcular o "-20% OFF" e mostrar comparativos.</p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">Mensal Fictício (R$)</label>
+                                            <input
+                                                type="number" step="0.01" min="0" placeholder="ex: 20.00"
+                                                value={formState.monthly_price}
+                                                onChange={(e) => setFormState({ ...formState, monthly_price: e.target.value })}
+                                                className="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">Total Fictício (R$)</label>
+                                            <input
+                                                type="number" step="0.01" min="0" placeholder="ex: 240.00"
+                                                value={formState.annual_price}
+                                                onChange={(e) => setFormState({ ...formState, annual_price: e.target.value })}
+                                                className="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">% de Desconto</label>
+                                            <input
+                                                type="number" step="1" min="0" max="100" placeholder="ex: 20"
+                                                value={formState.discount_percentage}
+                                                onChange={(e) => setFormState({ ...formState, discount_percentage: e.target.value })}
+                                                className="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
