@@ -145,6 +145,10 @@ class SubscriptionController extends Controller
                 $idempotencyKey = md5($user->id . '_upgrade_' . $plan->id . '_' . now()->format('Y-m-d H:i'));
 
                 if ($isInstallmentUpgrade) {
+                    // Se o usuário selecionou parcelas na tela, respeita o limite dos meses restantes
+                    $reqUpgradeInstallments = (int) $request->input('installment_count', $remainingMonths);
+                    $upgradeInstallmentsCount = max(2, min($remainingMonths, $reqUpgradeInstallments));
+
                     // Criar um plano "virtual" com o preço delta para reusar createInstallmentPayment
                     $upgradePlan = new \stdClass();
                     $upgradePlan->name = "Upgrade {$activeInstallment->plan->name} → {$plan->name}";
@@ -154,7 +158,7 @@ class SubscriptionController extends Controller
                     $asaasPayment = $this->asaasService->createInstallmentPayment(
                         $user,
                         $upgradePlan,
-                        $remainingMonths,
+                        $upgradeInstallmentsCount,
                         'credit_card',
                         $cardData,
                         null,
@@ -287,11 +291,15 @@ class SubscriptionController extends Controller
             // A idempotência aqui é baseada no tempo atualizado num espaço de 1 minuto, previnindo cliques seguidos do mesmo usuário para o mesmo pacote.
             $idempotencyKey = md5($user->id . '_' . $plan->id . '_' . $request->payment_method . '_' . now()->format('Y-m-d H:i'));
 
-            $isInstallment = $plan->isInstallmentEligible() && $request->payment_method === 'credit_card';
+            // Se o request enviar 'installment_count', limitamos entre 1 e 12. Se for 1 (ou PIX), isInstallment no Asaas será false.
+            $reqInstallmentCount = (int) $request->input('installment_count', 12);
+            $wantsInstallments = $request->payment_method === 'credit_card' && $reqInstallmentCount > 1;
+
+            $isInstallment = $plan->isInstallmentEligible() && $wantsInstallments;
 
             if ($isInstallment) {
                 // ── FLUXO PARCELADO (Plano Anual + Cartão) ──
-                $installmentCount = 12;
+                $installmentCount = max(2, min(12, $reqInstallmentCount));
 
                 try {
                     $asaasPayment = $this->asaasService->createInstallmentPayment(
