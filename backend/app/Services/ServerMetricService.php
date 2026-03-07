@@ -52,6 +52,7 @@ class ServerMetricService
             'uptime' => $this->getSystemUptimeFormatted(),
             'services' => $this->getServiceHealth(),
             'queues' => $this->getQueueStats(),
+            'queue_performance' => app(\App\Services\QueueTrackerService::class)->getMetrics(),
             'top_processes' => $this->getTopProcesses(10),
         ];
     }
