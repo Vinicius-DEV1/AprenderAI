@@ -56,15 +56,15 @@ class AdminQuestionImportController extends Controller
             $file = $request->file('zip_file');
             $originalName = $file->getClientOriginalName();
 
-            // Salva o zip de forma local no disco 'local' (que no Laravel 11 aponta para storage/app/private)
+            // Salva o zip de forma local no disco 'public' (que é compartilhado via volume do Docker entre app e worker)
             $filename = $file->hashName();
-            $path = $file->storeAs('imports_tmp', $filename, 'local');
+            $path = $file->storeAs('imports_tmp', $filename, 'public');
 
             Log::debug('[AdminQuestionImportController] Saved ZIP locally.', [
                 'path' => $path,
-                'exists' => Storage::disk('local')->exists($path),
-                'absolute' => Storage::disk('local')->path($path),
-                'filesize' => Storage::disk('local')->exists($path) ? Storage::disk('local')->size($path) : 0
+                'exists' => Storage::disk('public')->exists($path),
+                'absolute' => Storage::disk('public')->path($path),
+                'filesize' => Storage::disk('public')->exists($path) ? Storage::disk('public')->size($path) : 0
             ]);
 
             $import = QuestionImport::create([

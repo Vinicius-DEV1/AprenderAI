@@ -182,7 +182,19 @@ class ProcessAsaasWebhookJob implements ShouldQueue
 
                     try {
                         if ($oldPlanId && $oldPlanId != $plan->id && $oldPlanId != 1) {
-                            $isUpgrade = $oldPlan && ($plan->price > $oldPlan->price);
+                            $isUpgrade = false;
+                            if ($oldPlan) {
+                                $newLevel = $plan->getLevel();
+                                $oldLevel = $oldPlan->getLevel();
+                                // Upgrade de Funcionalidade
+                                if ($newLevel > $oldLevel) {
+                                    $isUpgrade = true;
+                                }
+                                // Upgrade de Periodicidade (mesmo nível, mensal -> anual)
+                                else if ($newLevel === $oldLevel && $oldPlan->interval === 'monthly' && $plan->interval === 'yearly') {
+                                    $isUpgrade = true;
+                                }
+                            }
 
                             if ($isUpgrade) {
                                 Log::info('[Webhook Job] Detectado UPGRADE. Aplicando Soma Acumulativa!', ['user_id' => $user->id]);

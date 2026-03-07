@@ -337,9 +337,15 @@ export default function EssayList() {
                                                             {(essay.score > 0 ? essay.score : (essay.feedback_json?.overall_score ?? essay.overall_score ?? essay.score ?? '-'))}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                            <Link to={`/redacoes/correcao/${essay.id}`} className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300">
-                                                                Abrir
-                                                            </Link>
+                                                            {(essay.status === 'in_progress' || essay.status === 'pending') ? (
+                                                                <Link to={`/redacoes/${essay.id}/continuar`} className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300">
+                                                                    Continuar
+                                                                </Link>
+                                                            ) : (
+                                                                <Link to={`/redacoes/correcao/${essay.id}`} className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300">
+                                                                    Abrir
+                                                                </Link>
+                                                            )}
                                                         </td>
                                                     </tr>
                                                 );

@@ -1,9 +1,11 @@
+name: aprender-ai
 services:
   # PHP-FPM Application
   app:
     build:
       context: .
       dockerfile: backend/Dockerfile.prod
+      target: php-app
     image: aprender-ai-app
     restart: always
     working_dir: /var/www
@@ -11,11 +13,6 @@ services:
       - ./backend/storage/app/public:/var/www/storage/app/public
       - /proc:/host_proc:ro
     env_file: ./backend/.env
-    # ----------------------------------------------------------------
-    # app MUST wait for db to be HEALTHY (not just started).
-    # Without this, php-fpm launches before MySQL is ready,
-    # migrations fail, and the entrypoint exits → 502 Bad Gateway.
-    # ----------------------------------------------------------------
     depends_on:
       db:
         condition: service_healthy
@@ -28,7 +25,8 @@ services:
   webserver:
     build:
       context: .
-      dockerfile: backend/Dockerfile.nginx
+      dockerfile: backend/Dockerfile.prod
+      target: nginx
     image: aprender-ai-nginx
     restart: always
     ports:
@@ -38,7 +36,6 @@ services:
       - ./backend/storage/app/public:/var/www/storage/app/public
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
-    # Wait for app to be healthy before nginx starts serving
     depends_on:
       app:
         condition: service_started
@@ -58,9 +55,6 @@ services:
 
   # PHP Queue Worker
   worker:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile.prod
     image: aprender-ai-app
     restart: always
     working_dir: /var/www
@@ -84,9 +78,6 @@ services:
 
   # AI Dedicated Queue Worker
   ai-worker:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile.prod
     image: aprender-ai-app
     restart: always
     working_dir: /var/www
@@ -110,9 +101,6 @@ services:
 
   # PHP Scheduler
   scheduler:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile.prod
     image: aprender-ai-app
     restart: always
     working_dir: /var/www

@@ -180,10 +180,28 @@ export default function PlanList() {
         }
         if (String(userPlanId) === String(cardPlan.id)) return 'Seu Plano Atual';
         const cardLevel = getPlanLevel(cardPlan.name);
+
+        // Upgrade de Funcionalidade
+        if (currentPlanLevel < cardLevel && currentPlanLevel > 0) return 'Fazer Upgrade';
+
+        // Downgrade de Funcionalidade
         if (currentPlanLevel > cardLevel && currentPlanLevel > 0) {
             return activeInstallment ? 'Bloqueado (Parcelado)' : 'Fazer Downgrade';
         }
-        if (currentPlanLevel < cardLevel && currentPlanLevel > 0) return 'Fazer Upgrade';
+
+        // Mesmo Nível (Mudança de Periodicidade)
+        if (currentPlanLevel === cardLevel && currentPlanLevel > 0) {
+            const currentIsAnnual = currentPlan?.interval === 'yearly' || currentPlan?.interval === 'year';
+            const cardIsAnnual = cardPlan.interval === 'yearly' || cardPlan.interval === 'year';
+
+            if (!currentIsAnnual && cardIsAnnual) {
+                return 'Alterar para Anual';
+            }
+            if (currentIsAnnual && !cardIsAnnual) {
+                return activeInstallment ? 'Bloqueado (Parcelado)' : 'Alterar para Mensal';
+            }
+        }
+
         return 'Assinar';
     };
 

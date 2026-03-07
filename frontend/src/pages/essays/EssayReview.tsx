@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getEssay, retryEssayEvaluation } from '../../api/essays';
 import { useConfigStore } from '../../stores/configStore';
@@ -53,6 +53,15 @@ export default function EssayReview({
 
     const essay = response.data;
     const feedback = essay.feedback_json || {};
+
+    // Redirect back to the write flow if the essay is still a draft
+    // 'pending' = topic not yet generated, 'in_progress' = topic ready, writing in progress
+    const navigate = useNavigate();
+    useEffect(() => {
+        if (essay.status === 'in_progress' || essay.status === 'pending') {
+            navigate(`/essays/${essay.id}/continue`, { replace: true });
+        }
+    }, [essay.status, essay.id, navigate]);
 
     // Status Classes & Message
     let statusClasses = 'bg-gray-100 text-gray-800 border-gray-200';

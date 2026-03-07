@@ -16,6 +16,12 @@ export const createEssayDraft = async (data: { type: string, time_limit: number 
     return response.data;
 };
 
+// STEP 1.5: Update draft content
+export const updateEssayDraft = async (id: number | string, content: string) => {
+    const response = await api.put(`/api/v1/essays/${id}`, { content });
+    return response.data;
+};
+
 // STEP 2: Start topic generation (Xavier AI)
 export const startTopicGeneration = async (id: number | string) => {
     const response = await api.post(`/api/v1/essays/${id}/start-topic`);
