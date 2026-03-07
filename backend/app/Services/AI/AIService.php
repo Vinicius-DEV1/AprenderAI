@@ -283,8 +283,9 @@ EOT;
             };
 
             $executionTime = microtime(true) - $startTime;
-            $this->telemetryService->logRequest($apiKey, $prompt, $result, $executionTime, $userId);
+            $cost = $this->telemetryService->logRequest($apiKey, $prompt, $result, $executionTime, $userId);
 
+            $result['estimated_cost'] = $cost;
             return $result;
         } catch (\Exception $e) {
             $executionTime = microtime(true) - $startTime;
@@ -1216,7 +1217,8 @@ EOT;
             $result = $this->callAI($provider, $apiKey, $prompt, $userId);
             return [
                 'data' => $result['content'],
-                'usage' => $result['usage'] ?? ['input_tokens' => 0, 'output_tokens' => 0]
+                'usage' => $result['usage'] ?? ['input_tokens' => 0, 'output_tokens' => 0],
+                'estimated_cost' => $result['estimated_cost'] ?? 0
             ];
         }, $provider);
     }

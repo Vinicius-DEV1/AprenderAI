@@ -40,7 +40,7 @@ class AITelemetryService
                 Log::warning("AITelemetryService: logRequest called without user_id.", ['provider' => $apiKey->provider, 'prompt' => substr($prompt, 0, 50)]);
             }
 
-            AiRequestLog::create([
+            $log = AiRequestLog::create([
                 'user_id' => $safeUserId,
                 'question_id' => $safeQuestionId,
                 'api_key_id' => $apiKey->id,
@@ -55,8 +55,11 @@ class AITelemetryService
                 'execution_time' => $executionTime,
                 'estimated_cost' => $cost,
             ]);
+
+            return $cost;
         } catch (\Exception $e) {
             Log::warning("Telemetry Error: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return 0;
         }
     }
 

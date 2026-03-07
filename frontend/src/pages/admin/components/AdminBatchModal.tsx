@@ -243,29 +243,64 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                         </p>
                                     )}
 
-                                    {/* Contador de Tokens */}
-                                    {progress && progress.input_tokens !== undefined && progress.output_tokens !== undefined && (
-                                        <div className="flex justify-center gap-3 mb-6">
-                                            <div className="bg-blue-50 border border-blue-100 px-4 py-1.5 rounded-full flex items-center gap-2 shadow-sm">
-                                                <span className="text-[10px] font-black text-blue-400 uppercase tracking-wider">Input Tokens</span>
-                                                <span className="text-sm font-black text-blue-600">{progress.input_tokens.toLocaleString()}</span>
-                                            </div>
-                                            <div className="bg-purple-50 border border-purple-100 px-4 py-1.5 rounded-full flex items-center gap-2 shadow-sm">
-                                                <span className="text-[10px] font-black text-purple-400 uppercase tracking-wider">Output Tokens</span>
-                                                <span className="text-sm font-black text-purple-600">{progress.output_tokens.toLocaleString()}</span>
-                                            </div>
+                                    {/* Contador de Tokens e Custo */}
+                                    {progress && (progress.input_tokens !== undefined || progress.estimated_cost !== undefined) && (
+                                        <div className="flex flex-wrap justify-center gap-3 mb-6">
+                                            {progress.input_tokens !== undefined && (
+                                                <div className="bg-blue-50 border border-blue-100 px-4 py-1.5 rounded-full flex items-center gap-2 shadow-sm">
+                                                    <span className="text-[10px] font-black text-blue-400 uppercase tracking-wider">Input Tokens</span>
+                                                    <span className="text-sm font-black text-blue-600">{progress.input_tokens.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                            {progress.output_tokens !== undefined && (
+                                                <div className="bg-purple-50 border border-purple-100 px-4 py-1.5 rounded-full flex items-center gap-2 shadow-sm">
+                                                    <span className="text-[10px] font-black text-purple-400 uppercase tracking-wider">Output Tokens</span>
+                                                    <span className="text-sm font-black text-purple-600">{progress.output_tokens.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                            {progress.estimated_cost !== undefined && (
+                                                <div className="bg-green-50 border border-green-100 px-4 py-1.5 rounded-full flex items-center gap-2 shadow-sm">
+                                                    <span className="text-[10px] font-black text-green-500 uppercase tracking-wider">Custo Est.</span>
+                                                    <span className="text-base font-black text-green-600">
+                                                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 4 }).format(progress.estimated_cost)}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
                                     <div className="flex flex-col items-center gap-1">
-                                        <p className={`text-xs font-bold uppercase tracking-widest ${progress?.status === 'failed' ? 'text-red-500' : 'text-indigo-500'}`}>
+                                        <p className={`text-xs font-bold uppercase tracking-widest ${progress?.status === 'failed' ? 'text-red-500' : progress?.status === 'completed' ? 'text-green-600' : 'text-indigo-500'}`}>
                                             {progress?.message || (batchId ? 'Conectando ao rastreador...' : 'Aguardando servidor...')}
                                         </p>
-                                        {progress?.last_error && (
-                                            <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded-xl max-w-md mx-auto">
-                                                <p className="text-[10px] text-red-600 font-bold leading-relaxed">
-                                                    {progress.last_error}
-                                                </p>
+
+                                        {/* Detalhes de Erro e Warning */}
+                                        {(progress?.last_error || (progress?.errors_log && progress.errors_log.length > 0)) && (
+                                            <div className="mt-4 w-full max-w-lg">
+                                                <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden text-left">
+                                                    <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex justify-between items-center font-black text-[9px] uppercase tracking-widest text-gray-400">
+                                                        <span>Registro de Incidentes</span>
+                                                        <span className="text-red-400">{progress?.errors || 0} erros detectados</span>
+                                                    </div>
+                                                    <div className="max-h-40 overflow-y-auto p-4 space-y-2">
+                                                        {progress?.last_error && !progress.errors_log?.some((l: any) => l.error === progress.last_error) && (
+                                                            <p className="text-[10px] text-red-600 font-bold leading-relaxed flex gap-2">
+                                                                <span className="flex-shrink-0">🚫</span>
+                                                                {progress.last_error}
+                                                            </p>
+                                                        )}
+                                                        {progress.errors_log?.slice().reverse().map((log: any, idx: number) => (
+                                                            <p key={idx} className={`text-[10px] font-bold leading-relaxed flex gap-2 ${log.type === 'fatal' ? 'text-red-600' : 'text-amber-600'}`}>
+                                                                <span className="flex-shrink-0">{log.type === 'fatal' ? '🚫' : '⚠️'}</span>
+                                                                <span className="opacity-50 font-mono text-[9px] flex-shrink-0">{log.time.split(' ')[1]}</span>
+                                                                {log.error}
+                                                            </p>
+                                                        ))}
+                                                        {(!progress?.last_error && (!progress.errors_log || progress.errors_log.length === 0)) && (
+                                                            <p className="text-[10px] text-gray-400 font-medium text-center py-4">Nenhum erro registrado até o momento.</p>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
