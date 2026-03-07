@@ -1339,14 +1339,12 @@ EOT;
     {
         $message = strtolower($e->getMessage());
 
-        // 429 = Quota. 500, 502, 503, 504 = Server error do Google/OpenAI.
+        // 500, 502, 503, 504 = Server error do Google/OpenAI.
         if (
-            str_contains($message, '429') ||
             str_contains($message, '500') ||
             str_contains($message, '502') ||
             str_contains($message, '503') ||
             str_contains($message, '504') ||
-            str_contains($message, 'quota_exceeded') ||
             str_contains($message, 'timeout') ||
             str_contains($message, 'connection refused')
         ) {
@@ -1373,8 +1371,7 @@ EOT;
             $bannedIds[] = $apiKey->id;
         }
 
-        // Baniu por apenas 3 minutos (antes era 60) para permitir recuperação de 503 rápidos
-        Cache::put('api_key_blacklist', $bannedIds, now()->addMinutes(3));
+        Cache::put('api_key_blacklist', $bannedIds, now()->addMinutes(60));
     }
 
     public function interpretSearchPrompt(string $userPrompt, array $filterOptions, ?int $userId = null): ?array
