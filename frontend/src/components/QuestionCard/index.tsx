@@ -476,7 +476,7 @@ export default function QuestionCard({
                 </div>
             </div>
 
-            <div className="qb-statement" dangerouslySetInnerHTML={{ __html: q.statement_html }} />
+            <div className="qb-statement prose prose-sm max-w-none text-slate-700 dark:text-slate-300" dangerouslySetInnerHTML={renderMd(q.statement)} />
 
             {isDiscursive ? (
                 <div className="qb-discursive-list space-y-6 mt-4">

@@ -21,7 +21,7 @@ class QuestionResource extends JsonResource
             // Restore arrays for frontend compatibility (QuestionCard.tsx uses .map)
             'subjects' => $this->subjects->map(fn($s) => ['id' => $s->id, 'name' => $s->name]),
             'topics' => $this->topics->map(fn($t) => ['id' => $t->id, 'name' => $t->name]),
-            'statement' => $isList ? \Str::limit($this->statement, 150) : $this->statement,
+            'statement' => $this->statement,
             'statement_html' => $this->statement_html, // Restored name and visibility
             'alternatives' => $this->whenLoaded('alternatives', function () {
                 return $this->alternatives->map(function ($alt) {
