@@ -84,6 +84,7 @@ if [ -f .env ]; then
     echo "🔗 Verificando link de storage..."
     php artisan storage:link --force || true
 
+
 fi
 
 if [ "$1" = "php-fpm" ] || [ -z "$1" ]; then
