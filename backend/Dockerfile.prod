@@ -1,12 +1,14 @@
 # --- STAGE 1: Frontend Build ---
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app
+# Cache dependencies first (DevOps Best Practice)
 COPY frontend/package*.json ./
 RUN npm install --legacy-peer-deps
 COPY frontend/ ./
 RUN npm run build:prod
-# --- STAGE 2: PHP Application ---
-FROM php:8.4-fpm
+
+# --- STAGE 2: PHP Application (Shared by app, worker, scheduler) ---
+FROM php:8.4-fpm AS php-app
 
 # Arguments for user and group
 ARG user=sail
@@ -31,12 +33,12 @@ RUN apt-get update && apt-get install -y \
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions (Added opcache and redis)
+# Install PHP extensions
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip intl xml curl opcache \
     && pecl install redis \
     && docker-php-ext-enable redis
 
-# Copy custom PHP configuration for production performance
+# Copy custom PHP configuration
 COPY backend/conf/php/custom.ini /usr/local/etc/php/conf.d/z-performance.ini
 
 # Get latest Composer
@@ -49,16 +51,14 @@ WORKDIR /var/www
 COPY backend/ .
 
 # Copy Frontend Build from Stage 1 into Backend Public folder
-# This ensures Nginx serves the React App through the same entrypoint
 COPY --from=frontend-builder /app/dist ./public
 
-# Ensure absolute mandatory Laravel directories exist and are writable for the build process
+# Ensure absolute mandatory Laravel directories exist and are writable
 RUN mkdir -p bootstrap/cache storage/framework/sessions storage/framework/views storage/framework/cache \
     && chmod -R 777 bootstrap/cache storage
 
 # Install PHP dependencies
 ENV COMPOSER_MEMORY_LIMIT=-1
-# Dummy vars to prevent Laravel from trying to connect to real services during build scripts
 ENV REDIS_HOST=127.0.0.1
 ENV DB_CONNECTION=sqlite
 RUN composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs --no-scripts
@@ -72,9 +72,21 @@ RUN mkdir -p /home/$user/.composer && \
 COPY backend/docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Set ownership (Ensures both root-created and copied files are owned by $user)
+# Set ownership
 RUN chown -R $user:www-data /var/www bootstrap/cache storage
 
 USER $user
 
 ENTRYPOINT ["docker-entrypoint.sh"]
+
+# --- STAGE 3: Nginx Webserver ---
+FROM nginx:stable-alpine AS nginx
+
+# Copy built public folder from php-app stage
+COPY --from=php-app /var/www/public /var/www/public
+
+# Copy the nginx config
+COPY backend/nginx.conf /etc/nginx/conf.d/default.conf
+
+# Clean up default configs
+RUN rm -rf /etc/nginx/conf.d/default.conf.dpkg-dist
