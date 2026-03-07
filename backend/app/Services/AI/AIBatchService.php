@@ -71,8 +71,17 @@ class AIBatchService
             ];
         });
 
-        $subjectsRef = Subject::pluck('name', 'id')->toArray();
-        $topicsRef = Topic::pluck('name', 'id')->toArray();
+        $subjectsRef = Subject::withCount('questions')
+            ->orderBy('questions_count', 'desc')
+            ->take(25)
+            ->pluck('name', 'id')
+            ->toArray();
+
+        $topicsRef = Topic::withCount('questions')
+            ->orderBy('questions_count', 'desc')
+            ->take(25)
+            ->pluck('name', 'id')
+            ->toArray();
 
         $instruction = match ($type) {
             'both' => "Dificuldade (com Raciocinio em 'difficulty_reasoning'), Explicação pedagógica (em 'explanation'), Disciplina e Assunto.",
