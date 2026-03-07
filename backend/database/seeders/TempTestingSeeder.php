@@ -56,7 +56,7 @@ class TempTestingSeeder extends Seeder
                 'type' => 'concurso',
                 'format' => 'multiple_choice',
                 'difficulty' => collect(['easy', 'medium', 'hard'])->random(),
-                'difficulty_reasoning' => "Raciocínio de dificuldade para questão de {$label} #{$i}. Esta questão aborda conceitos fundamentais de {$topic->name}.",
+                'difficulty_reasoning' => "A complexidade de {$topic->name} varia conforme o nível de abstração exigido. Esta questão foca na aplicação prática de fórmulas e interpretação lógica de enunciados técnicos de {$label}.",
                 'year' => 2024,
                 'statement' => "Enunciado da questão de {$label} número {$i}. Qual a alternativa correta sobre {$topic->name}?",
                 'explanation' => "Explicação detalhada da questão de {$label} #{$i}. O conceito de {$topic->name} é essencial para o concurso.",

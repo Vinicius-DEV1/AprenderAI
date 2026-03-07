@@ -129,7 +129,7 @@ class QuestionSeeder extends Seeder
             'external_id' => 'incomplete_test_001',
             'review_status' => 'pending',
             'difficulty' => 'medium',
-            'difficulty_reasoning' => null,
+            'difficulty_reasoning' => 'Classificada como incompleta para fins de triagem pedagógica manual.',
             'explanation' => null,
         ]);
 
@@ -153,7 +153,7 @@ class QuestionSeeder extends Seeder
                 'type' => $type,
                 'format' => $format,
                 'difficulty' => 'medium',
-                'difficulty_reasoning' => 'Dificuldade avaliada pelo sistema central ou IA.',
+                'difficulty_reasoning' => 'A questão exige análise interpretativa de nível intermediário, focando na identificação de teses centrais e na distinção entre fatos e opiniões no texto.',
                 'year' => $year,
                 'statement' => $statement,
                 'explanation' => $explanation,
