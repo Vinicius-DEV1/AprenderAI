@@ -16,7 +16,8 @@ class AIBatchTriageJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $timeout = 360; // 6 minutes timeout for larger batches
+    public $timeout = 600; // 10 minutes timeout for larger batches
+    public $tries = 1;    // Não retentar automaticamente — retry manual disponível no painel
 
     protected $batchId;
     protected $questionIds;

@@ -1215,13 +1215,24 @@ EOT;
             }
 
             $result = $this->callAI($provider, $apiKey, $prompt, $userId);
+
+            // Decodifica o JSON retornado pela IA (pode vir como string bruta com markdown)
+            $decoded = $this->responseSanitizer->sanitize($result['content']);
+
+            if (empty($decoded)) {
+                Log::warning('[AIService::generateJson] responseSanitizer returned empty — raw content snippet:', [
+                    'snippet' => substr($result['content'] ?? '', 0, 300),
+                ]);
+            }
+
             return [
-                'data' => $result['content'],
+                'data' => $decoded,
                 'usage' => $result['usage'] ?? ['input_tokens' => 0, 'output_tokens' => 0],
                 'estimated_cost' => $result['estimated_cost'] ?? 0
             ];
         }, $provider);
     }
+
 
     protected function getProviderForModel(string $model): ?string
     {
