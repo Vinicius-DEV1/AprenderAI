@@ -22,9 +22,26 @@ if [ -f .env ] || [ -f .env.example ]; then
 
     # Instala dependências do Composer se a pasta vendor/autoload.php não existir
     if [ ! -f "vendor/autoload.php" ]; then
-        echo "📦 Autoload não encontrado. Instalando dependências do Composer no volume interno..."
+        echo "📦 Autoload não encontrado ou corrompido. Tentando (re)instalar dependências..."
+        
+        # Garantir permissões básicas para o composer conseguir escrever
+        chown -R 1000:www-data vendor 2>/dev/null || true
+        chmod -R 775 vendor 2>/dev/null || true
+        
         composer install --no-interaction --prefer-dist --optimize-autoloader
+        
+        # Se falhou, tenta limpar e instalar de novo
+        if [ $? -ne 0 ]; then
+            echo "⚠️ Falha na instalação inicial. Tentando limpar e forçar nova instalação..."
+            rm -rf vendor/.* vendor/* 2>/dev/null || true
+            composer install --no-interaction --prefer-dist --optimize-autoloader
+        fi
     fi
+
+    # Garantir permissões do vendor em todo boot (previne erros de root do docker)
+    echo "🔑 Ajustando permissões da pasta vendor..."
+    chown -R 1000:www-data vendor || true
+    chmod -R 775 vendor || true
 
     # Instala dependências do Node se a pasta node_modules não existir ou estiver vazia
     if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
@@ -67,16 +84,19 @@ if [ -f .env ]; then
     echo "🔗 Verificando link de storage..."
     php artisan storage:link --force || true
 
-    echo "📂 Rodando migrações de banco..."
-    php artisan migrate --force
-
-    echo "🧹 Limpando caches de desenvolvimento..."
-    php artisan config:clear
-    php artisan route:clear
-    php artisan view:clear
 fi
 
 if [ "$1" = "php-fpm" ] || [ -z "$1" ]; then
+    if [ -f .env ]; then
+        echo "📂 Rodando migrações de banco..."
+        php artisan migrate --force
+
+        echo "🧹 Limpando caches de desenvolvimento..."
+        php artisan config:clear
+        php artisan route:clear
+        php artisan view:clear
+    fi
+
     echo "🚀 Tudo pronto! Iniciando PHP-FPM..."
     exec php-fpm
 else
