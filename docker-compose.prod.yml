@@ -62,8 +62,8 @@ services:
       - ./backend/storage/app/public:/var/www/storage/app/public
       - /proc:/host_proc:ro
     env_file: ./backend/.env
-    # Prioriza explicitamente a fila 'default' (Simulados/Chats) e depois a 'import'
-    command: php artisan queue:work --queue=default,import --sleep=3 --tries=3 --max-time=3600
+    # Prioriza explicitamente a fila 'default' (Simulados/Chats), 'essays' (Redações) e depois a 'import'
+    command: php artisan queue:work --queue=default,essays,import --sleep=3 --tries=3 --max-time=3600
     deploy:
       replicas: 50
     depends_on:
@@ -89,29 +89,6 @@ services:
     command: php artisan queue:work --queue=ai-batches --sleep=3 --tries=1 --timeout=700 --max-time=3600
     deploy:
       replicas: 2
-    depends_on:
-      app:
-        condition: service_started
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    networks:
-      - production-network
-
-  # Essay Dedicated Queue Worker (avaliação de redações — separado dos lotes de IA)
-  essay-worker:
-    image: aprender-ai-app
-    restart: always
-    working_dir: /var/www
-    volumes:
-      - ./backend/storage/app/public:/var/www/storage/app/public
-      - /proc:/host_proc:ro
-    env_file: ./backend/.env
-    # Fila exclusiva para avaliação de redações (evita bloqueio pelos lotes de triagem IA)
-    command: php artisan queue:work --queue=essays --sleep=3 --tries=5 --timeout=400 --max-time=3600
-    deploy:
-      replicas: 5
     depends_on:
       app:
         condition: service_started
