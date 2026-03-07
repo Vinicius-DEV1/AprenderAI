@@ -149,13 +149,15 @@ class AIBatchTriageController extends Controller
         $reprocess = $validated['reprocess'] ?? false;
         $delaySeconds = $request->input('delay_seconds', 0);
 
-        $questions->chunk($chunkSize)->each(function ($chunk, $index) use ($batchId, $validated, $reprocess, $delaySeconds) {
+        $userId = auth()->id();
+        $questions->chunk($chunkSize)->each(function ($chunk, $index) use ($batchId, $validated, $reprocess, $delaySeconds, $userId) {
             $job = new AIBatchTriageJob(
                 $batchId,
                 $chunk->pluck('id')->toArray(),
                 $validated['type'],
                 $validated['model'] ?? 'gpt-4o',
-                $reprocess
+                $reprocess,
+                $userId
             );
 
             // Envia para a fila dedicada e aplica o delay progressivo

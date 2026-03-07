@@ -301,18 +301,17 @@ class Question extends Model
         return $query->when($type, fn($q) => $q->where('type', $type));
     }
 
-    /**
-     * Scope: filtra por matéria (id)
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param mixed $subjectId
-     */
-    public function scopeFilterBySubject($query, $subjectId)
+    public function scopeFilterBySubject($query, $subject)
     {
         return $query->when(
-            $subjectId,
-            fn($q) =>
-            $q->whereHas('subjects', fn($s) => $s->where('subjects.id', $subjectId))
+            $subject,
+            function ($q) use ($subject) {
+                if (is_numeric($subject)) {
+                    $q->whereHas('subjects', fn($s) => $s->where('subjects.id', $subject));
+                } else {
+                    $q->whereHas('subjects', fn($s) => $s->where('subjects.name', $subject));
+                }
+            }
         );
     }
 
@@ -320,14 +319,20 @@ class Question extends Model
      * Scope: filtra por assunto/tópico (100% baseado na relação de pivô)
      *
      * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param mixed $topicId
+     * @param mixed $topic
      */
-    public function scopeFilterByTopic($query, $topicId)
+    public function scopeFilterByTopic($query, $topic)
     {
-        return $query->when($topicId, function ($q) use ($topicId) {
-            $q->whereHas('topics', function ($subQ) use ($topicId) {
-                $subQ->where('topics.id', $topicId);
-            });
+        return $query->when($topic, function ($q) use ($topic) {
+            if (is_numeric($topic)) {
+                $q->whereHas('topics', function ($subQ) use ($topic) {
+                    $subQ->where('topics.id', $topic);
+                });
+            } else {
+                $q->whereHas('topics', function ($subQ) use ($topic) {
+                    $subQ->where('topics.name', $topic);
+                });
+            }
         });
     }
 

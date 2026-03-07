@@ -20,11 +20,11 @@ class AIBatchService
         $this->promptService = $promptService;
     }
 
-    public function processBatch(Collection $questions, string $type, ?string $model = null, ?string $batchId = null, bool $reprocess = false): array
+    public function processBatch(Collection $questions, string $type, ?string $model = null, ?string $batchId = null, bool $reprocess = false, ?int $userId = null): array
     {
         $prompt = $this->buildBatchPrompt($questions, $type, $reprocess);
         try {
-            $result = $this->aiService->generateJson($prompt, $model);
+            $result = $this->aiService->generateJson($prompt, $model, $userId);
             $data = $result['data'] ?? [];
             $usage = $result['usage'] ?? ['input_tokens' => 0, 'output_tokens' => 0];
             $appliedData = $this->applyResults($questions, $data, $type, $reprocess, $batchId);
