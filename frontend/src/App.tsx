@@ -56,6 +56,7 @@ import AdminQuestions from './pages/admin/AdminQuestions';
 import AdminQuestionForm from './pages/admin/QuestionForm';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminUserDetail from './pages/admin/UserDetail';
+import QuestionHistory from './pages/admin/QuestionHistory';
 import AdminApiKeys from './pages/admin/AdminApiKeys';
 import AdminPlans from './pages/admin/Plans';
 import AdminPlanForm from './pages/admin/PlanForm';
@@ -211,6 +212,7 @@ function App() {
                             <Route index element={<><MetaTags title="Admin: Dashboard" /><AdminDashboard /></>} />
                             <Route path="dashboard" element={<><MetaTags title="Admin: Dashboard" /><AdminDashboard /></>} />
                             <Route path="curadoria" element={<><MetaTags title="Admin: Curadoria" /><Curadoria /></>} />
+                            <Route path="triage/history" element={<><MetaTags title="Admin: Histórico de Triagem" /><QuestionHistory /></>} />
 
                             <Route path="questions" element={<><MetaTags title="Admin: Banco de Questões" /><AdminQuestions /></>} />
                             <Route path="questions/create" element={<><MetaTags title="Admin: Nova Questão" /><AdminQuestionForm /></>} />

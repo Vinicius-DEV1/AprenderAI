@@ -204,9 +204,17 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                     {/* Header */}
                     <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                         <div className="flex items-center gap-3">
-                            <span className="text-xl">{batchId ? '⏳' : '🤖'}</span>
+                            <span className="text-xl">
+                                {batchId
+                                    ? (progress?.status === 'completed' ? '✅' : progress?.status === 'failed' ? '❌' : progress?.status === 'cancelled' ? '🛑' : '⏳')
+                                    : '🤖'
+                                }
+                            </span>
                             <h3 className="text-xl font-black text-gray-900">
-                                {batchId ? 'Processando Lote...' : step === 'config' ? 'Configurar Lote de IA' : 'Pré-visualização do Lote'}
+                                {batchId
+                                    ? (progress?.status === 'completed' ? 'Lote Concluído!' : progress?.status === 'failed' ? 'Lote com Falha' : progress?.status === 'cancelled' ? 'Lote Cancelado' : 'Processando Lote...')
+                                    : step === 'config' ? 'Configurar Lote de IA' : 'Pré-visualização do Lote'
+                                }
                             </h3>
                         </div>
                         {batchId ? (
@@ -220,21 +228,31 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                     <div className="p-6 overflow-y-auto flex-grow">
                         {batchId ? (
                             <div className="flex flex-col items-center justify-center py-10 space-y-6">
-                                <div className={`text-6xl ${progress?.status === 'failed' || progress?.status === 'cancelled' ? '' : 'animate-bounce'}`}>
-                                    {progress?.status === 'failed' ? '❌' : progress?.status === 'cancelled' ? '🛑' : '🚀'}
+                                <div className={`text-6xl ${progress?.status === 'completed' ? '' :
+                                        progress?.status === 'failed' || progress?.status === 'cancelled' ? '' : 'animate-bounce'
+                                    }`}>
+                                    {progress?.status === 'failed' ? '❌' :
+                                        progress?.status === 'cancelled' ? '🛑' :
+                                            progress?.status === 'completed' ? '✅' : '🚀'}
                                 </div>
                                 <div className="w-full max-w-md bg-gray-100 h-4 rounded-full overflow-hidden relative">
                                     {progress?.status === 'processing' && (
                                         <div className="absolute inset-0 bg-indigo-100 animate-pulse"></div>
                                     )}
                                     <div
-                                        className={`absolute top-0 left-0 h-full transition-all duration-500 ease-out shadow-inner ${progress?.status === 'failed' ? 'bg-red-500' : progress?.status === 'cancelled' ? 'bg-amber-500' : 'bg-gradient-to-r from-indigo-500 to-purple-600'}`}
-                                        style={{ width: `${progress && progress.total > 0 ? ((progress.processed + progress.errors) / progress.total) * 100 : 0}%` }}
+                                        className={`absolute top-0 left-0 h-full transition-all duration-500 ease-out shadow-inner ${progress?.status === 'failed' ? 'bg-red-500' :
+                                                progress?.status === 'cancelled' ? 'bg-amber-500' :
+                                                    progress?.status === 'completed' ? 'bg-gradient-to-r from-green-400 to-emerald-600' :
+                                                        'bg-gradient-to-r from-indigo-500 to-purple-600'
+                                            }`}
+                                        style={{ width: `${progress && progress.total > 0 ? (progress.processed / progress.total) * 100 : 0}%` }}
                                     ></div>
                                 </div>
                                 <div className="text-center w-full">
                                     <p className={`font-black text-4xl mb-1 tracking-tight ${progress?.status === 'failed' ? 'text-red-600' : progress?.status === 'cancelled' ? 'text-amber-500' : 'text-gray-900'}`}>
-                                        {progress ? `${progress.processed + progress.errors} / ${progress.total}` : 'Iniciando...'}
+                                        {progress
+                                            ? `${Math.max(progress.processed, progress.errors)} / ${progress.total}`
+                                            : 'Iniciando...'}
                                     </p>
 
                                     {progress?.status === 'processing' && etaSeconds !== null && (
