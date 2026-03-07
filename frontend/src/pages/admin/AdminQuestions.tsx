@@ -4,6 +4,7 @@ import api from '../../api/axios';
 import AdminBatchModal from './components/AdminBatchModal';
 import AdminDeleteQuestionModal from './components/AdminDeleteQuestionModal';
 import { AdminPageSkeleton } from './components/AdminSkeletons';
+import QuestionBankExplorerModal from './components/QuestionBankExplorerModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
@@ -32,6 +33,7 @@ export default function AdminQuestions() {
     const [activeMenu, setActiveMenu] = useState<number | null>(null);
     const [mainActiveMenu, setMainActiveMenu] = useState<number | null>(null);
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean, id: number | null }>({ isOpen: false, id: null });
+    const [explorerOrg, setExplorerOrg] = useState<string | null>(null);
 
     // Reset pagination when filters change
     useEffect(() => {
@@ -151,12 +153,13 @@ export default function AdminQuestions() {
     const availableOrganizations = data.availableOrganizations || [];
 
     const stats = [
-        { label: 'Total Geral', value: meta.total_questions, color: 'indigo' },
-        { label: 'Inéditas IA', value: meta.ai_questions, color: 'purple' },
+        { label: 'Total Geral', value: meta.total_questions, color: 'indigo', org: null },
+        { label: 'Inéditas IA', value: meta.ai_questions, color: 'purple', org: null },
         ...(meta.questions_by_organization || []).map((org: any) => ({
             label: org.organization,
             value: org.total,
-            color: 'blue'
+            color: 'blue',
+            org: org.organization
         }))
     ];
 
@@ -176,11 +179,20 @@ export default function AdminQuestions() {
             {/* Mini Dashboard */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {stats.map((s, i) => (
-                    <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-md transition">
-                        <span className="text-xs font-black text-gray-400 uppercase tracking-widest">{s.label}</span>
+                    <div
+                        key={i}
+                        onClick={() => s.org && setExplorerOrg(s.org)}
+                        className={`bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-md transition ${s.org ? 'cursor-pointer hover:border-indigo-200 hover:bg-indigo-50/30' : ''}`}
+                    >
+                        <span className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                            {s.label}
+                            {s.org && <span className="opacity-0 group-hover:opacity-100 transition text-indigo-400 text-[9px]">• Ver distribuição 🔍</span>}
+                        </span>
                         <div className="flex items-end justify-between mt-4">
                             <span className={`text-4xl font-black text-${s.color}-600`}>{s.value}</span>
-                            <span className={`w-8 h-8 rounded-lg bg-${s.color}-50 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition`}>📈</span>
+                            <span className={`w-8 h-8 rounded-lg bg-${s.color}-50 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition`}>
+                                {s.org ? '🔍' : '📈'}
+                            </span>
                         </div>
                     </div>
                 ))}
@@ -858,6 +870,16 @@ export default function AdminQuestions() {
                     queryClient.invalidateQueries({ queryKey: ['admin-questions'] });
                 }}
             />
+
+            {/* Question Bank Explorer Modal */}
+            <AnimatePresence>
+                {explorerOrg && (
+                    <QuestionBankExplorerModal
+                        organization={explorerOrg}
+                        onClose={() => setExplorerOrg(null)}
+                    />
+                )}
+            </AnimatePresence>
         </div >
     );
 }
