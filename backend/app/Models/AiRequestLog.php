@@ -14,6 +14,7 @@ class AiRequestLog extends Model
         'api_key_name',
         'provider',
         'model',
+        'module',
         'prompt_text',
         'response_text',
         'tokens_used_input',
