@@ -308,7 +308,7 @@ EOT;
             ]);
 
             // SRE: Update ApiKey status to trigger auto-healing router
-            if ($statusCode === 429) {
+            if ($statusCode === 429 && $provider === 'openai') {
                 $apiKey->update(['status' => 'quota_exceeded']);
             } elseif (in_array($statusCode, [401, 403])) {
                 $apiKey->update(['status' => 'offline']);
@@ -380,7 +380,7 @@ EOT;
             ]);
 
             // SRE: Update ApiKey status to trigger auto-healing router
-            if ($statusCode === 429) {
+            if ($statusCode === 429 && $provider === 'openai') {
                 $apiKey->update(['status' => 'quota_exceeded']);
             } elseif (in_array($statusCode, [401, 403])) {
                 $apiKey->update(['status' => 'offline']);
@@ -1291,24 +1291,41 @@ EOT;
         }
 
         foreach ($keys as $apiKey) {
-            try {
-                return $closure($apiKey);
-            } catch (\Exception $e) {
-                $lastException = $e;
+            $attempts = 0;
+            $maxAttempts = 3;
 
-                if ($this->isRetriableError($e)) {
-                    Log::warning("AI Provider failed, failing over to next priority...", [
-                        'capability' => $capability,
-                        'key_id' => $apiKey->id,
-                        'error' => $e->getMessage()
-                    ]);
+            while ($attempts < $maxAttempts) {
+                try {
+                    return $closure($apiKey);
+                } catch (\Exception $e) {
+                    $attempts++;
+                    $lastException = $e;
 
-                    $this->banKeyTemporarily($apiKey, $e);
-                    continue;
+                    if ($this->isRetriableError($e)) {
+                        if ($attempts < $maxAttempts) {
+                            $sleepSeconds = pow(2, $attempts); // 2s, 4s
+                            Log::warning("AI Provider {$apiKey->provider} hit temporary error, retrying in {$sleepSeconds}s...", [
+                                'attempt' => $attempts,
+                                'key_id' => $apiKey->id,
+                                'error' => $e->getMessage()
+                            ]);
+                            sleep($sleepSeconds);
+                            continue;
+                        }
+
+                        Log::warning("AI Provider failed after {$maxAttempts} attempts, failing over to next priority...", [
+                            'capability' => $capability,
+                            'key_id' => $apiKey->id,
+                            'error' => $e->getMessage()
+                        ]);
+
+                        $this->banKeyTemporarily($apiKey, $e);
+                        break; // Move out of the while loop to try the next Key in foreach
+                    }
+
+                    // Se for erro na formatação do prompt (ex. 400 Bad Request), jogar pra cima pois tentamos e fomos rejeitados na raiz.
+                    throw $e;
                 }
-
-                // Se for erro na formatação do prompt (ex. 400 Bad Request), jogar pra cima pois tentamos e fomos rejeitados na raiz.
-                throw $e;
             }
         }
 
@@ -1356,7 +1373,8 @@ EOT;
             $bannedIds[] = $apiKey->id;
         }
 
-        Cache::put('api_key_blacklist', $bannedIds, now()->addMinutes(60));
+        // Baniu por apenas 3 minutos (antes era 60) para permitir recuperação de 503 rápidos
+        Cache::put('api_key_blacklist', $bannedIds, now()->addMinutes(3));
     }
 
     public function interpretSearchPrompt(string $userPrompt, array $filterOptions, ?int $userId = null): ?array
