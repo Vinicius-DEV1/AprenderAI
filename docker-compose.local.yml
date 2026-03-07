@@ -91,20 +91,7 @@ services:
       - ./backend:/var/www
       - /var/www/vendor # volume anônimo: evita bind-mount apagar o vendor
       - /proc:/host_proc:ro
-    environment:
-      - APP_NAME=aprenderAI
-      - APP_ENV=local
-      - APP_KEY=base64:8RP5v67UCv73luvg2Muzu26DL/mWB8nPJKa/Jo8kV/E=
-      - DB_CONNECTION=mysql
-      - DB_HOST=db
-      - DB_PORT=3306
-      - DB_DATABASE=aprenderai
-      - DB_USERNAME=admin
-      - DB_PASSWORD=secret
-      - REDIS_HOST=redis
-      - SESSION_DRIVER=redis
-      - CACHE_STORE=redis
-      - QUEUE_CONNECTION=database
+    env_file: ./backend/.env
     command: php artisan queue:work --queue=default,import --sleep=3 --tries=3 --timeout=180
     depends_on:
       app:
@@ -125,20 +112,7 @@ services:
       - ./backend:/var/www
       - /var/www/vendor
       - /proc:/host_proc:ro
-    environment:
-      - APP_NAME=aprenderAI
-      - APP_ENV=local
-      - APP_KEY=base64:8RP5v67UCv73luvg2Muzu26DL/mWB8nPJKa/Jo8kV/E=
-      - DB_CONNECTION=mysql
-      - DB_HOST=db
-      - DB_PORT=3306
-      - DB_DATABASE=aprenderai
-      - DB_USERNAME=admin
-      - DB_PASSWORD=secret
-      - REDIS_HOST=redis
-      - SESSION_DRIVER=redis
-      - CACHE_STORE=redis
-      - QUEUE_CONNECTION=database
+    env_file: ./backend/.env
     command: php artisan queue:work --queue=ai-batches --sleep=3 --tries=3 --timeout=360
     depends_on:
       app:

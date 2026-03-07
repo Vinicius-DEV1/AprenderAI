@@ -259,7 +259,7 @@ export default function EssayReview({
 
                 {!isEmbedded && (
                     <div className="mb-4 text-center">
-                        <Link to="/essays" className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
+                        <Link to="/redacoes" className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
                             &larr; Voltar para minhas redações
                         </Link>
                     </div>
