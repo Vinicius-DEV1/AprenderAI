@@ -97,6 +97,9 @@ class SubscriptionController extends Controller
             $currentLevel = $activeInstallment->plan->getLevel();
             $newLevel = $plan->getLevel();
 
+            $currentPlanPrice = (float) $activeInstallment->plan->annual_price;
+            $newPlanPrice = (float) $plan->annual_price;
+
             // BLOQUEAR DOWNGRADE OU RECOMPRA: plano novo tem nível <= atual
             if ($newLevel <= $currentLevel) {
                 return response()->json([
