@@ -26,6 +26,11 @@ interface QueueStats {
     workers: string;
 }
 
+interface PerformanceMetric {
+    jobs_per_minute: number;
+    avg_duration_seconds: number;
+}
+
 interface RealtimeData {
     cpu_usage: number;
     ram_usage: number;
@@ -39,6 +44,7 @@ interface RealtimeData {
     uptime?: string;
     services?: ServiceHealth;
     queues?: QueueStats;
+    queue_performance?: Record<string, PerformanceMetric>;
     top_processes?: TopProcess[];
 }
 
@@ -129,7 +135,7 @@ export default function Monitor() {
             } catch (e) { /* silent */ }
         };
         fetchRealtime();
-        interval = setInterval(fetchRealtime, 5000);
+        interval = setInterval(fetchRealtime, 1000); // TAXA DE ATUALIZAÇÃO 1s (Desejo do Usuário)
         return () => clearInterval(interval);
     }, []);
 
@@ -176,7 +182,7 @@ export default function Monitor() {
             <div className="mb-8 flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-800 mb-2">Monitoramento VPS</h1>
-                    <p className="text-gray-600">Acompanhe a saúde do servidor em tempo real (atualização: 5s)</p>
+                    <p className="text-gray-600 font-medium">Acompanhe a saúde do servidor em tempo real (atualização: <span className="text-blue-600 font-black animate-pulse">1s</span>)</p>
                 </div>
                 <div className="bg-white rounded-lg shadow-sm p-1 inline-flex">
                     {['1h', '24h', '7d'].map(r => (
@@ -393,7 +399,7 @@ export default function Monitor() {
                     </div>
                 </div>
 
-                {/* Queue / Workers (Col-span 1) */}
+                {/* Queue Summary / Stats (Col-span 1) */}
                 <div className="bg-white rounded-xl shadow-sm p-6">
                     <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                         <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
@@ -434,6 +440,52 @@ export default function Monitor() {
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* Performance Metrics Section (NEW) */}
+            <div className="mt-8">
+                <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <svg className="w-6 h-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    Performance dos Workers (Vazão e Latência)
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {Object.entries(realtimeData.queue_performance || {}).map(([queue, perf]) => (
+                        <div key={queue} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 transition-all hover:shadow-md">
+                            <div className="flex justify-between items-start mb-3">
+                                <span className={`px-2 py-0.5 text-[10px] font-black uppercase rounded ${queue === 'ai-batches' ? 'bg-purple-100 text-purple-700' :
+                                        queue === 'essays' ? 'bg-blue-100 text-blue-700' :
+                                            'bg-gray-100 text-gray-600'
+                                    }`}>
+                                    Fila: {queue}
+                                </span>
+                                <div className="animate-ping w-2 h-2 rounded-full bg-green-400"></div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-end">
+                                    <span className="text-xs text-gray-500 font-medium italic">Vazão (Realtime)</span>
+                                    <div className="text-right">
+                                        <div className="text-xl font-black text-gray-900 leading-none">{perf.jobs_per_minute}</div>
+                                        <div className="text-[10px] text-gray-400 font-bold">jobs / min</div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-between items-end">
+                                    <span className="text-xs text-gray-500 font-medium italic">Duração Média</span>
+                                    <div className="text-right">
+                                        <div className="text-xl font-black text-blue-600 leading-none">{perf.avg_duration_seconds.toFixed(2)}s</div>
+                                        <div className="text-[10px] text-gray-400 font-bold">por job</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                    {(!realtimeData.queue_performance || Object.keys(realtimeData.queue_performance).length === 0) && (
+                        <div className="col-span-full p-6 text-center text-gray-400 italic text-sm border-2 border-dashed border-gray-100 rounded-xl bg-gray-50">
+                            Aguardando atividade nos workers para coletar métricas de vazão e latência...
+                        </div>
+                    )}
                 </div>
             </div>
 
