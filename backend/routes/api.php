@@ -166,6 +166,7 @@ Route::prefix('v1')->group(function () {
 
             // Exams (Provas) Visualization
             Route::get('exams', [ExamController::class, 'index']);
+            Route::get('exams/explorer/{organization}', [ExamController::class, 'explorer']);
             Route::get('exams/{id}', [ExamController::class, 'show']);
 
             // Administrative CRUDs
