@@ -23,7 +23,7 @@ class EvaluateEssayJob implements ShouldQueue
     public function __construct(Essay $essay)
     {
         $this->essay = $essay;
-        $this->onQueue('ai-batches');
+        $this->onQueue('essays');
     }
 
     public function backoff(): array
