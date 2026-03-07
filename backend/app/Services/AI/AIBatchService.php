@@ -102,11 +102,12 @@ class AIBatchService
         $prompt .= "   - DISCURSIVA: Crie uma resposta pedagógica, pois não há alternativas.\n";
         $prompt .= "   - REDAÇÃO: Para temas de redação, gere APENAS Feedback Pedagógico em `explanation` e deixe o resto null.\n";
         $prompt .= "2. LATEX OBRIGATÓRIO: Use \\( ... \\) e \\[ ... \\] para qualquer fórmula matemática/física.\n\n";
+        $prompt .= "3. CLASSIFICAÇÃO:\n   - Se não usar ID existente, retorne string. `subject` = área acadêmica (ex: 'Matemática', 'Língua Portuguesa'). `topic` = assunto específico (ex: 'Trigonometria'). MÁXIMO 1 a 4 palavras. Utilize Iniciais Maiúsculas.\n";
         $prompt .= "DADOS DAS QUESTOES:\n" . json_encode($questionsData) . "\n\n";
         $prompt .= "REFERENCIAS (Use IDs se houver correspondencia):\n";
         $prompt .= "Disciplinas: " . json_encode($subjectsRef) . "\n";
         $prompt .= "Assuntos: " . json_encode($topicsRef) . "\n\n";
-        $prompt .= "RESPOSTA: Retorne APENAS um Array JSON puro: [{\"id\": 1, \"difficulty\": \"easy|medium|hard|null\", \"difficulty_reasoning\": \"...\", \"explanation\": \"...\", \"subject\": ID|null, \"topic\": ID|null, \"suggested_answer\": \"...|null\"}]";
+        $prompt .= "RESPOSTA: Retorne APENAS um Array JSON puro: [{\"id\": 1, \"difficulty\": \"easy|medium|hard|null\", \"difficulty_reasoning\": \"...\", \"explanation\": \"...\", \"subject\": ID|string|null, \"topic\": ID|string|null, \"suggested_answer\": \"...|null\"}]";
         return $prompt;
     }
 
@@ -220,10 +221,13 @@ class AIBatchService
                 $subjectName = (string) $subjectName;
                 $normalizedName = strtolower(trim($subjectName));
 
-                // Força mapeamento de variantes comuns para o padrão oficial do BD
-                if (in_array($normalizedName, ['português', 'portugues', 'língua portuguesa', 'lingua portuguesa'])) {
+                // Força mapeamento de variantes genéricas comuns para os padrões oficiais
+                if (preg_match('/^(português|portugues|língua portuguesa|lingua portuguesa|linguagem)$/i', $normalizedName)) {
                     $subjectName = 'Língua Portuguesa';
                     $normalizedName = 'língua portuguesa';
+                } elseif (preg_match('/^(ciências físicas|ciências da natureza|física aplicadas?|fisica)/i', $normalizedName) && $normalizedName !== 'educação física') {
+                    $subjectName = 'Física';
+                    $normalizedName = 'física';
                 }
 
                 // Tenta achar pelo nome exato ou parecido ignorando case antes de criar um novo
