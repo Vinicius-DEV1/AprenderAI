@@ -32,8 +32,8 @@ class ProcessQuestionImportJob implements ShouldQueue
             $service->processZipFromJob($this->import, $this->zipPath);
 
             // Depois de processado com sucesso, remove o zip temporário
-            if (Storage::disk('local')->exists($this->zipPath)) {
-                Storage::disk('local')->delete($this->zipPath);
+            if (Storage::disk('public')->exists($this->zipPath)) {
+                Storage::disk('public')->delete($this->zipPath);
             }
         } catch (\Throwable $e) {
             Log::error("[ProcessQuestionImportJob] Falha crítica no background job na importação {$this->import->id}: " . $e->getMessage());
