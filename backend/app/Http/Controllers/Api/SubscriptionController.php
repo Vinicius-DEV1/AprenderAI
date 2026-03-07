@@ -94,11 +94,11 @@ class SubscriptionController extends Controller
             ->first();
 
         if ($activeInstallment) {
-            $currentPlanPrice = (float) $activeInstallment->plan->annual_price;
-            $newPlanPrice = (float) $plan->annual_price;
+            $currentLevel = $activeInstallment->plan->getLevel();
+            $newLevel = $plan->getLevel();
 
-            // BLOQUEAR DOWNGRADE: plano novo tem preço <= atual
-            if ($newPlanPrice <= $currentPlanPrice) {
+            // BLOQUEAR DOWNGRADE OU RECOMPRA: plano novo tem nível <= atual
+            if ($newLevel <= $currentLevel) {
                 return response()->json([
                     'message' => 'Você possui um plano anual parcelado ativo até ' .
                         $activeInstallment->current_period_end->format('d/m/Y') .
