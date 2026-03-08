@@ -341,15 +341,7 @@ export default function Profile() {
                                                 <h4>E-mail</h4>
                                                 <p className="flex items-center gap-2 flex-wrap text-sm">
                                                     <span className="truncate">{user.email}</span>
-                                                    {user.email_verified_at ? (
-                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 uppercase">Confirmado</span>
-                                                    ) : (
-                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 uppercase">Pendente</span>
-                                                    )}
                                                 </p>
-                                                {!user.email_verified_at && (
-                                                    <button onClick={handleResendVerification} disabled={loading} className="mt-2 text-[11px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 font-bold uppercase underline">Reenviar Confirmação</button>
-                                                )}
                                             </div>
                                             <div className="info-item">
                                                 <h4>Telefone</h4>
