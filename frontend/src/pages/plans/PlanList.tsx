@@ -495,6 +495,9 @@ export default function PlanList() {
                                                             ) : (
                                                                 <span className="inline-block bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">{item.status}</span>
                                                             )}
+                                                            {item.is_sandbox && (
+                                                                <span className="inline-block bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[9px] font-black px-2 py-0.5 rounded-full uppercase ml-1 border border-amber-300 dark:border-amber-700">🧪 Sandbox</span>
+                                                            )}
                                                         </td>
                                                         <td className="py-4 px-2 text-right">
                                                             {/* Pix pending */}
