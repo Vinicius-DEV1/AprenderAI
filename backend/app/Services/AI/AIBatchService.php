@@ -111,12 +111,12 @@ class AIBatchService
         $prompt .= "   - DISCURSIVA: Crie uma resposta pedagógica, pois não há alternativas.\n";
         $prompt .= "   - REDAÇÃO: Para temas de redação, gere APENAS Feedback Pedagógico em `explanation` e deixe o resto null.\n";
         $prompt .= "2. LATEX OBRIGATÓRIO: Use \\( ... \\) e \\[ ... \\] para qualquer fórmula matemática/física.\n\n";
-        $prompt .= "3. CLASSIFICAÇÃO:\n   - Se não usar ID existente, retorne string. `subject` = área acadêmica (ex: 'Matemática', 'Língua Portuguesa'). `topic` = assunto específico (ex: 'Trigonometria'). MÁXIMO 1 a 4 palavras. Utilize Iniciais Maiúsculas.\n";
+        $prompt .= "3. CLASSIFICAÇÃO (MÚLTIPLOS ASSUNTOS):\n   - Se a questão for genuinamente interdisciplinar, retorne um ARRAY de assuntos/matérias. SE NÃO, retorne apenas 1 item no array.\n   - Se não usar ID existente, retorne string nova no array. `subjects` = áreas (ex: 'Matemática'). `topics` = assuntos (ex: 'Trigonometria'). MÁXIMO 1 a 4 palavras. Iniciais Maiúsculas.\n";
         $prompt .= "DADOS DAS QUESTOES:\n" . json_encode($questionsData) . "\n\n";
         $prompt .= "REFERENCIAS (Use IDs se houver correspondencia):\n";
         $prompt .= "Disciplinas: " . json_encode($subjectsRef) . "\n";
         $prompt .= "Assuntos: " . json_encode($topicsRef) . "\n\n";
-        $prompt .= "RESPOSTA: Retorne APENAS um Array JSON puro: [{\"id\": 1, \"difficulty\": \"easy|medium|hard|null\", \"difficulty_reasoning\": \"...\", \"explanation\": \"...\", \"subject\": ID|string|null, \"topic\": ID|string|null, \"suggested_answer\": \"...|null\"}]";
+        $prompt .= "RESPOSTA: Retorne APENAS um Array JSON puro: [{\"id\": 1, \"difficulty\": \"easy|medium|hard|null\", \"difficulty_reasoning\": \"...\", \"explanation\": \"...\", \"subjects\": [ID|\"string\"], \"topics\": [ID|\"string\"], \"suggested_answer\": \"...|null\"}]";
         return $prompt;
     }
 
@@ -252,71 +252,87 @@ class AIBatchService
                 'review_status' => $needsManualReview ? 'pending' : 'approved'
             ]);
 
-            // Resolucao de Disciplina (Subject)
-            $subjectVal = $data['subject'] ?? ($data['subject_id'] ?? null);
-            $subjectId = is_numeric($subjectVal) ? $subjectVal : null;
-            $subjectName = !is_numeric($subjectVal) ? $subjectVal : ($data['subject_name'] ?? null);
+            // Resolucao de Disciplina (Subjects)
+            $subjectsVal = $data['subjects'] ?? ($data['subject'] ?? ($data['subject_id'] ?? []));
+            $subjectsArray = is_array($subjectsVal) ? $subjectsVal : [$subjectsVal];
+            $subjectIdsToSync = [];
 
-            if (!$subjectId && !empty($subjectName)) {
-                // Defensive check: if subjectName is an array (AI error), convert to string
-                if (is_array($subjectName)) {
-                    $subjectName = json_encode($subjectName);
+            foreach ($subjectsArray as $subjectItem) {
+                if (empty($subjectItem))
+                    continue;
+
+                $subjectId = is_numeric($subjectItem) ? $subjectItem : null;
+                $subjectName = !is_numeric($subjectItem) ? $subjectItem : null;
+
+                if (!$subjectId && !empty($subjectName)) {
+                    $subjectName = (string) $subjectName;
+                    $normalizedName = strtolower(trim($subjectName));
+
+                    $existingSubject = Subject::whereRaw('LOWER(name) = ?', [$normalizedName])
+                        ->orWhere('name', 'like', '%' . trim($subjectName) . '%')
+                        ->first();
+
+                    if ($existingSubject) {
+                        $subjectId = $existingSubject->id;
+                    } else {
+                        $subject = Subject::firstOrCreate(
+                            ['name' => mb_convert_case(trim($subjectName), MB_CASE_TITLE, "UTF-8")],
+                            ['slug' => \Illuminate\Support\Str::slug($subjectName), 'type' => 'concurso']
+                        );
+                        $subjectId = $subject->id;
+                    }
                 }
-                $subjectName = (string) $subjectName;
-                $normalizedName = strtolower(trim($subjectName));
 
-                // Tenta achar pelo nome exato ou parecido ignorando case antes de criar um novo
-                $existingSubject = Subject::whereRaw('LOWER(name) = ?', [$normalizedName])
-                    ->orWhere('name', 'like', '%' . trim($subjectName) . '%')
-                    ->first();
-
-                if ($existingSubject) {
-                    $subjectId = $existingSubject->id;
-                } else {
-                    $subject = Subject::firstOrCreate(
-                        ['name' => trim($subjectName)],
-                        ['slug' => \Illuminate\Support\Str::slug($subjectName), 'type' => 'concurso']
-                    );
-                    $subjectId = $subject->id;
+                if ($subjectId) {
+                    $subjectIdsToSync[] = $subjectId;
                 }
             }
-            if ($subjectId) {
+
+            if (!empty($subjectIdsToSync)) {
                 if ($reprocess || $question->subjects->isEmpty()) {
-                    $question->subjects()->sync([$subjectId]);
+                    $question->subjects()->sync($subjectIdsToSync);
                 }
             }
 
-            // Resolucao de Assunto (Topic)
-            $topicVal = $data['topic'] ?? ($data['topic_id'] ?? null);
-            $topicId = is_numeric($topicVal) ? $topicVal : null;
-            $topicName = !is_numeric($topicVal) ? $topicVal : ($data['topic_name'] ?? null);
+            // Resolucao de Assunto (Topics)
+            $topicsVal = $data['topics'] ?? ($data['topic'] ?? ($data['topic_id'] ?? []));
+            $topicsArray = is_array($topicsVal) ? $topicsVal : [$topicsVal];
+            $topicIdsToSync = [];
 
-            if (!$topicId && !empty($topicName)) {
-                // Defensive check: if topicName is an array (AI error), convert to string
-                if (is_array($topicName)) {
-                    $topicName = json_encode($topicName);
+            foreach ($topicsArray as $topicItem) {
+                if (empty($topicItem))
+                    continue;
+
+                $topicId = is_numeric($topicItem) ? $topicItem : null;
+                $topicName = !is_numeric($topicItem) ? $topicItem : null;
+
+                if (!$topicId && !empty($topicName)) {
+                    $topicName = (string) $topicName;
+                    $normalizedTopicName = strtolower(trim($topicName));
+
+                    $existingTopic = Topic::whereRaw('LOWER(name) = ?', [$normalizedTopicName])
+                        ->orWhere('name', 'like', '%' . trim($topicName) . '%')
+                        ->first();
+
+                    if ($existingTopic) {
+                        $topicId = $existingTopic->id;
+                    } else {
+                        $topic = Topic::firstOrCreate(
+                            ['name' => mb_convert_case(trim($topicName), MB_CASE_TITLE, "UTF-8")],
+                            ['slug' => \Illuminate\Support\Str::slug($topicName)]
+                        );
+                        $topicId = $topic->id;
+                    }
                 }
-                $topicName = (string) $topicName;
-                $normalizedTopicName = strtolower(trim($topicName));
 
-                // Tenta achar pelo nome exato ou parecido ignorando case antes de criar um novo
-                $existingTopic = Topic::whereRaw('LOWER(name) = ?', [$normalizedTopicName])
-                    ->orWhere('name', 'like', '%' . trim($topicName) . '%')
-                    ->first();
-
-                if ($existingTopic) {
-                    $topicId = $existingTopic->id;
-                } else {
-                    $topic = Topic::firstOrCreate(
-                        ['name' => trim($topicName)],
-                        ['slug' => \Illuminate\Support\Str::slug($topicName)]
-                    );
-                    $topicId = $topic->id;
+                if ($topicId) {
+                    $topicIdsToSync[] = $topicId;
                 }
             }
-            if ($topicId) {
+
+            if (!empty($topicIdsToSync)) {
                 if ($reprocess || $question->topics->isEmpty()) {
-                    $question->topics()->sync([$topicId]);
+                    $question->topics()->sync($topicIdsToSync);
                 }
             }
 
