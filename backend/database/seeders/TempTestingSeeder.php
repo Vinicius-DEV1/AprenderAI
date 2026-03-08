@@ -121,10 +121,9 @@ class TempTestingSeeder extends Seeder
                 SimulationAnswer::create([
                     'simulation_id' => $simulation->id,
                     'question_id' => $question->id,
-                    'selected_alternative_id' => $isCorrect ? $correctAlt->id : $wrongAlt->id,
+                    'user_answer' => $isCorrect ? $correctAlt->label : $wrongAlt->label,
                     'is_correct' => $isCorrect,
                     'time_spent' => rand(30, 200),
-                    'order' => $index + 1,
                 ]);
             }
 

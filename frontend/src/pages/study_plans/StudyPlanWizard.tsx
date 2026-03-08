@@ -95,10 +95,10 @@ export default function StudyPlanWizard() {
 
                 if (res.status === 404) {
                     stopPollingAndClean();
-                    setLoading(false);
+                    navigate('/plano-de-estudo');
                 } else if (res.data.status === 'ready') {
                     stopPollingAndClean();
-                    navigate('/study-plan');
+                    navigate('/plano-de-estudo');
                 } else if (res.data.status === 'failed') {
                     stopPollingAndClean();
                     setLoading(false);
