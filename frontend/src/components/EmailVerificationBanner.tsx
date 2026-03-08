@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 
 export default function EmailVerificationBanner() {
-    return null;
     const { user } = useAuthStore();
     const [isSending, setIsSending] = useState(false);
     const [isDismissed, setIsDismissed] = useState(false);

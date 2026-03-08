@@ -533,11 +533,22 @@ export default function AdminQuestions() {
                                             <td className="px-4 py-3">
                                                 <div className="flex flex-col">
                                                     <div dangerouslySetInnerHTML={{ __html: q.statement }} className="text-[11px] font-bold text-gray-700 line-clamp-1 max-w-[500px]" />
-                                                    <div className="flex gap-2 mt-0.5 items-center">
-                                                        <span className="text-[9px] font-black text-indigo-400 uppercase">{q.subjects?.[0]?.name || 'Sem Matéria'}</span>
-                                                        <span className="text-[9px] font-black text-gray-300 uppercase">•</span>
+                                                    <div className="flex flex-wrap gap-2 mt-1.5 items-center">
+                                                        <div className="flex gap-1 flex-wrap">
+                                                            {(q.subjects || []).map((s: any) => (
+                                                                <span key={s.id} className="text-[9px] font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded uppercase tracking-tighter shadow-sm border border-indigo-100">{s.name}</span>
+                                                            ))}
+                                                            {(!q.subjects || q.subjects.length === 0) && <span className="text-[9px] font-black text-indigo-400 uppercase">Sem Matéria</span>}
+                                                        </div>
+                                                        <span className="text-[9px] font-black text-gray-300 uppercase leading-none self-center">•</span>
+                                                        <div className="flex gap-1 flex-wrap">
+                                                            {(q.topics || []).map((t: any) => (
+                                                                <span key={t.id} className="text-[9px] font-black bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded uppercase tracking-tighter shadow-sm border border-emerald-100">{t.name}</span>
+                                                            ))}
+                                                        </div>
+                                                        <span className="text-[9px] font-black text-gray-300 uppercase leading-none self-center">•</span>
                                                         <span className="text-[9px] font-black text-gray-400 uppercase">{q.organization || 'AprenderAI'}</span>
-                                                        <span className="text-[10px] font-black text-gray-300 uppercase">•</span>
+                                                        <span className="text-[10px] font-black text-gray-300 uppercase leading-none self-center">•</span>
                                                         {q.tipo_questao === 'Redação' ? (
                                                             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-100 text-orange-700 uppercase tracking-tighter">✍️ Redação</span>
                                                         ) : q.tipo_questao === 'Discursiva' ? (

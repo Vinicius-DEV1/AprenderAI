@@ -27,6 +27,7 @@ interface Question {
     organization?: string;
     source: string;
     subjects: { id: number; name: string }[];
+    topics: { id: number; name: string }[];
     difficulty: 'easy' | 'medium' | 'hard';
     statement_html: string;
     statement: string;
@@ -143,12 +144,20 @@ export default function QuestionCard({
         if (!text) return { __html: '' };
         let processedText = text;
 
-        if (processedText.includes('](/storage/')) {
-            processedText = processedText.replace(/\]\(\/storage\//g, `](${apiUrl}/storage/`);
-        }
-        if (processedText.includes('src="/storage/')) {
-            processedText = processedText.replace(/src="\/storage\//g, `src="${apiUrl}/storage/`);
-        }
+        // Fix Markdown Image URLs: ![alt](/storage/path) or ![alt](storage/path)
+        // More robust regex to handle whitespace and potential variations
+        processedText = processedText.replace(/!\[(.*?)\]\(\s*(\/?storage\/.*?)\s*\)/g, (_, alt, url) => {
+            const cleanUrl = url.trim().replace(/^\//, ''); // remove leading slash
+            const absoluteUrl = `${apiUrl}/${cleanUrl}`.replace(/([^:])\/\//g, '$1/'); // prevent double slashes but keep http://
+            return `![${alt}](${absoluteUrl})`;
+        });
+
+        // Fix HTML Image URLs: src="/storage/path" or src="storage/path"
+        processedText = processedText.replace(/src=["']\s*(\/?storage\/.*?)\s*["']/g, (_, url) => {
+            const cleanUrl = url.trim().replace(/^\//, '');
+            const absoluteUrl = `${apiUrl}/${cleanUrl}`.replace(/([^:])\/\//g, '$1/');
+            return `src="${absoluteUrl}"`;
+        });
 
         // Render block math \[ ... \]
         processedText = processedText.replace(/\\\[([\s\S]*?)\\\]/g, (match, formula) => {
@@ -455,11 +464,25 @@ export default function QuestionCard({
     return (
         <div className="qb-card relative">
             <div className="flex justify-between items-start mb-4 border-b border-gray-100 dark:border-slate-800 pb-3">
-                <div className="qb-card-meta !mb-0 flex-1">
+                <div className="qb-card-meta !mb-0 flex-1 flex flex-wrap gap-1.5 items-center">
                     {q.source === 'ai_generated' && <span className="qb-badge qb-badge-ai">✨ INÉDITA</span>}
-                    {q.year && <span className="qb-badge qb-badge-origin">{q.year}</span>}
-                    {q.organization && <span className="qb-badge qb-badge-origin">{q.organization}</span>}
-                    <span className="qb-badge qb-badge-origin">{q.subjects.map(s => s.name).join(', ')}</span>
+                    {q.year && <span className="qb-badge qb-badge-origin !bg-slate-100 !text-slate-600 border-slate-200">{q.year}</span>}
+                    {q.organization && <span className="qb-badge qb-badge-origin !bg-slate-100 !text-slate-600 border-slate-200">{q.organization}</span>}
+
+                    {/* Subjects - Indigo */}
+                    {q.subjects.map(s => (
+                        <span key={s.id} className="qb-badge !bg-indigo-50 !text-indigo-600 border-indigo-100 uppercase tracking-tighter">
+                            {s.name}
+                        </span>
+                    ))}
+
+                    {/* Topics - Emerald */}
+                    {(q.topics || []).map(t => (
+                        <span key={t.id} className="qb-badge !bg-emerald-50 !text-emerald-600 border-emerald-100 uppercase tracking-tighter">
+                            {t.name}
+                        </span>
+                    ))}
+
                     <span className={`qb-badge ${dc.class}`}>{dc.label}</span>
                     {q.already_answered && !answered && (
                         <span className={`qb-badge ${q.was_correct ? 'qb-badge-correct' : 'qb-badge-incorrect'} ml-1`}>
@@ -499,7 +522,13 @@ export default function QuestionCard({
                             <div className="qb-alt-letter" style={{ textDecoration: !answered && struckLabels.includes(alt.label) ? 'line-through' : 'none' }}>{alt.label}</div>
                             <div className="flex flex-col gap-2 flex-grow overflow-hidden">
                                 {alt.content && <div className="qb-alt-text prose prose-sm max-w-none text-slate-700 dark:text-slate-300" dangerouslySetInnerHTML={renderMd(alt.content)} />}
-                                {alt.image_path && <img src={alt.image_path.startsWith('http') ? alt.image_path : `${apiUrl}/storage/${alt.image_path}`} alt={alt.label} className="max-w-full h-auto rounded-lg" />}
+                                {alt.image_path && (
+                                    <img
+                                        src={alt.image_path.startsWith('http') ? alt.image_path : `${apiUrl}/storage/${alt.image_path.replace(/^\//, '')}`.replace(/([^:])\/\//g, '$1/')}
+                                        alt={alt.label}
+                                        className="max-w-full h-auto rounded-lg"
+                                    />
+                                )}
                             </div>
                         </div>
                     ))}

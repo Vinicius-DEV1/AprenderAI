@@ -203,6 +203,7 @@ class SubscriptionController extends Controller
                     'billing_type' => $billingType,
                     'installment_count' => $isInstallmentUpgrade ? $remainingMonths : null,
                     'amount' => $upgradeTotal,
+                    'is_sandbox' => $this->asaasService->isSandbox(),
                     'current_period_start' => now(),
                     'current_period_end' => $activeInstallment->current_period_end,
                 ]);
@@ -214,6 +215,7 @@ class SubscriptionController extends Controller
                     'gateway_subscription_id' => $upgradeGatewayId,
                     'event' => $isInstallmentUpgrade ? 'CHECKOUT_UPGRADE_INSTALLMENT' : 'CHECKOUT_UPGRADE_SINGLE',
                     'status' => 'success',
+                    'is_sandbox' => $this->asaasService->isSandbox(),
                     'raw_response' => PaymentLog::sanitize($asaasPayment),
                 ]);
 
@@ -346,6 +348,7 @@ class SubscriptionController extends Controller
                     'billing_type' => 'installment',
                     'installment_count' => $installmentCount,
                     'amount' => $plan->annual_price,
+                    'is_sandbox' => $this->asaasService->isSandbox(),
                     'current_period_start' => now(),
                     'current_period_end' => now()->addYear(),
                 ]);
@@ -357,6 +360,7 @@ class SubscriptionController extends Controller
                     'gateway_subscription_id' => $gatewayId,
                     'event' => 'CHECKOUT_INSTALLMENT',
                     'status' => 'success',
+                    'is_sandbox' => $this->asaasService->isSandbox(),
                     'raw_response' => PaymentLog::sanitize($asaasPayment),
                 ]);
 
@@ -404,6 +408,7 @@ class SubscriptionController extends Controller
                     'gateway' => 'asaas',
                     'gateway_id' => $asaasSubscription['id'],
                     'amount' => $plan->price,
+                    'is_sandbox' => $this->asaasService->isSandbox(),
                     'current_period_start' => now(),
                     'current_period_end' => $plan->interval === 'yearly' ? now()->addYear() : now()->addMonth(),
                 ]);
@@ -414,6 +419,7 @@ class SubscriptionController extends Controller
                     'gateway_subscription_id' => $asaasSubscription['id'],
                     'event' => 'CHECKOUT_' . strtoupper($request->payment_method),
                     'status' => 'success',
+                    'is_sandbox' => $this->asaasService->isSandbox(),
                     'raw_response' => PaymentLog::sanitize($asaasSubscription),
                 ]);
             }

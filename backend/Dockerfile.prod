@@ -3,6 +3,7 @@ FROM node:20-alpine AS frontend-builder
 WORKDIR /app
 # Cache dependencies first (DevOps Best Practice)
 COPY frontend/package*.json ./
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 RUN npm install --legacy-peer-deps
 COPY frontend/ ./
 RUN npm run build:prod

@@ -248,8 +248,18 @@ export default function AdminDashboard() {
                                             <span className="text-[10px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-tighter">{act.user?.name}</span>
                                             <span className="text-[9px] text-gray-400 ml-auto font-bold">{new Date(act.created_at).toLocaleDateString('pt-BR')}</span>
                                         </div>
-                                        <p className="text-xs font-bold text-gray-600 dark:text-slate-400 leading-relaxed">
+                                        <p className="text-xs font-bold text-gray-600 dark:text-slate-400 leading-relaxed flex items-center gap-2 flex-wrap">
                                             {act.message}
+                                            {act.is_sandbox && (
+                                                <span className="inline-flex items-center gap-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
+                                                    🧪 SANDBOX
+                                                </span>
+                                            )}
+                                            {act.is_manual_grant && (
+                                                <span className="inline-flex items-center gap-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-purple-300 dark:border-purple-700">
+                                                    🎁 MANUAL
+                                                </span>
+                                            )}
                                         </p>
                                     </div>
                                 </div>
