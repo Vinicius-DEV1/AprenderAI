@@ -69,12 +69,12 @@ class AdminController extends Controller
 
         $latestSubs = Subscription::with(['user', 'plan'])->latest()->take(5)->get()->map(function ($sub) {
             $typeString = $sub->is_manual_grant ? 'ganhou o plano' : 'assinou o plano';
-            if ($sub->is_sandbox)
-                $typeString .= ' (Sandbox)';
             return [
                 'type' => 'subscription',
                 'message' => ($sub->user->name ?? 'Usuário') . " {$typeString} " . ($sub->plan->name ?? 'Grátis'),
                 'created_at' => $sub->created_at->toIso8601String(),
+                'is_sandbox' => (bool) $sub->is_sandbox,
+                'is_manual_grant' => (bool) $sub->is_manual_grant,
                 'user' => [
                     'id' => $sub->user->id ?? 0,
                     'name' => $sub->user->name ?? 'Desconhecido',
