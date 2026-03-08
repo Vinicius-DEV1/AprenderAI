@@ -507,7 +507,13 @@ export default function QuestionCard({
                             <div className="qb-alt-letter" style={{ textDecoration: !answered && struckLabels.includes(alt.label) ? 'line-through' : 'none' }}>{alt.label}</div>
                             <div className="flex flex-col gap-2 flex-grow overflow-hidden">
                                 {alt.content && <div className="qb-alt-text prose prose-sm max-w-none text-slate-700 dark:text-slate-300" dangerouslySetInnerHTML={renderMd(alt.content)} />}
-                                {alt.image_path && <img src={alt.image_path.startsWith('http') ? alt.image_path : `${apiUrl}/storage/${alt.image_path}`} alt={alt.label} className="max-w-full h-auto rounded-lg" />}
+                                {alt.image_path && (
+                                    <img
+                                        src={alt.image_path.startsWith('http') ? alt.image_path : `${apiUrl}/storage/${alt.image_path.replace(/^\//, '')}`.replace(/([^:])\/\//g, '$1/')}
+                                        alt={alt.label}
+                                        className="max-w-full h-auto rounded-lg"
+                                    />
+                                )}
                             </div>
                         </div>
                     ))}
