@@ -126,8 +126,16 @@ class AIBatchService
         $errors = [];
 
         // --- DEFENSIVE JSON UNWRAPPING ---
-        // Se a IA devolver um wrapper (ex: {"data": [...]}), vamos desempacotá-lo.
         if (is_array($results)) {
+            // Se a IA devolver um wrapper com a chave text contendo string JSON (Gemini via Guzzle sem parse completo)
+            if (isset($results['text']) && is_string($results['text'])) {
+                $sanitizer = app(\App\Services\AI\ResponseSanitizer::class);
+                $sanitized = $sanitizer->sanitize($results['text']);
+                if (is_array($sanitized)) {
+                    $results = $sanitized;
+                }
+            }
+
             if (isset($results['data']) && is_array($results['data']) && !isset($results[0])) {
                 $results = $results['data'];
             } elseif (isset($results['questions']) && is_array($results['questions']) && !isset($results[0])) {
