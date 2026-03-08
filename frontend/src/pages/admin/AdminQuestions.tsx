@@ -34,6 +34,7 @@ export default function AdminQuestions() {
     const [mainActiveMenu, setMainActiveMenu] = useState<number | null>(null);
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean, id: number | null }>({ isOpen: false, id: null });
     const [explorerOrg, setExplorerOrg] = useState<string | null>(null);
+    const [dismissedBatches, setDismissedBatches] = useState<string[]>([]);
 
     // Reset pagination when filters change
     useEffect(() => {
@@ -846,19 +847,33 @@ export default function AdminQuestions() {
                 }}
             />
 
-            {!isBatchModalOpen && activeBatchData?.success && activeBatchData?.batch_id && (
+            {!isBatchModalOpen && activeBatchData?.success && activeBatchData?.batch_id && !dismissedBatches.includes(activeBatchData.batch_id) && (
                 <div
-                    onClick={() => setIsBatchModalOpen(true)}
-                    className={`fixed bottom-6 right-6 z-50 ${activeBatchData.status === 'processing' ? 'bg-indigo-600 animate-bounce' : 'bg-green-600'
-                        } text-white px-5 py-3 rounded-full shadow-2xl cursor-pointer hover:scale-105 transition-all flex items-center gap-3 border-2 border-white group`}
+                    className={`fixed bottom-6 right-6 z-50 ${activeBatchData.status === 'processing' ? 'bg-indigo-600 animate-bounce cursor-pointer' : activeBatchData.status === 'failed' || activeBatchData.status === 'cancelled' ? 'bg-red-600' : 'bg-green-600'
+                        } text-white pl-5 pr-2 py-2 rounded-full shadow-2xl hover:scale-105 transition-all flex items-center gap-3 border-2 border-white group`}
                 >
-                    <span className="text-xl">
-                        {activeBatchData.status === 'processing' ? '⏳' : '✅'}
-                    </span>
-                    <span className="font-black text-sm tracking-wide">
-                        {activeBatchData.status === 'processing' ? 'PAINEL IA' : 'LOTE CONCLUÍDO'}
-                    </span>
-                    <div className="absolute inset-0 rounded-full border-4 border-white opacity-20 -z-10 group-hover:animate-ping"></div>
+                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => setIsBatchModalOpen(true)}>
+                        <span className="text-xl">
+                            {activeBatchData.status === 'processing' ? '⏳' : activeBatchData.status === 'failed' ? '❌' : activeBatchData.status === 'cancelled' ? '🛑' : '✅'}
+                        </span>
+                        <span className="font-black text-sm tracking-wide">
+                            {activeBatchData.status === 'processing' ? 'PAINEL IA' : activeBatchData.status === 'failed' ? 'LOTE COM FALHA' : activeBatchData.status === 'cancelled' ? 'LOTE CANCELADO' : 'LOTE CONCLUÍDO'}
+                        </span>
+                    </div>
+
+                    {activeBatchData.status !== 'processing' && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setDismissedBatches(prev => [...prev, activeBatchData.batch_id]);
+                            }}
+                            className="ml-2 w-8 h-8 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 text-white transition-colors"
+                            title="Ocultar aviso"
+                        >
+                            ✕
+                        </button>
+                    )}
+                    <div className="absolute inset-0 rounded-full border-4 border-white opacity-20 -z-10 group-hover:animate-ping pointer-events-none"></div>
                 </div>
             )}
 
