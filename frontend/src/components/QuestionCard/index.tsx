@@ -27,6 +27,7 @@ interface Question {
     organization?: string;
     source: string;
     subjects: { id: number; name: string }[];
+    topics: { id: number; name: string }[];
     difficulty: 'easy' | 'medium' | 'hard';
     statement_html: string;
     statement: string;
@@ -463,11 +464,25 @@ export default function QuestionCard({
     return (
         <div className="qb-card relative">
             <div className="flex justify-between items-start mb-4 border-b border-gray-100 dark:border-slate-800 pb-3">
-                <div className="qb-card-meta !mb-0 flex-1">
+                <div className="qb-card-meta !mb-0 flex-1 flex flex-wrap gap-1.5 items-center">
                     {q.source === 'ai_generated' && <span className="qb-badge qb-badge-ai">✨ INÉDITA</span>}
-                    {q.year && <span className="qb-badge qb-badge-origin">{q.year}</span>}
-                    {q.organization && <span className="qb-badge qb-badge-origin">{q.organization}</span>}
-                    <span className="qb-badge qb-badge-origin">{q.subjects.map(s => s.name).join(', ')}</span>
+                    {q.year && <span className="qb-badge qb-badge-origin !bg-slate-100 !text-slate-600 border-slate-200">{q.year}</span>}
+                    {q.organization && <span className="qb-badge qb-badge-origin !bg-slate-100 !text-slate-600 border-slate-200">{q.organization}</span>}
+
+                    {/* Subjects - Indigo */}
+                    {q.subjects.map(s => (
+                        <span key={s.id} className="qb-badge !bg-indigo-50 !text-indigo-600 border-indigo-100 uppercase tracking-tighter">
+                            {s.name}
+                        </span>
+                    ))}
+
+                    {/* Topics - Emerald */}
+                    {(q.topics || []).map(t => (
+                        <span key={t.id} className="qb-badge !bg-emerald-50 !text-emerald-600 border-emerald-100 uppercase tracking-tighter">
+                            {t.name}
+                        </span>
+                    ))}
+
                     <span className={`qb-badge ${dc.class}`}>{dc.label}</span>
                     {q.already_answered && !answered && (
                         <span className={`qb-badge ${q.was_correct ? 'qb-badge-correct' : 'qb-badge-incorrect'} ml-1`}>
