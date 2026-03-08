@@ -58,7 +58,7 @@ export default function LoginPage() {
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={handleSubmit} method="POST" action="/login">
                         <div className="form-group">
                             <label htmlFor="email">E-mail</label>
                             <input
@@ -69,6 +69,7 @@ export default function LoginPage() {
                                 autoFocus
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                autoComplete="username"
                             />
                         </div>
 
@@ -81,6 +82,7 @@ export default function LoginPage() {
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                autoComplete="current-password"
                             />
                         </div>
 
