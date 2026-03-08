@@ -9,9 +9,13 @@ class ResponseSanitizer
     /**
      * Sanitizes AI response by stripping markdown and extracting valid JSON.
      */
-    public function sanitize(?string $text): array
+    public function sanitize(mixed $text): array
     {
-        if (!$text) {
+        if (is_array($text)) {
+            return $text;
+        }
+
+        if (!$text || !is_string($text)) {
             return [];
         }
 
@@ -26,11 +30,9 @@ class ResponseSanitizer
 
         if ($p1 !== false && $p2 !== false) {
             $start = min($p1, $p2);
-        }
-        elseif ($p1 !== false) {
+        } elseif ($p1 !== false) {
             $start = $p1;
-        }
-        elseif ($p2 !== false) {
+        } elseif ($p2 !== false) {
             $start = $p2;
         }
 
@@ -40,11 +42,9 @@ class ResponseSanitizer
 
         if ($p3 !== false && $p4 !== false) {
             $end = max($p3, $p4);
-        }
-        elseif ($p3 !== false) {
+        } elseif ($p3 !== false) {
             $end = $p3;
-        }
-        elseif ($p4 !== false) {
+        } elseif ($p4 !== false) {
             $end = $p4;
         }
 

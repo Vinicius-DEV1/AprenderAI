@@ -230,15 +230,6 @@ class AIBatchService
                 $subjectName = (string) $subjectName;
                 $normalizedName = strtolower(trim($subjectName));
 
-                // Força mapeamento de variantes genéricas comuns para os padrões oficiais
-                if (preg_match('/^(português|portugues|língua portuguesa|lingua portuguesa|linguagem)$/i', $normalizedName)) {
-                    $subjectName = 'Língua Portuguesa';
-                    $normalizedName = 'língua portuguesa';
-                } elseif (preg_match('/^(ciências físicas|ciências da natureza|física aplicadas?|fisica)/i', $normalizedName) && $normalizedName !== 'educação física') {
-                    $subjectName = 'Física';
-                    $normalizedName = 'física';
-                }
-
                 // Tenta achar pelo nome exato ou parecido ignorando case antes de criar um novo
                 $existingSubject = Subject::whereRaw('LOWER(name) = ?', [$normalizedName])
                     ->orWhere('name', 'like', '%' . trim($subjectName) . '%')
