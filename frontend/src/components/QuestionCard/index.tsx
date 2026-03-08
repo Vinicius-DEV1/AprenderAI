@@ -144,10 +144,19 @@ export default function QuestionCard({
         let processedText = text;
 
         // Fix Markdown Image URLs: ![alt](/storage/path) or ![alt](storage/path)
-        processedText = processedText.replace(/!\[(.*?)\]\(\/?storage\/(.*?)\)/g, `![$1](${apiUrl}/storage/$2)`);
+        // More robust regex to handle whitespace and potential variations
+        processedText = processedText.replace(/!\[(.*?)\]\(\s*(\/?storage\/.*?)\s*\)/g, (_, alt, url) => {
+            const cleanUrl = url.trim().replace(/^\//, ''); // remove leading slash
+            const absoluteUrl = `${apiUrl}/${cleanUrl}`.replace(/([^:])\/\//g, '$1/'); // prevent double slashes but keep http://
+            return `![${alt}](${absoluteUrl})`;
+        });
 
         // Fix HTML Image URLs: src="/storage/path" or src="storage/path"
-        processedText = processedText.replace(/src=["']\/?storage\/(.*?)["']/g, `src="${apiUrl}/storage/$1"`);
+        processedText = processedText.replace(/src=["']\s*(\/?storage\/.*?)\s*["']/g, (_, url) => {
+            const cleanUrl = url.trim().replace(/^\//, '');
+            const absoluteUrl = `${apiUrl}/${cleanUrl}`.replace(/([^:])\/\//g, '$1/');
+            return `src="${absoluteUrl}"`;
+        });
 
         // Render block math \[ ... \]
         processedText = processedText.replace(/\\\[([\s\S]*?)\\\]/g, (match, formula) => {
