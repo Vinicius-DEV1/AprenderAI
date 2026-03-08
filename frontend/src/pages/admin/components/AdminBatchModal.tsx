@@ -26,21 +26,34 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
     const [etaSeconds, setEtaSeconds] = useState<number | null>(null);
 
     // Persistência com Servidor (Recuperação no F5)
+    // Ao abrir o modal, prioriza o batchId salvo na sessão atual.
+    // Só consulta o servidor se não há batchId na sessão — evita carregar lotes anteriores.
     useEffect(() => {
         if (isOpen && !batchId) {
-            const checkActiveBatch = async () => {
-                try {
-                    const res = await api.get('/api/v1/admin/triage/active');
-                    if (res.data.success && res.data.batch_id) {
-                        setBatchId(res.data.batch_id);
-                        setStep('processing');
-                        onBatchStarted(res.data.batch_id); // Notify parent component if needed
+            const sessionBatchId = sessionStorage.getItem('active_batch_id');
+            if (sessionBatchId) {
+                // Já temos um lote desta sessão — usa ele direto.
+                setBatchId(sessionBatchId);
+                setStep('processing');
+                onBatchStarted(sessionBatchId);
+            } else {
+                // Sem lote na sessão: verifica se há algum em processamento no servidor.
+                const checkActiveBatch = async () => {
+                    try {
+                        const res = await api.get('/api/v1/admin/triage/active');
+                        if (res.data.success && res.data.batch_id && res.data.status === 'processing') {
+                            // Só recupera automaticamente se ainda estiver em processamento.
+                            setBatchId(res.data.batch_id);
+                            setStep('processing');
+                            onBatchStarted(res.data.batch_id);
+                            sessionStorage.setItem('active_batch_id', res.data.batch_id);
+                        }
+                    } catch (error) {
+                        console.error('Erro ao buscar lote ativo:', error);
                     }
-                } catch (error) {
-                    console.error('Erro ao buscar lote ativo:', error);
-                }
-            };
-            checkActiveBatch();
+                };
+                checkActiveBatch();
+            }
         }
     }, [isOpen, batchId]);
 
@@ -106,6 +119,8 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
         },
         onSuccess: (data) => {
             setBatchId(data.batch_id);
+            // Salva o batchId na sessão atual para evitar carregar lotes anteriores.
+            sessionStorage.setItem('active_batch_id', data.batch_id);
             setStep('processing');
             onBatchStarted(data.batch_id);
         }
@@ -165,6 +180,8 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
     }, [queryProgress]);
 
     const handleFinalize = () => {
+        // Limpa o batchId da sessão ao finalizar/fechar o modal.
+        sessionStorage.removeItem('active_batch_id');
         onClose();
         setBatchId(null);
         setProgress(null);
@@ -229,7 +246,7 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                         {batchId ? (
                             <div className="flex flex-col items-center justify-center py-10 space-y-6">
                                 <div className={`text-6xl ${progress?.status === 'completed' ? '' :
-                                        progress?.status === 'failed' || progress?.status === 'cancelled' ? '' : 'animate-bounce'
+                                    progress?.status === 'failed' || progress?.status === 'cancelled' ? '' : 'animate-bounce'
                                     }`}>
                                     {progress?.status === 'failed' ? '❌' :
                                         progress?.status === 'cancelled' ? '🛑' :
@@ -241,9 +258,9 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                     )}
                                     <div
                                         className={`absolute top-0 left-0 h-full transition-all duration-500 ease-out shadow-inner ${progress?.status === 'failed' ? 'bg-red-500' :
-                                                progress?.status === 'cancelled' ? 'bg-amber-500' :
-                                                    progress?.status === 'completed' ? 'bg-gradient-to-r from-green-400 to-emerald-600' :
-                                                        'bg-gradient-to-r from-indigo-500 to-purple-600'
+                                            progress?.status === 'cancelled' ? 'bg-amber-500' :
+                                                progress?.status === 'completed' ? 'bg-gradient-to-r from-green-400 to-emerald-600' :
+                                                    'bg-gradient-to-r from-indigo-500 to-purple-600'
                                             }`}
                                         style={{ width: `${progress && progress.total > 0 ? (progress.processed / progress.total) * 100 : 0}%` }}
                                     ></div>
