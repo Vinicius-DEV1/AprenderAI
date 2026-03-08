@@ -15,6 +15,7 @@ class ConcursoResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            '_resource_marker' => 'v1_active',
             'id' => $this->id,
             'uf' => $this->uf,
             'orgao' => $this->orgao,

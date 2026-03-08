@@ -119,7 +119,27 @@ services:
     networks:
       - production-network
 
-    # Database (Internal Only)
+  # Sync de Concursos (Recorrente: 2 em 2 horas)
+  concursos-sync:
+    image: aprender-ai-app
+    restart: always
+    working_dir: /var/www
+    volumes:
+      - ./backend/storage/app/public:/var/www/storage/app/public
+      - /proc:/host_proc:ro
+    env_file: ./backend/.env
+    command: sh -c "while :; do php artisan concursos:sync; sleep 7200; done"
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - production-network
+
+  # Database (Internal Only)
   db:
     image: mysql:8.0
     restart: always
@@ -138,7 +158,7 @@ services:
     # This is what `condition: service_healthy` waits for above.
     # ----------------------------------------------------------------
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD"]
+      test: [ "CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD" ]
       interval: 5s
       timeout: 5s
       retries: 20
