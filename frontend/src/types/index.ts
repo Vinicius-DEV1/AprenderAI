@@ -20,6 +20,12 @@ export interface User {
         remaining: number;
         used: number;
     };
+    subscriptions?: {
+        id: number;
+        status: string;
+        is_manual_grant?: boolean;
+        [key: string]: any;
+    }[];
 }
 
 export interface AuthState {

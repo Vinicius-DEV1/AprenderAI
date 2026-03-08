@@ -126,8 +126,10 @@ class QuestionController extends Controller
             'type' => 'required|in:enem,concurso',
             'format' => 'required|in:multiple_choice,true_false',
             'source' => 'nullable|string',
-            'subject' => 'nullable|string',
-            'topic' => 'nullable|string',
+            'subjects' => 'nullable|array',
+            'subjects.*' => 'string',
+            'topics' => 'nullable|array',
+            'topics.*' => 'string',
             'alternatives' => 'nullable|array',
             'tipo_questao' => 'nullable|string',
             'discursive_answer' => 'nullable',
@@ -135,19 +137,27 @@ class QuestionController extends Controller
 
         \DB::beginTransaction();
         try {
-            $questionData = collect($validated)->except(['subject', 'topic', 'alternatives'])->toArray();
+            $questionData = collect($validated)->except(['subjects', 'topics', 'alternatives'])->toArray();
             $question = Question::create($questionData);
 
-            // Sync Subject
-            if ($request->filled('subject')) {
-                $subject = \App\Models\Subject::firstOrCreate(['name' => $request->subject, 'slug' => \Str::slug($request->subject)]);
-                $question->subjects()->sync([$subject->id]);
+            // Sync Subjects
+            if ($request->filled('subjects')) {
+                $subjectIds = [];
+                foreach ($request->subjects as $subjectName) {
+                    $subject = \App\Models\Subject::firstOrCreate(['name' => $subjectName, 'slug' => \Str::slug($subjectName)]);
+                    $subjectIds[] = $subject->id;
+                }
+                $question->subjects()->sync($subjectIds);
             }
 
-            // Sync Topic
-            if ($request->filled('topic')) {
-                $topic = \App\Models\Topic::firstOrCreate(['name' => $request->topic, 'slug' => \Str::slug($request->topic)]);
-                $question->topics()->sync([$topic->id]);
+            // Sync Topics
+            if ($request->filled('topics')) {
+                $topicIds = [];
+                foreach ($request->topics as $topicName) {
+                    $topic = \App\Models\Topic::firstOrCreate(['name' => $topicName, 'slug' => \Str::slug($topicName)]);
+                    $topicIds[] = $topic->id;
+                }
+                $question->topics()->sync($topicIds);
             }
 
             // Sync Alternatives
@@ -185,8 +195,10 @@ class QuestionController extends Controller
             'difficulty_reasoning' => 'nullable|string',
             'type' => 'required|in:enem,concurso',
             'format' => 'required|in:multiple_choice,true_false',
-            'subject' => 'nullable|string',
-            'topic' => 'nullable|string',
+            'subjects' => 'nullable|array',
+            'subjects.*' => 'string',
+            'topics' => 'nullable|array',
+            'topics.*' => 'string',
             'alternatives' => 'nullable|array',
             'tipo_questao' => 'nullable|string',
             'discursive_answer' => 'nullable',
@@ -194,16 +206,28 @@ class QuestionController extends Controller
 
         \DB::beginTransaction();
         try {
-            $question->update(collect($validated)->except(['subject', 'topic', 'alternatives'])->toArray());
+            $question->update(collect($validated)->except(['subjects', 'topics', 'alternatives'])->toArray());
 
-            if ($request->filled('subject')) {
-                $subject = \App\Models\Subject::firstOrCreate(['name' => $request->subject, 'slug' => \Str::slug($request->subject)]);
-                $question->subjects()->sync([$subject->id]);
+            if ($request->filled('subjects')) {
+                $subjectIds = [];
+                foreach ($request->subjects as $subjectName) {
+                    $subject = \App\Models\Subject::firstOrCreate(['name' => $subjectName, 'slug' => \Str::slug($subjectName)]);
+                    $subjectIds[] = $subject->id;
+                }
+                $question->subjects()->sync($subjectIds);
+            } else {
+                $question->subjects()->detach();
             }
 
-            if ($request->filled('topic')) {
-                $topic = \App\Models\Topic::firstOrCreate(['name' => $request->topic, 'slug' => \Str::slug($request->topic)]);
-                $question->topics()->sync([$topic->id]);
+            if ($request->filled('topics')) {
+                $topicIds = [];
+                foreach ($request->topics as $topicName) {
+                    $topic = \App\Models\Topic::firstOrCreate(['name' => $topicName, 'slug' => \Str::slug($topicName)]);
+                    $topicIds[] = $topic->id;
+                }
+                $question->topics()->sync($topicIds);
+            } else {
+                $question->topics()->detach();
             }
 
             if ($request->filled('alternatives')) {

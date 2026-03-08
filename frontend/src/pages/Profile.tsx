@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import api from '../api/axios';
-import { sendVerificationEmail } from '../api/auth';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -41,11 +40,11 @@ export default function Profile() {
     const [creatingNb, setCreatingNb] = useState(false);
 
     // Annotations state
-    const [notes, setNotes] = useState<any[]>([]);
-    const [notesPage, setNotesPage] = useState(1);
+    const [, setNotes] = useState<any[]>([]);
+    const [notesPage,] = useState(1);
     const [notesTotal, setNotesTotal] = useState(0);
-    const [notesLoading, setNotesLoading] = useState(false);
-    const [notesHasNext, setNotesHasNext] = useState(false);
+    const [, setNotesLoading] = useState(false);
+    const [, setNotesHasNext] = useState(false);
 
     useEffect(() => {
         if (activeTab === 'favorites') {
@@ -165,21 +164,7 @@ export default function Profile() {
         }
     };
 
-    const handleResendVerification = async () => {
-        setLoading(true);
-        try {
-            await sendVerificationEmail();
-            toast.success('Um novo link de confirmação foi enviado para o seu e-mail!');
-        } catch (error: any) {
-            if (error.response?.status === 429) {
-                toast.error('Aguarde um momento antes de pedir um novo link.');
-            } else {
-                toast.error(error.response?.data?.message || 'Erro ao reenviar link. Tente novamente mais tarde.');
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
+
 
     if (!user) return null;
 

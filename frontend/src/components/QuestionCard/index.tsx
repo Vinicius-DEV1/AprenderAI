@@ -143,12 +143,11 @@ export default function QuestionCard({
         if (!text) return { __html: '' };
         let processedText = text;
 
-        if (processedText.includes('](/storage/')) {
-            processedText = processedText.replace(/\]\(\/storage\//g, `](${apiUrl}/storage/`);
-        }
-        if (processedText.includes('src="/storage/')) {
-            processedText = processedText.replace(/src="\/storage\//g, `src="${apiUrl}/storage/`);
-        }
+        // Fix Markdown Image URLs: ![alt](/storage/path) or ![alt](storage/path)
+        processedText = processedText.replace(/!\[(.*?)\]\(\/?storage\/(.*?)\)/g, `![$1](${apiUrl}/storage/$2)`);
+
+        // Fix HTML Image URLs: src="/storage/path" or src="storage/path"
+        processedText = processedText.replace(/src=["']\/?storage\/(.*?)["']/g, `src="${apiUrl}/storage/$1"`);
 
         // Render block math \[ ... \]
         processedText = processedText.replace(/\\\[([\s\S]*?)\\\]/g, (match, formula) => {

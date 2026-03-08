@@ -13,12 +13,14 @@ export default function QuestionForm() {
     const navigate = useNavigate();
     const isEditing = !!id;
 
-    const [subject, setSubject] = useState('');
+    const [subjects, setSubjects] = useState<string[]>([]);
+    const [subjectInput, setSubjectInput] = useState('');
     const [type, setType] = useState('enem');
     const [format, setFormat] = useState('multiple_choice');
     const [source, setSource] = useState('manual');
     const [organization, setOrganization] = useState('');
-    const [topic, setTopic] = useState('');
+    const [topics, setTopics] = useState<string[]>([]);
+    const [topicInput, setTopicInput] = useState('');
     const [difficulty, setDifficulty] = useState('medium');
     const [difficultyReasoning, setDifficultyReasoning] = useState('');
     const [statement, setStatement] = useState('');
@@ -55,12 +57,12 @@ export default function QuestionForm() {
 
     useEffect(() => {
         if (question) {
-            setSubject(question.subjects?.[0]?.name?.toLowerCase() || '');
+            setSubjects(question.subjects?.map((s: any) => s.name?.toLowerCase()) || []);
             setType(question.type || 'enem');
             setFormat(question.format || 'multiple_choice');
             setSource(question.source || 'manual');
             setOrganization(question.organization || '');
-            setTopic(question.topics?.[0]?.name?.toLowerCase() || '');
+            setTopics(question.topics?.map((t: any) => t.name?.toLowerCase()) || []);
             setDifficulty(question.difficulty || 'medium');
             setDifficultyReasoning(question.difficulty_reasoning || '');
             setStatement(question.statement || '');
@@ -117,18 +119,43 @@ export default function QuestionForm() {
     });
 
     const urlTransform = (uri: string) => {
-        if (uri.startsWith('/storage')) {
-            return `${apiUrl}${uri}`;
+        // Handle variations of storage paths (e.g., storage/..., /storage/..., //storage/...)
+        if (uri.includes('storage/')) {
+            const cleanPath = uri.split('storage/')[1];
+            return `${apiUrl}/storage/${cleanPath}`.replace(/([^:]\/)\/+/g, "$1"); // prevents double slashes except after http://
         }
         return uri;
+    };
+
+    const handleAddTag = (list: string[], setList: any, value: string, setValue: any) => {
+        const trimmed = value.trim().toLowerCase();
+        if (trimmed && !list.includes(trimmed)) {
+            setList([...list, trimmed]);
+        }
+        setValue('');
+    };
+
+    const handleRemoveTag = (list: string[], setList: any, tagItem: string) => {
+        setList(list.filter((t: string) => t !== tagItem));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setValidationErrors({});
 
+        // Try adding any pending text in the inputs before submitting
+        let finalSubjects = [...subjects];
+        if (subjectInput.trim() && !finalSubjects.includes(subjectInput.trim().toLowerCase())) {
+            finalSubjects.push(subjectInput.trim().toLowerCase());
+        }
+
+        let finalTopics = [...topics];
+        if (type === 'concurso' && topicInput.trim() && !finalTopics.includes(topicInput.trim().toLowerCase())) {
+            finalTopics.push(topicInput.trim().toLowerCase());
+        }
+
         const payload: any = {
-            subject,
+            subjects: finalSubjects,
             type,
             format,
             source,
@@ -142,7 +169,7 @@ export default function QuestionForm() {
         };
 
         if (type === 'concurso') {
-            payload.topic = topic;
+            payload.topics = finalTopics;
         }
 
         if (format === 'multiple_choice') {
@@ -193,18 +220,58 @@ export default function QuestionForm() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Metadados */}
                             <div>
-                                <label htmlFor="subject" className="block text-sm font-medium text-gray-700">Matéria</label>
-                                <select
-                                    id="subject"
-                                    value={subject}
-                                    onChange={(e) => setSubject(e.target.value)}
-                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                    <option value="">Selecione...</option>
-                                    {supportData?.subjects?.map((subj: any) => (
-                                        <option key={subj.id || subj.name} value={subj.name?.toLowerCase()}>{subj.name}</option>
-                                    ))}
-                                </select>
-                                {getError('subject') && <span className="text-red-500 text-xs">{getError('subject')}</span>}
+                                <label htmlFor="subjectInput" className="block text-sm font-medium text-gray-700">Matérias</label>
+                                <div className="flex gap-2 items-start mt-1">
+                                    <div className="flex-1">
+                                        <select
+                                            id="subjectInput"
+                                            value={subjectInput}
+                                            onChange={(e) => {
+                                                if (e.target.value) {
+                                                    handleAddTag(subjects, setSubjects, e.target.value, setSubjectInput);
+                                                }
+                                            }}
+                                            className="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 mb-2">
+                                            <option value="">Selecione para Adicionar...</option>
+                                            {supportData?.subjects?.map((subj: any) => (
+                                                <option key={subj.id || subj.name} value={subj.name?.toLowerCase()}>{subj.name}</option>
+                                            ))}
+                                        </select>
+                                        <div className="flex bg-white border border-gray-300 rounded-md shadow-sm overflow-hidden">
+                                            <input
+                                                type="text"
+                                                value={subjectInput}
+                                                onChange={(e) => setSubjectInput(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        handleAddTag(subjects, setSubjects, subjectInput, setSubjectInput);
+                                                    }
+                                                }}
+                                                placeholder="Ou digite nova..."
+                                                className="block w-full border-0 focus:ring-0 px-3 py-2 text-sm"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => handleAddTag(subjects, setSubjects, subjectInput, setSubjectInput)}
+                                                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 text-sm font-medium border-l border-gray-300 transition-colors"
+                                            >Adicionar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                {subjects.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mt-3 p-2 bg-gray-50 rounded-md border border-gray-200">
+                                        {subjects.map(t => (
+                                            <span key={t} className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-1 rounded-full border border-indigo-200 uppercase tracking-tighter">
+                                                {t}
+                                                <button type="button" onClick={() => handleRemoveTag(subjects, setSubjects, t)} className="text-indigo-400 hover:text-indigo-900 focus:outline-none">
+                                                    &times;
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                                {getError('subjects') && <span className="text-red-500 text-xs mt-1 block">{getError('subjects')}</span>}
                             </div>
 
                             <div>
@@ -280,18 +347,58 @@ export default function QuestionForm() {
 
                             {type === 'concurso' && (
                                 <div>
-                                    <label htmlFor="topic" className="block text-sm font-medium text-gray-700">Assunto / Tópico (Opcional)</label>
-                                    <select
-                                        id="topic"
-                                        value={topic}
-                                        onChange={(e) => setTopic(e.target.value)}
-                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                        <option value="">Selecione um tópico...</option>
-                                        {supportData?.topics?.map((t: any) => (
-                                            <option key={t.id || t.name} value={t.name?.toLowerCase()}>{t.name}</option>
-                                        ))}
-                                    </select>
-                                    {getError('topic') && <span className="text-red-500 text-xs">{getError('topic')}</span>}
+                                    <label htmlFor="topicInput" className="block text-sm font-medium text-gray-700">Assuntos / Tópicos (Opcional)</label>
+                                    <div className="flex gap-2 items-start mt-1">
+                                        <div className="flex-1">
+                                            <select
+                                                id="topicInput"
+                                                value={topicInput}
+                                                onChange={(e) => {
+                                                    if (e.target.value) {
+                                                        handleAddTag(topics, setTopics, e.target.value, setTopicInput);
+                                                    }
+                                                }}
+                                                className="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 mb-2">
+                                                <option value="">Selecione para Adicionar...</option>
+                                                {supportData?.topics?.map((t: any) => (
+                                                    <option key={t.id || t.name} value={t.name?.toLowerCase()}>{t.name}</option>
+                                                ))}
+                                            </select>
+                                            <div className="flex bg-white border border-gray-300 rounded-md shadow-sm overflow-hidden">
+                                                <input
+                                                    type="text"
+                                                    value={topicInput}
+                                                    onChange={(e) => setTopicInput(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            handleAddTag(topics, setTopics, topicInput, setTopicInput);
+                                                        }
+                                                    }}
+                                                    placeholder="Ou digite novo..."
+                                                    className="block w-full border-0 focus:ring-0 px-3 py-2 text-sm"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleAddTag(topics, setTopics, topicInput, setTopicInput)}
+                                                    className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 text-sm font-medium border-l border-gray-300 transition-colors"
+                                                >Adicionar</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {topics.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-3 p-2 bg-gray-50 rounded-md border border-gray-200">
+                                            {topics.map(t => (
+                                                <span key={t} className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-1 rounded-full border border-indigo-200 uppercase tracking-tighter">
+                                                    {t}
+                                                    <button type="button" onClick={() => handleRemoveTag(topics, setTopics, t)} className="text-indigo-400 hover:text-indigo-900 focus:outline-none">
+                                                        &times;
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {getError('topics') && <span className="text-red-500 text-xs mt-1 block">{getError('topics')}</span>}
                                 </div>
                             )}
 
