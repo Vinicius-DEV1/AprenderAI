@@ -179,7 +179,7 @@ function App() {
                             <Route path="/simulations/create" element={<><MetaTags title="Configurar Simulado" /><SimulationCreate /></>} />
                             <Route path="/simulations/:id" element={<SimulationView />} />
                             <Route path="/simulations/:id/result" element={<><MetaTags title="Resultado do Simulado" /><SimulationResult /></>} />
-                            <Route path="/study-plan" element={<><MetaTags title="Plano de Estudos" /><StudyPlanDashboard /></>} />
+                            <Route path="/plano-de-estudo" element={<><MetaTags title="Plano de Estudos" /><StudyPlanDashboard /></>} />
                             <Route path="/concursos" element={<><MetaTags title="Radar de Concursos" /><ConcursoList /></>} />
 
                             {/* Essays */}
