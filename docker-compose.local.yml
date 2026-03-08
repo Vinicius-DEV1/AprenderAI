@@ -12,8 +12,6 @@ services:
     container_name: aprender-ai-app
     volumes:
       - ./backend:/var/www
-      - /var/www/vendor
-      - /var/www/node_modules
       - /proc:/host_proc:ro
     env_file: ./backend/.env
     depends_on:

@@ -43,9 +43,21 @@ class ConcursoController extends Controller
         $concursos = $query->paginate(12);
         $ultimaAtualizacao = Concurso::max('ultimo_status_at');
 
+        // Formatação robusta para evitar "Call to a member function toIso8601String() on string"
+        $dataIso = null;
+        if ($ultimaAtualizacao) {
+            try {
+                // max() retorna string, precisamos converter para Carbon
+                $dataIso = \Carbon\Carbon::parse($ultimaAtualizacao)->toIso8601String();
+            } catch (\Exception $e) {
+                // Fallback caso o parse falhe
+                $dataIso = (string) $ultimaAtualizacao;
+            }
+        }
+
         return ConcursoResource::collection($concursos)->additional([
             'meta' => [
-                'ultima_atualizacao' => $ultimaAtualizacao ? $ultimaAtualizacao->toIso8601String() : null,
+                'ultima_atualizacao' => $dataIso,
                 'filtros' => [
                     'uf' => $uf,
                     'busca' => $busca,
