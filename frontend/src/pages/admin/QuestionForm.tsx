@@ -119,10 +119,10 @@ export default function QuestionForm() {
     });
 
     const urlTransform = (uri: string) => {
-        // Handle variations of storage paths (e.g., storage/..., /storage/..., //storage/...)
-        if (uri.includes('storage/')) {
-            const cleanPath = uri.split('storage/')[1];
-            return `${apiUrl}/storage/${cleanPath}`.replace(/([^:]\/)\/+/g, "$1"); // prevents double slashes except after http://
+        if (uri.startsWith('http')) return uri;
+        const cleanUrl = uri.trim().replace(/^\//, ''); // remove leading slash
+        if (cleanUrl.startsWith('storage/')) {
+            return `${apiUrl}/${cleanUrl}`.replace(/([^:])\/\//g, '$1/');
         }
         return uri;
     };
@@ -345,62 +345,60 @@ export default function QuestionForm() {
                                 {getError('organization') && <span className="text-red-500 text-xs">{getError('organization')}</span>}
                             </div>
 
-                            {type === 'concurso' && (
-                                <div>
-                                    <label htmlFor="topicInput" className="block text-sm font-medium text-gray-700">Assuntos / Tópicos (Opcional)</label>
-                                    <div className="flex gap-2 items-start mt-1">
-                                        <div className="flex-1">
-                                            <select
-                                                id="topicInput"
+                            <div>
+                                <label htmlFor="topicInput" className="block text-sm font-medium text-gray-700">Assuntos / Tópicos (Opcional)</label>
+                                <div className="flex gap-2 items-start mt-1">
+                                    <div className="flex-1">
+                                        <select
+                                            id="topicInput"
+                                            value={topicInput}
+                                            onChange={(e) => {
+                                                if (e.target.value) {
+                                                    handleAddTag(topics, setTopics, e.target.value, setTopicInput);
+                                                }
+                                            }}
+                                            className="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 mb-2">
+                                            <option value="">Selecione para Adicionar...</option>
+                                            {supportData?.topics?.map((t: any) => (
+                                                <option key={t.id || t.name} value={t.name?.toLowerCase()}>{t.name}</option>
+                                            ))}
+                                        </select>
+                                        <div className="flex bg-white border border-gray-300 rounded-md shadow-sm overflow-hidden">
+                                            <input
+                                                type="text"
                                                 value={topicInput}
-                                                onChange={(e) => {
-                                                    if (e.target.value) {
-                                                        handleAddTag(topics, setTopics, e.target.value, setTopicInput);
+                                                onChange={(e) => setTopicInput(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        handleAddTag(topics, setTopics, topicInput, setTopicInput);
                                                     }
                                                 }}
-                                                className="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 mb-2">
-                                                <option value="">Selecione para Adicionar...</option>
-                                                {supportData?.topics?.map((t: any) => (
-                                                    <option key={t.id || t.name} value={t.name?.toLowerCase()}>{t.name}</option>
-                                                ))}
-                                            </select>
-                                            <div className="flex bg-white border border-gray-300 rounded-md shadow-sm overflow-hidden">
-                                                <input
-                                                    type="text"
-                                                    value={topicInput}
-                                                    onChange={(e) => setTopicInput(e.target.value)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') {
-                                                            e.preventDefault();
-                                                            handleAddTag(topics, setTopics, topicInput, setTopicInput);
-                                                        }
-                                                    }}
-                                                    placeholder="Ou digite novo..."
-                                                    className="block w-full border-0 focus:ring-0 px-3 py-2 text-sm"
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleAddTag(topics, setTopics, topicInput, setTopicInput)}
-                                                    className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 text-sm font-medium border-l border-gray-300 transition-colors"
-                                                >Adicionar</button>
-                                            </div>
+                                                placeholder="Ou digite novo..."
+                                                className="block w-full border-0 focus:ring-0 px-3 py-2 text-sm"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => handleAddTag(topics, setTopics, topicInput, setTopicInput)}
+                                                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 text-sm font-medium border-l border-gray-300 transition-colors"
+                                            >Adicionar</button>
                                         </div>
                                     </div>
-                                    {topics.length > 0 && (
-                                        <div className="flex flex-wrap gap-2 mt-3 p-2 bg-gray-50 rounded-md border border-gray-200">
-                                            {topics.map(t => (
-                                                <span key={t} className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-1 rounded-full border border-indigo-200 uppercase tracking-tighter">
-                                                    {t}
-                                                    <button type="button" onClick={() => handleRemoveTag(topics, setTopics, t)} className="text-indigo-400 hover:text-indigo-900 focus:outline-none">
-                                                        &times;
-                                                    </button>
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
-                                    {getError('topics') && <span className="text-red-500 text-xs mt-1 block">{getError('topics')}</span>}
                                 </div>
-                            )}
+                                {topics.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mt-3 p-2 bg-gray-50 rounded-md border border-gray-200">
+                                        {topics.map(t => (
+                                            <span key={t} className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-1 rounded-full border border-indigo-200 uppercase tracking-tighter">
+                                                {t}
+                                                <button type="button" onClick={() => handleRemoveTag(topics, setTopics, t)} className="text-indigo-400 hover:text-indigo-900 focus:outline-none">
+                                                    &times;
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                                {getError('topics') && <span className="text-red-500 text-xs mt-1 block">{getError('topics')}</span>}
+                            </div>
 
                             <div>
                                 <label htmlFor="difficulty" className="block text-sm font-medium text-gray-700">Dificuldade</label>
