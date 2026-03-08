@@ -69,7 +69,7 @@ export default function StudyPlanWizard() {
                 setError(response.data.message || 'Dados insuficientes para gerar o plano.');
             } else {
                 setLoading(false);
-                navigate('/study-plan');
+                navigate('/plano-de-estudo');
             }
         } catch (err: any) {
             if (!isMounted.current) return;

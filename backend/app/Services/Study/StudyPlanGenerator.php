@@ -20,6 +20,10 @@ class StudyPlanGenerator
 
     public function canGenerate(User $user): bool
     {
+        if ($user->isAdmin()) {
+            return true;
+        }
+
         if (!$user->canAccessStudyPlan()) {
             return false;
         }
@@ -34,6 +38,10 @@ class StudyPlanGenerator
 
     public function canUpdate(User $user): bool
     {
+        if ($user->isAdmin()) {
+            return true;
+        }
+
         if (!$user->canAccessStudyPlan()) {
             return false;
         }
