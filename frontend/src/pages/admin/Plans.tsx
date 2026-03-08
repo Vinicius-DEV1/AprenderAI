@@ -58,13 +58,13 @@ export default function Plans() {
                                     <td className="px-6 py-5">
                                         <div className="flex flex-col gap-0.5">
                                             <div className="text-xs font-bold text-gray-700 leading-tight">
-                                                {plan.simulations_limit === 0 ? '♾️' : plan.simulations_limit} <span className="text-[9px] text-gray-400 uppercase">Simulados</span>
+                                                {plan.simulations_limit === 9999 ? '♾️' : plan.simulations_limit} <span className="text-[9px] text-gray-400 uppercase">Simulados</span>
                                             </div>
                                             <div className="text-xs font-bold text-gray-700 leading-tight">
-                                                {plan.essays_limit === 0 ? '♾️' : plan.essays_limit} <span className="text-[9px] text-gray-400 uppercase">Redações</span>
+                                                {plan.essays_limit === 9999 ? '♾️' : plan.essays_limit} <span className="text-[9px] text-gray-400 uppercase">Redações</span>
                                             </div>
                                             <div className="text-xs font-bold text-indigo-500 leading-tight">
-                                                {plan.max_ai_questions === 0 ? '♾️' : plan.max_ai_questions} <span className="text-[9px] text-indigo-300 uppercase italic">IA Feed</span>
+                                                {plan.max_ai_questions === 9999 ? '♾️' : plan.max_ai_questions} <span className="text-[9px] text-indigo-300 uppercase italic">IA Feed</span>
                                             </div>
                                         </div>
                                     </td>

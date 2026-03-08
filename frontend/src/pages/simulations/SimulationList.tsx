@@ -274,7 +274,7 @@ export default function SimulationList() {
                 <div>
                     <p className="usage-title">Uso Mensal de Provas</p>
                     <p className="usage-subtitle">
-                        Você criou <strong>{used}</strong> de <strong>{limit === 0 ? 'ilimitadas' : limit}</strong> provas disponíveis neste ciclo.
+                        Você criou <strong>{used}</strong> de <strong>{limit === 9999 ? 'ilimitadas' : limit}</strong> provas disponíveis neste ciclo.
                     </p>
                 </div>
                 {!canCreate && (
