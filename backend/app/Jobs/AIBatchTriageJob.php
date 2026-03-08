@@ -53,10 +53,10 @@ class AIBatchTriageJob implements ShouldQueue
             return;
         }
 
-        // Check if batch was cancelled before starting
+        // Check if batch was cancelled or failed before starting
         $batch = \App\Models\AiProcessingBatch::where('batch_id', $this->batchId)->first();
-        if ($batch && $batch->status === 'cancelled') {
-            Log::info("[AIBATCH] Batch job skipped (Cancelled)", ['batch_id' => $this->batchId]);
+        if ($batch && in_array($batch->status, ['cancelled', 'failed'])) {
+            Log::info("[AIBATCH] Batch job skipped ({$batch->status})", ['batch_id' => $this->batchId]);
             return;
         }
 

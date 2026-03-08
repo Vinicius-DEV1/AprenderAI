@@ -37,8 +37,26 @@ class AIBatchService
                 gc_collect_cycles();
             return $appliedData;
         } catch (\Throwable $e) {
-            Log::error("AIBatchService: Falha no processamento do lote: " . $e->getMessage());
-            throw $e;
+            $msg = $e->getMessage();
+            $clearMessage = "Falha no processamento do lote (Qtd: " . $questions->count() . "). Motivo: ";
+
+            if (str_contains($msg, 'Syntax error') || str_contains($msg, 'JSON')) {
+                $clearMessage .= "A IA retornou um texto que não é um JSON válido. O texto pode ter sido gerado pela metade devido ao limite máximo de saída de tokens (Model Output Limit excedido) para esse modelo.";
+            } elseif (str_contains($msg, '429') || str_contains($msg, 'Quota Exceeded')) {
+                $clearMessage .= "Limite de uso da API atingido (Rate Limit ou Quota Exceeded). Aguarde alguns minutos e tente processar um lote menor.";
+            } elseif (str_contains($msg, '503') || str_contains($msg, 'Overloaded')) {
+                $clearMessage .= "O servidor da IA está sobrecarregado no momento (503 Service Unavailable).";
+            } else {
+                $clearMessage .= $msg;
+            }
+
+            Log::error("[AIBATCH] " . $clearMessage, [
+                'batch_id' => $batchId,
+                'type' => $type,
+                'count' => $questions->count(),
+                'original_exception' => $msg
+            ]);
+            throw new \Exception($clearMessage, 0, $e);
         }
     }
 

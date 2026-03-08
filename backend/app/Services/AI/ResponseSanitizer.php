@@ -58,6 +58,25 @@ class ResponseSanitizer
         }
 
         $cleanText = preg_replace('/^```[a-z]*\s*|\s*```$/i', '', trim($text));
+
+        // --- PARTIAL JSON RECOVERY ---
+        // Se a string parece ser um array que foi cortado no meio ex: "[ { "id": 1 }, { "id": 2 "
+        if (json_decode($cleanText, true) === null && str_starts_with($cleanText, '[')) {
+            // Acha a última chave fechada confiavelmente
+            $lastCompleteObject = strrpos($cleanText, '}');
+            if ($lastCompleteObject !== false) {
+                // Cortamos logo após a última fechada garantida e adicionamos o fecha-array
+                $recoveredText = substr($cleanText, 0, $lastCompleteObject + 1) . ']';
+                $decoded = json_decode($recoveredText, true);
+
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    Log::warning("[AIBATCH] Partial JSON Recovered: O modelo cortou a resposta por limite de tokens, mas salvamos " . count($decoded) . " itens com sucesso.", [
+                        'original_length' => strlen($cleanText)
+                    ]);
+                    return $decoded;
+                }
+            }
+        }
         $decoded = json_decode($cleanText, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {

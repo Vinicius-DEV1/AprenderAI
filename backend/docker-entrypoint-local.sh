@@ -25,6 +25,7 @@ if [ -f .env ] || [ -f .env.example ]; then
         echo "📦 Autoload não encontrado ou corrompido. Tentando (re)instalar dependências..."
         
         # Garantir permissões básicas para o composer conseguir escrever
+        mkdir -p vendor
         chown -R 1000:www-data vendor 2>/dev/null || true
         chmod -R 775 vendor 2>/dev/null || true
         
@@ -36,20 +37,15 @@ if [ -f .env ] || [ -f .env.example ]; then
             rm -rf vendor/.* vendor/* 2>/dev/null || true
             COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader
         fi
+
+        # Só ajusta permissões se ACABOU de instalar de fato
+        echo "🔑 Ajustando permissões da pasta vendor (pós-instalação)..."
+        chown -R 1000:www-data vendor || true
+        chmod -R 775 vendor || true
     fi
 
-    # Garantir permissões do vendor em todo boot (previne erros de root do docker)
-    echo "🔑 Ajustando permissões da pasta vendor..."
-    chown -R 1000:www-data vendor || true
-    chmod -R 775 vendor || true
-
-    # Instala dependências do Node se a pasta node_modules não existir ou estiver vazia
-    if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
-        echo "🐌 Node modules não encontrados. Instalando dependências do Node no volume interno..."
-        npm install
-        # echo "🏗️ Buildando assets iniciais..."
-        # npm run build
-    fi
+    # Instala dependências do Node removido do app container para agilizar startup 
+    # (O frontend container cuida disso)
 
     # ----------------------------------------------------------------
     # Aguarda o MySQL estar PRONTO para aceitar conexões.
