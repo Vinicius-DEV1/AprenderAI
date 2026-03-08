@@ -61,6 +61,10 @@ trait HasQuota
 
     public function canAccessStudyPlan(): bool
     {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
         return $this->hasPlusPlan() && $this->hasStudyPlanPrerequisites();
     }
 
