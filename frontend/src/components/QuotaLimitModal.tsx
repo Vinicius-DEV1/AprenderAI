@@ -44,7 +44,7 @@ export default function QuotaLimitModal({
 
                 {/* Usage indicator */}
                 <p className="mb-4 text-center text-sm text-gray-500 dark:text-slate-400">
-                    Você utilizou <strong className="text-gray-800 dark:text-slate-200">{used}</strong> de <strong className="text-gray-800 dark:text-slate-200">{limit === 0 ? 'ilimitadas' : limit}</strong> {resource.toLowerCase()} disponíveis neste ciclo mensal.
+                    Você utilizou <strong className="text-gray-800 dark:text-slate-200">{used}</strong> de <strong className="text-gray-800 dark:text-slate-200">{limit === 9999 ? 'ilimitadas' : limit}</strong> {resource.toLowerCase()} disponíveis neste ciclo mensal.
                 </p>
 
                 {/* Progress bar */}
