@@ -547,7 +547,6 @@ EOT;
             'contents' => [['parts' => $parts]],
             'generationConfig' => [
                 'temperature' => 0.7,
-                'maxOutputTokens' => 8192 // Limite máximo para o modelo padrão Flash/Pro
             ]
         ];
 
@@ -566,6 +565,12 @@ EOT;
 
         $data = $response->json();
         $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
+
+        // Log para auditoria de truncamento (debug temporário)
+        if (strlen($text) > 5000) {
+            Log::info("[GEMINI] Long response received", ['length' => strlen($text), 'finish_reason' => $data['candidates'][0]['finishReason'] ?? 'unknown']);
+        }
+
         $json = $this->responseSanitizer->sanitize($text);
 
         if (empty($json)) {
