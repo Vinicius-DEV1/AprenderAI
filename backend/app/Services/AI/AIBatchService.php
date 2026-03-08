@@ -125,6 +125,39 @@ class AIBatchService
         $applied = 0;
         $errors = [];
 
+        // --- DEFENSIVE JSON UNWRAPPING ---
+        // Se a IA devolver um wrapper (ex: {"data": [...]}), vamos desempacotá-lo.
+        if (is_array($results)) {
+            if (isset($results['data']) && is_array($results['data']) && !isset($results[0])) {
+                $results = $results['data'];
+            } elseif (isset($results['questions']) && is_array($results['questions']) && !isset($results[0])) {
+                $results = $results['questions'];
+            } elseif (isset($results['results']) && is_array($results['results']) && !isset($results[0])) {
+                $results = $results['results'];
+            } elseif (count($results) === 1 && is_array(reset($results))) {
+                $first = reset($results);
+                if (isset($first[0]) && is_array($first[0])) {
+                    $results = $first;
+                }
+            }
+
+            // Handles associative arrays like: {"123": {"difficulty": "easy"}}
+            $firstElem = reset($results);
+            if (is_array($firstElem) && !isset($firstElem['id'])) {
+                $normalized = [];
+                foreach ($results as $k => $v) {
+                    if (is_array($v)) {
+                        $v['id'] = $k;
+                        $normalized[] = $v;
+                    }
+                }
+                if (count($normalized) > 0) {
+                    $results = $normalized;
+                }
+            }
+        }
+        $resultsCollection = collect($results);
+
         foreach ($questions as $question) {
             $snapshotBefore = [
                 'difficulty' => $question->difficulty,
@@ -144,7 +177,9 @@ class AIBatchService
                 ]);
             }
 
-            $data = collect($results)->firstWhere('id', $question->id);
+            $data = $resultsCollection->firstWhere('id', (int) $question->id)
+                ?? $resultsCollection->firstWhere('id', (string) $question->id);
+
             if (!is_array($data)) {
                 if ($batchItem) {
                     $batchItem->update([
