@@ -545,7 +545,10 @@ EOT;
 
         $payload = [
             'contents' => [['parts' => $parts]],
-            'generationConfig' => ['temperature' => 0.7]
+            'generationConfig' => [
+                'temperature' => 0.7,
+                'maxOutputTokens' => 8192 // Limite máximo para o modelo padrão Flash/Pro
+            ]
         ];
 
         $decryptedKey = $apiKey->decrypted_key;
