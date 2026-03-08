@@ -305,7 +305,7 @@ export default function Dashboard() {
     const subjectPerf = data?.subjectPerformance || [];
     const mathEntry = subjectPerf.find((s: any) => s.name?.toLowerCase().includes('matemática') || s.name?.toLowerCase().includes('matematica'));
 
-    let mathDisplay = '—';
+    let mathDisplay = '0,0%';
     if (mathEntry) {
         if (typeof mathEntry.percentage !== 'undefined') {
             mathDisplay = Number(mathEntry.percentage).toLocaleString('pt-BR', { minimumFractionDigits: 1 }) + '%';
