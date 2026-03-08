@@ -85,7 +85,7 @@ export default function RegisterPage() {
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={handleSubmit} method="POST" action="/register">
                         <div className="form-group">
                             <label htmlFor="name">Nome completo</label>
                             <input
@@ -108,6 +108,7 @@ export default function RegisterPage() {
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                autoComplete="username"
                             />
                         </div>
 
@@ -120,6 +121,7 @@ export default function RegisterPage() {
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                autoComplete="new-password"
                             />
                         </div>
 
@@ -132,6 +134,7 @@ export default function RegisterPage() {
                                 required
                                 value={passwordConfirmation}
                                 onChange={(e) => setPasswordConfirmation(e.target.value)}
+                                autoComplete="new-password"
                             />
                         </div>
 
