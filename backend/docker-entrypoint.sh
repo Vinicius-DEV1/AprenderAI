@@ -48,7 +48,19 @@ if [ "$1" = "php-fpm" ] || [ -z "$1" ]; then
     if [ -f .env ]; then
         echo "🚀 Iniciando rotinas de produção..."
         echo "📂 Rodando migrações de banco..."
+        # Executa a migração sem o "set -e" interromper imediatamente
+        set +e
         php artisan migrate --force
+        MIGRATE_STATUS=$?
+        set -e
+        
+        if [ $MIGRATE_STATUS -ne 0 ]; then
+            echo "❌ ERRO CRÍTICO: Falha ao rodar as migrações (php artisan migrate --force)."
+            echo "⚠️ O container não será finalizado imediatamente para evitar RESTART LOOP."
+            echo "⏳ Aguardando 10 minutos para debug antes de encerrar o container..."
+            sleep 600
+            exit 1
+        fi
         
         echo "⚡ Otimizando cache do Laravel..."
         php artisan optimize
