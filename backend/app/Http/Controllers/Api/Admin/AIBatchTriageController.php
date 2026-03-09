@@ -149,8 +149,12 @@ class AIBatchTriageController extends Controller
         $reprocess = $validated['reprocess'] ?? false;
         $delaySeconds = $request->input('delay_seconds', 0);
 
+        Log::info("[AIBATCH] Dispatching jobs for batch", ['batch_id' => $batchId, 'total' => $total, 'chunk_size' => $chunkSize]);
+
         $userId = auth()->id();
         $questions->chunk($chunkSize)->each(function ($chunk, $index) use ($batchId, $validated, $reprocess, $delaySeconds, $userId) {
+            Log::info("[AIBATCH] Dispatching chunk {$index}", ['count' => $chunk->count()]);
+
             $job = new AIBatchTriageJob(
                 $batchId,
                 $chunk->pluck('id')->toArray(),
@@ -169,6 +173,8 @@ class AIBatchTriageController extends Controller
 
             dispatch($job);
         });
+
+        Log::info("[AIBATCH] All jobs dispatched for batch", ['batch_id' => $batchId]);
 
         return response()->json([
             'success' => true,
