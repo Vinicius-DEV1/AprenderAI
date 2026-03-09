@@ -20,9 +20,6 @@ class StudyPlanGenerator
 
     public function canGenerate(User $user): bool
     {
-        if ($user->isAdmin()) {
-            return true;
-        }
 
         if (!$user->canAccessStudyPlan()) {
             return false;
@@ -38,9 +35,6 @@ class StudyPlanGenerator
 
     public function canUpdate(User $user): bool
     {
-        if ($user->isAdmin()) {
-            return true;
-        }
 
         if (!$user->canAccessStudyPlan()) {
             return false;
@@ -51,12 +45,19 @@ class StudyPlanGenerator
             return false;
         }
 
+        // Log for debugging
+        \Illuminate\Support\Facades\Log::info("Cooldown check for user {$user->id}: Plan {$lastPlan->id}, next_update_at: " . ($lastPlan->next_update_at ? $lastPlan->next_update_at->toIso8601String() : 'NULL') . ", now: " . now()->toIso8601String());
+
         // Enforce 14-day rule using next_update_at
         if ($lastPlan->next_update_at) {
-            return $lastPlan->next_update_at->isPast();
+            $result = $lastPlan->next_update_at->isPast();
+            \Illuminate\Support\Facades\Log::info("Cooldown result for user {$user->id}: " . ($result ? 'ALLOWED' : 'LOCKED'));
+            return $result;
         }
 
-        return $lastPlan->created_at->lt(now()->subDays(14));
+        $result = $lastPlan->created_at->lt(now()->subDays(14));
+        \Illuminate\Support\Facades\Log::info("Cooldown result (fallback) for user {$user->id}: " . ($result ? 'ALLOWED' : 'LOCKED'));
+        return $result;
     }
 
     public function createPlaceholder(User $user, array $input)

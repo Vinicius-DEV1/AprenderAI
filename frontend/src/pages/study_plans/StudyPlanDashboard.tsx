@@ -498,21 +498,18 @@ export default function StudyPlanDashboard() {
                             </p>
                         )}
                     </div>
-                    {can_update ? (
-                        <button
-                            onClick={() => updateMutation.mutate()}
-                            disabled={updateMutation.isPending}
-                            className="w-full md:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl transition-all shadow-xl shadow-blue-500/25 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                            {updateMutation.isPending ? 'PROCESSANDO...' : 'ATUALIZAR PLANO AGORA'}
-                        </button>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/60 w-32 h-32 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-inner">
-                            <span className="text-4xl font-black text-slate-800 dark:text-white">{days_until_update}</span>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">DIAS PARA IA</span>
-                        </div>
-                    )}
+                    <button
+                        onClick={() => updateMutation.mutate()}
+                        disabled={!can_update || updateMutation.isPending}
+                        className={`w-full md:w-auto px-8 py-4 font-black rounded-2xl transition-all shadow-xl flex items-center justify-center gap-3 active:scale-95 disabled:cursor-not-allowed ${
+                            can_update 
+                                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25' 
+                                : 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed grayscale shadow-none'
+                        }`}
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        {updateMutation.isPending ? 'PROCESSANDO...' : (can_update ? 'ATUALIZAR PLANO AGORA' : `BLOQUEADO (${days_until_update} DIAS)`)}
+                    </button>
                 </div>
             </div>
 
