@@ -464,15 +464,6 @@ class QuestionController extends Controller
 
         $user = $request->user();
 
-        if (!$user->hasAiQuota()) {
-            return response()->json([
-                'status' => 'error',
-                'code' => 'quota_exceeded',
-                'message' => 'Você atingiu o limite de consultas de inteligência artificial do seu plano.',
-                'upgrade_url' => '/plans'
-            ], 403);
-        }
-
         $userPrompt = trim(strtolower($request->prompt));
         $cacheService = app(\App\Services\AI\SemanticCacheService::class);
 
@@ -482,7 +473,7 @@ class QuestionController extends Controller
         // [Nível 2] Busca por Similaridade (Embeddings) - Quase Instantâneo Síncrono (~500ms)
         if (!$cachedFilters) {
             $aiService = app(\App\Services\AI\AIService::class);
-            $vector = $aiService->generateEmbedding($userPrompt);
+            $vector = $aiService->generateEmbedding($userPrompt, $user->id);
             if ($vector) {
                 $cachedFilters = $cacheService->findSimilarMatch($vector, 0.94);
             }
@@ -490,8 +481,6 @@ class QuestionController extends Controller
 
         // Se encontrou no Cache Instantâneo da Request HTTTP:
         if ($cachedFilters) {
-            $user->incrementAiUsage();
-
             // Grava histórico p/ Analytics
             AiSearchRequest::create([
                 'user_id' => $user->id,
@@ -515,7 +504,6 @@ class QuestionController extends Controller
             'status' => 'pending',
         ]);
 
-        $user->incrementAiUsage();
         InterpretSearchPromptJob::dispatch($searchRequest);
 
         return response()->json([
