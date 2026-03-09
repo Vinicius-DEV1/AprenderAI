@@ -46,6 +46,7 @@ interface QuestionCardProps {
     question: Question;
     mode?: 'bank' | 'result' | 'view';
     userAnswer?: string | null;
+    isCorrect?: boolean | null;
     simulationId?: number | null;
 }
 
@@ -53,6 +54,7 @@ export default function QuestionCard({
     question: q,
     mode = 'bank',
     userAnswer: initialUserAnswer = null,
+    isCorrect: initialIsCorrect = null,
     simulationId = null
 }: QuestionCardProps) {
     const { aiName } = useConfigStore();
@@ -67,7 +69,11 @@ export default function QuestionCard({
     const [struckLabels, setStruckLabels] = useState<string[]>([]);
 
     const [answered, setAnswered] = useState(isResultMode);
-    const [isCorrect, setIsCorrect] = useState<boolean | null>(isResultMode ? (initialUserAnswer ? q.was_correct ?? null : null) : (q.was_correct ?? null));
+    const [isCorrect, setIsCorrect] = useState<boolean | null>(
+        isResultMode
+            ? (initialIsCorrect !== null ? initialIsCorrect : (initialUserAnswer ? q.was_correct ?? null : null))
+            : (q.was_correct ?? null)
+    );
     const [correctAnswer, setCorrectAnswer] = useState<string | null>(isResultMode ? q.alternatives.find(a => a.is_correct)?.label || null : null);
     const [explanation, setExplanation] = useState<string | null>(isResultMode ? q.explanation || null : null);
     const [submitting, setSubmitting] = useState(false);

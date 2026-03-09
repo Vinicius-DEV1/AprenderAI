@@ -126,6 +126,7 @@ export default function SimulationResult() {
                                 question={ans.question}
                                 mode="result"
                                 userAnswer={ans.user_answer}
+                                isCorrect={ans.is_correct}
                                 simulationId={simulation.id}
                             />
                         ))}
