@@ -238,7 +238,20 @@ export default function EssayWrite({
     const isNearLimit = charCount >= rule.max_chars * 0.9;
 
     // Timer
-    const [remainingSeconds, setRemainingSeconds] = useState(timeLimit * 60);
+    const [remainingSeconds, setRemainingSeconds] = useState(() => {
+        // Recover from localStorage if we already started the timer for this essay
+        const id = resumeEssayId ?? (isSimulationMode ? simulationEssayId : null);
+        if (id) {
+            const stored = localStorage.getItem(`essay_timer_start_${id}`);
+            if (stored) {
+                const startTs = parseInt(stored, 10);
+                const elapsed = Math.floor((Date.now() - startTs) / 1000);
+                const remaining = Math.max(0, timeLimit * 60 - elapsed);
+                return remaining;
+            }
+        }
+        return timeLimit * 60;
+    });
 
     // ── Essay Limit (how many submissions remain this month) ────────────────
     const { data: essayMeta } = useQuery({
@@ -330,6 +343,8 @@ export default function EssayWrite({
     const submitMutation = useMutation({
         mutationFn: (data: FormData) => submitEssay(essayId!, data),
         onSuccess: (data) => {
+            // Clear the persisted timer for this essay
+            if (essayId) localStorage.removeItem(`essay_timer_start_${essayId}`);
             queryClient.invalidateQueries({ queryKey: ['essays'] });
             queryClient.invalidateQueries({ queryKey: ['essays-meta'] }); // Refetch limit
             navigate(data?.data?.id ? `/redacoes/correcao/${data.data.id}` : '/redacoes');
@@ -502,6 +517,16 @@ export default function EssayWrite({
     };
 
     // ── Timer Effect ──────────────────────────────────────────────────────
+    // Persist start timestamp to localStorage the first time we enter step 3.
+    useEffect(() => {
+        if (step === 3 && essayId) {
+            const storageKey = `essay_timer_start_${essayId}`;
+            if (!localStorage.getItem(storageKey)) {
+                localStorage.setItem(storageKey, String(Date.now() - (timeLimit * 60 - remainingSeconds) * 1000));
+            }
+        }
+    }, [step, essayId]);
+
     useEffect(() => {
         if (step === 3 && remainingSeconds > 0) {
             const timer = setInterval(() => {

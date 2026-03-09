@@ -50,6 +50,7 @@ class PlanController extends Controller
         ]);
 
         $data['interval'] = $this->normalizeInterval($data['interval']);
+        $data['discount_percentage'] = $data['discount_percentage'] ?? 0;
         $data['slug'] = Str::slug($data['name']);
 
         if (Plan::where('slug', $data['slug'])->exists()) {
@@ -94,11 +95,14 @@ class PlanController extends Controller
         ]);
 
         $data['interval'] = $this->normalizeInterval($data['interval']);
+        // discount_percentage is NOT NULL in the DB (default 0).
+        // When interval='month', frontend sends null — coerce to 0 to avoid SQL error.
+        $data['discount_percentage'] = $data['discount_percentage'] ?? 0;
         $plan->update($data);
 
         return response()->json([
             'message' => 'Plano atualizado com sucesso!',
-            'plan' => $plan
+            'plan' => $plan->fresh()
         ]);
     }
 

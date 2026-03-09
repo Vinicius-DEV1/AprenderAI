@@ -232,7 +232,16 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
     return (
         <div className="fixed inset-0 z-50 overflow-y-auto">
             <div className="flex items-center justify-center min-h-screen px-4">
-                <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={batchId ? handleMinimize : onClose}></div>
+                <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={() => {
+                    const isTerminal = progress?.status === 'completed' || progress?.status === 'failed' || progress?.status === 'cancelled';
+                    if (isTerminal) {
+                        handleFinalize(); // Clears sessionStorage + resets all state
+                    } else if (batchId) {
+                        handleMinimize(); // Active batch: just hide visually
+                    } else {
+                        onClose(); // Config/preview: just close
+                    }
+                }}></div>
 
                 <div className="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col max-h-[90vh]">
 
