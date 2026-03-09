@@ -20,6 +20,10 @@ services:
         condition: service_started
     networks:
       - production-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   # Nginx Webserver (Custom Image with assets)
   webserver:
@@ -65,7 +69,10 @@ services:
     # Prioriza explicitamente a fila 'default' (Simulados/Chats), 'essays' (Redações) e depois a 'import'
     command: php artisan queue:work --queue=default,essays,import --sleep=3 --tries=3 --max-time=3600
     deploy:
-      replicas: 50
+      replicas: 4
+      resources:
+        limits:
+          memory: 512M
     depends_on:
       app:
         condition: service_started
@@ -88,7 +95,10 @@ services:
     # Fila exclusiva para triagem em lote do Xavier (evita travar o sistema principal)
     command: php artisan queue:work --queue=ai-batches --sleep=3 --tries=1 --timeout=700 --max-time=3600
     deploy:
-      replicas: 2
+      replicas: 1
+      resources:
+        limits:
+          memory: 1G
     depends_on:
       app:
         condition: service_started
@@ -138,6 +148,10 @@ services:
         condition: service_started
     networks:
       - production-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   # Database (Internal Only)
   db:
