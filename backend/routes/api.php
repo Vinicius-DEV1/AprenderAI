@@ -259,6 +259,7 @@ Route::prefix('v1')->group(function () {
                 Route::post('/preview', [AdminAIBatchTriageController::class, 'preview']);
                 Route::post('/start', [AdminAIBatchTriageController::class, 'start']);
                 Route::get('/active', [AdminAIBatchTriageController::class, 'active']);
+                Route::get('/active-keys', [AdminAIBatchTriageController::class, 'activeKeys']);
                 Route::get('/{batchId}/status', [AdminAIBatchTriageController::class, 'status']);
                 Route::get('/{batchId}/details', [AdminAIBatchTriageController::class, 'details']); // Moved here
                 Route::post('/{batchId}/cancel', [AdminAIBatchTriageController::class, 'cancel']);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../api/axios';
 import { useUIStore } from '../../../stores/uiStore';
@@ -17,7 +17,6 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
     const [step, setStep] = useState<'config' | 'preview' | 'processing'>('config');
     const [quantity, setQuantity] = useState(10);
     const [type, setType] = useState('complete');
-    const [model, setModel] = useState('gpt-4o');
     const [chunkSize, setChunkSize] = useState(20);
     const [delaySeconds, setDelaySeconds] = useState(15);
     const [reprocess, setReprocess] = useState(false);
@@ -27,6 +26,11 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
     const [progress, setProgress] = useState<any>(null);
     const [lastProgressRecord, setLastProgressRecord] = useState<{ processed: number; time: number } | null>(null);
     const [etaSeconds, setEtaSeconds] = useState<number | null>(null);
+    // Chunk phase live timers
+    const [chunkElapsed, setChunkElapsed] = useState(0);
+    const [delayCountdown, setDelayCountdown] = useState<number | null>(null);
+    const chunkTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const delayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const [viewQuestionId, setViewQuestionId] = useState<number | null>(null);
     const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
@@ -74,38 +78,20 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
         }
     }, [isOpen, batchId]);
 
-    // Fetch dynamically configured models from API Keys vault
-    const { data: availableModels = [] } = useQuery({
-        queryKey: ['admin-api-keys-models'],
+    // Fetch triage-configured API keys (read-only — failover router selects automatically)
+    const { data: triageKeysData } = useQuery({
+        queryKey: ['admin-triage-active-keys'],
         queryFn: async () => {
-            const res = await api.get('/api/v1/admin/api-keys');
-            // Coleta modelos cadastrados das chaves ativas
-            const vault = res.data.vault || [];
-            const models = new Set<string>();
-            vault.forEach((k: any) => {
-                if (k.preferred_model) models.add(k.preferred_model);
-                if (k.model) models.add(k.model);
-            });
-            // Tenta também o capabilities_grid
-            const grid = res.data.capabilities_grid || {};
-            Object.values(grid).forEach((keys: any) => {
-                keys.forEach((k: any) => {
-                    if (k.preferred_model) models.add(k.preferred_model);
-                    if (k.model) models.add(k.model);
-                });
-            });
-            return Array.from(models);
-        }
+            const res = await api.get('/api/v1/admin/triage/active-keys');
+            return res.data.keys as Array<{
+                id: number; name: string; provider: string;
+                model: string; status: string; is_primary: boolean;
+            }>;
+        },
+        staleTime: 30000,
     });
-
-    const noModelsConfigured = availableModels.length === 0;
-
-    // Auto-select first model when available
-    useEffect(() => {
-        if (availableModels.length > 0 && !availableModels.includes(model)) {
-            setModel(availableModels[0]);
-        }
-    }, [availableModels]);
+    const triageKeys = triageKeysData || [];
+    const primaryKey = triageKeys.find(k => k.is_primary) || triageKeys[0];
 
     const previewMutation = useMutation({
         mutationFn: async () => {
@@ -126,7 +112,6 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
             const res = await api.post('/api/v1/admin/triage/start', {
                 quantity: previewQuestions.length,
                 type: type === 'complete' ? 'both' : type,
-                model,
                 chunk_size: chunkSize,
                 delay_seconds: delaySeconds,
                 reprocess,
@@ -186,13 +171,42 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                 }
             }
 
-            // Finalização Automática removida para permitir a visualização do resumo
-            // if (queryProgress.status === 'completed' && queryProgress.errors === 0) {
-            //     const timer = setTimeout(() => {
-            //         handleFinalize();
-            //     }, 3000);
-            //     return () => clearTimeout(timer);
-            // }
+            // Chunk Phase Timers
+            const chunkStatus = queryProgress.chunk_status;
+            if (chunkStatus) {
+                if (chunkStatus.phase === 'processing') {
+                    // Clear any delay timer
+                    if (delayTimerRef.current) { clearInterval(delayTimerRef.current); delayTimerRef.current = null; }
+                    setDelayCountdown(null);
+                    // Start or continue the chunk elapsed timer
+                    if (!chunkTimerRef.current) {
+                        const startedAt = chunkStatus.chunk_started_at ? new Date(chunkStatus.chunk_started_at).getTime() : Date.now();
+                        setChunkElapsed(Math.floor((Date.now() - startedAt) / 1000));
+                        chunkTimerRef.current = setInterval(() => {
+                            setChunkElapsed(Math.floor((Date.now() - startedAt) / 1000));
+                        }, 1000);
+                    }
+                } else if (chunkStatus.phase === 'delay') {
+                    // Clear chunk timer
+                    if (chunkTimerRef.current) { clearInterval(chunkTimerRef.current); chunkTimerRef.current = null; }
+                    // Start or update delay countdown
+                    const endsAt = chunkStatus.delay_ends_at ? new Date(chunkStatus.delay_ends_at).getTime() : Date.now();
+                    const remaining = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+                    setDelayCountdown(remaining);
+                    if (!delayTimerRef.current) {
+                        delayTimerRef.current = setInterval(() => {
+                            const rem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+                            setDelayCountdown(rem);
+                            if (rem <= 0 && delayTimerRef.current) { clearInterval(delayTimerRef.current); delayTimerRef.current = null; }
+                        }, 1000);
+                    }
+                } else {
+                    // idle/skipped — clear everything
+                    if (chunkTimerRef.current) { clearInterval(chunkTimerRef.current); chunkTimerRef.current = null; }
+                    if (delayTimerRef.current) { clearInterval(delayTimerRef.current); delayTimerRef.current = null; }
+                    setDelayCountdown(null);
+                }
+            }
         }
     }, [queryProgress]);
 
@@ -487,6 +501,40 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                                 </div>
                                             </div>
                                         )}
+                                        {/* Chunk Phase Status Panel */}
+                                        {progress?.status === 'processing' && progress?.chunk_status && (
+                                            <div className="mt-3 mx-auto max-w-xs w-full">
+                                                {progress.chunk_status.phase === 'processing' && (
+                                                    <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-5 py-3 flex items-center justify-between gap-3">
+                                                        <div className="flex items-center gap-2 text-indigo-600">
+                                                            <span className="animate-spin text-base">⚙️</span>
+                                                            <span className="text-xs font-black">Chunk {progress.chunk_status.chunk_index}</span>
+                                                        </div>
+                                                        <span className="text-xs font-mono font-black text-indigo-700 bg-white px-3 py-1 rounded-full border border-indigo-100 shadow-sm">
+                                                            ⏱ {chunkElapsed}s
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {progress.chunk_status.phase === 'delay' && (
+                                                    <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-3 flex items-center justify-between gap-3">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-xs font-black text-amber-600">⏳ Aguardando próximo lote</span>
+                                                            <span className="text-[10px] text-amber-400 font-bold">Chunk {progress.chunk_status.chunk_index + 1} em breve...</span>
+                                                        </div>
+                                                        <span className="text-lg font-mono font-black text-amber-700 bg-white px-4 py-1 rounded-full border border-amber-100 shadow-sm min-w-[3.5rem] text-center">
+                                                            {delayCountdown ?? 0}s
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {/* Active key info */}
+                                                {progress.active_key && (
+                                                    <div className="mt-2 flex items-center justify-center gap-2 text-[10px] text-gray-400 font-bold">
+                                                        <span>🔑 {progress.active_key.name}</span>
+                                                        <span className="bg-gray-100 px-2 py-0.5 rounded-full">{progress.active_key.model || progress.active_key.provider}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -503,23 +551,33 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                             className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-xs font-black uppercase text-gray-400 mb-2">Modelo de IA</label>
-                                        {noModelsConfigured ? (
+                                    <div className="sm:col-span-2">
+                                        <label className="block text-xs font-black uppercase text-gray-400 mb-2">⚡ Roteamento de IA (Triagem)</label>
+                                        {triageKeys.length === 0 ? (
                                             <div className="w-full px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-xs font-bold flex items-center gap-2">
-                                                ⚠️ Nenhum modelo configurado.{' '}
-                                                <a href="/admin/api-keys" className="underline hover:text-amber-900">Cadastre uma chave de API</a>
+                                                ⚠️ Nenhuma chave configurada para Triagem.
+                                                <a href="/admin/api-keys" className="underline hover:text-amber-900">Cadastrar agora</a>
                                             </div>
                                         ) : (
-                                            <select
-                                                value={model}
-                                                onChange={(e) => setModel(e.target.value)}
-                                                className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold"
-                                            >
-                                                {availableModels.map((m) => (
-                                                    <option key={m} value={m}>{m}</option>
-                                                ))}
-                                            </select>
+                                            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 space-y-2">
+                                                {primaryKey && (
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="text-xs font-black text-indigo-700">
+                                                            🔑 {primaryKey.name}
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-bold text-gray-500 bg-white px-2 py-0.5 rounded-full border border-gray-100">{primaryKey.model || primaryKey.provider}</span>
+                                                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${primaryKey.status === 'online' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>{primaryKey.status}</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {triageKeys.length > 1 && (
+                                                    <p className="text-[10px] text-indigo-400 font-bold">
+                                                        + {triageKeys.length - 1} chave{triageKeys.length > 2 ? 's' : ''} de failover configurada{triageKeys.length > 2 ? 's' : ''}
+                                                    </p>
+                                                )}
+                                                <p className="text-[9px] text-indigo-300 font-bold italic">Selecionada automaticamente pelo roteador de failover. Configure em <a href="/admin/api-keys" className="underline">Chaves de API</a>.</p>
+                                            </div>
                                         )}
                                     </div>
                                     <div>

@@ -25,11 +25,13 @@ class AIBatchTriageJob implements ShouldQueue
     protected $model;
     protected $reprocess;
     protected $userId;
+    protected $chunkIndex;
+    protected $delaySeconds;
 
     /**
      * Create a new job instance.
      */
-    public function __construct(string $batchId, array $questionIds, string $type, ?string $model = null, bool $reprocess = false, ?int $userId = null)
+    public function __construct(string $batchId, array $questionIds, string $type, ?string $model = null, bool $reprocess = false, ?int $userId = null, int $chunkIndex = 0, int $delaySeconds = 0)
     {
         $this->batchId = $batchId;
         $this->questionIds = $questionIds;
@@ -37,6 +39,8 @@ class AIBatchTriageJob implements ShouldQueue
         $this->model = $model;
         $this->reprocess = $reprocess;
         $this->userId = $userId;
+        $this->chunkIndex = $chunkIndex;
+        $this->delaySeconds = $delaySeconds;
     }
 
     /**
@@ -57,14 +61,33 @@ class AIBatchTriageJob implements ShouldQueue
         $batch = \App\Models\AiProcessingBatch::where('batch_id', $this->batchId)->first();
         if ($batch && in_array($batch->status, ['cancelled', 'failed'])) {
             Log::info("[AIBATCH] Batch job skipped ({$batch->status})", ['batch_id' => $this->batchId]);
+            $this->writeChunkPhase('skipped');
             return;
         }
+
+        // If this is not the first chunk and we have a delay, signal the delay phase
+        if ($this->chunkIndex > 0 && $this->delaySeconds > 0) {
+            $delayEndsAt = now()->addSeconds($this->delaySeconds)->toIso8601String();
+            $this->writeChunkPhase('delay', [
+                'delay_ends_at' => $delayEndsAt,
+                'delay_seconds' => $this->delaySeconds,
+            ]);
+            sleep($this->delaySeconds);
+        }
+
+        // Signal that this chunk is now processing
+        $this->writeChunkPhase('processing', [
+            'chunk_index' => $this->chunkIndex + 1,
+            'chunk_started_at' => now()->toIso8601String(),
+            'chunk_size' => count($this->questionIds),
+        ]);
 
         $questions = Question::whereIn('id', $this->questionIds)->get();
 
         try {
             Log::info("[AIBATCH] Starting batch job", [
                 'batch_id' => $this->batchId,
+                'chunk_index' => $this->chunkIndex,
                 'count' => $questions->count(),
                 'type' => $this->type,
                 'reprocess' => $this->reprocess
@@ -85,18 +108,35 @@ class AIBatchTriageJob implements ShouldQueue
 
             Log::info("[AIBATCH] Batch job finished", [
                 'batch_id' => $this->batchId,
+                'chunk_index' => $this->chunkIndex,
                 'applied' => $result['applied'],
                 'errors' => count($result['errors'])
             ]);
 
+            $this->writeChunkPhase('idle');
+
         } catch (\Throwable $e) {
             Log::error("[AIBATCH] Batch job failed", [
                 'batch_id' => $this->batchId,
+                'chunk_index' => $this->chunkIndex,
                 'error' => $e->getMessage()
             ]);
 
+            $this->writeChunkPhase('idle');
             $this->updateProgress(0, count($this->questionIds), $e->getMessage());
         }
+    }
+
+    /**
+     * Write the current chunk phase info to cache for real-time frontend display.
+     */
+    protected function writeChunkPhase(string $phase, array $extra = []): void
+    {
+        Cache::put("batch_chunk_status_{$this->batchId}", array_merge([
+            'phase' => $phase,
+            'chunk_index' => $this->chunkIndex + 1,
+            'updated_at' => now()->toIso8601String(),
+        ], $extra), now()->addHours(2));
     }
 
     protected function updateProgress(

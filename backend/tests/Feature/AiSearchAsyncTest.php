@@ -44,20 +44,25 @@ class AiSearchAsyncTest extends TestCase
         Queue::assertPushed(InterpretSearchPromptJob::class);
     }
 
-    public function test_user_exceeding_quota_cannot_queue_search()
+    public function test_user_at_quota_limit_can_still_search_and_quota_does_not_increase()
     {
+        Queue::fake();
+
         $plan = Plan::factory()->basic()->create(['max_ai_questions' => 5]);
         $user = User::factory()->create(['plan_id' => $plan->id, 'ai_questions_count' => 5]);
 
         $response = $this->actingAs($user)->post(route('questions.ai-search'), [
-            'prompt' => 'Should fail',
+            'prompt' => 'This should now work',
         ]);
 
-        $response->assertStatus(403);
-        $response->assertJson([
-            'status' => 'error',
-            'code' => 'quota_exceeded'
-        ]);
+        $response->assertStatus(200);
+        $response->assertJson(['status' => 'queued']);
+
+        // Refresh user and check count
+        $user->refresh();
+        $this->assertEquals(5, $user->ai_questions_count, 'Quota should NOT have been incremented');
+
+        Queue::assertPushed(InterpretSearchPromptJob::class);
     }
 
     public function test_user_can_check_search_status()
@@ -83,7 +88,7 @@ class AiSearchAsyncTest extends TestCase
     {
         $user1 = User::factory()->create();
         $user2 = User::factory()->create();
-        
+
         $searchRequest = AiSearchRequest::create([
             'user_id' => $user1->id,
             'prompt' => 'Test prompt',
