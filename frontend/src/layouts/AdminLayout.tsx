@@ -2,10 +2,17 @@ import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useLocation, Navigate } from 'react-router-dom';
 import { useConfigStore } from '../stores/configStore';
 import { useAuthStore } from '../stores/authStore';
+import { useUIStore } from '../stores/uiStore';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import api from '../api/axios';
+import AdminBatchModal from '../pages/admin/components/AdminBatchModal';
 
 export default function AdminLayout() {
     const config = useConfigStore();
     const location = useLocation();
+    const ui = useUIStore();
+    const queryClient = useQueryClient();
+    const [dismissedBatches, setDismissedBatches] = useState<string[]>([]);
 
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -50,6 +57,16 @@ export default function AdminLayout() {
         return `flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition-all ${active ? activeColorClass : 'text-gray-600 hover:bg-gray-100'
             }`;
     };
+
+    // Global AI Batch Polling
+    const { data: activeBatchData } = useQuery({
+        queryKey: ['admin-triage-active'],
+        queryFn: async () => {
+            const res = await api.get('/api/v1/admin/triage/active');
+            return res.data;
+        },
+        refetchInterval: ui.isBatchModalOpen ? false : 30000
+    });
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 text-slate-800 font-sans antialiased h-full">
@@ -289,6 +306,47 @@ export default function AdminLayout() {
                     <Outlet />
                 </main>
             </div>
+
+            {/* Global AI Batch Modal */}
+            <AdminBatchModal
+                isOpen={ui.isBatchModalOpen}
+                onClose={() => ui.closeBatchModal()}
+                pendingCount={ui.batchModalConfig?.pendingCount || 0}
+                onBatchStarted={(batchId) => {
+                    queryClient.invalidateQueries({ queryKey: ['admin-triage-active'] });
+                }}
+            />
+
+            {/* Global AI Batch Indicator */}
+            {!ui.isBatchModalOpen && activeBatchData?.success && activeBatchData?.batch_id && !dismissedBatches.includes(activeBatchData.batch_id) && (
+                <div
+                    className={`fixed bottom-6 right-6 z-50 ${activeBatchData.status === 'processing' ? 'bg-indigo-600 animate-bounce cursor-pointer' : activeBatchData.status === 'failed' || activeBatchData.status === 'cancelled' ? 'bg-red-600' : 'bg-green-600'
+                        } text-white pl-5 pr-2 py-2 rounded-full shadow-2xl hover:scale-105 transition-all flex items-center gap-3 border-2 border-white group`}
+                >
+                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => ui.openBatchModal()}>
+                        <span className="text-xl">
+                            {activeBatchData.status === 'processing' ? '⏳' : activeBatchData.status === 'failed' ? '❌' : activeBatchData.status === 'cancelled' ? '🛑' : '✅'}
+                        </span>
+                        <span className="font-black text-sm tracking-wide">
+                            {activeBatchData.status === 'processing' ? 'PAINEL IA' : activeBatchData.status === 'failed' ? 'LOTE COM FALHA' : activeBatchData.status === 'cancelled' ? 'LOTE CANCELADO' : 'LOTE CONCLUÍDO'}
+                        </span>
+                    </div>
+
+                    {activeBatchData.status !== 'processing' && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setDismissedBatches(prev => [...prev, activeBatchData.batch_id]);
+                            }}
+                            className="ml-2 w-8 h-8 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 text-white transition-colors"
+                            title="Ocultar aviso"
+                        >
+                            ✕
+                        </button>
+                    )}
+                    <div className="absolute inset-0 rounded-full border-4 border-white opacity-20 -z-10 group-hover:animate-ping pointer-events-none"></div>
+                </div>
+            )}
 
             <style>{`
         @keyframes bounce-subtle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
