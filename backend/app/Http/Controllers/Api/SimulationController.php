@@ -168,22 +168,31 @@ class SimulationController extends Controller
             foreach ($legacyDist as $subject => $qty) {
                 // Normalization of subject name (Resiliency)
                 $subjectUpper = mb_strtoupper(trim($subject), 'UTF-8');
-                $subjectNorm = str_replace(
+                $subjectSanitized = str_replace(
                     ['Á', 'À', 'Â', 'Ã', 'É', 'Ê', 'Í', 'Ó', 'Ô', 'Õ', 'Ú', 'Ç'],
                     ['A', 'A', 'A', 'A', 'E', 'E', 'I', 'O', 'O', 'O', 'U', 'C'],
                     $subjectUpper
                 );
 
-                // Specific case for common subjects to match the service layer logic
-                if (str_contains($subjectNorm, 'PORTUGU')) {
-                    $subjectNorm = "LINGUA PORTUGUESA";
-                } elseif (str_contains($subjectNorm, 'MATEM')) {
-                    $subjectNorm = "MATEMATICA";
+                // Map to related names (Aggregation)
+                $searchNames = [$subjectUpper, $subjectSanitized];
+                if (str_contains($subjectSanitized, 'PORTUGU')) {
+                    $searchNames = array_merge($searchNames, ['LINGUA PORTUGUESA', 'LÍNGUA PORTUGUESA', 'PORTUGUES', 'PORTUGUÊS']);
+                } elseif (str_contains($subjectSanitized, 'MATEM')) {
+                    $searchNames = array_merge($searchNames, ['MATEMATICA', 'MATEMÁTICA']);
+                } elseif (str_contains($subjectSanitized, 'FISIC')) {
+                    $searchNames = array_merge($searchNames, ['FISICA', 'FÍSICA']);
+                } elseif (str_contains($subjectSanitized, 'QUIMIC')) {
+                    $searchNames = array_merge($searchNames, ['QUIMICA', 'QUÍMICA']);
+                } elseif (str_contains($subjectSanitized, 'HISTOR')) {
+                    $searchNames = array_merge($searchNames, ['HISTORIA', 'HISTÓRIA']);
                 }
+
+                $searchNames = array_unique($searchNames);
 
                 $realNeeded = $qty - (int) ceil($qty * $legacyAiRatio);
                 $available = \App\Models\Question::published()->where('type', 'enem')
-                    ->whereHas('subjects', fn($q) => $q->where('name', $subjectNorm))
+                    ->whereHas('subjects', fn($q) => $q->whereIn('name', $searchNames))
                     ->count();
 
                 if ($available < $realNeeded) {
