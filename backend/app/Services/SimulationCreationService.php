@@ -150,21 +150,30 @@ class SimulationCreationService
                 $subjectUpper
             );
 
-            if (str_contains($subjectSanitized, 'PORTUGU'))
-                $subjectNorm = "LINGUA PORTUGUESA";
-            elseif (str_contains($subjectSanitized, 'MATEM'))
-                $subjectNorm = "MATEMATICA";
-            else
-                $subjectNorm = $subjectSanitized;
+            // Map to related names (Aggregation)
+            $searchNames = [$subjectUpper, $subjectSanitized];
+            if (str_contains($subjectSanitized, 'PORTUGU')) {
+                $searchNames = array_merge($searchNames, ['LINGUA PORTUGUESA', 'LÍNGUA PORTUGUESA', 'PORTUGUES', 'PORTUGUÊS']);
+            } elseif (str_contains($subjectSanitized, 'MATEM')) {
+                $searchNames = array_merge($searchNames, ['MATEMATICA', 'MATEMÁTICA']);
+            } elseif (str_contains($subjectSanitized, 'FISIC')) {
+                $searchNames = array_merge($searchNames, ['FISICA', 'FÍSICA']);
+            } elseif (str_contains($subjectSanitized, 'QUIMIC')) {
+                $searchNames = array_merge($searchNames, ['QUIMICA', 'QUÍMICA']);
+            } elseif (str_contains($subjectSanitized, 'HISTOR')) {
+                $searchNames = array_merge($searchNames, ['HISTORIA', 'HISTÓRIA']);
+            }
 
-            \Illuminate\Support\Facades\Log::info("Processing Subject: $subjectNorm (Orig: $subjectOrig) | Total Needed: $subjectTotal | Type: $type");
+            $searchNames = array_unique($searchNames);
+
+            \Illuminate\Support\Facades\Log::info("Processing Subject: " . implode(', ', $searchNames) . " (Orig: $subjectOrig) | Total Needed: $subjectTotal | Type: $type");
 
             // ----------------------------------------------------------------
             // CONCURSO PATH
             // ----------------------------------------------------------------
             if ($type === 'concurso') {
-                $query = Question::published()->whereHas('subjects', function ($q) use ($subjectNorm) {
-                    $q->where('name', $subjectNorm);
+                $query = Question::published()->whereHas('subjects', function ($q) use ($searchNames) {
+                    $q->whereIn('name', $searchNames);
                 });
 
                 if (!empty($context['organization']))
@@ -183,8 +192,8 @@ class SimulationCreationService
                 // Fallback: Repetition
                 if ($subjectQuestions->count() < $subjectTotal) {
                     $missing = $subjectTotal - $subjectQuestions->count();
-                    $extra = Question::published()->whereHas('subjects', function ($q) use ($subjectNorm) {
-                        $q->where('name', $subjectNorm);
+                    $extra = Question::published()->whereHas('subjects', function ($q) use ($searchNames) {
+                        $q->whereIn('name', $searchNames);
                     })
                         ->whereNotIn('id', array_merge($finalQuestions->pluck('id')->toArray(), $subjectQuestions->pluck('id')->toArray(), $lastSeenIds))
                         ->inRandomOrder()
@@ -215,8 +224,8 @@ class SimulationCreationService
             $alreadyPickedIds = $finalQuestions->pluck('id')->toArray();
 
             // 1. Initial Real Questions (No Repeat)
-            $realQuestions = Question::published()->whereHas('subjects', function ($q) use ($subjectNorm) {
-                $q->where('name', $subjectNorm);
+            $realQuestions = Question::published()->whereHas('subjects', function ($q) use ($searchNames) {
+                $q->whereIn('name', $searchNames);
             })
                 ->where('type', 'enem')
                 ->where(function ($q) {
@@ -231,8 +240,8 @@ class SimulationCreationService
                 ->get();
 
             // 2. Pre-generated AI questions from DB
-            $aiQuestions = Question::published()->whereHas('subjects', function ($q) use ($subjectNorm) {
-                $q->where('name', $subjectNorm);
+            $aiQuestions = Question::published()->whereHas('subjects', function ($q) use ($searchNames) {
+                $q->whereIn('name', $searchNames);
             })
                 ->where('type', 'enem')
                 ->where('source', 'ai_generated')
@@ -246,8 +255,8 @@ class SimulationCreationService
             // 3. Fallback: Repetition (Strict: DO NOT ignore ignoredIds)
             $missing = $subjectTotal - $subjectQuestions->count();
             if ($missing > 0) {
-                $extraQuestions = Question::published()->whereHas('subjects', function ($q) use ($subjectNorm) {
-                    $q->where('name', $subjectNorm);
+                $extraQuestions = Question::published()->whereHas('subjects', function ($q) use ($searchNames) {
+                    $q->whereIn('name', $searchNames);
                 })
                     ->where('type', 'enem')
                     ->whereNotIn('id', array_merge($alreadyPickedIds, $subjectQuestions->pluck('id')->toArray(), $ignoredIds))

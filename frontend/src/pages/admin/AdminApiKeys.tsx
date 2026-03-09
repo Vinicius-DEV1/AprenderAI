@@ -343,6 +343,18 @@ export default function AdminApiKeys() {
     const aiRanking: AiRanking[] = data?.ai_ranking || [];
     const events: ApiEvent[] = data?.logs || [];
 
+    // Metadata mapping for rich descriptions and icons
+    const capabilityMeta: Record<string, { icon: string, description: string }> = {
+        chat_tutor: { icon: '💬', description: 'Responde dúvidas dos alunos sobre questões resolvidas.' },
+        questions: { icon: '✍️', description: 'Gera questões inéditas, explicações e gabaritos comentados.' },
+        triage: { icon: '⚙️', description: 'Classifica e modera questões durante o processamento em lote.' },
+        search: { icon: '🔍', description: 'Interpreta buscas em linguagem natural na barra de pesquisa.' },
+        essays: { icon: '📝', description: 'Corrige e pontua redações enviadas pelos alunos.' },
+        study_plans: { icon: '📅', description: 'Cria cronogramas dinâmicos baseados no desempenho real.' },
+        embedding: { icon: '🧬', description: 'Gera vetores semânticos para indexação e busca vetorial.' },
+        general: { icon: '🔄', description: 'Uso de propósito geral quando sem capaiblity específica.' }
+    };
+
     return (
         <div className="p-4 md:p-6 w-full space-y-6 bg-slate-50/30 min-h-screen">
             {/* Header */}
@@ -515,24 +527,29 @@ export default function AdminApiKeys() {
                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Roteamento N:N</span>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {Object.entries(availableCapabilities).map(([code, label]) => (
-                                            <label key={code} className="relative flex items-center bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:border-indigo-300 transition-all cursor-pointer group">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={routingForm.capabilities.includes(code)}
-                                                    onChange={e => {
-                                                        const caps = e.target.checked
-                                                            ? [...routingForm.capabilities, code]
-                                                            : routingForm.capabilities.filter(c => c !== code);
-                                                        setRoutingForm({ ...routingForm, capabilities: caps });
-                                                    }}
-                                                    className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                                                <div className="ml-3">
-                                                    <span className="text-sm font-bold text-slate-700 block">{label}</span>
-                                                    <span className="text-[10px] text-slate-400 font-medium">Configurar motor</span>
-                                                </div>
-                                            </label>
-                                        ))}
+                                        {Object.entries(availableCapabilities).map(([code, label]) => {
+                                            const meta = capabilityMeta[code] || { icon: '🤖', description: 'Configurar funcionalidade da IA' };
+                                            return (
+                                                <label key={code} className="relative flex items-center bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:border-indigo-300 transition-all cursor-pointer group">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={routingForm.capabilities.includes(code)}
+                                                        onChange={e => {
+                                                            const caps = e.target.checked
+                                                                ? [...routingForm.capabilities, code]
+                                                                : routingForm.capabilities.filter(c => c !== code);
+                                                            setRoutingForm({ ...routingForm, capabilities: caps });
+                                                        }}
+                                                        className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                                                    <div className="ml-3">
+                                                        <span className="text-sm font-bold text-slate-700 block gap-2 flex items-center">
+                                                            <span>{meta.icon}</span> {label}
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-400 font-medium leading-tight block mt-0.5">{meta.description}</span>
+                                                    </div>
+                                                </label>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 

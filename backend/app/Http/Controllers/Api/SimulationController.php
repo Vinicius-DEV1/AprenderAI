@@ -166,9 +166,33 @@ class SimulationController extends Controller
 
         if ($legacyType === 'enem' && !empty($legacyDist)) {
             foreach ($legacyDist as $subject => $qty) {
+                // Normalization of subject name (Resiliency)
+                $subjectUpper = mb_strtoupper(trim($subject), 'UTF-8');
+                $subjectSanitized = str_replace(
+                    ['Á', 'À', 'Â', 'Ã', 'É', 'Ê', 'Í', 'Ó', 'Ô', 'Õ', 'Ú', 'Ç'],
+                    ['A', 'A', 'A', 'A', 'E', 'E', 'I', 'O', 'O', 'O', 'U', 'C'],
+                    $subjectUpper
+                );
+
+                // Map to related names (Aggregation)
+                $searchNames = [$subjectUpper, $subjectSanitized];
+                if (str_contains($subjectSanitized, 'PORTUGU')) {
+                    $searchNames = array_merge($searchNames, ['LINGUA PORTUGUESA', 'LÍNGUA PORTUGUESA', 'PORTUGUES', 'PORTUGUÊS']);
+                } elseif (str_contains($subjectSanitized, 'MATEM')) {
+                    $searchNames = array_merge($searchNames, ['MATEMATICA', 'MATEMÁTICA']);
+                } elseif (str_contains($subjectSanitized, 'FISIC')) {
+                    $searchNames = array_merge($searchNames, ['FISICA', 'FÍSICA']);
+                } elseif (str_contains($subjectSanitized, 'QUIMIC')) {
+                    $searchNames = array_merge($searchNames, ['QUIMICA', 'QUÍMICA']);
+                } elseif (str_contains($subjectSanitized, 'HISTOR')) {
+                    $searchNames = array_merge($searchNames, ['HISTORIA', 'HISTÓRIA']);
+                }
+
+                $searchNames = array_unique($searchNames);
+
                 $realNeeded = $qty - (int) ceil($qty * $legacyAiRatio);
                 $available = \App\Models\Question::published()->where('type', 'enem')
-                    ->whereHas('subjects', fn($q) => $q->where('name', $subject))
+                    ->whereHas('subjects', fn($q) => $q->whereIn('name', $searchNames))
                     ->count();
 
                 if ($available < $realNeeded) {
@@ -387,7 +411,13 @@ class SimulationController extends Controller
 
                     // Send first chunk immediately, then every 3 chunks
                     if ($chunkCounter === 1 || $chunkCounter % 3 === 0 || str_contains($chunk, "\n")) {
-                        echo "data: " . $chunkBuffer . "\n\n";
+                        // Correctly prefix every line with 'data: ' for SSE compatibility
+                        $lines = explode("\n", $chunkBuffer);
+                        foreach ($lines as $index => $line) {
+                            echo "data: " . $line . "\n";
+                        }
+                        echo "\n"; // End of SSE event
+
                         $chunkBuffer = "";
                         if (ob_get_level() > 0)
                             ob_flush();

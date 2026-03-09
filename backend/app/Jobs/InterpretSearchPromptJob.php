@@ -43,7 +43,7 @@ class InterpretSearchPromptJob implements ShouldQueue
 
             // [Nível 2] Busca por Similaridade (Embeddings)
             // Gera a representação vetorial da frase
-            $vector = $aiService->generateEmbedding($userPrompt);
+            $vector = $aiService->generateEmbedding($userPrompt, $this->searchRequest->user_id);
             if ($vector) {
                 $similarFilters = $cacheService->findSimilarMatch($vector, 0.94); // >94% de match
                 if ($similarFilters) {
@@ -54,7 +54,7 @@ class InterpretSearchPromptJob implements ShouldQueue
 
             // [Fallback] Ação original do Xavier
             $filterOptions = $questionService->getFilterOptions();
-            $filters = $aiService->interpretSearchPrompt($this->searchRequest->prompt, $filterOptions);
+            $filters = $aiService->interpretSearchPrompt($this->searchRequest->prompt, $filterOptions, $this->searchRequest->user_id);
 
             // Validação mínima: Consideramos sucesso se houver filtros reais OU sugestões de caminhos alternativos
             $hasRealFilters = !empty($filters['subject']) || !empty($filters['topic']) || !empty($filters['keyword']) || !empty($filters['type']) || !empty($filters['organization']) || !empty($filters['role']);

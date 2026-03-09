@@ -82,11 +82,11 @@ class DatabaseBackupJob implements ShouldQueue
         // --routines, --triggers: Include stored procedures and triggers.
         // --set-gtid-purged=OFF: Avoids GTID issues on restore.
         $command = sprintf(
-            'mysqldump --host=%s --port=%s --user=%s --password=%s --single-transaction --skip-lock-tables --routines --triggers --set-gtid-purged=OFF %s | gzip',
+            'MYSQL_PWD=%s mysqldump --host=%s --port=%s --user=%s --single-transaction --skip-lock-tables --routines --triggers %s | gzip',
+            escapeshellarg($dbPassword),
             escapeshellarg($dbHost),
             escapeshellarg($dbPort),
             escapeshellarg($dbUsername),
-            escapeshellarg($dbPassword),
             escapeshellarg($dbDatabase)
         );
 
@@ -119,8 +119,10 @@ class DatabaseBackupJob implements ShouldQueue
             $exitCode = proc_close($process);
             $process = null;
 
-            if ($exitCode !== 0) {
-                $this->failJob($job, "mysqldump encerrou com código {$exitCode}. Stderr: " . substr($stderr, 0, 500));
+            // A file under 200 bytes is likely just a gzip header without actual data
+            if ($exitCode !== 0 || $result['size'] < 200) {
+                $errorMessage = "mysqldump falhou ou gerou arquivo vazio. Código: {$exitCode}. Stderr: " . substr($stderr, 0, 500);
+                $this->failJob($job, $errorMessage);
                 return;
             }
 

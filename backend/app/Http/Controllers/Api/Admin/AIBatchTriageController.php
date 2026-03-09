@@ -159,18 +159,17 @@ class AIBatchTriageController extends Controller
                 $batchId,
                 $chunk->pluck('id')->toArray(),
                 $validated['type'],
-                $validated['model'] ?? 'gpt-4o',
+                null, // model is now auto-selected via CAPABILITY_TRIAGE failover router
                 $reprocess,
-                $userId
+                $userId,
+                $index,       // chunk index for UI tracking
+                $delaySeconds // delay seconds for UI countdown
             );
 
-            // Envia para a fila dedicada e aplica o delay progressivo
+            // Envia para a fila dedicada.
+            // O delay agora é tratado DENTRO do job para permitir rastreamento em tempo real.
+            // Apenas o primeiro chunk é disparado imediatamente, os demais ficam na fila.
             $job->onQueue('ai-batches');
-
-            if ($delaySeconds > 0) {
-                $job->delay(now()->addSeconds($index * $delaySeconds));
-            }
-
             dispatch($job);
         });
 
@@ -355,7 +354,33 @@ class AIBatchTriageController extends Controller
             }
         }
 
+        // Enrich com dados de rastreamento de chunk e chave ativa
+        $data['chunk_status'] = Cache::get("batch_chunk_status_{$batchId}");
+        $data['active_key'] = Cache::get("batch_active_key_{$batchId}");
+
         return response()->json($data);
+    }
+
+    /**
+     * Get list of API keys configured for triage capability.
+     * Used by the frontend modal to display active key/model info (read-only).
+     */
+    public function activeKeys()
+    {
+        $keys = \App\Models\ApiKey::getKeysForCapability(\App\Models\ApiKey::CAPABILITY_TRIAGE);
+
+        $result = $keys->map(function ($key) {
+            return [
+                'id' => $key->id,
+                'name' => $key->vault?->name ?? "Chave #{$key->id}",
+                'provider' => $key->effective_provider,
+                'model' => $key->preferred_model,
+                'status' => $key->status,
+                'is_primary' => (bool) $key->is_primary,
+            ];
+        })->values();
+
+        return response()->json(['keys' => $result]);
     }
 
     /**
