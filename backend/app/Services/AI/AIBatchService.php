@@ -134,7 +134,8 @@ class AIBatchService
         $prompt .= "REFERENCIAS (Use IDs se houver correspondencia):\n";
         $prompt .= "Disciplinas: " . json_encode($subjectsRef) . "\n";
         $prompt .= "Assuntos: " . json_encode($topicsRef) . "\n\n";
-        $prompt .= "RESPOSTA: Retorne APENAS um Array JSON puro: [{\"id\": 1, \"difficulty\": \"easy|medium|hard|null\", \"difficulty_reasoning\": \"...\", \"explanation\": \"...\", \"subjects\": [ID|\"string\"], \"topics\": [ID|\"string\"], \"suggested_answer\": \"...|null\"}]";
+        $prompt .= "RESPOSTA: Retorne APENAS um Array JSON puro. NÃO use blocos de código markdown (```json). MANTENHA RIGOROSAMENTE OS IDs ORIGINAIS DAS QUESTÕES fornecidos no JSON de entrada.\n";
+        $prompt .= "Formato: [{\"id\": ID_ORIGINAL, \"difficulty\": \"easy|medium|hard|null\", \"difficulty_reasoning\": \"...\", \"explanation\": \"...\", \"subjects\": [ID|\"string\"], \"topics\": [ID|\"string\"], \"suggested_answer\": \"...|null\"}]";
         return $prompt;
     }
 
@@ -143,7 +144,11 @@ class AIBatchService
         $applied = 0;
         $errors = [];
 
-        // --- DEFENSIVE JSON UNWRAPPING ---
+        // Log para depuração de erros massivos (ajuda a ver o que a IA mandou)
+        \Illuminate\Support\Facades\Log::debug("[AIBATCH] Raw result keys detected: " . implode(', ', array_keys($results)));
+        if (count($results) === 0) {
+            \Illuminate\Support\Facades\Log::warning("[AIBATCH] Advertência: A IA retornou um array vazio ou inválido.");
+        }
         if (is_array($results)) {
             // Se a IA devolver um wrapper com a chave text contendo string JSON (Gemini via Guzzle sem parse completo)
             if (isset($results['text']) && is_string($results['text'])) {
