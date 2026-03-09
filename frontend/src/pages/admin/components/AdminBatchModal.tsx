@@ -57,11 +57,13 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                     try {
                         const res = await api.get('/api/v1/admin/triage/active');
                         if (res.data.success && res.data.batch_id && res.data.status === 'processing') {
-                            // Só recupera automaticamente se ainda estiver em processamento.
-                            setBatchId(res.data.batch_id);
-                            setStep('processing');
-                            onBatchStarted(res.data.batch_id);
-                            sessionStorage.setItem('active_batch_id', res.data.batch_id);
+                            // Só recupera automaticamente se ainda estiver em processamento E não tiver sido dispensado
+                            if (!useUIStore.getState().dismissedBatches.includes(res.data.batch_id)) {
+                                setBatchId(res.data.batch_id);
+                                setStep('processing');
+                                onBatchStarted(res.data.batch_id);
+                                sessionStorage.setItem('active_batch_id', res.data.batch_id);
+                            }
                         }
                     } catch (error) {
                         console.error('Erro ao buscar lote ativo:', error);
