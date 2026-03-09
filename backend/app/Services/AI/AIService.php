@@ -1158,12 +1158,21 @@ EOT;
 
     public function streamChatAboutStandaloneQuestion(Question $question, string $userAnswer, string $userMessage, array $history, ?int $userId = null): \Generator
     {
-        if (!$this->hasActiveKey(ApiKey::CAPABILITY_QUESTIONS)) {
+        // 1. Try Chat Tutor capability
+        $capability = ApiKey::CAPABILITY_CHAT_TUTOR;
+        $keys = ApiKey::getKeysForCapability($capability);
+
+        // 2. Fallback to Questions capability if no Chat Tutor keys
+        if ($keys->isEmpty()) {
+            $capability = ApiKey::CAPABILITY_QUESTIONS;
+            $keys = ApiKey::getKeysForCapability($capability);
+        }
+
+        if ($keys->isEmpty()) {
             yield "Desculpe, o sistema de IA está offline no momento.";
             return;
         }
 
-        $keys = ApiKey::getKeysForCapability(ApiKey::CAPABILITY_QUESTIONS);
         $lastException = null;
 
         $questionText = $question->statement;
@@ -1182,7 +1191,7 @@ EOT;
         foreach ($keys as $apiKey) {
             try {
                 $provider = $apiKey->provider;
-                $stream = $this->callAIStream($provider, $apiKey, $prompt, $userId, ApiKey::CAPABILITY_QUESTIONS);
+                $stream = $this->callAIStream($provider, $apiKey, $prompt, $userId, $capability);
 
                 yield from $stream;
 
