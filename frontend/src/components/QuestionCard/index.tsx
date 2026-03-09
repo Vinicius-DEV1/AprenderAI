@@ -365,14 +365,14 @@ export default function QuestionCard({
                         for (const line of lines) {
                             if (line.startsWith('data: ')) {
                                 const content = line.substring(6);
-                                if (content) {
-                                    if (!firstChunkReceived) {
-                                        setChatTyping(false);
-                                        firstChunkReceived = true;
-                                    }
-                                    setChatMessages(prev => prev.map(m => m.id === replyId ? { ...m, message: m.message + content } : m));
-                                    scrollToBottom();
+                                // REMOVED check: if (content) {
+                                // We want to allow empty content to preserve newlines!
+                                if (!firstChunkReceived) {
+                                    setChatTyping(false);
+                                    firstChunkReceived = true;
                                 }
+                                setChatMessages(prev => prev.map(m => m.id === replyId ? { ...m, message: m.message + (content || '') + (line === 'data: ' ? '\n' : '') } : m));
+                                scrollToBottom();
                             }
                         }
                     }
@@ -611,7 +611,7 @@ export default function QuestionCard({
                         <div className="qb-chat-history space-y-3 max-h-64 overflow-y-auto pr-1 mb-4" ref={chatHistoryRef}>
                             {chatMessages.map((msg, i) => (
                                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : (msg.role === 'system' ? 'justify-center' : 'justify-start')}`}>
-                                    <div className={`rounded-xl px-3 py-2 text-xs shadow-sm max-w-[90%] ${msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-700 border'}`} dangerouslySetInnerHTML={msg.role === 'assistant' ? renderMd(msg.message) : undefined}>{msg.role !== 'assistant' ? msg.message : undefined}</div>
+                                    <div className={`rounded-xl px-3 py-2 text-xs shadow-sm max-w-[90%] ${msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-700 border markdown-content'}`} dangerouslySetInnerHTML={msg.role === 'assistant' ? renderMd(msg.message) : undefined}>{msg.role !== 'assistant' ? msg.message : undefined}</div>
                                 </div>
                             ))}
                             {chatTyping && (

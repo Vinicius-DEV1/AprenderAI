@@ -411,7 +411,13 @@ class SimulationController extends Controller
 
                     // Send first chunk immediately, then every 3 chunks
                     if ($chunkCounter === 1 || $chunkCounter % 3 === 0 || str_contains($chunk, "\n")) {
-                        echo "data: " . $chunkBuffer . "\n\n";
+                        // Correctly prefix every line with 'data: ' for SSE compatibility
+                        $lines = explode("\n", $chunkBuffer);
+                        foreach ($lines as $index => $line) {
+                            echo "data: " . $line . "\n";
+                        }
+                        echo "\n"; // End of SSE event
+
                         $chunkBuffer = "";
                         if (ob_get_level() > 0)
                             ob_flush();
