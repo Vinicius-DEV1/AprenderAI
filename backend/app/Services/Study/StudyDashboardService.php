@@ -29,6 +29,9 @@ class StudyDashboardService
             'motivation' => $this->buildMotivationalMessage($user),
         ];
 
+        $generator = app(\App\Services\Study\StudyPlanGenerator::class);
+        $canUpdate = $generator->canUpdate($user);
+
         $nextUpdateAt = $plan->next_update_at;
         $daysUntilUpdate = $nextUpdateAt && $nextUpdateAt->isFuture()
             ? (int) now()->diffInDays($nextUpdateAt, false) + 1
@@ -36,7 +39,7 @@ class StudyDashboardService
 
         return array_merge($dynamic, [
             'plan' => $plan,
-            'can_update' => true, // Revisit permissions if needed
+            'can_update' => $canUpdate,
             'next_update_at' => $nextUpdateAt,
             'days_until_update' => $daysUntilUpdate,
         ]);
