@@ -24,28 +24,34 @@ class GoogleAnalyticsService
     {
         $enabled = Configuration::get('analytics_enabled', false);
         $propertyId = Configuration::get('analytics_property_id');
-        $encryptedJson = Configuration::get('analytics_service_account_json');
 
-        if (!$enabled || !$propertyId || !$encryptedJson) {
+        if (!$enabled || !$propertyId) {
             return;
         }
 
         $this->propertyId = $propertyId;
 
         try {
+            $credentialsArray = null;
+
             // First Priority: Try loading the JSON file directly from storage
             $jsonFilePath = storage_path('app/google/service-account.json');
             if (file_exists($jsonFilePath)) {
                 $credentialsArray = json_decode(file_get_contents($jsonFilePath), true);
             } else {
                 // Secondary Priority: Load encrypted string from DB config
-                $jsonCredentials = Crypt::decryptString($encryptedJson);
-                $credentialsArray = json_decode($jsonCredentials, true);
+                $encryptedJson = Configuration::get('analytics_service_account_json');
+                if ($encryptedJson) {
+                    $jsonCredentials = Crypt::decryptString($encryptedJson);
+                    $credentialsArray = json_decode($jsonCredentials, true);
+                }
             }
 
-            $this->client = new BetaAnalyticsDataClient([
-                'credentials' => $credentialsArray,
-            ]);
+            if ($credentialsArray) {
+                $this->client = new BetaAnalyticsDataClient([
+                    'credentials' => $credentialsArray,
+                ]);
+            }
         } catch (\Exception $e) {
             Log::error('Google Analytics API Initialization Error: ' . $e->getMessage());
         }
