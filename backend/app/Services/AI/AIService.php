@@ -1162,12 +1162,6 @@ EOT;
         $capability = ApiKey::CAPABILITY_CHAT_TUTOR;
         $keys = ApiKey::getKeysForCapability($capability);
 
-        // 2. Fallback to Questions capability if no Chat Tutor keys
-        if ($keys->isEmpty()) {
-            $capability = ApiKey::CAPABILITY_QUESTIONS;
-            $keys = ApiKey::getKeysForCapability($capability);
-        }
-
         if ($keys->isEmpty()) {
             yield "Desculpe, o sistema de IA está offline no momento.";
             return;
