@@ -826,7 +826,7 @@ export default function AdminQuestions() {
                                 </div>
                             </div>
                         )}
-                    </div>
+                    </>
                 )}
             </div>
 
@@ -848,7 +848,7 @@ export default function AdminQuestions() {
                     />
                 )}
             </AnimatePresence>
-        </div>
+        </div >
     );
 }
 
