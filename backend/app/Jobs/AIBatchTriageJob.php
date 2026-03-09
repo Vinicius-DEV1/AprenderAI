@@ -199,15 +199,14 @@ class AIBatchTriageJob implements ShouldQueue
                 'updated_at' => now()
             ];
 
-            // Só permite atualizar o status para 'completed' se atingiu o total E não falhou fatalmente
-            if ($data['status'] === 'completed') {
+            // FAIL-SAFE: Se atingiu o total, marca como completed atômicamente no banco
+            if ($data['processed'] + $data['errors'] >= $data['total'] && $data['total'] > 0) {
                 $updateData['status'] = 'completed';
             }
 
-            // Garante que se o banco já estiver 'completed', não volte para 'processing'
             \Illuminate\Support\Facades\DB::table('ai_processing_batches')
                 ->where('batch_id', $this->batchId)
-                ->where('status', '!=', 'completed') // Proteção extra: se já estiver concluído, não mexe no status
+                ->where('status', '!=', 'completed')
                 ->update($updateData);
 
             if (!empty($detailedErrors) || $errorMessage) {

@@ -275,13 +275,13 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                                 progress?.status === 'completed' ? 'bg-gradient-to-r from-green-400 to-emerald-600' :
                                                     'bg-gradient-to-r from-indigo-500 to-purple-600'
                                             }`}
-                                        style={{ width: `${progress && progress.total > 0 ? (progress.processed / progress.total) * 100 : 0}%` }}
+                                        style={{ width: `${progress && progress.total > 0 ? ((progress.processed + progress.errors) / progress.total) * 100 : 0}%` }}
                                     ></div>
                                 </div>
                                 <div className="text-center w-full">
                                     <p className={`font-black text-4xl mb-1 tracking-tight ${progress?.status === 'failed' ? 'text-red-600' : progress?.status === 'cancelled' ? 'text-amber-500' : 'text-gray-900'}`}>
                                         {progress
-                                            ? `${Math.max(progress.processed, progress.errors)} / ${progress.total}`
+                                            ? `${progress.processed + progress.errors} / ${progress.total}`
                                             : 'Iniciando...'}
                                     </p>
 
