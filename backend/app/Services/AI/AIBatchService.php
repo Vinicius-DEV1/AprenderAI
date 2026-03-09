@@ -143,6 +143,12 @@ class AIBatchService
     {
         $applied = 0;
         $errors = [];
+        $stats = [
+            'difficulty' => 0,
+            'explanation' => 0,
+            'subjects' => 0,
+            'topics' => 0,
+        ];
 
         // Log para depuração de erros massivos (ajuda a ver o que a IA mandou)
         \Illuminate\Support\Facades\Log::debug("[AIBATCH] Raw result keys detected: " . implode(', ', array_keys($results)));
@@ -244,6 +250,10 @@ class AIBatchService
             // Lógica de Redação: Ignorar dificuldade e classificação
             $isEssay = strtolower($question->format ?? '') === 'redacao' || strtolower($question->tipo_questao ?? '') === 'redacao';
             if ($isEssay) {
+                if (!empty($explanation)) {
+                    $stats['explanation']++;
+                }
+
                 $question->update([
                     'explanation' => $explanation,
                     'review_status' => 'approved'
@@ -274,6 +284,13 @@ class AIBatchService
                 if (!$isCorrectLabel) {
                     $needsManualReview = true;
                 }
+            }
+
+            if (!empty($difficulty) && $difficulty !== $question->difficulty) {
+                $stats['difficulty']++;
+            }
+            if (!empty($explanation) && $explanation !== $question->explanation) {
+                $stats['explanation']++;
             }
 
             $question->update([
@@ -322,6 +339,7 @@ class AIBatchService
             if (!empty($subjectIdsToSync)) {
                 if ($reprocess || $question->subjects->isEmpty()) {
                     $question->subjects()->sync($subjectIdsToSync);
+                    $stats['subjects']++;
                 }
             }
 
@@ -364,6 +382,7 @@ class AIBatchService
             if (!empty($topicIdsToSync)) {
                 if ($reprocess || $question->topics->isEmpty()) {
                     $question->topics()->sync($topicIdsToSync);
+                    $stats['topics']++;
                 }
             }
 
@@ -384,6 +403,6 @@ class AIBatchService
                 ]);
             }
         }
-        return ['total' => $questions->count(), 'applied' => $applied, 'errors' => $errors];
+        return ['total' => $questions->count(), 'applied' => $applied, 'errors' => $errors, 'stats' => $stats];
     }
 }

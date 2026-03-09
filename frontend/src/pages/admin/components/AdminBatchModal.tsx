@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../api/axios';
+import AdminQuestionViewModal from './AdminQuestionViewModal';
 
 interface BatchModalProps {
     isOpen: boolean;
@@ -24,6 +25,18 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
     const [progress, setProgress] = useState<any>(null);
     const [lastProgressRecord, setLastProgressRecord] = useState<{ processed: number; time: number } | null>(null);
     const [etaSeconds, setEtaSeconds] = useState<number | null>(null);
+
+    const [viewQuestionId, setViewQuestionId] = useState<number | null>(null);
+    const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
+
+    const { data: batchDetails } = useQuery({
+        queryKey: ['admin-batch-details', batchId],
+        queryFn: async () => {
+            const res = await api.get(`/api/v1/admin/triage/${batchId}/details`);
+            return res.data;
+        },
+        enabled: !!(batchId && progress?.status === 'completed'),
+    });
 
     // Persistência com Servidor (Recuperação no F5)
     // Ao abrir o modal, prioriza o batchId salvo na sessão atual.
@@ -304,6 +317,118 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                         </div>
                                     )}
 
+                                    {/* Resumo de Parâmetros Atualizados */}
+                                    {progress?.status === 'completed' && progress.stats && (
+                                        <div className="flex flex-wrap justify-center gap-3 mb-6 animate-in fade-in slide-in-from-top-4 duration-1000">
+                                            {progress.stats.difficulty > 0 && (
+                                                <div className="bg-amber-50 border border-amber-100 px-4 py-2 rounded-2xl flex items-center gap-3 shadow-sm hover:scale-105 transition-transform cursor-default">
+                                                    <span className="text-2xl">⚡</span>
+                                                    <div className="flex flex-col items-start">
+                                                        <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest leading-none mb-1">Dificuldade</span>
+                                                        <span className="text-base font-black text-amber-600">{progress.stats.difficulty} <span className="text-[10px] opacity-70">setadas</span></span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {progress.stats.explanation > 0 && (
+                                                <div className="bg-emerald-50 border border-emerald-100 px-4 py-2 rounded-2xl flex items-center gap-3 shadow-sm hover:scale-105 transition-transform cursor-default">
+                                                    <span className="text-2xl">📝</span>
+                                                    <div className="flex flex-col items-start">
+                                                        <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest leading-none mb-1">Explicação</span>
+                                                        <span className="text-base font-black text-emerald-600">{progress.stats.explanation} <span className="text-[10px] opacity-70">geradas</span></span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {progress.stats.subjects > 0 && (
+                                                <div className="bg-blue-50 border border-blue-100 px-4 py-2 rounded-2xl flex items-center gap-3 shadow-sm hover:scale-105 transition-transform cursor-default">
+                                                    <span className="text-2xl">📚</span>
+                                                    <div className="flex flex-col items-start">
+                                                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest leading-none mb-1">Disciplinas</span>
+                                                        <span className="text-base font-black text-blue-600">{progress.stats.subjects} <span className="text-[10px] opacity-70">vínculos</span></span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {progress.stats.topics > 0 && (
+                                                <div className="bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-2xl flex items-center gap-3 shadow-sm hover:scale-105 transition-transform cursor-default">
+                                                    <span className="text-2xl">🏷️</span>
+                                                    <div className="flex flex-col items-start">
+                                                        <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-1">Assuntos</span>
+                                                        <span className="text-base font-black text-indigo-600">{progress.stats.topics} <span className="text-[10px] opacity-70">vínculos</span></span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Detalhamento das Questões Processadas */}
+                                    {progress?.status === 'completed' && batchDetails?.items && batchDetails.items.length > 0 && (
+                                        <div className="mt-8 w-full border-t border-gray-100 pt-8">
+                                            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center justify-center gap-2">
+                                                <span className="w-8 h-px bg-gray-100"></span>
+                                                Detalhamento das Alterações
+                                                <span className="w-8 h-px bg-gray-100"></span>
+                                            </h4>
+
+                                            <div className="grid grid-cols-1 gap-4 max-w-3xl mx-auto">
+                                                {batchDetails.items.map((item: any) => (
+                                                    <div key={item.id} className="bg-white border border-gray-100 rounded-3xl p-5 shadow-sm hover:shadow-md transition group">
+                                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-2 mb-2">
+                                                                    <span className="px-2 py-1 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-widest">#{item.question_id}</span>
+                                                                    <span className="text-xs font-bold text-gray-400 line-clamp-1 italic">"{item.statement}"</span>
+                                                                </div>
+
+                                                                <div className="flex flex-wrap gap-4 mt-3">
+                                                                    {/* Dificuldade Diff */}
+                                                                    {item.before?.difficulty !== item.after?.difficulty && (
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Dificuldade</span>
+                                                                            <div className="flex items-center gap-1.5 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
+                                                                                <span className="text-[10px] font-bold text-amber-400 line-through opacity-50 uppercase">{item.before?.difficulty || 'N/A'}</span>
+                                                                                <span className="text-amber-400 text-xs">→</span>
+                                                                                <span className="text-[11px] font-black text-amber-600 uppercase">{item.after?.difficulty}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Explicação Indicator */}
+                                                                    {item.after?.explanation && (
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Explicação</span>
+                                                                            <div className="flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">
+                                                                                <span className="text-[10px] font-bold text-emerald-600">✅ Gerada</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Matérias Indicator */}
+                                                                    {(item.after?.subjects?.length || 0) > (item.before?.subjects?.length || 0) && (
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Vínculos</span>
+                                                                            <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-lg border border-blue-100">
+                                                                                <span className="text-[10px] font-bold text-blue-600">+{item.after.subjects.length - (item.before?.subjects?.length || 0)} Matérias</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            <button
+                                                                onClick={() => {
+                                                                    setViewQuestionId(item.question_id);
+                                                                    setIsQuestionModalOpen(true);
+                                                                }}
+                                                                className="px-4 py-3 bg-indigo-50 text-indigo-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition shadow-sm group-hover:scale-105 w-full md:w-auto text-center"
+                                                            >
+                                                                Ver Questão 👁️
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="flex flex-col items-center gap-1">
                                         <p className={`text-xs font-bold uppercase tracking-widest ${progress?.status === 'failed' ? 'text-red-500' : progress?.status === 'completed' ? 'text-green-600' : 'text-indigo-500'}`}>
                                             {progress?.message || (batchId ? 'Conectando ao rastreador...' : 'Aguardando servidor...')}
@@ -542,6 +667,12 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                     )}
                 </div>
             </div>
+
+            <AdminQuestionViewModal
+                isOpen={isQuestionModalOpen}
+                onClose={() => setIsQuestionModalOpen(false)}
+                questionId={viewQuestionId}
+            />
         </div>
     );
 }

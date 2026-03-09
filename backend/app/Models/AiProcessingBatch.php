@@ -20,6 +20,7 @@ class AiProcessingBatch extends Model
         'output_tokens',
         'status',
         'errors_log',
+        'stats',
     ];
 
     protected $casts = [
@@ -29,6 +30,7 @@ class AiProcessingBatch extends Model
         'error_count' => 'integer',
         'input_tokens' => 'integer',
         'output_tokens' => 'integer',
+        'stats' => 'array',
     ];
 
     /**

@@ -79,7 +79,8 @@ class AIBatchTriageJob implements ShouldQueue
                 $result['errors'] ?? [],
                 $result['usage']['input_tokens'] ?? 0,
                 $result['usage']['output_tokens'] ?? 0,
-                $result['estimated_cost'] ?? 0
+                $result['estimated_cost'] ?? 0,
+                $result['stats'] ?? []
             );
 
             Log::info("[AIBATCH] Batch job finished", [
@@ -105,7 +106,8 @@ class AIBatchTriageJob implements ShouldQueue
         array $detailedErrors = [],
         int $inputTokens = 0,
         int $outputTokens = 0,
-        float $estimatedCost = 0
+        float $estimatedCost = 0,
+        array $stats = []
     ): void {
         $key = "batch_progress_{$this->batchId}";
         $lock = \Illuminate\Support\Facades\Cache::lock($key . "_lock", 10);
@@ -127,8 +129,31 @@ class AIBatchTriageJob implements ShouldQueue
                     'output_tokens' => $dbBatch ? $dbBatch->output_tokens : 0,
                     'status' => $dbBatch ? $dbBatch->status : 'processing',
                     'last_error' => null,
-                    'errors_log' => $dbBatch ? ($dbBatch->errors_log ?? []) : []
+                    'errors_log' => $dbBatch ? ($dbBatch->errors_log ?? []) : [],
+                    'stats' => [
+                        'difficulty' => 0,
+                        'explanation' => 0,
+                        'subjects' => 0,
+                        'topics' => 0,
+                    ]
                 ];
+            }
+
+            // Inicializa stats se não existir
+            if (!isset($data['stats'])) {
+                $data['stats'] = [
+                    'difficulty' => 0,
+                    'explanation' => 0,
+                    'subjects' => 0,
+                    'topics' => 0,
+                ];
+            }
+
+            // Incrementa os stats
+            foreach ($stats as $key => $val) {
+                if (isset($data['stats'][$key])) {
+                    $data['stats'][$key] += $val;
+                }
             }
 
             $data['processed'] += $applied;
@@ -166,6 +191,7 @@ class AIBatchTriageJob implements ShouldQueue
                 $dbBatch->output_tokens += $outputTokens;
                 $dbBatch->estimated_cost += $estimatedCost;
                 $dbBatch->status = $data['status'];
+                $dbBatch->stats = $data['stats'];
 
                 if (!empty($detailedErrors) || $errorMessage) {
                     $existingLogs = $dbBatch->errors_log ?? [];
