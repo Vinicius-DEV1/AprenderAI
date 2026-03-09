@@ -166,9 +166,24 @@ class SimulationController extends Controller
 
         if ($legacyType === 'enem' && !empty($legacyDist)) {
             foreach ($legacyDist as $subject => $qty) {
+                // Normalization of subject name (Resiliency)
+                $subjectUpper = mb_strtoupper(trim($subject), 'UTF-8');
+                $subjectNorm = str_replace(
+                    ['Á', 'À', 'Â', 'Ã', 'É', 'Ê', 'Í', 'Ó', 'Ô', 'Õ', 'Ú', 'Ç'],
+                    ['A', 'A', 'A', 'A', 'E', 'E', 'I', 'O', 'O', 'O', 'U', 'C'],
+                    $subjectUpper
+                );
+
+                // Specific case for common subjects to match the service layer logic
+                if (str_contains($subjectNorm, 'PORTUGU')) {
+                    $subjectNorm = "LINGUA PORTUGUESA";
+                } elseif (str_contains($subjectNorm, 'MATEM')) {
+                    $subjectNorm = "MATEMATICA";
+                }
+
                 $realNeeded = $qty - (int) ceil($qty * $legacyAiRatio);
                 $available = \App\Models\Question::published()->where('type', 'enem')
-                    ->whereHas('subjects', fn($q) => $q->where('name', $subject))
+                    ->whereHas('subjects', fn($q) => $q->where('name', $subjectNorm))
                     ->count();
 
                 if ($available < $realNeeded) {
