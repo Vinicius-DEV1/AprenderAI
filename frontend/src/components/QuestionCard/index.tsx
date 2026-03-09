@@ -614,6 +614,15 @@ export default function QuestionCard({
                                     <div className={`rounded-xl px-3 py-2 text-xs shadow-sm max-w-[90%] ${msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-700 border'}`} dangerouslySetInnerHTML={msg.role === 'assistant' ? renderMd(msg.message) : undefined}>{msg.role !== 'assistant' ? msg.message : undefined}</div>
                                 </div>
                             ))}
+                            {chatTyping && (
+                                <div className="flex justify-start">
+                                    <div className="typing-dots">
+                                        <div className="typing-dot" />
+                                        <div className="typing-dot" />
+                                        <div className="typing-dot" />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         <div className="flex gap-2 border-t pt-3">
                             <input type="text" className="flex-1 rounded-md border text-xs px-3 py-2 outline-none focus:ring-1 focus:ring-indigo-500 dark:bg-slate-900" placeholder="Qual sua dúvida?" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendChat()} disabled={chatTyping} />
