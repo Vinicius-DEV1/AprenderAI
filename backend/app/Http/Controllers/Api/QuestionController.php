@@ -475,7 +475,7 @@ class QuestionController extends Controller
             $aiService = app(\App\Services\AI\AIService::class);
             $vector = $aiService->generateEmbedding($userPrompt, $user->id);
             if ($vector) {
-                $cachedFilters = $cacheService->findSimilarMatch($vector, 0.94);
+                $cachedFilters = $cacheService->findSimilarMatch($vector, 0.88);
             }
         }
 

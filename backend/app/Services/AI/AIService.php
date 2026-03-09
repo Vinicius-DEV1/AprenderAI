@@ -640,7 +640,7 @@ EOT;
 
             $apiKey = $apiKeyModel->decrypted_key;
             // Usando v1beta e o modelo retornado pela discovery da API
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key={$apiKey}";
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key={$apiKey}";
 
             $payload = [
                 'content' => [
