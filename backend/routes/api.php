@@ -260,6 +260,7 @@ Route::prefix('v1')->group(function () {
                 Route::post('/start', [AdminAIBatchTriageController::class, 'start']);
                 Route::get('/active', [AdminAIBatchTriageController::class, 'active']);
                 Route::get('/{batchId}/status', [AdminAIBatchTriageController::class, 'status']);
+                Route::get('/{batchId}/details', [AdminAIBatchTriageController::class, 'details']); // Moved here
                 Route::post('/{batchId}/cancel', [AdminAIBatchTriageController::class, 'cancel']);
                 Route::post('/{batchId}/cancel-and-revert', [AdminAIBatchTriageController::class, 'cancelAndRevert']);
             });
@@ -267,7 +268,6 @@ Route::prefix('v1')->group(function () {
             // AI Batch History & Rollback
             Route::prefix('questions-batch')->group(function () {
                 Route::get('/history', [AdminAIBatchTriageController::class, 'history']);
-                Route::get('/details/{batchId}', [AdminAIBatchTriageController::class, 'details']);
                 Route::post('/undo-batch/{batchId}', [AdminAIBatchTriageController::class, 'undoBatch']);
                 Route::post('/undo-item/{itemId}', [AdminAIBatchTriageController::class, 'undoItem']);
                 Route::post('/retry/{batchId}', [AdminAIBatchTriageController::class, 'retry']);

@@ -129,7 +129,10 @@ class AIBatchService
         $prompt .= "   - DISCURSIVA: Crie uma resposta pedagógica, pois não há alternativas.\n";
         $prompt .= "   - REDAÇÃO: Para temas de redação, gere APENAS Feedback Pedagógico em `explanation` e deixe o resto null.\n";
         $prompt .= "2. LATEX OBRIGATÓRIO: Use \\( ... \\) e \\[ ... \\] para qualquer fórmula matemática/física.\n\n";
-        $prompt .= "3. CLASSIFICAÇÃO (MÚLTIPLOS ASSUNTOS):\n   - Se a questão for genuinamente interdisciplinar, retorne um ARRAY de assuntos/matérias. SE NÃO, retorne apenas 1 item no array.\n   - Se não usar ID existente, retorne string nova no array. `subjects` = áreas (ex: 'Matemática'). `topics` = assuntos (ex: 'Trigonometria'). MÁXIMO 1 a 4 palavras. Iniciais Maiúsculas.\n";
+        $prompt .= "3. CLASSIFICAÇÃO (MÚLTIPLOS ASSUNTOS):\n";
+        $prompt .= "   - Se a questão for genuinamente interdisciplinar, retorne um ARRAY de assuntos/matérias. SE NÃO, retorne apenas 1 item no array.\n";
+        $prompt .= "   - Nunca combine dois assuntos em uma mesma string; se houver mais de um tema, use obrigatoriamente itens separados no array.\n";
+        $prompt .= "   - Se não usar ID existente, retorne string nova no array. `subjects` = áreas (ex: 'Matemática'). `topics` = assuntos (ex: 'Trigonometria'). MÁXIMO 1 a 4 palavras. Iniciais Maiúsculas.\n";
         $prompt .= "DADOS DAS QUESTOES:\n" . json_encode($questionsData) . "\n\n";
         $prompt .= "REFERENCIAS (Use IDs se houver correspondencia):\n";
         $prompt .= "Disciplinas: " . json_encode($subjectsRef) . "\n";

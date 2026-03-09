@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
-import AdminBatchModal from './components/AdminBatchModal';
-import AdminDeleteQuestionModal from './components/AdminDeleteQuestionModal';
 import { AdminPageSkeleton } from './components/AdminSkeletons';
 import QuestionBankExplorerModal from './components/QuestionBankExplorerModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { useUIStore } from '../../stores/uiStore';
+import AdminDeleteQuestionModal from './components/AdminDeleteQuestionModal';
 
 export default function AdminQuestions() {
     const queryClient = useQueryClient();
@@ -28,13 +28,12 @@ export default function AdminQuestions() {
 
     const [page, setPage] = useState(1);
     const [triagePage, setTriagePage] = useState(1);
-    const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
     const [removingIds, setRemovingIds] = useState<number[]>([]);
     const [activeMenu, setActiveMenu] = useState<number | null>(null);
     const [mainActiveMenu, setMainActiveMenu] = useState<number | null>(null);
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean, id: number | null }>({ isOpen: false, id: null });
     const [explorerOrg, setExplorerOrg] = useState<string | null>(null);
-    const [dismissedBatches, setDismissedBatches] = useState<string[]>([]);
+    const ui = useUIStore();
 
     // Reset pagination when filters change
     useEffect(() => {
@@ -50,23 +49,6 @@ export default function AdminQuestions() {
     const [reportsPage, setReportsPage] = useState(1);
     const [trashedPage, setTrashedPage] = useState(1);
     const [trashedSearch, setTrashedSearch] = useState('');
-    // Verificação de Lote Ativo no Servidor
-    const { data: activeBatchData } = useQuery({
-        queryKey: ['admin-triage-active'],
-        queryFn: async () => {
-            const res = await api.get('/api/v1/admin/triage/active');
-            return res.data;
-        },
-        refetchInterval: isBatchModalOpen ? false : 30000 // Verifica a cada 30s se o modal estiver fechado
-    });
-
-    useEffect(() => {
-        if (activeBatchData?.success && activeBatchData?.batch_id) {
-            // Se detectar um lote ativo pela primeira vez na montagem ou refresh, podemos abrir o modal
-            // Mas talvez seja melhor apenas mostrar o widget flutuante para não ser invasivo
-            // setIsBatchModalOpen(true); 
-        }
-    }, [activeBatchData]);
 
     const { data, isLoading } = useQuery({
         queryKey: ['admin-questions', filters, page, triageFilters, triagePage],
@@ -232,7 +214,7 @@ export default function AdminQuestions() {
                         {/* Right: Action and Support Text */}
                         <div className="flex flex-col items-center xl:items-end gap-1 shrink-0">
                             <button
-                                onClick={() => setIsBatchModalOpen(true)}
+                                onClick={() => ui.openBatchModal(counts.pending_total)}
                                 className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 flex items-center gap-2"
                             >
                                 🧨 Processamento em Lote
@@ -847,46 +829,6 @@ export default function AdminQuestions() {
                     </>
                 )}
             </div>
-
-            <AdminBatchModal
-                isOpen={isBatchModalOpen}
-                onClose={() => setIsBatchModalOpen(false)}
-                pendingCount={counts.pending_total || 0}
-                onBatchStarted={(batchId) => {
-                    console.log(`Lote ${batchId} iniciado.`);
-                    queryClient.invalidateQueries({ queryKey: ['admin-questions'] });
-                }}
-            />
-
-            {!isBatchModalOpen && activeBatchData?.success && activeBatchData?.batch_id && !dismissedBatches.includes(activeBatchData.batch_id) && (
-                <div
-                    className={`fixed bottom-6 right-6 z-50 ${activeBatchData.status === 'processing' ? 'bg-indigo-600 animate-bounce cursor-pointer' : activeBatchData.status === 'failed' || activeBatchData.status === 'cancelled' ? 'bg-red-600' : 'bg-green-600'
-                        } text-white pl-5 pr-2 py-2 rounded-full shadow-2xl hover:scale-105 transition-all flex items-center gap-3 border-2 border-white group`}
-                >
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => setIsBatchModalOpen(true)}>
-                        <span className="text-xl">
-                            {activeBatchData.status === 'processing' ? '⏳' : activeBatchData.status === 'failed' ? '❌' : activeBatchData.status === 'cancelled' ? '🛑' : '✅'}
-                        </span>
-                        <span className="font-black text-sm tracking-wide">
-                            {activeBatchData.status === 'processing' ? 'PAINEL IA' : activeBatchData.status === 'failed' ? 'LOTE COM FALHA' : activeBatchData.status === 'cancelled' ? 'LOTE CANCELADO' : 'LOTE CONCLUÍDO'}
-                        </span>
-                    </div>
-
-                    {activeBatchData.status !== 'processing' && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setDismissedBatches(prev => [...prev, activeBatchData.batch_id]);
-                            }}
-                            className="ml-2 w-8 h-8 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 text-white transition-colors"
-                            title="Ocultar aviso"
-                        >
-                            ✕
-                        </button>
-                    )}
-                    <div className="absolute inset-0 rounded-full border-4 border-white opacity-20 -z-10 group-hover:animate-ping pointer-events-none"></div>
-                </div>
-            )}
 
             <AdminDeleteQuestionModal
                 isOpen={deleteModal.isOpen}
