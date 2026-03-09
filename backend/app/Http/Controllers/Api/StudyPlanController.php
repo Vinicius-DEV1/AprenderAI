@@ -54,6 +54,15 @@ class StudyPlanController extends Controller
             ]);
         }
 
+        // 3.1. If plan is processing, return to wizard (polling state)
+        if ($plan->status === 'processing') {
+            return response()->json([
+                'view_state' => 'wizard',
+                'processing_plan_id' => $plan->id,
+                'message' => 'Seu plano ainda está sendo gerado...'
+            ]);
+        }
+
         // 4. Cooldown Check (if plan exists, we might still be in cooldown for update)
         $canUpdate = $this->generator->canUpdate($user);
         $nextUpdateAt = $plan->next_update_at;

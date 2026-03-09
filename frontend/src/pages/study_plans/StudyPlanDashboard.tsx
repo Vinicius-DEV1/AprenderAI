@@ -79,7 +79,12 @@ export default function StudyPlanDashboard() {
     // Main Dashboard — só chegamos aqui se view_state === 'dashboard'
 
     // Safely destruct dashboard data
-    const { confidence, diagnostics, projection, weak_strong, recommendations, exam_strategy, plan, can_update, next_update_at, days_until_update, motivation } = data;
+    let { confidence, diagnostics, projection, weak_strong, recommendations, exam_strategy, plan, can_update, next_update_at, days_until_update, motivation } = data;
+
+    // Frontend sanitization logic to ensure new generic messages are shown even for existing plan data
+    if (motivation && (motivation.includes('precisão estatística') || motivation.includes('dados insuficientes'))) {
+        motivation = "O Xavier está calibrando suas métricas. Continue resolvendo questões para uma análise precisa de sua melhor área.";
+    }
 
     const dayIcons: Record<string, string> = {
         'segunda': '📘',
@@ -115,26 +120,7 @@ export default function StudyPlanDashboard() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    {can_update ? (
-                        <button
-                            onClick={() => updateMutation.mutate()}
-                            disabled={updateMutation.isPending}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-blue-500/20 active:scale-95 disabled:opacity-50"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                            {updateMutation.isPending ? 'Atualizando...' : 'Atualizar Plano'}
-                        </button>
-                    ) : (
-                        <div className="text-right">
-                            <button disabled className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-sm font-bold rounded-xl cursor-not-allowed border border-slate-200 dark:border-slate-700">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                Plano Protegido
-                            </button>
-                            <p className="text-[10px] font-bold text-slate-400 mt-1.5 uppercase tracking-widest">
-                                Disponível em {new Date(next_update_at).toLocaleDateString()} ({days_until_update} {days_until_update === 1 ? 'dia' : 'dias'})
-                            </p>
-                        </div>
-                    )}
+                    {/* Botão de atualização removido do topo conforme solicitado */}
                 </div>
             </div>
 
@@ -189,7 +175,7 @@ export default function StudyPlanDashboard() {
                                     <p className="text-[10px] text-red-400/80 mt-1.5 font-bold uppercase">{item.attempts} questões respondidas</p>
                                 </div>
                             )) : (
-                                <p className="text-sm text-slate-400 italic text-center py-8 bg-slate-50/50 dark:bg-slate-800/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">Dados insuficientes para tópicos fracos.</p>
+                                <p className="text-sm text-slate-400 italic text-center py-8 bg-slate-50/50 dark:bg-slate-800/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">Continue sua jornada para identificar pontos de melhoria.</p>
                             )}
                         </div>
                     </div>
@@ -216,7 +202,7 @@ export default function StudyPlanDashboard() {
                                     <p className="text-[10px] text-green-400/80 mt-1.5 font-bold uppercase">{item.attempts} questões respondidas</p>
                                 </div>
                             )) : (
-                                <p className="text-sm text-slate-400 italic text-center py-8 bg-slate-50/50 dark:bg-slate-800/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">Continue praticando para consolidar forças.</p>
+                                <p className="text-sm text-slate-400 italic text-center py-8 bg-slate-50/50 dark:bg-slate-800/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">Mantenha o ritmo para transformar dedicação em domínio.</p>
                             )}
                         </div>
                     </div>
@@ -425,7 +411,7 @@ export default function StudyPlanDashboard() {
                     ) : (
                         <div className="flex items-center gap-4 bg-white/5 rounded-2xl p-6 border border-white/5 relative z-10">
                             <svg className="w-8 h-8 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            <p className="text-sm text-slate-400 font-medium italic">{projection.reason}</p>
+                            <p className="text-sm text-slate-400 font-medium italic">O Xavier está calibrando suas métricas. Continue resolvendo questões para uma projeção precisa.</p>
                         </div>
                     )}
                 </div>
@@ -468,68 +454,6 @@ export default function StudyPlanDashboard() {
                 </div>
             </div>
 
-            {/* Schedule */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden shadow-sm">
-                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                            <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-slate-900 dark:text-white">Cronograma Semanal</h3>
-                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Seu roteiro de estudos sugerido</p>
-                        </div>
-                    </div>
-                    {!can_update && (
-                        <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-full text-[10px] font-black tracking-widest uppercase">Plano Fixo</span>
-                    )}
-                </div>
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {Object.entries(plan?.plan_json?.weekly_schedule?.days || plan?.plan_json?.weekly_schedule || {}).map(([day, tasks]: [string, any]) => (
-                        <div key={day} className="bg-slate-50/50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800 p-5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                            <h4 className="text-sm font-black text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2 capitalize">
-                                <span className="text-xl">{getDayIcon(day)}</span>
-                                {day}
-                            </h4>
-                            <ul className="space-y-4">
-                                {Array.isArray(tasks) ? tasks.map((task: any, i: number) => (
-                                    <li key={i} className="group/task">
-                                        {typeof task === 'object' ? (
-                                            <div className="flex gap-3">
-                                                <div className="flex flex-col items-center gap-1 mt-1 shrink-0">
-                                                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full group-hover/task:scale-150 transition-transform"></span>
-                                                    <div className="w-px h-full bg-slate-200 dark:bg-slate-700"></div>
-                                                </div>
-                                                <div className="space-y-1 pb-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[10px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded leading-none">{task.time || 'Bloco'}</span>
-                                                        <span className="text-sm font-extrabold text-slate-800 dark:text-slate-200 leading-tight">{task.activity}</span>
-                                                    </div>
-                                                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug">{task.reason}</p>
-                                                    <div className="flex flex-wrap gap-2 pt-1">
-                                                        <span className="text-[9px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full uppercase">{task.method}</span>
-                                                        <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full uppercase">Meta: {task.goal}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="flex gap-3">
-                                                <span className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 shrink-0"></span>
-                                                <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{typeof task === 'string' ? task : '-'}</span>
-                                            </div>
-                                        )}
-                                    </li>
-                                )) : (
-                                    <li className="p-4 text-center bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/20">
-                                        <p className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">🛋️ Rest Day</p>
-                                        <p className="text-[10px] text-blue-400 mt-1">{typeof tasks === 'string' ? tasks : '-'}</p>
-                                    </li>
-                                )}
-                            </ul>
-                        </div>
-                    ))}
-                </div>
-            </div>
 
             {/* Recommendations */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-8 shadow-sm">
@@ -608,7 +532,7 @@ export default function StudyPlanDashboard() {
                 <div className="relative z-10 border-t md:border-t-0 md:border-l border-white/10 pt-8 md:pt-0 md:pl-10">
                     <h4 className="text-[10px] uppercase font-black text-blue-400 mb-4 tracking-[0.2em]">Estratégia Mestres</h4>
                     <p className="text-base text-slate-300 leading-relaxed font-medium">
-                        {plan.plan_json.methodology || 'Foco absoluto em prática deliberada, análise de erros e revisão espaçada baseada em dados reais de simulação.'}
+                        {plan.plan_json?.methodology || 'Foco absoluto em prática deliberada, análise de erros e revisão espaçada baseada em dados reais de simulação.'}
                     </p>
                     <div className="mt-8 flex items-center gap-4">
                         <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-2xl">🤖</div>
