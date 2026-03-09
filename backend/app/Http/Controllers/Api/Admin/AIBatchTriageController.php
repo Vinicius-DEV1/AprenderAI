@@ -349,6 +349,9 @@ class AIBatchTriageController extends Controller
                 $data['status'] = 'completed';
                 // Se houver erros, a mensagem deve refletir isso
                 $data['message'] = $data['errors'] > 0 ? "Finalizado com Erros" : "Concluído!";
+
+                // Garantir que o banco seja atualizado para não ficar preso como processing
+                $batch->update(['status' => 'completed']);
             }
         }
 
