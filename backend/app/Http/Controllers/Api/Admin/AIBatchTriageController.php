@@ -149,8 +149,12 @@ class AIBatchTriageController extends Controller
         $reprocess = $validated['reprocess'] ?? false;
         $delaySeconds = $request->input('delay_seconds', 0);
 
+        Log::info("[AIBATCH] Dispatching jobs for batch", ['batch_id' => $batchId, 'total' => $total, 'chunk_size' => $chunkSize]);
+
         $userId = auth()->id();
         $questions->chunk($chunkSize)->each(function ($chunk, $index) use ($batchId, $validated, $reprocess, $delaySeconds, $userId) {
+            Log::info("[AIBATCH] Dispatching chunk {$index}", ['count' => $chunk->count()]);
+
             $job = new AIBatchTriageJob(
                 $batchId,
                 $chunk->pluck('id')->toArray(),
@@ -169,6 +173,8 @@ class AIBatchTriageController extends Controller
 
             dispatch($job);
         });
+
+        Log::info("[AIBATCH] All jobs dispatched for batch", ['batch_id' => $batchId]);
 
         return response()->json([
             'success' => true,
@@ -284,39 +290,61 @@ class AIBatchTriageController extends Controller
      */
     public function status($batchId)
     {
+        $batch = AiProcessingBatch::where('batch_id', $batchId)->first();
         $data = Cache::get("batch_progress_{$batchId}");
 
-        if (!$data) {
-            $batch = AiProcessingBatch::where('batch_id', $batchId)->first();
-            if ($batch) {
-                $logs = $batch->errors_log ?? [];
-                $lastError = count($logs) > 0 ? end($logs)['error'] : null;
-
-                $status = $batch->status;
-                $message = "Processando...";
-                if ($status === 'completed')
-                    $message = "Concluído";
-                if ($status === 'failed')
-                    $message = "Falha no Processamento";
-                if ($status === 'cancelled')
-                    $message = "Cancelado";
-                if ($lastError)
-                    $message = "Finalizado com Erros";
-
-                return response()->json([
-                    'total' => $batch->total_count,
-                    'processed' => $batch->processed_count,
-                    'errors' => $batch->error_count,
-                    'input_tokens' => $batch->input_tokens ?? 0,
-                    'output_tokens' => $batch->output_tokens ?? 0,
-                    'estimated_cost' => $batch->estimated_cost ?? 0,
-                    'status' => $status,
-                    'last_error' => $lastError,
-                    'message' => $message,
-                    'stats' => $batch->stats,
-                ]);
-            }
+        if (!$batch) {
             return response()->json(['message' => 'Lote não encontrado.'], 404);
+        }
+
+        // Se não houver cache, gera as informações básicas a partir do banco
+        if (!$data) {
+            $logs = $batch->errors_log ?? [];
+            $lastError = count($logs) > 0 ? end($logs)['error'] : null;
+
+            $status = $batch->status;
+            $message = "Processando...";
+            if ($status === 'completed')
+                $message = "Concluído";
+            if ($status === 'failed')
+                $message = "Falha no Processamento";
+            if ($status === 'cancelled')
+                $message = "Cancelado";
+            if ($lastError && $status === 'completed')
+                $message = "Finalizado com Erros";
+
+            $data = [
+                'total' => $batch->total_count,
+                'processed' => (int) $batch->processed_count,
+                'errors' => (int) $batch->error_count,
+                'input_tokens' => (int) ($batch->input_tokens ?? 0),
+                'output_tokens' => (int) ($batch->output_tokens ?? 0),
+                'estimated_cost' => (float) ($batch->estimated_cost ?? 0),
+                'status' => $status,
+                'last_error' => $lastError,
+                'message' => $message,
+                'stats' => $batch->stats ?? [
+                    'difficulty' => 0,
+                    'explanation' => 0,
+                    'subjects' => 0,
+                    'topics' => 0,
+                ],
+            ];
+        } else {
+            // Sincroniza dados atômicos do banco para o cache visual (corrige desync de Redis/Clusters)
+            $data['processed'] = (int) $batch->processed_count;
+            $data['errors'] = (int) $batch->error_count;
+            $data['input_tokens'] = (int) ($batch->input_tokens ?? 0);
+            $data['output_tokens'] = (int) ($batch->output_tokens ?? 0);
+            $data['estimated_cost'] = (float) ($batch->estimated_cost ?? 0);
+            $data['status'] = $batch->status;
+            $data['stats'] = $batch->stats;
+
+            // Se o banco diz 'completed' mas o cache ainda diz 'processing', atualiza o cache
+            if ($batch->status === 'completed' && $data['status'] === 'processing') {
+                $data['status'] = 'completed';
+                $data['message'] = "Concluído!";
+            }
         }
 
         return response()->json($data);
