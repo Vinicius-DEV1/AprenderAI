@@ -66,9 +66,16 @@ class EvaluateEssayJob implements ShouldQueue
                 || (is_array(data_get($offTopicResult, 'labels')) && in_array('offtopic', data_get($offTopicResult, 'labels'), true))
             );
 
-            // Fail-closed: if detectOffTopic result is empty or invalid
-            if (empty($offTopicResult)) {
-                $isOffTopic = true;
+
+            // Fail-closed: if detectOffTopic result is MISSING the key entirely, treat as safe (fail-open).
+            // Note: detectOffTopic() already returns ['off_topic' => true] in its catch block, so we shouldn't double-gate here.
+            // An empty result only happens if something catastrophically wrong occurred — treat it as non-deterministic.
+            if (!isset($offTopicResult['off_topic'])) {
+                Log::warning("[EvaluateEssayJob] off_topic key missing from detectOffTopic result. Treating as NOT off-topic to avoid false positives.", [
+                    'essay_id' => $this->essay->id,
+                    'result' => $offTopicResult
+                ]);
+                $isOffTopic = false;
             }
 
             if ($isOffTopic) {
@@ -112,10 +119,10 @@ class EvaluateEssayJob implements ShouldQueue
                 $response = $result['response'];
 
                 // Regra A: JSON inválido ou parse falhou
-                // Consideramos falha se as chaves principais não existirem
-                if (!isset($response['overall_score']) && !isset($response['improved_version']) && !isset($response['competence_scores'])) {
-                    $response['off_topic'] = true;
-                    $response['off_topic_reason'] = 'Falha na formatação da resposta da IA (JSON inválido).';
+                // Consideramos falha estrutural se as chaves principais de nota não existirem
+                if (!isset($response['overall_score']) && !isset($response['score']) && !isset($response['competence_scores']) && !isset($response['competencies'])) {
+                    Log::error("Essay ID: {$this->essay->id} evaluation returned invalid JSON structure (missing score/competencies keys).");
+                    throw new \Exception("Invalid JSON structure from AI Service. Forcing Job retry.");
                 }
 
                 // Robust Off-topic check in the normal path
@@ -210,20 +217,19 @@ class EvaluateEssayJob implements ShouldQueue
                         }
                     }
                 } else {
-                    // If not off-topic, ensure model score is updated from response if it was null
-                    if ($this->essay->score === null) {
-                        $this->essay->score = $response['score'] ?? $response['overall_score'] ?? 0;
-                    }
+                    // If not off-topic, derive score directly from the normalized response
+                    $derivedScore = (int) ($response['score'] ?? $response['overall_score'] ?? 0);
+                    $this->essay->score = $derivedScore;
                 }
 
                 $this->essay->update([
                     'status' => 'completed',
-                    'score' => $this->essay->score, // Use the value set in the model
+                    'score' => $this->essay->score,
                     'off_topic' => $isOffTopicNormalPath,
                     'feedback_json' => $response,
                     'evaluated_at' => now(),
-                    'ai_suggestions' => $fixes,
-                    'improved_version' => $improved, // Ensure model field is updated too if it exists
+                    'ai_suggestions' => is_array($fixes) ? implode("\n", $fixes) : (string) $fixes,
+                    'improved_version' => $improved,
                 ]);
 
                 Log::info("[EvaluateEssayJob] Essay ID: {$this->essay->id} evaluated. User ID: {$this->essay->user_id}, isOffTopic: " . ($isOffTopicNormalPath ? 'true' : 'false') . ", final score: " . ($this->essay->score));

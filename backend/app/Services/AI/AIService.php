@@ -44,16 +44,19 @@ REDACAO_USUARIO: {essay}
 ========================
 DEFINIÇÃO DETERMINÍSTICA DE FUGA AO TEMA
 ========================
-off_topic = true se ocorrer QUALQUER condição:
+off_topic = true SOMENTE se ocorrer condição CLARA e EVIDENTE:
 
-1) O assunto central da redação for diferente do TEMA_OFICIAL.
-2) O tema oficial for apenas citado superficialmente.
-3) A tese não responder diretamente ao recorte do tema.
-4) Os argumentos desenvolvidos não sustentarem o eixo temático central.
-5) O texto poderia ser usado para outro tema diferente do fornecido.
+1) O assunto CENTRAL da redação for completamente diferente do TEMA_OFICIAL.
+2) O texto ignora completamente o recorte temático exigido.
+3) A tese e os argumentos não têm qualquer relação com o TEMA_OFICIAL.
 
-Se houver qualquer dúvida, considere off_topic = true.
-Prefira marcar como fuga ao tema em caso de incerteza.
+off_topic = false quando:
+- O aluno aborda o tema com alguma relação, mesmo que superficial.
+- O texto menciona o tema e desenvolve uma perspectiva sobre ele.
+- Há tratamento parcial do tema mas reconhecível.
+
+Em caso de dúvida, prefira off_topic = false e avalie normalmente.
+Só marque off_topic = true quando a fuga for inequívoca e evidente.
 
 ========================
 REGRAS OBRIGATÓRIAS
@@ -848,7 +851,8 @@ EOT;
     public function detectOffTopic(string $title, string $content, string $type, ?int $userId = null): array
     {
         if (!$this->hasActiveKey(ApiKey::CAPABILITY_ESSAYS)) {
-            return ['off_topic' => true, 'reason' => 'API não disponível (Fail-Closed)'];
+            // Fail open: if key is missing, let the main evaluator grade it
+            return ['off_topic' => false, 'reason' => 'API não disponível para pré-verificação. Avaliação principal decidirá.'];
         }
 
         try {
@@ -874,9 +878,9 @@ EOT;
                 ];
             });
         } catch (\Exception $e) {
-            Log::error('OffTopic Detection failed (Fail-Closed applied)', ['error' => $e->getMessage(), 'title' => $title]);
-            // Fail closed: if error, it's off-topic
-            return ['off_topic' => true, 'reason' => 'Erro técnico na verificação de tema. Por segurança, a redação foi marcada como fora do tema.'];
+            Log::error('OffTopic Detection failed (Fail-Open applied)', ['error' => $e->getMessage(), 'title' => $title]);
+            // Fail open: if error occurs parsing the off-topic boolean, don't punish the user
+            return ['off_topic' => false, 'reason' => 'Erro técnico na pré-verificação de tema. Avaliação principal ditará o resultado.'];
         }
     }
 
@@ -922,11 +926,29 @@ EOT;
 
     protected function buildOffTopicPrompt(string $title, string $content, string $type): string
     {
-        return $this->promptService->get('essay_offtopic_detector', [
+        $prompt = $this->promptService->get('essay_offtopic_detector', [
             'essay_type' => $type,
             'essay_title' => $title,
             'essay_content' => $content,
         ]);
+
+        if (blank($prompt) || trim($prompt) === '') {
+            Log::warning('System prompt missing for essay_offtopic_detector. Using fallback.');
+            $prompt = <<<EOT
+Você é um avaliador rigoroso. Verifique se a redação abaixo foge do tema.
+Responda EXCLUSIVAMENTE com um JSON no formato: {"off_topic": true/false, "reason": "motivo em uma frase"}.
+
+TEMA OFICIAL: {essay_title}
+REDAÇÃO DO USUÁRIO: {essay_content}
+
+REGRA: Só marque off_topic = true se o aluno ignorar COMPLETAMENTE o tema. Se houver qualquer relação, mesmo que superficial, off_topic = false. Em caso de dúvida, false.
+EOT;
+            $prompt = str_replace('{essay_type}', $type, $prompt);
+            $prompt = str_replace('{essay_title}', $title, $prompt);
+            $prompt = str_replace('{essay_content}', $content, $prompt);
+        }
+
+        return $prompt;
     }
 
     public function generateImprovedEssayForTopic(string $topic, string $type): string

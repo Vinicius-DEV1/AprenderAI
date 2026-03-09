@@ -14,6 +14,7 @@ export default function EssayReview({
     const { id: paramId } = useParams<{ id: string }>();
     const id = propEssayId?.toString() || paramId;
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
     const [tab, setTab] = useState<'general' | 'points' | 'corrections' | 'improved'>('general');
     const [competenciesOpen, setCompetenciesOpen] = useState(false);
     const { aiName } = useConfigStore();
@@ -35,6 +36,17 @@ export default function EssayReview({
         }
     });
 
+    const essay = response?.data;
+    const feedback = essay?.feedback_json || {};
+
+    // Redirect back to the write flow if the essay is still a draft
+    // 'pending' = topic not yet generated, 'in_progress' = topic ready, writing in progress
+    useEffect(() => {
+        if (essay && (essay.status === 'in_progress' || essay.status === 'pending')) {
+            navigate(`/essays/${essay.id}/continue`, { replace: true });
+        }
+    }, [essay?.status, essay?.id, navigate]);
+
     if (isLoading) {
         return (
             <div className="flex justify-center py-20">
@@ -43,25 +55,13 @@ export default function EssayReview({
         );
     }
 
-    if (isError || !response?.data) {
+    if (isError || !essay) {
         return (
             <div className="flex justify-center py-20 text-red-600">
                 Erro ao carregar os dados da redação.
             </div>
         );
     }
-
-    const essay = response.data;
-    const feedback = essay.feedback_json || {};
-
-    // Redirect back to the write flow if the essay is still a draft
-    // 'pending' = topic not yet generated, 'in_progress' = topic ready, writing in progress
-    const navigate = useNavigate();
-    useEffect(() => {
-        if (essay.status === 'in_progress' || essay.status === 'pending') {
-            navigate(`/essays/${essay.id}/continue`, { replace: true });
-        }
-    }, [essay.status, essay.id, navigate]);
 
     // Status Classes & Message
     let statusClasses = 'bg-gray-100 text-gray-800 border-gray-200';
