@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 
 class AITelemetryService
 {
-    public function logRequest(ApiKey $apiKey, string $prompt, array $result, float $executionTime, ?int $userId = null, ?int $questionId = null, ?string $module = null)
+    public function logRequest(ApiKey $apiKey, string $prompt, array $result, float $executionTime, ?int $userId = null, ?int $questionId = null, ?string $module = null, ?string $modelOverride = null)
     {
         try {
             $inputTokens = $result['usage']['input_tokens'] ?? 0;
@@ -26,7 +26,7 @@ class AITelemetryService
             }
 
             $totalTokens = $result['usage']['total_tokens'] ?? ($inputTokens + $outputTokens);
-            $modelName = $apiKey->preferred_model ?? 'unknown';
+            $modelName = $modelOverride ?? $apiKey->preferred_model ?? 'unknown';
 
             // Inteligência Financeira: Calcula Custo da Transação
             $calculator = app(PriceCalculatorService::class);
