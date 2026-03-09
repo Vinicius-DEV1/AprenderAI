@@ -151,11 +151,11 @@ class BackupController extends Controller
         $dbPassword = env('DB_PASSWORD');
 
         $command = sprintf(
-            'mysqldump --host=%s --port=%s --user=%s --password=%s --single-transaction --skip-lock-tables --routines --triggers --set-gtid-purged=OFF %s | gzip',
+            'MYSQL_PWD=%s mysqldump --host=%s --port=%s --user=%s --single-transaction --skip-lock-tables --routines --triggers %s | gzip',
+            escapeshellarg($dbPassword),
             escapeshellarg($dbHost),
             escapeshellarg($dbPort),
             escapeshellarg($dbUsername),
-            escapeshellarg($dbPassword),
             escapeshellarg($dbDatabase)
         );
 
@@ -177,11 +177,11 @@ class BackupController extends Controller
                 return;
             }
 
-            fclose($pipes[0]); // Fecha stdin — não escrevemos no processo
+            fclose($pipes[0]);
 
             $totalBytes = 0;
             while (!feof($pipes[1])) {
-                $chunk = fread($pipes[1], 65536); // 64 KB por vez
+                $chunk = fread($pipes[1], 65536);
                 if ($chunk !== false && strlen($chunk) > 0) {
                     echo $chunk;
                     flush();
@@ -194,9 +194,11 @@ class BackupController extends Controller
             fclose($pipes[2]);
             $exitCode = proc_close($process);
 
-            if ($exitCode !== 0) {
-                Log::error('[BackupController::localDump] mysqldump encerrou com erro.', [
+            // A file under 200 bytes is likely just a gzip header without actual data
+            if ($exitCode !== 0 || $totalBytes < 200) {
+                Log::error('[BackupController::localDump] Falha no dump ou arquivo suspeito (vazio).', [
                     'exit_code' => $exitCode,
+                    'bytes' => $totalBytes,
                     'stderr' => substr($stderr, 0, 500),
                     'user_id' => $user->id,
                     'ip' => $ip,
