@@ -626,12 +626,21 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                     Fechar Lote
                                 </button>
                             ) : (
-                                <button
-                                    onClick={handleCancelAndRevert}
-                                    className="px-8 py-2.5 bg-white border border-red-200 text-red-600 rounded-xl font-bold text-sm hover:bg-red-50 transition shadow-lg"
-                                >
-                                    🛑 Cancelar e Reverter
-                                </button>
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        onClick={handleFinalize}
+                                        className="px-4 py-2 text-gray-400 hover:text-gray-600 text-[10px] font-black uppercase tracking-widest"
+                                        title="Use apenas se o lote travar no servidor"
+                                    >
+                                        Ignorar e Sair (Emergência)
+                                    </button>
+                                    <button
+                                        onClick={handleCancelAndRevert}
+                                        className="px-8 py-2.5 bg-white border border-red-200 text-red-600 rounded-xl font-bold text-sm hover:bg-red-50 transition shadow-lg"
+                                    >
+                                        🛑 Cancelar e Reverter
+                                    </button>
+                                </div>
                             )}
                         </div>
                     ) : (

@@ -331,32 +331,24 @@ class AIBatchTriageController extends Controller
                 ],
             ];
         } else {
-            // Sincroniza dados atômicos do banco para o cache visual (corrige desync de Redis/Clusters)
+            $data['status'] = $batch->status;
+            // GARANTIA TOTAL: Sempre lê os contadores reais do banco para o cache visual
             $data['total'] = (int) $batch->total_count;
             $data['processed'] = (int) $batch->processed_count;
             $data['errors'] = (int) $batch->error_count;
             $data['input_tokens'] = (int) ($batch->input_tokens ?? 0);
             $data['output_tokens'] = (int) ($batch->output_tokens ?? 0);
-            $data['estimated_cost'] = (float) ($batch->estimated_cost ?? 0);
-            $data['status'] = $batch->status;
             $data['stats'] = $batch->stats;
-
-            // --- FAIL-SAFE DE CONCLUSÃO ---
-            // Se a soma de processados + erros atingiu o total, o lote ACABOU.
-            // Forçamos o status concluído para o frontend mudar de tela, mesmo que o banco 
-            // ainda esteja pendente de um update de status ou preso em race condition.
-            if (($data['processed'] + $data['errors']) >= $data['total'] && $data['total'] > 0) {
-                if ($data['status'] === 'processing') {
-                    $data['status'] = 'completed';
-                    // Se houver erros, a mensagem deve refletir isso
-                    $data['message'] = $data['errors'] > 0 ? "Finalizado com Erros" : "Concluído!";
-                }
-            } else {
-                // Se o banco diz 'completed' mas o cache ainda diz 'processing', atualiza o cache
-                if ($batch->status === 'completed' && $data['status'] === 'processing') {
-                    $data['status'] = 'completed';
-                    $data['message'] = "Concluído!";
-                }
+        }
+        // --- FAIL-SAFE DE CONCLUSÃO ---
+        // Se a soma de processados + erros atingiu o total, o lote ACABOU.
+        // Forçamos o status concluído para o frontend mudar de tela, mesmo que o banco 
+        // ainda esteja pendente de um update de status ou preso em race condition.
+        if (($data['processed'] + $data['errors']) >= $data['total'] && $data['total'] > 0) {
+            if ($data['status'] === 'processing') {
+                $data['status'] = 'completed';
+                // Se houver erros, a mensagem deve refletir isso
+                $data['message'] = $data['errors'] > 0 ? "Finalizado com Erros" : "Concluído!";
             }
         }
 
