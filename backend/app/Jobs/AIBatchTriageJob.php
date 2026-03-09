@@ -182,18 +182,28 @@ class AIBatchTriageJob implements ShouldQueue
 
             \Illuminate\Support\Facades\Cache::put($key, $data, now()->addHours(2));
 
-            // 2. Atualiza o Banco de Dados (Persistência para o Histórico)
-            $dbBatch = \App\Models\AiProcessingBatch::where('batch_id', $this->batchId)->first();
-            if ($dbBatch) {
-                $dbBatch->processed_count += $applied;
-                $dbBatch->error_count += $errors;
-                $dbBatch->input_tokens += $inputTokens;
-                $dbBatch->output_tokens += $outputTokens;
-                $dbBatch->estimated_cost += $estimatedCost;
-                $dbBatch->status = $data['status'];
-                $dbBatch->stats = $data['stats'];
+            // 2. Atualiza o Banco de Dados (Persistência para o Histórico) - Usando Incrementos Atômicos
+            $updated = \Illuminate\Support\Facades\DB::table('ai_processing_batches')
+                ->where('batch_id', $this->batchId)
+                ->incrementEach([
+                    'processed_count' => $applied,
+                    'error_count' => $errors,
+                    'input_tokens' => $inputTokens,
+                    'output_tokens' => $outputTokens,
+                    'estimated_cost' => $estimatedCost
+                ], [
+                    'status' => $data['status'],
+                    'stats' => json_encode($data['stats']),
+                    'updated_at' => now()
+                ]);
 
-                if (!empty($detailedErrors) || $errorMessage) {
+            if ($updated === 0) {
+                \Illuminate\Support\Facades\Log::warning("[AIBATCH] Could not update database for batch {$this->batchId}. Record might be missing.");
+            }
+
+            if (!empty($detailedErrors) || $errorMessage) {
+                $dbBatch = \App\Models\AiProcessingBatch::where('batch_id', $this->batchId)->first();
+                if ($dbBatch) {
                     $existingLogs = $dbBatch->errors_log ?? [];
                     if ($errorMessage) {
                         $existingLogs[] = [
@@ -209,12 +219,9 @@ class AIBatchTriageJob implements ShouldQueue
                             'type' => 'partial'
                         ];
                     }
-                    $dbBatch->errors_log = $existingLogs;
+                    $dbBatch->update(['errors_log' => $existingLogs]);
                 }
-
-                $dbBatch->save();
             }
-
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("[AIBATCH] Failed to update progress: " . $e->getMessage());
         } finally {
