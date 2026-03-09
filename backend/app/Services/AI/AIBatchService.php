@@ -301,7 +301,7 @@ class AIBatchService
                 'difficulty' => $difficulty,
                 'difficulty_reasoning' => $reasoning,
                 'explanation' => $explanation,
-                'review_status' => $needsManualReview ? 'pending' : 'approved'
+                // A review_status será definida após a classificação para garantir integridade
             ]);
 
             // Resolucao de Disciplina (Subjects)
@@ -332,6 +332,13 @@ class AIBatchService
                             ['slug' => \Illuminate\Support\Str::slug($subjectName), 'type' => 'concurso']
                         );
                         $subjectId = $subject->id;
+                    }
+                }
+
+                if ($subjectId) {
+                    if (!Subject::where('id', $subjectId)->exists()) {
+                        Log::warning("[AIBATCH] AI alucinou ID de Disciplina: {$subjectId} para Questão #{$question->id}. Ignorando ID e tratando como erro parcial.");
+                        $subjectId = null;
                     }
                 }
 
@@ -379,6 +386,13 @@ class AIBatchService
                 }
 
                 if ($topicId) {
+                    if (!Topic::where('id', $topicId)->exists()) {
+                        Log::warning("[AIBATCH] AI alucinou ID de Assunto: {$topicId} para Questão #{$question->id}. Ignorando ID e tratando como erro parcial.");
+                        $topicId = null;
+                    }
+                }
+
+                if ($topicId) {
                     $topicIdsToSync[] = $topicId;
                 }
             }
@@ -389,6 +403,26 @@ class AIBatchService
                     $stats['topics']++;
                 }
             }
+
+            // --- Validação Final de Status ---
+            // Recarregamos o modelo e relações para garantir que o estado em memória reflita o DB (após os syncs)
+            $question->refresh();
+            $question->load('subjects', 'topics');
+
+            $subCount = $question->subjects->count();
+            $topCount = $question->topics->count();
+            $hasClassification = ($subCount > 0 && $topCount > 0);
+
+            // Se o objetivo era classificação/full e falhou em ter ambos, volta pra pending
+            // Se o gabarito divergiu, obrigatoriamente pending
+            $finalStatus = 'approved';
+            if ($needsManualReview) {
+                $finalStatus = 'pending';
+            } elseif (in_array($type, ['both', 'classification']) && !$hasClassification) {
+                $finalStatus = 'pending';
+            }
+
+            $question->update(['review_status' => $finalStatus]);
 
             $applied++;
 
