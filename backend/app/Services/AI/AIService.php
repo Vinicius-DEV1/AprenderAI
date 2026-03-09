@@ -666,7 +666,8 @@ EOT;
                         $executionTime,
                         $userId,
                         null,
-                        'embedding'
+                        'embedding',
+                        'text-embedding-004'
                     );
                 }
 

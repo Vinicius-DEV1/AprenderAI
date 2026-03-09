@@ -42,6 +42,7 @@ interface AiLog {
     tokens_used_total: number;
     execution_time: number;
     estimated_cost: number;
+    module: string;
     created_at: string;
 }
 
@@ -666,6 +667,7 @@ export default function AdminApiKeys() {
                                         <thead className="bg-slate-50 text-slate-400 uppercase font-bold">
                                             <tr>
                                                 <th className="px-6 py-4">Usuário</th>
+                                                <th className="px-6 py-4">Módulo</th>
                                                 <th className="px-6 py-4">Horário</th>
                                                 <th className="px-6 py-4">Provedor/Modelo</th>
                                                 <th className="px-6 py-4">Tokens (I/O)</th>
@@ -678,6 +680,15 @@ export default function AdminApiKeys() {
                                             {aiLogs.map(log => (
                                                 <tr key={log.id} className="hover:bg-slate-50 transition-colors">
                                                     <td className="px-6 py-4 font-bold text-slate-700">{log.user?.name || 'Sistema/Job'}</td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-md tracking-tighter ${log.module === 'embedding' ? 'bg-purple-100 text-purple-700' :
+                                                            log.module === 'search' ? 'bg-blue-100 text-blue-700' :
+                                                                log.module === 'triage' ? 'bg-amber-100 text-amber-700' :
+                                                                    'bg-slate-100 text-slate-600'
+                                                            }`}>
+                                                            {log.module || 'Geral'}
+                                                        </span>
+                                                    </td>
                                                     <td className="px-6 py-4">
                                                         <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded-md uppercase tracking-tighter">
                                                             {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
