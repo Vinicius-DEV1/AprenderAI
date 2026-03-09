@@ -435,7 +435,7 @@ class StudyDashboardService
         // Subject-based logic
         $allStats = UserTopicStat::where('user_id', $user->id)->get();
         if ($allStats->isEmpty()) {
-            return "Ainda não há dados suficientes para identificar sua melhor área com precisão estatística. Continue resolvendo simulados para calibrar seu diagnóstico.";
+            return "O Xavier está calibrando suas métricas. Continue resolvendo questões para uma análise precisa de sua melhor área.";
         }
 
         $subjectsAggregation = [];
@@ -468,7 +468,7 @@ class StudyDashboardService
             }
         }
 
-        return "Ainda não há dados suficientes para identificar sua melhor área com precisão estatística. Continue resolvendo simulados para calibrar seu diagnóstico.";
+        return "O Xavier está calibrando suas métricas. Continue resolvendo questões para uma análise precisa de sua melhor área.";
     }
 
     protected function resolveAccuracyStatus(float $accuracy, int $attempts = 0): string
@@ -487,7 +487,7 @@ class StudyDashboardService
     protected function resolveSubjectInsight(int $attempts, int $correct): string
     {
         if ($attempts < 20) {
-            return "Responda mais questões para aumentar a confiabilidade do diagnóstico.";
+            return "Continue praticando para consolidar seu diagnóstico individual.";
         }
         if ($correct == 0) {
             return "🚨 Você errou todas as {$attempts} questões. Recomendamos exercícios guiados e revisão de fundamentos.";

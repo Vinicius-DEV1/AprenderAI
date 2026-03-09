@@ -18,17 +18,32 @@ export default function StudyPlanWizard() {
     const PLAN_ID_KEY = 'studyPlanGeneratingId';
 
     useEffect(() => {
-        // Resume polling if we left the page while generating
-        if (localStorage.getItem(STORAGE_KEY) === 'true') {
-            setLoading(true);
-            const savedId = localStorage.getItem(PLAN_ID_KEY);
-            if (savedId) {
-                pollStatus(parseInt(savedId, 10));
-            } else {
-                // If API supports polling without ID to get the latest plan
-                pollStatus();
+        const checkInitialState = async () => {
+            // 1. Check if we have a saved ID in localStorage
+            if (localStorage.getItem(STORAGE_KEY) === 'true') {
+                const savedId = localStorage.getItem(PLAN_ID_KEY);
+                if (savedId) {
+                    setLoading(true);
+                    pollStatus(parseInt(savedId, 10));
+                    return;
+                }
             }
-        }
+
+            // 2. Fetch current state from API to see if a plan is processing in background
+            try {
+                const { data } = await api.get('/api/v1/study-plan');
+                if (data.view_state === 'wizard' && data.processing_plan_id) {
+                    setLoading(true);
+                    localStorage.setItem(STORAGE_KEY, 'true');
+                    localStorage.setItem(PLAN_ID_KEY, data.processing_plan_id.toString());
+                    pollStatus(data.processing_plan_id);
+                }
+            } catch (err) {
+                // Silently fail, user can start a new wizard if nothing returned
+            }
+        };
+
+        checkInitialState();
 
         return () => {
             isMounted.current = false;
