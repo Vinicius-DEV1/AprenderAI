@@ -28,7 +28,7 @@ export const useUIStore = create<UIState>((set) => ({
 
     isBatchModalOpen: false,
     batchModalConfig: null,
-    dismissedBatches: [],
+    dismissedBatches: JSON.parse(localStorage.getItem('dismissed_batches') || '[]'),
     openBatchModal: (pendingCount = 0) => set({
         isBatchModalOpen: true,
         batchModalConfig: { pendingCount }
@@ -36,7 +36,9 @@ export const useUIStore = create<UIState>((set) => ({
     closeBatchModal: () => set({
         isBatchModalOpen: false,
     }),
-    dismissBatch: (batchId) => set((state) => ({
-        dismissedBatches: [...state.dismissedBatches, batchId]
-    })),
+    dismissBatch: (batchId) => set((state) => {
+        const newList = [...state.dismissedBatches, batchId];
+        localStorage.setItem('dismissed_batches', JSON.stringify(newList));
+        return { dismissedBatches: newList };
+    }),
 }));
