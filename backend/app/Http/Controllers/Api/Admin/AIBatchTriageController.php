@@ -29,7 +29,7 @@ class AIBatchTriageController extends Controller
             'triage_origin' => 'nullable|string',
         ]);
 
-        $query = Question::query();
+        $query = Question::with('alternatives');
 
         if ($validated['type'] === 'difficulty') {
             $query->missingField('difficulty_reasoning');
@@ -54,11 +54,22 @@ class AIBatchTriageController extends Controller
             $query->filterBySubject($request->triage_subject);
         }
 
-        $questions = $query->limit($validated['quantity'])->get();
+        $questions = $query->limit($validated['quantity'] * 2)->get();
+
+        $brokenQuestions = $questions->filter(function ($q) {
+            if ($q->type !== 'discursive' && $q->tipo_questao !== 'redacao' && !in_array(strtolower($q->format ?? ''), ['redacao', 'discursiva'])) {
+                if ($q->alternatives->isEmpty() || $q->alternatives->whereNull('content')->count() > 0 || $q->alternatives->where('content', '')->count() > 0) {
+                    return true;
+                }
+            }
+            return false;
+        });
+
+        $validQuestions = $questions->diff($brokenQuestions)->take($validated['quantity']);
 
         return response()->json([
             'success' => true,
-            'questions' => $questions->map(function ($q) {
+            'questions' => $validQuestions->map(function ($q) {
                 return [
                     'id' => $q->id,
                     'statement' => Str::limit(strip_tags($q->statement), 150),
@@ -66,7 +77,8 @@ class AIBatchTriageController extends Controller
                     'subject' => $q->subjects->first()?->name ?? 'N/A',
                     'organization' => $q->organization ?? 'N/A',
                 ];
-            })
+            }),
+            'ignored_count' => $brokenQuestions->count() // Opcional, o painel Front-End pode mostrar num badge.
         ]);
     }
 
@@ -88,9 +100,9 @@ class AIBatchTriageController extends Controller
         ]);
 
         if ($request->filled('question_ids')) {
-            $questions = Question::whereIn('id', $request->question_ids)->get();
+            $questions = Question::with('alternatives')->whereIn('id', $request->question_ids)->get();
         } else {
-            $query = Question::query();
+            $query = Question::with('alternatives');
 
             if ($validated['type'] === 'difficulty') {
                 $query->missingField('difficulty_reasoning');
@@ -115,13 +127,42 @@ class AIBatchTriageController extends Controller
                 $query->filterBySubject($request->triage_subject);
             }
 
-            $questions = $query->limit($validated['quantity'])->get();
+            // Busca o dobro da quantidade caso existam muitas questões quebradas
+            $questions = $query->limit($validated['quantity'] * 2)->get();
         }
 
-        $total = $questions->count();
+        // 1. Identifica questões quebradas (sem alternativas ou alternativas vazias)
+        $brokenQuestions = $questions->filter(function ($q) {
+            if ($q->type !== 'discursive' && $q->tipo_questao !== 'redacao' && !in_array(strtolower($q->format ?? ''), ['redacao', 'discursiva'])) {
+                if ($q->alternatives->isEmpty() || $q->alternatives->whereNull('content')->count() > 0 || $q->alternatives->where('content', '')->count() > 0) {
+                    return true;
+                }
+            }
+            return false;
+        });
+
+        // 2. Intercepta: Envia as quebradas para Revisão Manual
+        if ($brokenQuestions->count() > 0) {
+            Log::info("[AIBATCH] Interceptando {$brokenQuestions->count()} questões com alternativas vazias e movendo para curadoria manual.");
+            foreach ($brokenQuestions as $bq) {
+                $bq->update([
+                    'review_status' => 'review',
+                    'is_active' => false
+                ]);
+            }
+        }
+
+        // 3. Pega as válidas e limita à quantidade original solicitada pelo usuário
+        $validQuestions = $questions->diff($brokenQuestions)->take($validated['quantity']);
+        $total = $validQuestions->count();
+        $questions = $validQuestions; // Substitui para as próximas etapas usarem apenas as válidas
 
         if ($total === 0) {
-            return response()->json(['success' => false, 'message' => 'Nenhuma questão encontrada para os critérios selecionados.'], 404);
+            $msg = 'Nenhuma questão encontrada para os critérios selecionados.';
+            if ($brokenQuestions->count() > 0) {
+                $msg = "Atenção: {$brokenQuestions->count()} questões tinham formato inválido (alternativas vazias) e foram enviadas automaticamente para a Revisão Manual.";
+            }
+            return response()->json(['success' => false, 'message' => $msg], 404);
         }
 
         $batchId = Str::uuid()->toString();
