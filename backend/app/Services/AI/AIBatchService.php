@@ -24,7 +24,8 @@ class AIBatchService
     {
         $prompt = $this->buildBatchPrompt($questions, $type, $reprocess);
         try {
-            $result = $this->aiService->generateJson($prompt, $model, $userId);
+            // Use generateJsonForBatch to route through CAPABILITY_TRIAGE keys with full failover support
+            $result = $this->aiService->generateJsonForBatch($prompt, $batchId, $userId);
             $data = $result['data'] ?? [];
             $usage = $result['usage'] ?? ['input_tokens' => 0, 'output_tokens' => 0];
             $cost = $result['estimated_cost'] ?? 0;

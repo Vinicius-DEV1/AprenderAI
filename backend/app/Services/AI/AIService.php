@@ -309,7 +309,7 @@ EOT;
             ]);
 
             // SRE: Update ApiKey status to trigger auto-healing router
-            if ($statusCode === 429 && $provider === 'openai') {
+            if ($statusCode === 429) {
                 $apiKey->update(['status' => 'quota_exceeded']);
             } elseif (in_array($statusCode, [401, 403])) {
                 $apiKey->update(['status' => 'offline']);
@@ -1226,6 +1226,42 @@ EOT;
         }
     }
 
+    /**
+     * Generates JSON via AI for batch triage operations.
+     * Uses CAPABILITY_TRIAGE routing to ensure only triage-configured keys are used.
+     * Writes the active key info to cache so the frontend can display it.
+     */
+    public function generateJsonForBatch(string $prompt, ?string $batchId = null, ?int $userId = null): array
+    {
+        return $this->executeWithFailover(ApiKey::CAPABILITY_TRIAGE, function ($apiKey) use ($prompt, $batchId, $userId) {
+            // Write active key info to cache so frontend can display it
+            if ($batchId) {
+                $keyName = $apiKey->vault?->name ?? ("Chave #{$apiKey->id}");
+                Cache::put("batch_active_key_{$batchId}", [
+                    'name' => $keyName,
+                    'provider' => $apiKey->effective_provider,
+                    'model' => $apiKey->preferred_model,
+                ], now()->addHours(2));
+            }
+
+            $result = $this->callAI($apiKey->effective_provider, $apiKey, $prompt, $userId, ApiKey::CAPABILITY_TRIAGE);
+
+            $decoded = $this->responseSanitizer->sanitize($result['content']);
+
+            if (empty($decoded)) {
+                Log::warning('[AIService::generateJsonForBatch] responseSanitizer returned empty — raw content snippet:', [
+                    'snippet' => substr($result['content'] ?? '', 0, 300),
+                ]);
+            }
+
+            return [
+                'data' => $decoded,
+                'usage' => $result['usage'] ?? ['input_tokens' => 0, 'output_tokens' => 0],
+                'estimated_cost' => $result['estimated_cost'] ?? 0
+            ];
+        });
+    }
+
     public function generateJson(string $prompt, ?string $model = null, ?int $userId = null): array
     {
         $provider = $model ? $this->getProviderForModel($model) : null;
@@ -1373,6 +1409,11 @@ EOT;
     protected function isRetriableError(\Exception $e): bool
     {
         $message = strtolower($e->getMessage());
+
+        // 429 = Rate Limit / Quota Exceeded — tentar com outra chave
+        if (str_contains($message, '429') || str_contains($message, 'quota exceeded') || str_contains($message, 'rate limit')) {
+            return true;
+        }
 
         // 500, 502, 503, 504 = Server error do Google/OpenAI.
         if (
