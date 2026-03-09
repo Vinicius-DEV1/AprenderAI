@@ -313,6 +313,7 @@ class AIBatchTriageController extends Controller
                     'status' => $status,
                     'last_error' => $lastError,
                     'message' => $message,
+                    'stats' => $batch->stats,
                 ]);
             }
             return response()->json(['message' => 'Lote não encontrado.'], 404);
