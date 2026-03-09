@@ -618,8 +618,9 @@ EOT;
     /**
      * Gera um embedding usando o Gemini text-embedding-004
      */
-    public function generateEmbedding(string $text): ?array
+    public function generateEmbedding(string $text, ?int $userId = null): ?array
     {
+        $startTime = microtime(true);
         try {
             // Busca uma chave com a capacidade específica de embedding
             $apiKeyModel = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_EMBEDDING, 'gemini');
@@ -647,10 +648,26 @@ EOT;
             ];
 
             $response = Http::timeout(5)->post($url, $payload);
+            $executionTime = microtime(true) - $startTime;
 
             if ($response->successful()) {
                 $data = $response->json();
-                return $data['embedding']['values'] ?? null;
+                $vector = $data['embedding']['values'] ?? null;
+
+                if ($vector) {
+                    // Log telemetry for Admin Visibility
+                    $this->telemetryService->logRequest(
+                        $apiKeyModel,
+                        $text,
+                        ['content' => '[VECTOR DATA]', 'usage' => ['total_tokens' => $this->telemetryService->estimateTokens($text)]],
+                        $executionTime,
+                        $userId,
+                        null,
+                        'embedding'
+                    );
+                }
+
+                return $vector;
             }
 
             Log::error('Erro ao chamar API de Embedding.', [
