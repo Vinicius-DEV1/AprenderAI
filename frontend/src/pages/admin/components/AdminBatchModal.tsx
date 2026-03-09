@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../api/axios';
+import { useUIStore } from '../../../stores/uiStore';
 import AdminQuestionViewModal from './AdminQuestionViewModal';
 
 interface BatchModalProps {
@@ -12,6 +13,7 @@ interface BatchModalProps {
 
 export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatchStarted }: BatchModalProps) {
     const queryClient = useQueryClient();
+    const ui = useUIStore();
     const [step, setStep] = useState<'config' | 'preview' | 'processing'>('config');
     const [quantity, setQuantity] = useState(10);
     const [type, setType] = useState('complete');
@@ -195,6 +197,9 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
     const handleFinalize = () => {
         // Limpa o batchId da sessão ao finalizar/fechar o modal.
         sessionStorage.removeItem('active_batch_id');
+        if (batchId) {
+            ui.dismissBatch(batchId);
+        }
         onClose();
         setBatchId(null);
         setProgress(null);
