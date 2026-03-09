@@ -16,6 +16,7 @@ class ApiKey extends Model
     public const CAPABILITY_TRIAGE = 'triage';
     public const CAPABILITY_SEARCH = 'search';
     public const CAPABILITY_STUDY_PLANS = 'study_plans';
+    public const CAPABILITY_CHAT_TUTOR = 'chat_tutor';
     public const CAPABILITY_GENERAL = 'general';
     public const CAPABILITY_EMBEDDING = 'embedding';
 
@@ -47,6 +48,7 @@ class ApiKey extends Model
     {
         return [
             self::CAPABILITY_QUESTIONS => 'Geração/Correção de Questões',
+            self::CAPABILITY_CHAT_TUTOR => 'Tutor Xavier (Chat de Dúvidas)',
             self::CAPABILITY_ESSAYS => 'Avaliação de Redações',
             self::CAPABILITY_TRIAGE => 'Triagem e Moderação',
             self::CAPABILITY_SEARCH => 'Busca Inteligente (Xavier)',
