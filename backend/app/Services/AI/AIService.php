@@ -423,7 +423,14 @@ EOT;
 
         $json = $this->responseSanitizer->sanitize($content);
         if (empty($json)) {
-            $json = ['text' => $content];
+            $finishReason = $data['choices'][0]['finish_reason'] ?? 'unknown';
+            Log::error('[callOpenAI] Sanitization FAILED. DATA DUMP:', [
+                'length' => strlen($content),
+                'finish_reason' => $finishReason,
+                'start' => substr($content, 0, 500),
+                'end' => substr($content, -500),
+            ]);
+            throw new \Exception("OpenAI retornou resposta não-parseável (finish_reason={$finishReason}, length=" . strlen($content) . "). Possível truncamento — reduza o chunk_size.");
         }
 
         $inputTokens = $usage['prompt_tokens'] ?? 0;
@@ -547,6 +554,7 @@ EOT;
             'contents' => [['parts' => $parts]],
             'generationConfig' => [
                 'temperature' => 0.7,
+                'maxOutputTokens' => 65536,
             ]
         ];
 
@@ -566,15 +574,21 @@ EOT;
         $data = $response->json();
         $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
 
-        // Log para auditoria de truncamento (debug temporário)
-        if (strlen($text) > 5000) {
-            Log::info("[GEMINI] Long response received", ['length' => strlen($text), 'finish_reason' => $data['candidates'][0]['finishReason'] ?? 'unknown']);
-        }
+        $finishReason = $data['candidates'][0]['finishReason'] ?? 'unknown';
+
+        // Log detalhado para depurar truncamento e formato
+        Log::info("[GEMINI] Response audit", [
+            'length' => strlen($text),
+            'finish_reason' => $finishReason,
+            'start' => substr($text, 0, 1000),
+            'end' => substr($text, -1000),
+        ]);
+        file_put_contents('/var/www/storage/logs/last_full_ai_response.txt', $text);
 
         $json = $this->responseSanitizer->sanitize($text);
 
         if (empty($json)) {
-            $json = ['text' => $text];
+            throw new \Exception("Gemini retornou resposta não-parseável (finishReason={$finishReason}, length=" . strlen($text) . "). Possível truncamento — reduza o chunk_size.");
         }
 
         $usageMeta = $data['usageMetadata'] ?? [];
@@ -664,7 +678,7 @@ EOT;
             'headers' => ['Content-Type' => 'application/json'],
             'json' => [
                 'contents' => [['parts' => [['text' => $prompt]]]],
-                'generationConfig' => ['temperature' => 0.7]
+                'generationConfig' => ['temperature' => 0.7, 'maxOutputTokens' => 65536]
             ],
             'stream' => true,
         ]);
