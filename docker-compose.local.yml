@@ -93,7 +93,7 @@ services:
       - /var/www/vendor
       - /proc:/host_proc:ro
     env_file: ./backend/.env
-    command: php artisan queue:work --queue=ai-batches --sleep=3 --tries=1 --timeout=700
+    command: php artisan queue:work --queue=essays,ai-batches --sleep=3 --tries=3 --timeout=700
     depends_on:
       app:
         condition: service_started

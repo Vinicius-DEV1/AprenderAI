@@ -29,6 +29,7 @@ class Essay extends Model
         'feedback',
         'feedback_json',
         'ai_suggestions',
+        'improved_version',
         'example_essay',
         'topic_regen_count',
         'topic_hash',
@@ -42,7 +43,7 @@ class Essay extends Model
 
     protected $casts = [
         'competencies' => 'array',
-        'ai_suggestions' => 'array',
+        // ai_suggestions is stored as a plain string (correction text), NOT a JSON array
         'feedback_json' => 'array',
         'started_at' => 'datetime',
         'submitted_at' => 'datetime',
