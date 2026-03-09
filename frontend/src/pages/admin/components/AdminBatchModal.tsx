@@ -234,12 +234,10 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
             <div className="flex items-center justify-center min-h-screen px-4">
                 <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={() => {
                     const isTerminal = progress?.status === 'completed' || progress?.status === 'failed' || progress?.status === 'cancelled';
-                    if (isTerminal) {
-                        handleFinalize(); // Clears sessionStorage + resets all state
-                    } else if (batchId) {
-                        handleMinimize(); // Active batch: just hide visually
+                    if (isTerminal || !batchId) {
+                        handleFinalize(); // Limpa sessionStorage e reseta tudo
                     } else {
-                        onClose(); // Config/preview: just close
+                        handleMinimize(); // Lote ativo: apenas oculta visualmente
                     }
                 }}></div>
 
@@ -262,9 +260,19 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                             </h3>
                         </div>
                         {batchId ? (
-                            <button onClick={handleMinimize} className="text-gray-400 hover:text-gray-600 font-bold p-2 bg-white rounded-full border border-gray-200 shadow-sm" title="Minimizar para plano de fundo">➖ Ocultar (Segundo Plano)</button>
+                            <button
+                                onClick={() => {
+                                    const isTerminal = progress?.status === 'completed' || progress?.status === 'failed' || progress?.status === 'cancelled';
+                                    if (isTerminal) handleFinalize();
+                                    else handleMinimize();
+                                }}
+                                className="text-gray-400 hover:text-gray-600 font-bold p-2 bg-white rounded-full border border-gray-200 shadow-sm"
+                                title={progress?.status === 'processing' ? "Minimizar para plano de fundo" : "Fechar"}
+                            >
+                                {progress?.status === 'processing' ? '➖ Ocultar (Segundo Plano)' : '✕ Fechar'}
+                            </button>
                         ) : (
-                            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 font-bold">✕</button>
+                            <button onClick={handleFinalize} className="text-gray-400 hover:text-gray-600 font-bold">✕</button>
                         )}
                     </div>
 
