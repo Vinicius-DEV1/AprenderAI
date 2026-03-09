@@ -45,7 +45,7 @@ class InterpretSearchPromptJob implements ShouldQueue
             // Gera a representação vetorial da frase
             $vector = $aiService->generateEmbedding($userPrompt, $this->searchRequest->user_id);
             if ($vector) {
-                $similarFilters = $cacheService->findSimilarMatch($vector, 0.94); // >94% de match
+                $similarFilters = $cacheService->findSimilarMatch($vector, 0.88); // >88% de match
                 if ($similarFilters) {
                     $this->searchRequest->update(['filters' => $similarFilters, 'status' => 'completed']);
                     return;
