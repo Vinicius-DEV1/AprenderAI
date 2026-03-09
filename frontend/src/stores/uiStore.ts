@@ -8,8 +8,10 @@ interface UIState {
     // AI Batch Modal Global State
     isBatchModalOpen: boolean;
     batchModalConfig: { pendingCount: number } | null;
+    dismissedBatches: string[];
     openBatchModal: (pendingCount?: number) => void;
     closeBatchModal: () => void;
+    dismissBatch: (batchId: string) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -26,12 +28,15 @@ export const useUIStore = create<UIState>((set) => ({
 
     isBatchModalOpen: false,
     batchModalConfig: null,
+    dismissedBatches: [],
     openBatchModal: (pendingCount = 0) => set({
         isBatchModalOpen: true,
         batchModalConfig: { pendingCount }
     }),
     closeBatchModal: () => set({
         isBatchModalOpen: false,
-        // Mantemos o config para não quebrar animações de fechamento se necessário
     }),
+    dismissBatch: (batchId) => set((state) => ({
+        dismissedBatches: [...state.dismissedBatches, batchId]
+    })),
 }));

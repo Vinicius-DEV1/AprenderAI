@@ -12,7 +12,6 @@ export default function AdminLayout() {
     const location = useLocation();
     const ui = useUIStore();
     const queryClient = useQueryClient();
-    const [dismissedBatches, setDismissedBatches] = useState<string[]>([]);
 
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -312,13 +311,13 @@ export default function AdminLayout() {
                 isOpen={ui.isBatchModalOpen}
                 onClose={() => ui.closeBatchModal()}
                 pendingCount={ui.batchModalConfig?.pendingCount || 0}
-                onBatchStarted={(batchId) => {
+                onBatchStarted={() => {
                     queryClient.invalidateQueries({ queryKey: ['admin-triage-active'] });
                 }}
             />
 
             {/* Global AI Batch Indicator */}
-            {!ui.isBatchModalOpen && activeBatchData?.success && activeBatchData?.batch_id && !dismissedBatches.includes(activeBatchData.batch_id) && (
+            {!ui.isBatchModalOpen && activeBatchData?.success && activeBatchData?.batch_id && !ui.dismissedBatches.includes(activeBatchData.batch_id) && (
                 <div
                     className={`fixed bottom-6 right-6 z-50 ${activeBatchData.status === 'processing' ? 'bg-indigo-600 animate-bounce cursor-pointer' : activeBatchData.status === 'failed' || activeBatchData.status === 'cancelled' ? 'bg-red-600' : 'bg-green-600'
                         } text-white pl-5 pr-2 py-2 rounded-full shadow-2xl hover:scale-105 transition-all flex items-center gap-3 border-2 border-white group`}
@@ -336,7 +335,7 @@ export default function AdminLayout() {
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                setDismissedBatches(prev => [...prev, activeBatchData.batch_id]);
+                                ui.dismissBatch(activeBatchData.batch_id);
                             }}
                             className="ml-2 w-8 h-8 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 text-white transition-colors"
                             title="Ocultar aviso"
