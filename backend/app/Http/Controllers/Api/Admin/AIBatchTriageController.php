@@ -332,6 +332,7 @@ class AIBatchTriageController extends Controller
             ];
         } else {
             // Sincroniza dados atômicos do banco para o cache visual (corrige desync de Redis/Clusters)
+            $data['total'] = (int) $batch->total_count;
             $data['processed'] = (int) $batch->processed_count;
             $data['errors'] = (int) $batch->error_count;
             $data['input_tokens'] = (int) ($batch->input_tokens ?? 0);
