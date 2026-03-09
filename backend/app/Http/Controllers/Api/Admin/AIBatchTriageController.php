@@ -340,10 +340,22 @@ class AIBatchTriageController extends Controller
             $data['status'] = $batch->status;
             $data['stats'] = $batch->stats;
 
-            // Se o banco diz 'completed' mas o cache ainda diz 'processing', atualiza o cache
-            if ($batch->status === 'completed' && $data['status'] === 'processing') {
-                $data['status'] = 'completed';
-                $data['message'] = "Concluído!";
+            // --- FAIL-SAFE DE CONCLUSÃO ---
+            // Se a soma de processados + erros atingiu o total, o lote ACABOU.
+            // Forçamos o status concluído para o frontend mudar de tela, mesmo que o banco 
+            // ainda esteja pendente de um update de status ou preso em race condition.
+            if (($data['processed'] + $data['errors']) >= $data['total'] && $data['total'] > 0) {
+                if ($data['status'] === 'processing') {
+                    $data['status'] = 'completed';
+                    // Se houver erros, a mensagem deve refletir isso
+                    $data['message'] = $data['errors'] > 0 ? "Finalizado com Erros" : "Concluído!";
+                }
+            } else {
+                // Se o banco diz 'completed' mas o cache ainda diz 'processing', atualiza o cache
+                if ($batch->status === 'completed' && $data['status'] === 'processing') {
+                    $data['status'] = 'completed';
+                    $data['message'] = "Concluído!";
+                }
             }
         }
 

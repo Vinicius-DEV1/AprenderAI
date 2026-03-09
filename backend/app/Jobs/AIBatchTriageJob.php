@@ -183,7 +183,7 @@ class AIBatchTriageJob implements ShouldQueue
             \Illuminate\Support\Facades\Cache::put($key, $data, now()->addHours(2));
 
             // 2. Atualiza o Banco de Dados (Persistência para o Histórico) - Usando Incrementos Atômicos
-            $updated = \Illuminate\Support\Facades\DB::table('ai_processing_batches')
+            \Illuminate\Support\Facades\DB::table('ai_processing_batches')
                 ->where('batch_id', $this->batchId)
                 ->incrementEach([
                     'processed_count' => $applied,
@@ -191,15 +191,24 @@ class AIBatchTriageJob implements ShouldQueue
                     'input_tokens' => $inputTokens,
                     'output_tokens' => $outputTokens,
                     'estimated_cost' => $estimatedCost
-                ], [
-                    'status' => $data['status'],
-                    'stats' => json_encode($data['stats']),
-                    'updated_at' => now()
                 ]);
 
-            if ($updated === 0) {
-                \Illuminate\Support\Facades\Log::warning("[AIBATCH] Could not update database for batch {$this->batchId}. Record might be missing.");
+            // 3. Atualiza Status e Stats separadamente com proteção contra sobrescrita de finalização
+            $updateData = [
+                'stats' => json_encode($data['stats']),
+                'updated_at' => now()
+            ];
+
+            // Só permite atualizar o status para 'completed' se atingiu o total E não falhou fatalmente
+            if ($data['status'] === 'completed') {
+                $updateData['status'] = 'completed';
             }
+
+            // Garante que se o banco já estiver 'completed', não volte para 'processing'
+            \Illuminate\Support\Facades\DB::table('ai_processing_batches')
+                ->where('batch_id', $this->batchId)
+                ->where('status', '!=', 'completed') // Proteção extra: se já estiver concluído, não mexe no status
+                ->update($updateData);
 
             if (!empty($detailedErrors) || $errorMessage) {
                 $dbBatch = \App\Models\AiProcessingBatch::where('batch_id', $this->batchId)->first();
