@@ -1,12 +1,22 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useConfigStore } from '../stores/configStore';
+import { useAuthStore } from '../stores/authStore';
 import '../styles/landing-page.css';
 
 export default function HomePage() {
     const [faqOpen, setFaqOpen] = useState<number | null>(null);
     const [periodo, setPeriodo] = useState<'mensal' | 'anual'>('mensal');
     const { plans } = useConfigStore();
+    const { isAuthenticated, isLoading } = useAuthStore();
+    const navigate = useNavigate();
+
+    // Redirect authenticated users away from the landing page to the dashboard
+    useEffect(() => {
+        if (!isLoading && isAuthenticated) {
+            navigate('/dashboard', { replace: true });
+        }
+    }, [isAuthenticated, isLoading, navigate]);
 
     const getPlanBySlug = (slugKeyword: string) => {
         if (!plans || plans.length === 0) return null;
