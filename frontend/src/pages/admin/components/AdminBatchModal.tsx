@@ -17,7 +17,7 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
     const [step, setStep] = useState<'config' | 'preview' | 'processing'>('config');
     const [quantity, setQuantity] = useState(10);
     const [type, setType] = useState('complete');
-    const [chunkSize, setChunkSize] = useState(20);
+    const [chunkSize, setChunkSize] = useState(5);
     const [delaySeconds, setDelaySeconds] = useState(15);
     const [reprocess, setReprocess] = useState(false);
     const [previewQuestions, setPreviewQuestions] = useState<any[]>([]);
@@ -471,8 +471,8 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                                                         <div className="flex flex-col">
                                                                             <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Qualidade</span>
                                                                             <div className={`flex items-center gap-1 px-2 py-1 rounded-lg border ${item.after.quality_score >= 90 ? 'bg-green-50 border-green-100 text-green-700' :
-                                                                                    item.after.quality_score >= 60 ? 'bg-amber-50 border-amber-100 text-amber-700' :
-                                                                                        'bg-red-50 border-red-100 text-red-700'
+                                                                                item.after.quality_score >= 60 ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                                                                    'bg-red-50 border-red-100 text-red-700'
                                                                                 }`}>
                                                                                 <span className="text-[10px] font-black">{item.after.quality_score}</span>
                                                                             </div>
