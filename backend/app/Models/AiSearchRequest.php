@@ -7,10 +7,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AiSearchRequest extends Model
 {
+    const DEFAULT_THRESHOLD = 0.88;
+
     protected $fillable = [
         'user_id',
         'prompt',
         'filters',
+        'similarity_threshold',
         'status',
         'error',
     ];

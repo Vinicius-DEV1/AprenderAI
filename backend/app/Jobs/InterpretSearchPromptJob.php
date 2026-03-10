@@ -41,13 +41,16 @@ class InterpretSearchPromptJob implements ShouldQueue
                 return;
             }
 
-            // [Nível 2] Busca por Similaridade (Embeddings)
             // Gera a representação vetorial da frase
             $vector = $aiService->generateEmbedding($userPrompt, $this->searchRequest->user_id);
             if ($vector) {
-                $similarFilters = $cacheService->findSimilarMatch($vector, 0.88); // >88% de match
+                $similarFilters = $cacheService->findSimilarMatch($vector, AiSearchRequest::DEFAULT_THRESHOLD); // Match configurado
                 if ($similarFilters) {
-                    $this->searchRequest->update(['filters' => $similarFilters, 'status' => 'completed']);
+                    $this->searchRequest->update([
+                        'filters' => $similarFilters,
+                        'status' => 'completed',
+                        'similarity_threshold' => AiSearchRequest::DEFAULT_THRESHOLD
+                    ]);
                     return;
                 }
             }

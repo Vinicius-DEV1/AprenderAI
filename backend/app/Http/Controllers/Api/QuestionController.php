@@ -475,7 +475,7 @@ class QuestionController extends Controller
             $aiService = app(\App\Services\AI\AIService::class);
             $vector = $aiService->generateEmbedding($userPrompt, $user->id);
             if ($vector) {
-                $cachedFilters = $cacheService->findSimilarMatch($vector, 0.88);
+                $cachedFilters = $cacheService->findSimilarMatch($vector, AiSearchRequest::DEFAULT_THRESHOLD);
             }
         }
 
@@ -487,6 +487,7 @@ class QuestionController extends Controller
                 'prompt' => $request->prompt,
                 'status' => 'completed',
                 'filters' => $cachedFilters,
+                'similarity_threshold' => AiSearchRequest::DEFAULT_THRESHOLD,
             ]);
 
             return response()->json([

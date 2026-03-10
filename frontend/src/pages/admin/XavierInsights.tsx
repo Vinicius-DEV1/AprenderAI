@@ -7,6 +7,7 @@ interface XavierStats {
     success_rate: number;
     failed_count: number;
     cache_entries: number;
+    current_threshold: number;
 }
 
 interface RequestItem {
@@ -14,6 +15,7 @@ interface RequestItem {
     prompt: string;
     status: string;
     filters: any;
+    similarity_threshold: number | null;
     created_at: string;
     user?: {
         name: string;
@@ -78,6 +80,10 @@ const AdminXavierInsights: React.FC = () => {
                     <div className="text-3xl font-bold text-emerald-600 mt-1">{stats?.cache_entries || 0}</div>
                 </div>
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                    <div className="text-slate-500 text-sm font-medium">Threshold Global</div>
+                    <div className="text-3xl font-bold text-amber-500 mt-1">{stats?.current_threshold || '0.88'}</div>
+                </div>
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
                     <div className="text-slate-500 text-sm font-medium">Falhas Críticas</div>
                     <div className="text-3xl font-bold text-red-500 mt-1">{stats?.failed_count || 0}</div>
                 </div>
@@ -95,6 +101,7 @@ const AdminXavierInsights: React.FC = () => {
                             <th className="px-6 py-4">Usuário</th>
                             <th className="px-6 py-4">Prompt</th>
                             <th className="px-6 py-4">Status</th>
+                            <th className="px-6 py-4">Threshold</th>
                             <th className="px-6 py-4">Data</th>
                             <th className="px-6 py-4 text-right">Ações</th>
                         </tr>
@@ -107,6 +114,15 @@ const AdminXavierInsights: React.FC = () => {
                                     "{item.prompt}"
                                 </td>
                                 <td className="px-6 py-4">{getStatusBadge(item.status)}</td>
+                                <td className="px-6 py-4">
+                                    {item.similarity_threshold ? (
+                                        <span className="text-amber-600 font-mono text-xs font-bold bg-amber-50 dark:bg-amber-950/30 px-2 py-1 rounded">
+                                            {item.similarity_threshold}
+                                        </span>
+                                    ) : (
+                                        <span className="text-slate-400 text-xs">-</span>
+                                    )}
+                                </td>
                                 <td className="px-6 py-4 text-slate-500 text-sm">
                                     {new Date(item.created_at).toLocaleString('pt-BR')}
                                 </td>
@@ -135,6 +151,11 @@ const AdminXavierInsights: React.FC = () => {
                             <div>
                                 <h3 className="text-xl font-bold">Detalhes da Interpretação</h3>
                                 <p className="text-indigo-100 text-sm">Prompt: "{selectedRequest.prompt}"</p>
+                                {selectedRequest.similarity_threshold && (
+                                    <div className="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 bg-indigo-500/50 rounded text-[10px] uppercase font-black">
+                                        Similaridade: {selectedRequest.similarity_threshold}
+                                    </div>
+                                )}
                             </div>
                             <button onClick={() => setSelectedRequest(null)} className="text-white hover:opacity-70">✕</button>
                         </div>
