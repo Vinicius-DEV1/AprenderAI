@@ -90,9 +90,11 @@ class AIBatchTriageJob implements ShouldQueue
             Log::info("[AIBATCH] Starting batch job", [
                 'batch_id' => $this->batchId,
                 'chunk_index' => $this->chunkIndex,
-                'count' => $questions->count(),
+                'question_ids_received' => count($this->questionIds),
+                'questions_found' => $questions->count(),
                 'type' => $this->type,
-                'reprocess' => $this->reprocess
+                'reprocess' => $this->reprocess,
+                'retry_attempt' => $this->retryAttempt
             ]);
 
             $result = $batchService->processBatch($questions, $this->type, $this->model, $this->batchId, $this->reprocess, $this->userId);
