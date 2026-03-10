@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
 import { toast } from 'sonner';
 import Cropper from 'react-cropper';
@@ -13,6 +13,7 @@ export default function ImportReview() {
     const [activeTarget, setActiveTarget] = useState<string>('statement');
     const [saving, setSaving] = useState(false);
     const [cropper, setCropper] = useState<any>();
+    const [searchParams] = useSearchParams();
     const queryClient = useQueryClient();
 
     const { data, isLoading } = useQuery({
@@ -33,16 +34,30 @@ export default function ImportReview() {
 
     const approveMutation = useMutation({
         mutationFn: async () => {
-            return await api.post(`/api/v1/admin/import/review/${id}/approve`);
+            const res = await api.post(`/api/v1/admin/import/review/${id}/approve`, Object.fromEntries(searchParams));
+            return res.data;
         },
-        onSuccess: () => navigate('/admin/import/review')
+        onSuccess: (data) => {
+            if (data.next_id) {
+                navigate(`/admin/import/review/${data.next_id}?${searchParams.toString()}`);
+                toast.success('Questão aprovada! Indo para a próxima...');
+            } else {
+                navigate(`/admin/import/review?${searchParams.toString()}`);
+                toast.success('Questão aprovada! Fila concluída.');
+            }
+        },
+        onError: () => toast.error('Falha ao aprovar questão.')
     });
 
     const revertMutation = useMutation({
         mutationFn: async () => {
             return await api.post(`/api/v1/admin/import/review/${id}/revert`);
         },
-        onSuccess: () => navigate('/admin/import/review')
+        onSuccess: () => {
+            toast.success('Questão retornada para revisão.');
+            navigate(`/admin/import/review?${searchParams.toString()}`);
+        },
+        onError: () => toast.error('Falha ao reverter questão.')
     });
 
     const deleteImageMutation = useMutation({
@@ -114,7 +129,7 @@ export default function ImportReview() {
         <div className="py-6 px-4 md:px-6 w-full">
             <div className="w-full">
                 <div className="flex items-center gap-4 mb-6">
-                    <Link to="/admin/import/review" className="text-gray-400 hover:text-gray-600">
+                    <Link to={`/admin/import/review?${searchParams.toString()}`} className="text-gray-400 hover:text-gray-600">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
                     </Link>
                     <h2 className="font-semibold text-xl text-gray-800 leading-tight">
@@ -256,7 +271,7 @@ export default function ImportReview() {
                             </Link>
 
                             <div className="flex gap-2 pt-2 border-t border-gray-100">
-                                <Link to="/admin/import/review" className="flex-1 px-3 py-2 bg-gray-100 text-gray-600 rounded-md text-sm text-center hover:bg-gray-200">
+                                <Link to={`/admin/import/review?${searchParams.toString()}`} className="flex-1 px-3 py-2 bg-gray-100 text-gray-600 rounded-md text-sm text-center hover:bg-gray-200">
                                     ⬅️ Voltar à Lista
                                 </Link>
                             </div>

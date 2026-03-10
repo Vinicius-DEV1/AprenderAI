@@ -26,36 +26,7 @@ class AdminImportReviewController extends Controller
      */
     public function index(Request $request)
     {
-        $pendingQuery = Question::with(['subjects', 'alternatives', 'triageLogs'])
-            ->where('review_status', 'review');
-
-        // Filter by Organization
-        if ($request->filled('organization')) {
-            $pendingQuery->where('organization', $request->organization);
-        }
-
-        // Filter by Issue Type
-        if ($request->filled('issue')) {
-            $issue = $request->issue;
-            $pendingQuery->whereHas('triageLogs', function ($q) use ($issue) {
-                // Since it's an array field in JSON, we search for the specific issue in the most recent log
-                $q->whereJsonContains('issues_detected', $issue);
-            });
-        }
-
-        // Filter by Quality
-        if ($request->filled('quality') && $request->quality === 'low') {
-            $pendingQuery->whereHas('triageLogs', function ($q) {
-                $q->where('quality_score', '<', 60);
-            });
-        }
-
-        // Filter by Batch
-        if ($request->filled('import_id')) {
-            $importIds = QuestionImportItem::where('import_id', $request->import_id)
-                ->pluck('question_id');
-            $pendingQuery->whereIn('id', $importIds);
-        }
+        $pendingQuery = $this->applyFilters($request);
 
         $pendingQuestions = $pendingQuery->latest()->paginate(12);
 
@@ -154,7 +125,46 @@ class AdminImportReviewController extends Controller
             $question->importItem->import->decrement('pending_count');
         }
 
-        return response()->json(['message' => 'Questão aprovada com sucesso.']);
+        $nextId = $this->applyFilters($request)->latest()->value('id');
+
+        return response()->json([
+            'message' => 'Questão aprovada com sucesso.',
+            'next_id' => $nextId
+        ]);
+    }
+
+    /**
+     * Helper to apply common filters used in listing and "next question" logic.
+     */
+    private function applyFilters(Request $request)
+    {
+        $query = Question::with(['subjects', 'alternatives', 'triageLogs'])
+            ->where('review_status', 'review');
+
+        if ($request->filled('organization')) {
+            $query->where('organization', $request->organization);
+        }
+
+        if ($request->filled('issue')) {
+            $issue = $request->issue;
+            $query->whereHas('triageLogs', function ($q) use ($issue) {
+                $q->whereJsonContains('issues_detected', $issue);
+            });
+        }
+
+        if ($request->filled('quality') && $request->quality === 'low') {
+            $query->whereHas('triageLogs', function ($q) {
+                $q->where('quality_score', '<', 60);
+            });
+        }
+
+        if ($request->filled('import_id')) {
+            $importIds = QuestionImportItem::where('import_id', $request->import_id)
+                ->pluck('question_id');
+            $query->whereIn('id', $importIds);
+        }
+
+        return $query;
     }
 
     /**
