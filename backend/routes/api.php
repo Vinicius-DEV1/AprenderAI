@@ -183,6 +183,7 @@ Route::prefix('v1')->group(function () {
             Route::post('questions/{question}/complete', [AdminQuestionController::class, 'completeQuestion']);
             Route::post('questions/{question}/classify', [AdminQuestionController::class, 'classifyQuestion']);
             Route::post('questions/{question}/retry-evaluation', [AdminQuestionController::class, 'completeQuestion']); // Re-use completeQuestion for full retry
+            Route::post('questions/{question}/revert-triage', [AdminQuestionController::class, 'revertToTriage']);
 
             Route::patch('users/{user}/toggle-status', [AdminUserController::class, 'toggleStatus']);
             Route::post('users/{user}/reset-password', [AdminUserController::class, 'resetPassword']);

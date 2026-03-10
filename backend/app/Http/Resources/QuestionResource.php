@@ -59,6 +59,32 @@ class QuestionResource extends JsonResource
             'notebook_ids' => $this->whenLoaded('notebooks', function () {
                 return $this->notebooks->pluck('id');
             }),
+
+            // Admin only fields
+            $this->mergeWhen(auth()->check() && auth()->user()->isAdmin(), [
+                'difficulty_reasoning' => $this->difficulty_reasoning,
+                'triage_logs' => $this->whenLoaded('triageLogs', function () {
+                    return $this->triageLogs->map(fn($log) => [
+                        'id' => $log->id,
+                        'type' => $log->triage_type,
+                        'status' => $log->status,
+                        'issues' => $log->issues_detected,
+                        'quality_score' => $log->quality_score,
+                        'changes' => $log->changes_made,
+                        'processed_by' => $log->processed_by,
+                        'created_at' => $log->created_at,
+                    ]);
+                }),
+                'reports' => $this->whenLoaded('reports', function () {
+                    return $this->reports->map(fn($report) => [
+                        'id' => $report->id,
+                        'reason' => $report->reason,
+                        'status' => $report->status,
+                        'user_name' => $report->user?->name ?? 'Usuário',
+                        'created_at' => $report->created_at,
+                    ]);
+                }),
+            ]),
         ];
     }
 }

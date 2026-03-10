@@ -404,4 +404,46 @@ class QuestionController extends Controller
 
         return response()->json(['message' => 'Questão permanentemente excluída.', 'impact' => $impactData]);
     }
+
+    /**
+     * Revert a question back to the triage queue.
+     */
+    public function revertToTriage(Request $request, Question $question)
+    {
+        $request->validate([
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        $adminId = $request->user()->id;
+        $reason = $request->reason;
+
+        \DB::transaction(function () use ($question, $reason, $adminId) {
+            $question->update([
+                'review_status' => 'review',
+                'is_active' => false,
+            ]);
+
+            app(\App\Services\QuestionTriageService::class)->logManualAction(
+                $question,
+                'manual_review',
+                ['reversion_reason' => $reason],
+                $adminId
+            );
+
+            \App\Models\UserLog::create([
+                'user_id' => $adminId,
+                'action' => 'admin_reverted_to_triage',
+                'description' => json_encode([
+                    'question_id' => $question->id,
+                    'reason' => $reason
+                ]),
+                'ip_address' => request()->ip(),
+            ]);
+        });
+
+        return response()->json([
+            'message' => 'Questão retornada para o banco de triagem com sucesso.',
+            'question_id' => $question->id
+        ]);
+    }
 }
