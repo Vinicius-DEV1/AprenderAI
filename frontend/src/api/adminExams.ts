@@ -18,7 +18,7 @@ export interface AdminExamsResponse {
 }
 
 export const getAdminExamsList = async (page: number = 1, filters?: any): Promise<AdminExamsResponse> => {
-    let url = `/admin/exams?page=${page}`;
+    let url = `/api/v1/admin/exams?page=${page}`;
     if (filters) {
         if (filters.year) url += `&year=${filters.year}`;
         if (filters.organization) url += `&organization=${filters.organization}`;
@@ -29,7 +29,7 @@ export const getAdminExamsList = async (page: number = 1, filters?: any): Promis
 };
 
 export const getAdminExamDetails = async (encodedId: string, filters?: any): Promise<{ data: Question[] }> => {
-    let url = `/admin/exams/${encodedId}`;
+    let url = `/api/v1/admin/exams/${encodedId}`;
     if (filters) {
         url += '?';
         const params = new URLSearchParams();
