@@ -3,9 +3,10 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { useConfig } from './hooks/useConfig';
 import { useAuthStore } from './stores/authStore';
-import { getUser, getCsrfCookie } from './api/auth';
+import { getUser } from './api/auth';
 import { Toaster } from 'sonner';
 import { setBootstrapping } from './api/axios';
+import GuestRoute from './components/GuestRoute';
 
 // Layouts & Auth
 import LoginPage from './pages/auth/LoginPage';
@@ -97,8 +98,11 @@ function App() {
     useEffect(() => {
         const checkAuthStatus = async () => {
             try {
-                // Garante que o cookie de sessão existe antes de verificar auth
-                await getCsrfCookie();
+                // NOTE: We intentionally do NOT call getCsrfCookie() here.
+                // Calling it proactively can interfere with a freshly-established
+                // Laravel Socialite session (Google OAuth callback), causing a 401
+                // on the first load. The CSRF token is lazy-fetched on demand by
+                // the 419 retry interceptor in axios.ts when actually needed.
                 const response = await getUser();
                 if (response.data && response.data.user) {
                     setUser(response.data.user);
@@ -153,13 +157,17 @@ function App() {
                 <Analytics />
                 <Toaster position="top-right" richColors />
                 <Routes>
-                    {/* Public / Auth Routes */}
+                    {/* Public Routes */}
                     <Route path="/" element={<><MetaTags title="Início" description="Prepare-se para o ENEM e concursos com IA." /><HomePage /></>} />
-                    <Route path="/login" element={<><MetaTags title="Login" /><LoginPage /></>} />
-                    <Route path="/register" element={<><MetaTags title="Criar Conta" /><RegisterPage /></>} />
-                    <Route path="/forgot-password" element={<><MetaTags title="Recuperar Senha" /><ForgotPassword /></>} />
-                    <Route path="/reset-password" element={<><MetaTags title="Redefinir Senha" /><ResetPassword /></>} />
                     <Route path="/verify-email" element={<><MetaTags title="Verificação de E-mail" /><VerifyEmail /></>} />
+
+                    {/* Guest-only Routes: redirect to /dashboard if already logged in */}
+                    <Route element={<GuestRoute />}>
+                        <Route path="/login" element={<><MetaTags title="Login" /><LoginPage /></>} />
+                        <Route path="/register" element={<><MetaTags title="Criar Conta" /><RegisterPage /></>} />
+                        <Route path="/forgot-password" element={<><MetaTags title="Recuperar Senha" /><ForgotPassword /></>} />
+                        <Route path="/reset-password" element={<><MetaTags title="Redefinir Senha" /><ResetPassword /></>} />
+                    </Route>
                     <Route path="/privacidade" element={<><MetaTags title="Política de Privacidade" /><PrivacyPolicy /></>} />
                     <Route path="/uso-justo" element={<><MetaTags title="Termos de Uso" /><FairUsePolicy /></>} />
 

@@ -127,6 +127,11 @@ class GoogleAuthController extends Controller
         // Log in the user
         Auth::login($user);
 
+        // Regenerate the session after login to prevent session fixation attacks
+        // and to ensure the SPA picks up a clean, valid session cookie on its
+        // very first request after the Google redirect.
+        request()->session()->regenerate();
+
         \App\Models\UserLog::create([
             'user_id' => $user->id,
             'action' => 'login',

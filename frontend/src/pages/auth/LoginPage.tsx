@@ -4,12 +4,17 @@ import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
 import { login as apiLogin, getUser } from '../../api/auth';
 import { useQueryClient } from '@tanstack/react-query';
+import { useConfig } from '../../hooks/useConfig';
 
 export default function LoginPage() {
     const navigate = useNavigate();
     const config = useConfigStore();
     const setUser = useAuthStore((state) => state.setUser);
     const queryClient = useQueryClient();
+
+    // Wait for system config to be fetched before rendering the Google button.
+    // This prevents the button from disappearing due to the config race condition.
+    const { isLoading: isConfigLoading } = useConfig();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -102,7 +107,9 @@ export default function LoginPage() {
                         </button>
                     </form>
 
-                    {config.googleLoginEnabled && (
+                    {/* Show the Google button only after config is fetched to avoid the
+                        race-condition "button disappearing" bug. While loading, render nothing. */}
+                    {!isConfigLoading && config.googleLoginEnabled && (
                         <>
                             <div className="divider">ou</div>
                             <a href="/auth/google" className="btn-google">
