@@ -394,6 +394,33 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                                     </div>
                                                 </div>
                                             )}
+                                            {progress.stats.sent_to_review > 0 && (
+                                                <div className="bg-red-50 border border-red-100 px-4 py-2 rounded-2xl flex items-center gap-3 shadow-sm hover:scale-105 transition-transform cursor-default">
+                                                    <span className="text-2xl">🚫</span>
+                                                    <div className="flex flex-col items-start">
+                                                        <span className="text-[9px] font-black text-red-500 uppercase tracking-widest leading-none mb-1">P/ Revisão</span>
+                                                        <span className="text-base font-black text-red-700">{progress.stats.sent_to_review} <span className="text-[10px] opacity-70">retidas</span></span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {progress.stats.low_quality > 0 && (
+                                                <div className="bg-pink-50 border border-pink-100 px-4 py-2 rounded-2xl flex items-center gap-3 shadow-sm hover:scale-105 transition-transform cursor-default">
+                                                    <span className="text-2xl">👎</span>
+                                                    <div className="flex flex-col items-start">
+                                                        <span className="text-[9px] font-black text-pink-500 uppercase tracking-widest leading-none mb-1">Baixa Qualid.</span>
+                                                        <span className="text-base font-black text-pink-700">{progress.stats.low_quality} <span className="text-[10px] opacity-70">detectadas</span></span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {progress.stats.approved > 0 && (
+                                                <div className="bg-green-50 border border-green-100 px-4 py-2 rounded-2xl flex items-center gap-3 shadow-sm hover:scale-105 transition-transform cursor-default">
+                                                    <span className="text-2xl">✅</span>
+                                                    <div className="flex flex-col items-start">
+                                                        <span className="text-[9px] font-black text-green-500 uppercase tracking-widest leading-none mb-1">Aprovadas</span>
+                                                        <span className="text-base font-black text-green-700">{progress.stats.approved} <span className="text-[10px] opacity-70">liberadas</span></span>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 

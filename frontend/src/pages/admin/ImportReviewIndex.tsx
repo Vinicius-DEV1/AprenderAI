@@ -9,13 +9,23 @@ export default function ImportReviewIndex() {
 
     const importId = searchParams.get('import_id') || '';
     const organization = searchParams.get('organization') || '';
+    const issue = searchParams.get('issue') || '';
+    const quality = searchParams.get('quality') || '';
     const page = searchParams.get('page') || '1';
 
+    const { data: summaryStats } = useQuery({
+        queryKey: ['admin-import-review-summary'],
+        queryFn: async () => {
+            const res = await api.get('/api/v1/admin/import/review/summary');
+            return res.data;
+        }
+    });
+
     const { data, isLoading } = useQuery({
-        queryKey: ['admin-import-review-list', importId, organization, page],
+        queryKey: ['admin-import-review-list', importId, organization, issue, quality, page],
         queryFn: async () => {
             const res = await api.get('/api/v1/admin/import/review', {
-                params: { import_id: importId, organization, page }
+                params: { import_id: importId, organization, issue, quality, page }
             });
             return res.data;
         }
@@ -88,6 +98,52 @@ export default function ImportReviewIndex() {
                     </div>
                 </div>
 
+                {/* Summary Cards */}
+                {summaryStats && (
+                    <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-6">
+                        {[
+                            { id: 'no_alternatives', icon: '⚠️', label: 'Sem Alts', color: 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100' },
+                            { id: 'no_statement', icon: '📝', label: 'Sem Enunciado', color: 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100' },
+                            { id: 'wrong_answer', icon: '❌', label: 'Gabarito Errado', color: 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100' },
+                            { id: 'has_image', icon: '🖼️', label: 'Tem Imagem', color: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' },
+                            { id: 'missing_image', icon: '❓', label: 'Img Faltando', color: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' },
+                            { id: 'missing_support_text', icon: '📄', label: 'Texto Faltando', color: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' },
+                            { id: 'low_quality', icon: '👎', label: 'Baixa Qualid.', color: 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100', isQuality: true },
+                        ].map(card => {
+                            const count = summaryStats[card.id] || 0;
+                            const isSelected = card.isQuality ? quality === 'low' : issue === card.id;
+
+                            return (
+                                <button
+                                    key={card.id}
+                                    onClick={() => {
+                                        const newParams = new URLSearchParams(searchParams);
+                                        if (isSelected) {
+                                            if (card.isQuality) newParams.delete('quality');
+                                            else newParams.delete('issue');
+                                        } else {
+                                            if (card.isQuality) {
+                                                newParams.set('quality', 'low');
+                                                newParams.delete('issue');
+                                            } else {
+                                                newParams.set('issue', card.id);
+                                                newParams.delete('quality');
+                                            }
+                                        }
+                                        newParams.set('page', '1');
+                                        setSearchParams(newParams);
+                                    }}
+                                    className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${card.color} ${isSelected ? 'ring-2 ring-offset-1 ring-gray-400 shadow-sm scale-105' : 'opacity-80'}`}
+                                >
+                                    <div className="text-xl mb-1">{card.icon}</div>
+                                    <div className="font-bold text-[10px] uppercase tracking-wider mb-1 text-center leading-none">{card.label}</div>
+                                    <div className="text-lg font-black">{count}</div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
                     {/* LEFT: Question List */}
                     <div className="xl:col-span-3 space-y-4">
@@ -123,14 +179,30 @@ export default function ImportReviewIndex() {
 
                                                 <div className="flex flex-wrap gap-2 mt-3">
                                                     {question.image_path && (
-                                                        <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full flex items-center gap-1">
+                                                        <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-[10px] font-bold uppercase tracking-wider rounded border border-orange-200 flex items-center gap-1">
                                                             🖼️ Tem imagem
                                                         </span>
                                                     )}
                                                     {(!question.alternatives || question.alternatives.length === 0) ? (
-                                                        <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full">⚠️ Sem alternativas</span>
+                                                        <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider rounded border border-red-200">⚠️ Sem alternativas</span>
                                                     ) : (
-                                                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">{question.alternatives.length} alternativas</span>
+                                                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-wider rounded border border-gray-200">{question.alternatives.length} alternativas</span>
+                                                    )}
+
+                                                    {/* Mostrar Issues Mais Recentes */}
+                                                    {question.triage_logs && question.triage_logs.length > 0 && (
+                                                        <>
+                                                            {question.triage_logs[0].issues_detected?.map((iss: string) => (
+                                                                <span key={iss} className="px-2 py-0.5 bg-red-50 text-red-700 text-[10px] font-bold uppercase tracking-wider rounded border border-red-200">
+                                                                    🚫 {iss.replace(/_/g, ' ')}
+                                                                </span>
+                                                            ))}
+                                                            {question.triage_logs[0].quality_score < 60 && (
+                                                                <span className="px-2 py-0.5 bg-pink-50 text-pink-700 text-[10px] font-bold uppercase tracking-wider rounded border border-pink-200">
+                                                                    👎 Score: {question.triage_logs[0].quality_score}
+                                                                </span>
+                                                            )}
+                                                        </>
                                                     )}
                                                 </div>
                                             </div>
@@ -208,6 +280,27 @@ export default function ImportReviewIndex() {
                                             <option key={org} value={org}>{org}</option>
                                         ))}
                                     </select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="block text-[10px] font-bold uppercase text-gray-600 mb-1">Issue</label>
+                                        <select name="issue" value={issue} onChange={handleFilterChange} className="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                            <option value="">Todas</option>
+                                            <option value="no_alternatives">Sem Alternativas</option>
+                                            <option value="no_statement">Sem Enunciado</option>
+                                            <option value="wrong_answer">Gabarito Errado</option>
+                                            <option value="has_image">Tem Imagem</option>
+                                            <option value="missing_image">Imagem Faltando</option>
+                                            <option value="missing_support_text">Texto Base Faltando</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold uppercase text-gray-600 mb-1">Qualidade</label>
+                                        <select name="quality" value={quality} onChange={handleFilterChange} className="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                            <option value="">Todas</option>
+                                            <option value="low">Abaixo de 60</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <button onClick={clearFilters} className="w-full text-center px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200 font-medium">
                                     Limpar Filtros

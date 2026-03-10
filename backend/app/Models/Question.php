@@ -343,4 +343,12 @@ class Question extends Model
     {
         return $this->hasMany(QuestionImage::class);
     }
+
+    /**
+     * Get triage log history for this question.
+     */
+    public function triageLogs()
+    {
+        return $this->hasMany(QuestionTriageLog::class)->orderBy('created_at', 'desc');
+    }
 }

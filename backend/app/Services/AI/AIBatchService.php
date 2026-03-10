@@ -5,6 +5,7 @@ namespace App\Services\AI;
 use App\Models\Question;
 use App\Models\Subject;
 use App\Models\Topic;
+use App\Services\QuestionTriageService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -13,11 +14,16 @@ class AIBatchService
 {
     protected $aiService;
     protected $promptService;
+    protected $triageService;
 
-    public function __construct(AIService $aiService, \App\Services\PromptService $promptService)
-    {
+    public function __construct(
+        AIService $aiService,
+        \App\Services\PromptService $promptService,
+        QuestionTriageService $triageService
+    ) {
         $this->aiService = $aiService;
         $this->promptService = $promptService;
+        $this->triageService = $triageService;
     }
 
     public function processBatch(Collection $questions, string $type, ?string $model = null, ?string $batchId = null, bool $reprocess = false, ?int $userId = null): array
@@ -134,12 +140,24 @@ class AIBatchService
         $prompt .= "   - Se a questão for genuinamente interdisciplinar, retorne um ARRAY de assuntos/matérias. SE NÃO, retorne apenas 1 item no array.\n";
         $prompt .= "   - Nunca combine dois assuntos em uma mesma string; se houver mais de um tema, use obrigatoriamente itens separados no array.\n";
         $prompt .= "   - Se não usar ID existente, retorne string nova no array. `subjects` = áreas (ex: 'Matemática'). `topics` = assuntos (ex: 'Trigonometria'). MÁXIMO 1 a 4 palavras. Iniciais Maiúsculas.\n";
+        $prompt .= "4. TRIAGEM ESTRUTURAL OBRIGATÓRIA: Para CADA questão, preencha o campo `triage` com:\n";
+        $prompt .= "   - `issues`: array de problemas detectados. Valores possíveis:\n";
+        $prompt .= "     * `no_alternatives` — questão objetiva sem alternativas\n";
+        $prompt .= "     * `no_statement` — tem alternativas mas enunciado vazio ou ausente\n";
+        $prompt .= "     * `wrong_answer` — gabarito inválido: nenhum correto, múltiplos corretos, ou gabarito inexistente nas alternativas\n";
+        $prompt .= "     * `has_image` — questão contém imagem (requer revisão visual humana)\n";
+        $prompt .= "     * `missing_image` — enunciado referencia imagem (ex: 'observe a figura', 'analise o gráfico', 'conforme a imagem', 'veja o quadro') mas nenhuma imagem foi fornecida\n";
+        $prompt .= "     * `missing_support_text` — contexto indica que deveria haver texto-base (questão de interpretação, filosofia, sociologia, etc.) mas não há\n";
+        $prompt .= "   - `quality_score`: inteiro 0-100 representando qualidade pedagógica.\n";
+        $prompt .= "     Fatores que reduzem o score: alternativas absurdas, enunciado ambíguo, distratores fracos, inconsistência de dificuldade, gabarito duvidoso.\n";
+        $prompt .= "     Guia: 90-100=excelente, 75-89=bom, 60-74=aceitável, abaixo de 60=requer revisão manual.\n";
+        $prompt .= "     Se a questão não tiver problemas estruturais óbvios, retorne `issues: []` e `quality_score` proporcional à qualidade pedagógica.\n\n";
         $prompt .= "DADOS DAS QUESTOES:\n" . json_encode($questionsData) . "\n\n";
         $prompt .= "REFERENCIAS (Use IDs se houver correspondencia):\n";
         $prompt .= "Disciplinas: " . json_encode($subjectsRef) . "\n";
         $prompt .= "Assuntos: " . json_encode($topicsRef) . "\n\n";
         $prompt .= "RESPOSTA: Retorne APENAS um Array JSON puro. NÃO use blocos de código markdown (```json). MANTENHA RIGOROSAMENTE OS IDs ORIGINAIS DAS QUESTÕES fornecidos no JSON de entrada.\n";
-        $prompt .= "Formato: [{\"id\": ID_ORIGINAL, \"difficulty\": \"easy|medium|hard|null\", \"difficulty_reasoning\": \"...\", \"explanation\": \"...\", \"subjects\": [ID|\"string\"], \"topics\": [ID|\"string\"], \"suggested_answer\": \"...|null\"}]";
+        $prompt .= 'Formato: [{"id": ID_ORIGINAL, "difficulty": "easy|medium|hard|null", "difficulty_reasoning": "...", "explanation": "...", "subjects": [ID|"string"], "topics": [ID|"string"], "suggested_answer": "...|null", "triage": {"issues": [], "quality_score": 85}}]';
         return $prompt;
     }
 
@@ -152,6 +170,9 @@ class AIBatchService
             'explanation' => 0,
             'subjects' => 0,
             'topics' => 0,
+            'sent_to_review' => 0,
+            'approved' => 0,
+            'low_quality' => 0,
         ];
 
         // Log para depuração de erros massivos (ajuda a ver o que a IA mandou)
@@ -404,25 +425,59 @@ class AIBatchService
                 }
             }
 
+            // --- Triagem Estrutural (dados retornados pela IA) ---
+            $triageData = is_array($data['triage'] ?? null) ? $data['triage'] : [];
+            $triageIssues = is_array($triageData['issues'] ?? null) ? $triageData['issues'] : [];
+            $qualityScore = isset($triageData['quality_score']) ? (int) $triageData['quality_score'] : 100;
+
             // --- Validação Final de Status ---
             // Recarregamos o modelo e relações para garantir que o estado em memória reflita o DB (após os syncs)
             $question->refresh();
-            $question->load('subjects', 'topics');
+            $question->load('subjects', 'topics', 'alternatives');
 
             $subCount = $question->subjects->count();
             $topCount = $question->topics->count();
             $hasClassification = ($subCount > 0 && $topCount > 0);
 
-            // Se o objetivo era classificação/full e falhou em ter ambos, volta pra pending
-            // Se o gabarito divergiu, obrigatoriamente pending
+            // Decisão de status:
+            // 1. IA detectou issues estruturais → revisão manual
+            // 2. qualityScore < 60 → revisão manual
+            // 3. Gabarito divergiu (suggested_answer diferente) → revisão manual
+            // 4. Classificação incompleta (apenas quando type exige) → revisão manual
+            // 5. Caso contrário → aprovado
             $finalStatus = 'approved';
-            if ($needsManualReview) {
-                $finalStatus = 'pending';
+            if (!empty($triageIssues) || $qualityScore < 60) {
+                $finalStatus = 'review';
+            } elseif ($needsManualReview) {
+                $finalStatus = 'review';
             } elseif (in_array($type, ['both', 'classification']) && !$hasClassification) {
-                $finalStatus = 'pending';
+                $finalStatus = 'review';
             }
 
             $question->update(['review_status' => $finalStatus]);
+
+            // Registrar log de triagem automática
+            $changesSnapshot = [
+                'before' => $snapshotBefore,
+                'after' => [
+                    'difficulty' => $question->difficulty,
+                    'difficulty_reasoning' => $question->difficulty_reasoning,
+                    'explanation' => $question->explanation,
+                    'subjects' => $question->subjects->pluck('id')->toArray(),
+                    'topics' => $question->topics->pluck('id')->toArray(),
+                ],
+            ];
+            $this->triageService->logAutoTriage($question, $triageIssues, $qualityScore, $changesSnapshot);
+
+            // Atualizar contadores de stats
+            if ($finalStatus === 'review') {
+                $stats['sent_to_review']++;
+            } else {
+                $stats['approved']++;
+            }
+            if ($qualityScore < 60) {
+                $stats['low_quality']++;
+            }
 
             $applied++;
 

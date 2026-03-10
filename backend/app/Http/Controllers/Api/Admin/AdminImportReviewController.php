@@ -7,14 +7,18 @@ use App\Models\Question;
 use App\Models\QuestionImage;
 use App\Models\QuestionImport;
 use App\Models\QuestionImportItem;
+use App\Models\QuestionTriageLog;
 use App\Services\QuestionImportService;
+use App\Services\QuestionTriageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class AdminImportReviewController extends Controller
 {
-    public function __construct(private readonly QuestionImportService $importService)
-    {
+    public function __construct(
+        private readonly QuestionImportService $importService,
+        private readonly QuestionTriageService $triageService
+    ) {
     }
 
     /**
@@ -22,12 +26,28 @@ class AdminImportReviewController extends Controller
      */
     public function index(Request $request)
     {
-        $pendingQuery = Question::with(['subjects', 'alternatives'])
+        $pendingQuery = Question::with(['subjects', 'alternatives', 'triageLogs'])
             ->where('review_status', 'review');
 
         // Filter by Organization
         if ($request->filled('organization')) {
             $pendingQuery->where('organization', $request->organization);
+        }
+
+        // Filter by Issue Type
+        if ($request->filled('issue')) {
+            $issue = $request->issue;
+            $pendingQuery->whereHas('triageLogs', function ($q) use ($issue) {
+                // Since it's an array field in JSON, we search for the specific issue in the most recent log
+                $q->whereJsonContains('issues_detected', $issue);
+            });
+        }
+
+        // Filter by Quality
+        if ($request->filled('quality') && $request->quality === 'low') {
+            $pendingQuery->whereHas('triageLogs', function ($q) {
+                $q->where('quality_score', '<', 60);
+            });
         }
 
         // Filter by Batch
@@ -63,6 +83,43 @@ class AdminImportReviewController extends Controller
             'recentActions' => $recentActions,
         ]);
     }
+
+    /**
+     * Get a summary counts of issues among pending questions.
+     */
+    public function summary()
+    {
+        $logs = QuestionTriageLog::whereHas('question', function ($q) {
+            $q->where('review_status', 'review');
+        })
+            ->where('triage_type', 'ai_batch') // We only care about AI findings
+            ->get();
+
+        $summary = [
+            'no_alternatives' => 0,
+            'no_statement' => 0,
+            'wrong_answer' => 0,
+            'has_image' => 0,
+            'missing_image' => 0,
+            'missing_support_text' => 0,
+            'low_quality' => 0,
+        ];
+
+        foreach ($logs as $log) {
+            $issues = $log->issues_detected ?? [];
+            foreach ($issues as $issue) {
+                if (array_key_exists($issue, $summary)) {
+                    $summary[$issue]++;
+                }
+            }
+
+            if ($log->quality_score !== null && $log->quality_score < 60) {
+                $summary['low_quality']++;
+            }
+        }
+
+        return response()->json($summary);
+    }
     /**
      * Get review data for a specific question/import item.
      */
@@ -84,6 +141,8 @@ class AdminImportReviewController extends Controller
         $question = Question::findOrFail($id);
         $question->update(['review_status' => 'approved']);
 
+        $this->triageService->logManualAction($question, 'approved', [], Auth::id());
+
         if ($question->importItem) {
             $question->importItem->update([
                 'approved_by' => Auth::id(),
@@ -104,7 +163,9 @@ class AdminImportReviewController extends Controller
     public function revert(Request $request, $id)
     {
         $question = Question::findOrFail($id);
-        $question->update(['review_status' => 'pending']);
+        $question->update(['review_status' => 'pending']); // or review if we consider it back to review stage
+
+        $this->triageService->logManualAction($question, 'manual_review', [], Auth::id());
 
         if ($question->importItem) {
             $question->importItem->update([
@@ -154,5 +215,17 @@ class AdminImportReviewController extends Controller
         $this->importService->deleteImage($image);
 
         return response()->json(['message' => 'Imagem removida com sucesso.']);
+    }
+
+    /**
+     * Get the timeline of triage history for a question.
+     */
+    public function triageHistory($id)
+    {
+        $logs = QuestionTriageLog::where('question_id', $id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($logs);
     }
 }
