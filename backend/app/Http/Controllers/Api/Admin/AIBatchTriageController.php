@@ -89,7 +89,7 @@ class AIBatchTriageController extends Controller
     {
         $validated = $request->validate([
             'quantity' => 'required|integer|min:1',
-            'chunk_size' => 'nullable|integer|min:1',
+            'chunk_size' => 'nullable|integer|min:1|max:10', // Capped at 10, typically 5 to prevent JSON output corruption
             'type' => 'required|in:difficulty,explanation,classification,complete,both',
             'model' => 'nullable|string',
             'reprocess' => 'nullable|boolean',
