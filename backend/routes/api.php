@@ -176,6 +176,7 @@ Route::prefix('v1')->group(function () {
             Route::delete('questions/{id}/force', [AdminQuestionController::class, 'forceDelete']);
 
             Route::get('questions/{question}/delete-impact', [AdminQuestionController::class, 'deleteImpact']);
+            Route::get('questions/{question}/triage-history', [AdminImportReviewController::class, 'triageHistory']);
             Route::apiResource('questions', AdminQuestionController::class);
             Route::post('questions/{question}/evaluate-difficulty', [AdminQuestionController::class, 'evaluateDifficulty']);
             Route::post('questions/{question}/generate-explanation', [AdminQuestionController::class, 'generateExplanation']);
@@ -291,6 +292,7 @@ Route::prefix('v1')->group(function () {
             // Import Review
             Route::prefix('import/review')->group(function () {
                 Route::get('/', [AdminImportReviewController::class, 'index']);
+                Route::get('/summary', [AdminImportReviewController::class, 'summary']);
                 Route::get('/{id}', [AdminImportReviewController::class, 'show']);
                 Route::post('/{id}/approve', [AdminImportReviewController::class, 'approve']);
                 Route::post('/{id}/revert', [AdminImportReviewController::class, 'revert']);

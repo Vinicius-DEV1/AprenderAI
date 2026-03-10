@@ -175,6 +175,9 @@ class AIBatchTriageJob implements ShouldQueue
                         'explanation' => 0,
                         'subjects' => 0,
                         'topics' => 0,
+                        'sent_to_review' => 0,
+                        'approved' => 0,
+                        'low_quality' => 0,
                     ]
                 ];
             }
@@ -186,6 +189,9 @@ class AIBatchTriageJob implements ShouldQueue
                     'explanation' => 0,
                     'subjects' => 0,
                     'topics' => 0,
+                    'sent_to_review' => 0,
+                    'approved' => 0,
+                    'low_quality' => 0,
                 ];
             }
 
