@@ -203,8 +203,9 @@ class AIBatchTriageController extends Controller
         Log::info("[AIBATCH] Dispatching jobs for batch", ['batch_id' => $batchId, 'total' => $total, 'chunk_size' => $chunkSize]);
 
         $userId = auth()->id();
+        Log::info("[AIBATCH] Starting chunking with size: " . $chunkSize);
         $questions->chunk($chunkSize)->each(function ($chunk, $index) use ($batchId, $validated, $reprocess, $delaySeconds, $userId) {
-            Log::info("[AIBATCH] Dispatching chunk {$index}", ['count' => $chunk->count()]);
+            Log::info("[AIBATCH] Dispatching chunk {$index} for batch {$batchId}", ['count' => $chunk->count(), 'question_ids' => $chunk->pluck('id')->toArray()]);
 
             $job = new AIBatchTriageJob(
                 $batchId,
