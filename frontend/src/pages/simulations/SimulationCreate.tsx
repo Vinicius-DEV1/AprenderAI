@@ -11,7 +11,7 @@ function SubjectSearch({ availableSubjects, onSelect }: { availableSubjects: str
     const [search, setSearch] = useState('');
     const containerRef = useRef<HTMLDivElement>(null);
 
-    const filteredOptions = availableSubjects.filter(sub => 
+    const filteredOptions = availableSubjects.filter(sub =>
         sub.toLowerCase().includes(search.toLowerCase())
     );
 
@@ -33,16 +33,16 @@ function SubjectSearch({ availableSubjects, onSelect }: { availableSubjects: str
 
     return (
         <div className="relative" ref={containerRef}>
-            <div 
+            <div
                 className={`flex items-center gap-2 px-4 py-3 bg-white dark:bg-slate-900 border rounded-xl cursor-text transition-all duration-200 ${isOpen ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-700'}`}
                 onClick={() => setIsOpen(true)}
             >
                 <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                <input 
-                    type="text" 
-                    placeholder="Adicionar disciplina..." 
+                <input
+                    type="text"
+                    placeholder="Adicionar disciplina..."
                     className="flex-1 bg-transparent border-none p-0 focus:ring-0 text-sm font-medium text-slate-700 dark:text-slate-200 placeholder-slate-400"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -117,7 +117,7 @@ export default function SimulationCreate() {
 
     // Data from backend for filters
     const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
-    
+
     useEffect(() => {
         const fetchSubjects = async () => {
             try {
@@ -188,7 +188,7 @@ export default function SimulationCreate() {
     // When adding a new subject
     const handleAddSubject = (name: string) => {
         if (subjects.some(s => s.name.toLowerCase() === name.toLowerCase())) return; // Avoid duplicates
-        
+
         const newSubjects = [...subjects, { name, qty: 0, isManual: false }];
         setSubjects(rebalance(newSubjects, totalQuestions));
     };
@@ -202,7 +202,7 @@ export default function SimulationCreate() {
     // When manually changing a subject's quantity
     const handleSubjectQtyChange = (index: number, newQty: number) => {
         let safeQty = Math.min(Math.max(1, newQty), totalQuestions);
-        
+
         const updatedSubjects = subjects.map((sub, i) => {
             if (i === index) return { ...sub, qty: safeQty, isManual: true };
             return sub;
@@ -250,9 +250,9 @@ export default function SimulationCreate() {
 
             const response = await createSimulation(payload);
             if (response && response.data && response.data.id) {
-                navigate(`/simulations/${response.data.id}`);
+                navigate(`/simulados/${response.data.id}`);
             } else {
-                navigate('/simulations');
+                navigate('/simulados');
             }
         } catch (err: any) {
             if (err.response?.status === 403 && err.response?.data?.quota) {
@@ -410,7 +410,7 @@ export default function SimulationCreate() {
                         <div className="animate-fade-in-up">
                             {/* NEW: Compact Layout Combining Volume and Subjects */}
                             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 p-6 mb-8">
-                                
+
                                 {/* 1. Master Control: Question Volume */}
                                 <div className="mb-8">
                                     <div className="flex justify-between items-end mb-4">
@@ -461,7 +461,7 @@ export default function SimulationCreate() {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
                                         <AnimatePresence>
                                             {subjects.map((sub, index) => (
-                                                <motion.div 
+                                                <motion.div
                                                     key={sub.name}
                                                     initial={{ opacity: 0, scale: 0.95 }}
                                                     animate={{ opacity: 1, scale: 1 }}
@@ -474,7 +474,7 @@ export default function SimulationCreate() {
                                                         </div>
                                                         {sub.isManual && <div className="text-[10px] text-indigo-500 font-medium">Ajuste manual</div>}
                                                     </div>
-                                                    
+
                                                     <div className="flex items-center gap-2">
                                                         <input
                                                             type="number"
@@ -603,7 +603,7 @@ export default function SimulationCreate() {
                 resource="Provas"
                 used={quotaData.used}
                 limit={quotaData.limit}
-                upgradeRoute="/plans"
+                upgradeRoute="/planos"
             />
         </>
     );

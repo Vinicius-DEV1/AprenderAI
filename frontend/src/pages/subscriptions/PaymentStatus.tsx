@@ -76,7 +76,7 @@ export default function PaymentStatus() {
                         </div>
                         <h2 className="text-2xl font-bold mb-2 text-gray-800">Pagamento Falhou ou Cancelado</h2>
                         <p className="text-gray-600 mb-6">Não foi possível processar seu pagamento. Tente novamente.</p>
-                        <Link to="/plans" className="inline-block px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-medium">
+                        <Link to="/planos" className="inline-block px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-medium">
                             Tentar Outro Plano
                         </Link>
                     </div>

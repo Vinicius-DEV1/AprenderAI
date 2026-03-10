@@ -146,7 +146,7 @@ export default function SimulationResult() {
 
             <div className="text-center mt-8 gap-4 flex flex-wrap justify-center">
                 <Link to="/dashboard" className="btn-back">Voltar ao Dashboard</Link>
-                <Link to="/simulations/create" className="btn-back" style={{ background: '#10b981' }}>Nova Prova</Link>
+                <Link to="/simulados/create" className="btn-back" style={{ background: '#10b981' }}>Nova Prova</Link>
                 {simulation.essay && (
                     <Link to={`/redacoes/correcao/${simulation.essay.id}`} className="btn-back" style={{ background: '#7c3aed' }}>
                         📝 Redação e nota

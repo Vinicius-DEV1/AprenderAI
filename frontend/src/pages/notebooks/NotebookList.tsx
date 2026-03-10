@@ -76,7 +76,7 @@ export default function NotebookList() {
                     </p>
                 </div>
                 <button
-                    onClick={() => navigate('/questions')}
+                    onClick={() => navigate('/questoes')}
                     className="hidden sm:flex items-center gap-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition"
                 >
                     🔍 Buscar Questões
@@ -117,7 +117,7 @@ export default function NotebookList() {
                         Você ainda não criou nenhum caderno. Use o formulário acima e depois salve questões através da Triagem Inteligente.
                     </p>
                     <button
-                        onClick={() => navigate('/questions')}
+                        onClick={() => navigate('/questoes')}
                         className="text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400 dark:hover:bg-indigo-900/50 px-6 py-3 rounded-lg font-bold transition"
                     >
                         Ir para Triagem de Questões
@@ -150,7 +150,7 @@ export default function NotebookList() {
                             </div>
 
                             <button
-                                onClick={() => navigate(`/questions?notebook_id=${nb.id}`)}
+                                onClick={() => navigate(`/questoes?notebook_id=${nb.id}`)}
                                 className="w-full text-center border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 dark:hover:bg-slate-700 transition"
                             >
                                 Estudar Questões

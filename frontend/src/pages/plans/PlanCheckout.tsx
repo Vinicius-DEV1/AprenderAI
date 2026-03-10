@@ -113,7 +113,7 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">Plano não encontrado.</h2>
                 <button onClick={() => {
                     if (onCancel) onCancel();
-                    else navigate('/plans');
+                    else navigate('/planos');
                 }} className="mt-4 text-blue-600 hover:underline">Voltar para planos</button>
             </div>
         );

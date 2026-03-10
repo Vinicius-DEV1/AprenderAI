@@ -223,7 +223,7 @@ export default function PlanList() {
         const isCurrentFree = !currentPlan || Number(currentPlan.price) === 0;
 
         if (isCurrentFree) {
-            navigate(`/plans/${plan.id}/checkout`);
+            navigate(`/planos/${plan.id}/checkout`);
         } else {
             setSelectedPlanForModal(plan);
             setIsModalOpen(true);
@@ -232,7 +232,7 @@ export default function PlanList() {
 
     const handleConfirm = () => {
         if (selectedPlanForModal) {
-            navigate(`/plans/${selectedPlanForModal.id}/checkout`);
+            navigate(`/planos/${selectedPlanForModal.id}/checkout`);
         }
     };
 

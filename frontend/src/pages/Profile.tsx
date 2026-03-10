@@ -139,7 +139,7 @@ export default function Profile() {
         setLoading(true);
         setMessage(null);
         try {
-            const res = await api.put('/api/v1/user/profile', profileData);
+            const res = await api.put('/api/v1/user/perfil', profileData);
             setUser(res.data.user);
             setMessage({ type: 'success', text: res.data.message });
         } catch (err: any) {
@@ -420,7 +420,7 @@ export default function Profile() {
                                                 </div>
                                             </div>
                                         )}
-                                        <Link to="/plans" className="profile-btn w-full block text-center">Fazer Upgrade</Link>
+                                        <Link to="/planos" className="profile-btn w-full block text-center">Fazer Upgrade</Link>
                                     </div>
                                     <div className="profile-card bg-slate-50 dark:bg-slate-800/50 border-dashed">
                                         <h4 className="text-sm font-bold mb-2 flex items-center gap-2">💡 Dica de Segurança</h4>
@@ -455,7 +455,7 @@ export default function Profile() {
                                                 Completo
                                             </button>
                                         </div>
-                                        <Link to="/questions" className="text-xs font-bold text-blue-600 hover:underline uppercase tracking-wider">Resolver Favoritas</Link>
+                                        <Link to="/questoes" className="text-xs font-bold text-blue-600 hover:underline uppercase tracking-wider">Resolver Favoritas</Link>
                                     </div>
                                 </div>
 
@@ -480,7 +480,7 @@ export default function Profile() {
                                                             <div dangerouslySetInnerHTML={{ __html: q.statement }} className="text-xs text-gray-700 dark:text-slate-300 line-clamp-3 mb-4 font-medium" />
                                                         </div>
                                                         <div className="flex justify-end gap-2">
-                                                            <Link to={`/questions?id=${q.id}`} className="px-3 py-1.5 bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-gray-200 text-[10px] font-bold rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-colors uppercase tracking-wider">Visualizar</Link>
+                                                            <Link to={`/questoes?id=${q.id}`} className="px-3 py-1.5 bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-gray-200 text-[10px] font-bold rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-colors uppercase tracking-wider">Visualizar</Link>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -543,7 +543,7 @@ export default function Profile() {
                                                     <span className="text-[10px] px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-full font-bold uppercase">{nb.questions_count} Questões</span>
                                                 </div>
                                                 <div className="mt-6 flex flex-col gap-2">
-                                                    <Link to={`/questions?notebook_id=${nb.id}`} className="w-full text-center py-2 bg-indigo-600 dark:bg-indigo-600/90 text-white text-[11px] font-bold rounded-xl hover:bg-indigo-700 uppercase tracking-wider transition-all">Estudar Agora</Link>
+                                                    <Link to={`/questoes?notebook_id=${nb.id}`} className="w-full text-center py-2 bg-indigo-600 dark:bg-indigo-600/90 text-white text-[11px] font-bold rounded-xl hover:bg-indigo-700 uppercase tracking-wider transition-all">Estudar Agora</Link>
                                                     <button className="w-full text-center py-2 bg-gray-50 dark:bg-slate-700 text-gray-500 dark:text-gray-300 text-[11px] font-bold rounded-xl hover:bg-gray-100 uppercase tracking-wider transition-all" onClick={() => toast.info('Funcionalidade em breve')}>Renomear</button>
                                                 </div>
                                             </div>

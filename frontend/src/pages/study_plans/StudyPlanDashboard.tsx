@@ -58,7 +58,7 @@ export default function StudyPlanDashboard() {
                         </div>
                         <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">Evolua para o Plano Plus 🚀</h2>
                         <p className="text-slate-600 dark:text-slate-400 mb-8 text-lg leading-relaxed">O <strong>Plano de Estudos Premium</strong> do Xavier analisa suas fraquezas reais e cria um cronograma dinâmico de alta performance.</p>
-                        <button onClick={() => window.location.href = '/plans'} className="px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl transition-all shadow-xl shadow-blue-500/30 active:scale-95">QUERO SER PLUS</button>
+                        <button onClick={() => window.location.href = '/planos'} className="px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl transition-all shadow-xl shadow-blue-500/30 active:scale-95">QUERO SER PLUS</button>
                     </div>
                 </div>
             </div>
