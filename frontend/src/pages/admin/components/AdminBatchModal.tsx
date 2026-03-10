@@ -426,6 +426,53 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                         </div>
                                     )}
 
+                                    {/* Resumo Técnico (Blocos e Re-tentativas) */}
+                                    {progress?.status === 'completed' && (
+                                        <div className="w-full max-w-xl mx-auto bg-slate-50 border border-slate-100 rounded-3xl p-6 mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
+                                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                                <span className="w-4 h-px bg-slate-200"></span>
+                                                Resumo Técnico do Lote
+                                                <span className="w-4 h-px bg-slate-200"></span>
+                                            </h4>
+
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Total de Blocos</span>
+                                                    <span className="text-xl font-black text-slate-700">
+                                                        {(progress.initial_chunks_processed || 0) + (progress.retry_chunks_processed || 0)}
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex flex-col">
+                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Itens Re-tentados</span>
+                                                    <span className="text-xl font-black text-indigo-600">
+                                                        {progress.retries_count || 0}
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex flex-col border-l border-slate-200 pl-4">
+                                                    <span className="text-[9px] font-black text-green-400 uppercase tracking-wider mb-1">Sucesso (Re)</span>
+                                                    <span className="text-xl font-black text-green-600">
+                                                        {progress.retries_success || 0}
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex flex-col">
+                                                    <span className="text-[9px] font-black text-red-400 uppercase tracking-wider mb-1">Falha (Re)</span>
+                                                    <span className="text-xl font-black text-red-600">
+                                                        {progress.retries_failed || 0}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {(progress.retry_chunks_total > 0) && (
+                                                <p className="mt-4 text-[10px] text-slate-500 font-medium italic">
+                                                    * O sistema realizou uma segunda passada em {progress.retry_chunks_total} blocos menores para recuperar itens com erro.
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {/* Detalhamento das Questões Processadas */}
                                     {progress?.status === 'completed' && batchDetails?.items && batchDetails.items.length > 0 && (
                                         <div className="mt-8 w-full border-t border-gray-100 pt-8">

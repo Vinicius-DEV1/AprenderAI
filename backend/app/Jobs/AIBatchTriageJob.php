@@ -211,6 +211,16 @@ class AIBatchTriageJob implements ShouldQueue
             $data['input_tokens'] = ($data['input_tokens'] ?? 0) + $inputTokens;
             $data['output_tokens'] = ($data['output_tokens'] ?? 0) + $outputTokens;
             $data['estimated_cost'] = ($data['estimated_cost'] ?? 0) + $estimatedCost;
+
+            // Increment chunk progress
+            if (($this->retryAttempt ?? 0) === 0) {
+                $data['initial_chunks_processed'] = ($data['initial_chunks_processed'] ?? 0) + 1;
+            } else {
+                $data['retry_chunks_processed'] = ($data['retry_chunks_processed'] ?? 0) + 1;
+                $data['retries_success'] = ($data['retries_success'] ?? 0) + $applied;
+                $data['retries_failed'] = ($data['retries_failed'] ?? 0) + $errors;
+            }
+
             $data['message'] = "Processando " . ($data['processed'] + $data['errors']) . " de " . $data['total'] . "...";
 
             if (!empty($detailedErrors) || $errorMessage) {
@@ -354,6 +364,13 @@ class AIBatchTriageJob implements ShouldQueue
         // 3. Dispara os novos jobs com chunk_size REDUZIDO (2) para garantir sucesso
         $smallChunkSize = 2;
         $chunks = array_chunk($failedIds, $smallChunkSize);
+
+        $currentProgress['retry_chunks_total'] = count($chunks);
+        $currentProgress['retry_chunks_processed'] = 0;
+        $currentProgress['retries_count'] = count($failedIds);
+        $currentProgress['retries_success'] = 0;
+        $currentProgress['retries_failed'] = 0;
+        \Illuminate\Support\Facades\Cache::put("batch_progress_{$this->batchId}", $currentProgress, now()->addHours(2));
 
         foreach ($chunks as $index => $chunkIds) {
             dispatch(new self(
