@@ -7,11 +7,13 @@ interface Props {
     isOpen: boolean;
     onClose: () => void;
     questionId: number | null;
+    onNext?: () => void;
+    onPrev?: () => void;
 }
 
 const apiUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
 
-export default function AdminQuestionViewModal({ isOpen, onClose, questionId }: Props) {
+export default function AdminQuestionViewModal({ isOpen, onClose, questionId, onNext, onPrev }: Props) {
     const [question, setQuestion] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -65,27 +67,56 @@ export default function AdminQuestionViewModal({ isOpen, onClose, questionId }: 
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-100"
+                    className="relative w-full max-w-5xl max-h-[90vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-100"
                 >
+                    {/* Navigation Arrows */}
+                    {onPrev && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onPrev(); }}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-lg group"
+                            title="Anterior (Seta Esquerda)"
+                        >
+                            <span className="text-2xl group-hover:-translate-x-0.5 transition-transform">❮</span>
+                        </button>
+                    )}
+                    {onNext && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onNext(); }}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-lg group"
+                            title="Próxima (Seta Direita)"
+                        >
+                            <span className="text-2xl group-hover:translate-x-0.5 transition-transform">❯</span>
+                        </button>
+                    )}
+
                     {/* Header */}
-                    <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+                    <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-xl shadow-inner">👁️</div>
+                            <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center text-lg shadow-inner">👁️</div>
                             <div>
-                                <h2 className="text-xl font-black text-slate-900 leading-none">Visualizar Questão</h2>
-                                <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">ID: #{questionId}</p>
+                                <h2 className="text-lg font-black text-slate-900 leading-none">Visualizar Questão</h2>
+                                <p className="text-slate-400 font-bold text-[9px] uppercase tracking-widest mt-1">ID: #{questionId}</p>
                             </div>
                         </div>
-                        <button
-                            onClick={onClose}
-                            className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition flex items-center justify-center"
-                        >
-                            <span className="text-2xl">&times;</span>
-                        </button>
+                        <div className="flex items-center gap-2">
+                            {onPrev && onNext && (
+                                <div className="hidden sm:flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100 mr-2">
+                                    <button onClick={onPrev} className="p-1 px-2 hover:bg-white rounded-lg text-slate-400 hover:text-indigo-600 transition text-xs font-black uppercase">❮ Ant</button>
+                                    <span className="w-px h-3 bg-slate-200 mx-1"></span>
+                                    <button onClick={onNext} className="p-1 px-2 hover:bg-white rounded-lg text-slate-400 hover:text-indigo-600 transition text-xs font-black uppercase">Próx ❯</button>
+                                </div>
+                            )}
+                            <button
+                                onClick={onClose}
+                                className="w-8 h-8 rounded-lg bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition flex items-center justify-center"
+                            >
+                                <span className="text-xl">&times;</span>
+                            </button>
+                        </div>
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
                         {loading ? (
                             <div className="py-20 flex flex-col items-center justify-center gap-4">
                                 <div className="w-10 h-10 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
@@ -107,15 +138,15 @@ export default function AdminQuestionViewModal({ isOpen, onClose, questionId }: 
 
                                 {/* Statement */}
                                 <section>
-                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full"></span>
+                                    <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                        <span className="w-1 h-1 bg-indigo-400 rounded-full"></span>
                                         Enunciado
                                     </h3>
-                                    <div className="prose prose-slate max-w-none text-slate-800 bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-sm leading-relaxed">
+                                    <div className="prose prose-slate max-w-none text-slate-800 bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-sm leading-relaxed text-sm">
                                         <ReactMarkdown
                                             urlTransform={urlTransform}
                                             components={{
-                                                img: ({ ...props }) => <img {...props} className="max-w-full h-auto rounded-xl my-4 mx-auto block shadow-md border-4 border-white" />
+                                                img: ({ ...props }) => <img {...props} className="max-w-full h-auto rounded-xl my-3 mx-auto block shadow-md border-4 border-white" />
                                             }}
                                         >
                                             {question.statement}
@@ -126,35 +157,35 @@ export default function AdminQuestionViewModal({ isOpen, onClose, questionId }: 
                                 {/* Alternatives */}
                                 {question.alternatives && question.alternatives.length > 0 && (
                                     <section>
-                                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full"></span>
+                                        <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                            <span className="w-1 h-1 bg-indigo-400 rounded-full"></span>
                                             Alternativas
                                         </h3>
-                                        <div className="space-y-3">
+                                        <div className="grid grid-cols-1 gap-2.5">
                                             {question.alternatives.map((alt: any) => {
                                                 const isCorrect = alt.label === question.correct_answer || alt.is_correct;
                                                 return (
                                                     <div
                                                         key={alt.id || alt.label}
-                                                        className={`p-4 rounded-2xl border transition-all flex gap-4 ${isCorrect
-                                                                ? 'bg-emerald-50 border-emerald-200 shadow-sm shadow-emerald-100/50'
-                                                                : 'bg-white border-slate-100 hover:border-slate-200'
+                                                        className={`p-3.5 rounded-2xl border transition-all flex gap-3 ${isCorrect
+                                                            ? 'bg-emerald-50 border-emerald-200 shadow-sm'
+                                                            : 'bg-white border-slate-100 hover:border-slate-200'
                                                             }`}
                                                     >
-                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0 ${isCorrect ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' : 'bg-slate-100 text-slate-400'
+                                                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs flex-shrink-0 ${isCorrect ? 'bg-emerald-500 text-white shadow-lg' : 'bg-slate-100 text-slate-400'
                                                             }`}>
                                                             {alt.label}
                                                         </div>
-                                                        <div className="flex-1 text-sm font-medium text-slate-700 leading-relaxed pt-1.5">
+                                                        <div className="flex-1 text-xs font-medium text-slate-700 leading-relaxed pt-1">
                                                             <ReactMarkdown urlTransform={urlTransform}>
                                                                 {alt.content || ''}
                                                             </ReactMarkdown>
                                                             {alt.image_path && (
-                                                                <img src={urlTransform(alt.image_path)} className="max-h-32 rounded-lg mt-2 border border-slate-100" />
+                                                                <img src={urlTransform(alt.image_path)} className="max-h-24 rounded-lg mt-2 border border-slate-100" />
                                                             )}
                                                         </div>
                                                         {isCorrect && (
-                                                            <span className="text-emerald-500 font-black text-[10px] uppercase tracking-widest bg-emerald-100/50 px-2 py-1 rounded-lg self-start mt-1">Gabarito</span>
+                                                            <span className="text-emerald-500 font-black text-[9px] uppercase tracking-widest bg-emerald-100/50 px-2 py-0.5 rounded-lg self-start mt-1">Gabarito</span>
                                                         )}
                                                     </div>
                                                 );
@@ -165,13 +196,13 @@ export default function AdminQuestionViewModal({ isOpen, onClose, questionId }: 
 
                                 {/* Explanation */}
                                 {question.explanation && (
-                                    <section className="bg-amber-50 rounded-3xl p-8 border border-amber-100 relative overflow-hidden group">
-                                        <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform text-6xl">📝</div>
-                                        <h3 className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse"></span>
+                                    <section className="bg-amber-50 rounded-2xl p-6 border border-amber-100 relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform text-4xl">📝</div>
+                                        <h3 className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                            <span className="w-1 h-1 bg-amber-400 rounded-full animate-pulse"></span>
                                             Explicação Recomendada
                                         </h3>
-                                        <div className="prose prose-amber max-w-none text-amber-900/80 font-medium leading-relaxed">
+                                        <div className="prose prose-amber max-w-none text-amber-900/80 font-medium leading-relaxed text-xs">
                                             <ReactMarkdown urlTransform={urlTransform}>
                                                 {question.explanation}
                                             </ReactMarkdown>
@@ -181,21 +212,21 @@ export default function AdminQuestionViewModal({ isOpen, onClose, questionId }: 
 
                                 {/* Details Grid */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Matérias</span>
-                                        <div className="flex flex-wrap gap-2">
+                                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Matérias</span>
+                                        <div className="flex flex-wrap gap-1.5">
                                             {question.subjects?.map((s: any) => (
-                                                <span key={s.id} className="bg-white border border-slate-200 text-slate-600 px-3 py-1 rounded-full text-xs font-bold shadow-xs">
+                                                <span key={s.id} className="bg-white border border-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-xs">
                                                     {s.name}
                                                 </span>
                                             ))}
                                         </div>
                                     </div>
-                                    <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Assuntos</span>
-                                        <div className="flex flex-wrap gap-2">
+                                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Assuntos</span>
+                                        <div className="flex flex-wrap gap-1.5">
                                             {question.topics?.map((t: any) => (
-                                                <span key={t.id} className="bg-white border border-slate-200 text-indigo-600 px-3 py-1 rounded-full text-xs font-bold shadow-xs">
+                                                <span key={t.id} className="bg-white border border-slate-200 text-indigo-600 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-xs">
                                                     {t.name}
                                                 </span>
                                             ))}
@@ -207,10 +238,10 @@ export default function AdminQuestionViewModal({ isOpen, onClose, questionId }: 
                     </div>
 
                     {/* Footer */}
-                    <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end">
+                    <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end">
                         <button
                             onClick={onClose}
-                            className="px-8 py-3 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition shadow-sm"
+                            className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition shadow-sm"
                         >
                             Fechar Visualização
                         </button>

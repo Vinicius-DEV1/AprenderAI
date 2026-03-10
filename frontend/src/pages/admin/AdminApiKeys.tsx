@@ -229,6 +229,7 @@ export default function AdminApiKeys() {
 
     // Form States
     const [vaultForm, setVaultForm] = useState({ nickname: '', provider: 'gemini', key: '' });
+    const [editingVaultId, setEditingVaultId] = useState<number | null>(null);
     const [routingForm, setRoutingForm] = useState({ vault_id: '', preferred_model: '', capabilities: [] as string[] });
     const [discoveryLoading, setDiscoveryLoading] = useState(false);
 
@@ -243,10 +244,31 @@ export default function AdminApiKeys() {
 
     // Mutations
     const addVaultMutation = useMutation({
-        mutationFn: async (payload: any) => api.post('/api/v1/admin/api-keys/vault', payload),
+        mutationFn: async (payload: any) => {
+            if (editingVaultId) {
+                return api.put(`/api/v1/admin/api-keys/vault/${editingVaultId}`, payload);
+            }
+            return api.post('/api/v1/admin/api-keys/vault', payload);
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-api-keys'] });
             setVaultForm({ nickname: '', provider: 'gemini', key: '' });
+            setEditingVaultId(null);
+            toast.success(editingVaultId ? 'Chave atualizada com sucesso!' : 'Chave guardada no cofre!');
+        },
+        onError: (err: any) => {
+            toast.error(err.response?.data?.message || 'Erro ao salvar chave no cofre.');
+        }
+    });
+
+    const deleteVaultMutation = useMutation({
+        mutationFn: async (id: number) => api.delete(`/api/v1/admin/api-keys/vault/${id}`),
+        onSuccess: (res) => {
+            queryClient.invalidateQueries({ queryKey: ['admin-api-keys'] });
+            toast.success(res.data.message || 'Chave removida do cofre.');
+        },
+        onError: (err: any) => {
+            toast.error(err.response?.data?.message || 'Erro ao remover chave.');
         }
     });
 
@@ -403,7 +425,14 @@ export default function AdminApiKeys() {
                             <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-10">
                                 {/* Form */}
                                 <div className="space-y-4">
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Novo Registro</h4>
+                                    <div className="flex justify-between items-center bg-slate-50 p-3 rounded-xl mb-1">
+                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{editingVaultId ? 'Editar Registro' : 'Novo Registro'}</h4>
+                                        {editingVaultId && (
+                                            <button
+                                                onClick={() => { setEditingVaultId(null); setVaultForm({ nickname: '', provider: 'gemini', key: '' }); }}
+                                                className="text-[10px] font-black text-indigo-600 uppercase hover:underline">Cancelar Edição</button>
+                                        )}
+                                    </div>
                                     <div className="space-y-3">
                                         <div>
                                             <label className="text-xs font-bold text-slate-600 mb-1 block">Apelido (Ex: Google Prod)</label>
@@ -425,19 +454,21 @@ export default function AdminApiKeys() {
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="text-xs font-bold text-slate-600 mb-1 block">Chave Secreta</label>
+                                            <label className="text-xs font-bold text-slate-600 mb-1 block">
+                                                {editingVaultId ? 'Nova Chave (deixe em branco para manter)' : 'Chave Secreta'}
+                                            </label>
                                             <input
                                                 type="password"
                                                 value={vaultForm.key}
                                                 onChange={e => setVaultForm({ ...vaultForm, key: e.target.value })}
                                                 className="w-full px-4 py-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-                                                placeholder="sk-..." />
+                                                placeholder={editingVaultId ? '••••••••••••' : 'sk-...'} />
                                         </div>
                                         <button
                                             onClick={() => addVaultMutation.mutate(vaultForm)}
                                             disabled={addVaultMutation.isPending}
-                                            className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 disabled:opacity-50 transition-all">
-                                            {addVaultMutation.isPending ? 'Guardando...' : 'Guardar no Cofre'}
+                                            className={`w-full py-3 text-white font-bold rounded-xl shadow-lg disabled:opacity-50 transition-all ${editingVaultId ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-100' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100'}`}>
+                                            {addVaultMutation.isPending ? 'Guardando...' : editingVaultId ? 'Atualizar no Cofre' : 'Guardar no Cofre'}
                                         </button>
                                     </div>
                                 </div>
@@ -448,10 +479,10 @@ export default function AdminApiKeys() {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         {vaultKeys.map(vk => (
                                             <div key={vk.id} className="p-4 rounded-xl border border-slate-100 bg-white shadow-sm hover:border-indigo-200 transition-all flex justify-between items-center group">
-                                                <div>
+                                                <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-slate-800">{vk.nickname}</span>
-                                                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${vk.provider === 'openai' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                        <span className="font-bold text-slate-800 truncate">{vk.nickname}</span>
+                                                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex-shrink-0 ${vk.provider === 'openai' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
                                                             {vk.provider}
                                                         </span>
                                                     </div>
@@ -459,7 +490,29 @@ export default function AdminApiKeys() {
                                                         Status: {vk.is_valid ? <span className="text-emerald-500">✅ Validada</span> : <span className="text-amber-500">❓ Não Testada</span>}
                                                     </p>
                                                 </div>
-                                                <span className="text-[10px] text-slate-300 italic group-hover:text-indigo-400 transition-colors">No Cofre</span>
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingVaultId(vk.id);
+                                                            setVaultForm({ nickname: vk.nickname, provider: vk.provider, key: '' });
+                                                            setVaultCollapsed(false);
+                                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                        }}
+                                                        className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                                        title="Editar Chave">
+                                                        ✏️
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (window.confirm(`Tem certeza que deseja excluir a chave "${vk.nickname}" do cofre? Esta ação não pode ser desfeita.`)) {
+                                                                deleteVaultMutation.mutate(vk.id);
+                                                            }
+                                                        }}
+                                                        className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                        title="Excluir do Cofre">
+                                                        🗑️
+                                                    </button>
+                                                </div>
                                             </div>
                                         ))}
                                         {vaultKeys.length === 0 && <p className="col-span-2 text-center py-10 text-slate-400 italic">O cofre está vazio.</p>}
@@ -650,120 +703,122 @@ export default function AdminApiKeys() {
                 </AnimatePresence>
             </section>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* 4. ACTIVITY LOGS */}
-                <div className="lg:col-span-2 space-y-8">
-                    <section className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                        <div className="p-6 border-b border-slate-50 flex justify-between items-center">
-                            <h3 className="font-bold text-slate-800">Histórico de Uso (IA Logs)</h3>
-                            <button onClick={() => setHistoryCollapsed(!historyCollapsed)} className="text-slate-400">
-                                <motion.svg animate={{ rotate: historyCollapsed ? 0 : 180 }} className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></motion.svg>
-                            </button>
-                        </div>
-                        <AnimatePresence>
-                            {!historyCollapsed && (
-                                <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-x-auto">
-                                    <table className="w-full text-left text-xs">
-                                        <thead className="bg-slate-50 text-slate-400 uppercase font-bold">
-                                            <tr>
-                                                <th className="px-6 py-4">Usuário</th>
-                                                <th className="px-6 py-4">Módulo</th>
-                                                <th className="px-6 py-4">Horário</th>
-                                                <th className="px-6 py-4">Provedor/Modelo</th>
-                                                <th className="px-6 py-4">Tokens (I/O)</th>
-                                                <th className="px-6 py-4">Tempo</th>
-                                                <th className="px-6 py-4">Custo (R$)</th>
-                                                <th className="px-6 py-4 text-right">Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-50">
-                                            {aiLogs.map(log => (
-                                                <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                                                    <td className="px-6 py-4 font-bold text-slate-700">{log.user?.name || 'Sistema/Job'}</td>
-                                                    <td className="px-6 py-4">
-                                                        <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-md tracking-tighter ${log.module === 'embedding' ? 'bg-purple-100 text-purple-700' :
-                                                            log.module === 'search' ? 'bg-blue-100 text-blue-700' :
-                                                                log.module === 'triage' ? 'bg-amber-100 text-amber-700' :
-                                                                    'bg-slate-100 text-slate-600'
-                                                            }`}>
-                                                            {log.module || 'Geral'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded-md uppercase tracking-tighter">
-                                                            {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <p className="font-bold text-slate-800">{log.provider}</p>
-                                                        <p className="text-[10px] text-slate-400 font-mono">{log.model}</p>
-                                                    </td>
-                                                    <td className="px-6 py-4 font-mono">{log.tokens_used_input} / {log.tokens_used_output}</td>
-                                                    <td className="px-6 py-4">{(Number(log.execution_time) || 0).toFixed(2)}s</td>
-                                                    <td className="px-6 py-4 font-bold text-slate-700">{(Number(log.estimated_cost) || 0).toFixed(4)}</td>
-                                                    <td className="px-6 py-4 text-right">
-                                                        <button
-                                                            onClick={() => { setActiveLog(log); setShowLogModal(true); }}
-                                                            className="text-indigo-600 font-bold hover:underline">Detalhes</button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            {aiLogs.length === 0 && <tr><td colSpan={6} className="text-center py-10 text-slate-400 italic">Nenhum log registrado.</td></tr>}
-                                        </tbody>
-                                    </table>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </section>
+            {/* 4. ACTIVITY LOGS - FULL WIDTH */}
+            <section className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-8">
+                <div className="p-6 border-b border-slate-50 flex justify-between items-center">
+                    <h3 className="font-bold text-slate-800 flex items-center gap-3">
+                        <span className="p-2 bg-slate-100 text-slate-600 rounded-lg text-xs">📊</span>
+                        Histórico de Uso (IA Logs)
+                    </h3>
+                    <button onClick={() => setHistoryCollapsed(!historyCollapsed)} className="text-slate-400">
+                        <motion.svg animate={{ rotate: historyCollapsed ? 0 : 180 }} className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></motion.svg>
+                    </button>
+                </div>
+                <AnimatePresence>
+                    {!historyCollapsed && (
+                        <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-x-auto">
+                            <table className="w-full text-left text-xs">
+                                <thead className="bg-slate-50 text-slate-400 uppercase font-bold">
+                                    <tr>
+                                        <th className="px-6 py-4">Usuário</th>
+                                        <th className="px-6 py-4">Módulo</th>
+                                        <th className="px-6 py-4">Horário</th>
+                                        <th className="px-6 py-4">Provedor/Modelo</th>
+                                        <th className="px-6 py-4">Tokens (I/O)</th>
+                                        <th className="px-6 py-4">Tempo</th>
+                                        <th className="px-6 py-4">Custo (R$)</th>
+                                        <th className="px-6 py-4 text-right">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {aiLogs.map(log => (
+                                        <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-4 font-bold text-slate-700">{log.user?.name || 'Sistema/Job'}</td>
+                                            <td className="px-6 py-4">
+                                                <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-md tracking-tighter ${log.module === 'embedding' ? 'bg-purple-100 text-purple-700' :
+                                                    log.module === 'search' ? 'bg-blue-100 text-blue-700' :
+                                                        log.module === 'triage' ? 'bg-amber-100 text-amber-700' :
+                                                            'bg-slate-100 text-slate-600'
+                                                    }`}>
+                                                    {log.module || 'Geral'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded-md uppercase tracking-tighter">
+                                                    {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <p className="font-bold text-slate-800">{log.provider}</p>
+                                                <p className="text-[10px] text-slate-400 font-mono">{log.model}</p>
+                                            </td>
+                                            <td className="px-6 py-4 font-mono">{log.tokens_used_input} / {log.tokens_used_output}</td>
+                                            <td className="px-6 py-4">{(Number(log.execution_time) || 0).toFixed(2)}s</td>
+                                            <td className="px-6 py-4 font-bold text-slate-700">{(Number(log.estimated_cost) || 0).toFixed(4)}</td>
+                                            <td className="px-6 py-4 text-right">
+                                                <button
+                                                    onClick={() => { setActiveLog(log); setShowLogModal(true); }}
+                                                    className="text-indigo-600 font-bold hover:underline">Detalhes</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {aiLogs.length === 0 && <tr><td colSpan={8} className="text-center py-10 text-slate-400 italic">Nenhum log registrado.</td></tr>}
+                                </tbody>
+                            </table>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </section>
 
-                    {/* API Events List */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                        <h3 className="font-bold text-slate-800 mb-6">Logs de Eventos Recentes</h3>
-                        <div className="space-y-4">
-                            {events.map((e, idx) => (
-                                <div key={idx} className="flex items-start gap-4 p-3 bg-slate-50/50 rounded-xl border border-slate-100">
-                                    <span className={`mt-0.5 text-lg ${e.type === 'success' ? 'text-emerald-500' : e.type === 'error' ? 'text-red-500' : 'text-amber-500'}`}>
-                                        {e.type === 'success' ? '✅' : e.type === 'error' ? '❌' : '⚠️'}
-                                    </span>
-                                    <div className="flex-1">
-                                        <div className="flex justify-between">
-                                            <p className="text-xs font-black uppercase text-slate-400 tracking-widest">{e.provider} • {new Date(e.created_at).toLocaleTimeString()}</p>
-                                            {e.status_code && <span className="text-[10px] px-1.5 rounded font-mono bg-white border border-slate-200">CODE: {e.status_code}</span>}
-                                        </div>
-                                        <p className="text-sm font-medium text-slate-600 mt-1">{e.message}</p>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* 5. API Events List */}
+                <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                    <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-3">
+                        <span className="p-2 bg-amber-50 text-amber-600 rounded-lg text-xs">🔔</span>
+                        Logs de Eventos Recentes
+                    </h3>
+                    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                        {events.map((e, idx) => (
+                            <div key={idx} className="flex items-start gap-4 p-3 bg-slate-50/50 rounded-xl border border-slate-100">
+                                <span className={`mt-0.5 text-lg ${e.type === 'success' ? 'text-emerald-500' : e.type === 'error' ? 'text-red-500' : 'text-amber-500'}`}>
+                                    {e.type === 'success' ? '✅' : e.type === 'error' ? '❌' : '⚠️'}
+                                </span>
+                                <div className="flex-1">
+                                    <div className="flex justify-between">
+                                        <p className="text-xs font-black uppercase text-slate-400 tracking-widest">{e.provider} • {new Date(e.created_at).toLocaleTimeString()}</p>
+                                        {e.status_code && <span className="text-[10px] px-1.5 rounded font-mono bg-white border border-slate-200">CODE: {e.status_code}</span>}
                                     </div>
+                                    <p className="text-sm font-medium text-slate-600 mt-1">{e.message}</p>
                                 </div>
-                            ))}
-                        </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
-                {/* 5. RANKING */}
-                <div className="space-y-8">
-                    <section className="bg-slate-900 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-                        <h3 className="text-xl font-black mb-8 flex items-center gap-3">
-                            <span className="text-2xl">🏆</span> Maiores Consumidores
-                        </h3>
-                        <div className="space-y-8">
-                            {aiRanking.map((rank, idx) => (
-                                <div key={idx} className="flex items-center gap-5 group">
-                                    <span className={`text-2xl font-black ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-slate-300' : idx === 2 ? 'text-amber-600' : 'text-slate-700'}`}>
-                                        {(idx + 1).toString().padStart(2, '0')}
-                                    </span>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-bold truncate text-indigo-50 group-hover:text-white transition-colors">{rank.user?.name || 'Anon'}</p>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400/60 mt-0.5">{rank.total_tokens.toLocaleString()} tokens</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="font-black text-emerald-400 tracking-tighter text-lg">R$ {Number(rank.total_cost).toFixed(2)}</p>
-                                    </div>
+                {/* 6. RANKING */}
+                <section className="bg-slate-900 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden flex flex-col h-full min-h-[500px]">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                    <h3 className="text-xl font-black mb-8 flex items-center gap-3">
+                        <span className="text-2xl">🏆</span> Maiores Consumidores
+                    </h3>
+                    <div className="space-y-8 flex-1 overflow-y-auto pr-2">
+                        {aiRanking.map((rank, idx) => (
+                            <div key={idx} className="flex items-center gap-5 group">
+                                <span className={`text-2xl font-black ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-slate-300' : idx === 2 ? 'text-amber-600' : 'text-slate-700'}`}>
+                                    {(idx + 1).toString().padStart(2, '0')}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-bold truncate text-indigo-50 group-hover:text-white transition-colors">{rank.user?.name || 'Anon'}</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400/60 mt-0.5">{rank.total_tokens.toLocaleString()} tokens</p>
                                 </div>
-                            ))}
-                            {aiRanking.length === 0 && <p className="text-center text-slate-500 py-10 font-medium italic">Ranking indisponível.</p>}
-                        </div>
-                    </section>
-                </div>
+                                <div className="text-right">
+                                    <p className="font-black text-emerald-400 tracking-tighter text-lg">R$ {Number(rank.total_cost).toFixed(2)}</p>
+                                </div>
+                            </div>
+                        ))}
+                        {aiRanking.length === 0 && <p className="text-center text-slate-500 py-10 font-medium italic">Ranking indisponível.</p>}
+                    </div>
+                </section>
             </div>
 
             {/* MODALS */}
