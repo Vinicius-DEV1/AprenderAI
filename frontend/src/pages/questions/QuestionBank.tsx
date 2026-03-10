@@ -554,7 +554,7 @@ export default function QuestionBank() {
                                         </button>
                                     ))}
                                     {isQuotaExceeded && (
-                                        <a href="/plans" className="xavier-action-btn" style={{ background: '#fbbf24', color: '#78350f' }}>
+                                        <a href="/planos" className="xavier-action-btn" style={{ background: '#fbbf24', color: '#78350f' }}>
                                             ⭐ Fazer Upgrade
                                         </a>
                                     )}

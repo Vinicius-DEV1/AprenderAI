@@ -260,7 +260,7 @@ export default function SimulationList() {
                 <h1 style={{ fontSize: '28px', fontWeight: 700 }}>Minhas Provas</h1>
 
                 {canCreate ? (
-                    <Link to="/simulations/create" className="btn-new">+ Nova Prova</Link>
+                    <Link to="/simulados/create" className="btn-new">+ Nova Prova</Link>
                 ) : (
                     <button type="button"
                         onClick={() => setIsQuotaModalOpen(true)}
@@ -278,7 +278,7 @@ export default function SimulationList() {
                     </p>
                 </div>
                 {!canCreate && (
-                    <Link to="/plans" className="usage-link">
+                    <Link to="/planos" className="usage-link">
                         Ver Planos &rarr;
                     </Link>
                 )}
@@ -313,11 +313,11 @@ export default function SimulationList() {
 
                             <div>
                                 {simulation.status === 'in_progress' ? (
-                                    <Link to={`/simulations/${simulation.id}`} className="btn-view w-full md:w-auto text-center block md:inline-block">Continuar</Link>
+                                    <Link to={`/simulados/${simulation.id}`} className="btn-view w-full md:w-auto text-center block md:inline-block">Continuar</Link>
                                 ) : (simulation.status === 'corrected' || simulation.status === 'finished') ? (
-                                    <Link to={`/simulations/${simulation.id}/result`} className="btn-view w-full md:w-auto text-center block md:inline-block">Ver Resultado</Link>
+                                    <Link to={`/simulados/${simulation.id}/result`} className="btn-view w-full md:w-auto text-center block md:inline-block">Ver Resultado</Link>
                                 ) : (
-                                    <Link to={`/simulations/${simulation.id}`} className="btn-view w-full md:w-auto text-center block md:inline-block">Ver</Link>
+                                    <Link to={`/simulados/${simulation.id}`} className="btn-view w-full md:w-auto text-center block md:inline-block">Ver</Link>
                                 )}
                             </div>
                         </div>
@@ -329,7 +329,7 @@ export default function SimulationList() {
                         </svg>
                         <p>Você ainda não criou nenhuma prova.</p>
                         {canCreate ? (
-                            <Link to="/simulations/create" className="btn-new" style={{ marginTop: '16px' }}>Criar Primeira Prova</Link>
+                            <Link to="/simulados/create" className="btn-new" style={{ marginTop: '16px' }}>Criar Primeira Prova</Link>
                         ) : (
                             <button type="button" onClick={() => setIsQuotaModalOpen(true)} className="btn-new" style={{ marginTop: '16px', background: '#64748b', cursor: 'not-allowed' }}>
                                 Ver Planos
@@ -365,7 +365,7 @@ export default function SimulationList() {
                 resource="Provas"
                 used={used}
                 limit={limit}
-                upgradeRoute="/plans"
+                upgradeRoute="/planos"
             />
         </>
     );

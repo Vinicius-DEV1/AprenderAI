@@ -286,7 +286,7 @@ export default function EssayList() {
                     {!canCreate && limit === 0 && (
                         <div className="px-6 pb-6">
                             <p className="text-red-500 dark:text-red-400 text-sm">Faça upgrade para o plano Basic ou Plus para enviar redações!</p>
-                            <Link to="/plans" className="text-blue-500 dark:text-blue-400 hover:underline text-sm">Ver Planos</Link>
+                            <Link to="/planos" className="text-blue-500 dark:text-blue-400 hover:underline text-sm">Ver Planos</Link>
                         </div>
                     )}
                 </div>

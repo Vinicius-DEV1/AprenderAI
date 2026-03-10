@@ -879,7 +879,7 @@ export default function Dashboard() {
                     </p>
 
                     {!safeSimulationLimit.can_create && (
-                        <Link to="/plans" className="btn" style={{ marginTop: '12px' }}>Fazer Upgrade</Link>
+                        <Link to="/planos" className="btn" style={{ marginTop: '12px' }}>Fazer Upgrade</Link>
                     )}
                 </div>
 
@@ -909,7 +909,7 @@ export default function Dashboard() {
                         <div style={{ textAlign: 'center', padding: '18px 10px', color: 'var(--muted2)', fontWeight: 600 }}>
                             Você ainda não realizou nenhuma prova.
                             <div>
-                                <Link to="/simulations/create" className="btn" style={{ marginTop: '12px' }}>Criar Primeira Prova</Link>
+                                <Link to="/simulados/create" className="btn" style={{ marginTop: '12px' }}>Criar Primeira Prova</Link>
                             </div>
                         </div>
                     )}

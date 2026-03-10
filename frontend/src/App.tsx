@@ -175,10 +175,10 @@ function App() {
                             <Route path="/dashboard" element={<><MetaTags title="Dashboard" /><Dashboard /></>} />
 
                             {/* Simulations */}
-                            <Route path="/simulations" element={<><MetaTags title="Minhas Provas" /><SimulationList /></>} />
-                            <Route path="/simulations/create" element={<><MetaTags title="Configurar Simulado" /><SimulationCreate /></>} />
-                            <Route path="/simulations/:id" element={<SimulationView />} />
-                            <Route path="/simulations/:id/result" element={<><MetaTags title="Resultado do Simulado" /><SimulationResult /></>} />
+                            <Route path="/simulados" element={<><MetaTags title="Minhas Provas" /><SimulationList /></>} />
+                            <Route path="/simulados/configurar" element={<><MetaTags title="Configurar Simulado" /><SimulationCreate /></>} />
+                            <Route path="/simulados/:id" element={<SimulationView />} />
+                            <Route path="/simulados/:id/resultado" element={<><MetaTags title="Resultado do Simulado" /><SimulationResult /></>} />
                             <Route path="/plano-de-estudo" element={<><MetaTags title="Plano de Estudos" /><StudyPlanDashboard /></>} />
                             <Route path="/concursos" element={<><MetaTags title="Radar de Concursos" /><ConcursoList /></>} />
 
@@ -195,16 +195,16 @@ function App() {
                             <Route path="/essays/:id" element={<><MetaTags title="Correção de Redação" /><EssayReview /></>} />
 
                             {/* Question Bank & Notebooks */}
-                            <Route path="/questions" element={<><MetaTags title="Banco de Questões" /><QuestionBank /></>} />
-                            <Route path="/notebooks" element={<><MetaTags title="Meus Cadernos" /><NotebookList /></>} />
+                            <Route path="/questoes" element={<><MetaTags title="Banco de Questões" /><QuestionBank /></>} />
+                            <Route path="/cadernos" element={<><MetaTags title="Meus Cadernos" /><NotebookList /></>} />
 
                             {/* Plans */}
-                            <Route path="/plans" element={<><MetaTags title="Planos e Preços" /><PlanList /></>} />
-                            <Route path="/plans/:planId/checkout" element={<><MetaTags title="Checkout" /><PlanCheckout /></>} />
+                            <Route path="/planos" element={<><MetaTags title="Planos e Preços" /><PlanList /></>} />
+                            <Route path="/planos/:planId/checkout" element={<><MetaTags title="Checkout" /><PlanCheckout /></>} />
                             <Route path="/checkout/success" element={<><MetaTags title="Pagamento Confirmado" /><PlanSuccess /></>} />
 
                             {/* Profile */}
-                            <Route path="/profile" element={<><MetaTags title="Meu Perfil" /><Profile /></>} />
+                            <Route path="/perfil" element={<><MetaTags title="Meu Perfil" /><Profile /></>} />
                         </Route>
 
                         {/* Admin Portal */}

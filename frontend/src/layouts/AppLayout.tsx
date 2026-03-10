@@ -52,8 +52,7 @@ export default function AppLayout() {
         const active = isRouteActive(pattern);
         const baseClass = 'flex items-center rounded-lg text-sm font-medium transition-all duration-300';
 
-        // Special case for plans
-        if (pattern === '/plans') {
+        if (pattern === '/planos') {
             return `${baseClass} ${active
                 ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'
@@ -138,15 +137,15 @@ export default function AppLayout() {
                         {!sidebarCollapsed && <span className="whitespace-nowrap">Dashboard</span>}
                     </NavLink>
 
-                    <NavLink to="/simulations" className={getNavLinkClass('/simulations')} title="Simulados">
-                        <svg className={getIconClass('/simulations')} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <NavLink to="/simulados" className={getNavLinkClass('/simulados')} title="Simulados">
+                        <svg className={getIconClass('/simulados')} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                         </svg>
                         {!sidebarCollapsed && <span className="whitespace-nowrap">Simulados</span>}
                     </NavLink>
 
-                    <NavLink to="/questions" className={getNavLinkClass('/questions')} title="Questões">
-                        <svg className={getIconClass('/questions')} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <NavLink to="/questoes" className={getNavLinkClass('/questoes')} title="Questões">
+                        <svg className={getIconClass('/questoes')} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         {!sidebarCollapsed && <span className="whitespace-nowrap">Questões</span>}
@@ -176,15 +175,15 @@ export default function AppLayout() {
 
                     {!sidebarCollapsed && <p className="px-2 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-6 mb-2">Conta</p>}
 
-                    <NavLink to="/profile" className={getNavLinkClass('/profile')} title="Meu Perfil">
-                        <svg className={getIconClass('/profile')} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <NavLink to="/perfil" className={getNavLinkClass('/perfil')} title="Meu Perfil">
+                        <svg className={getIconClass('/perfil')} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
                         {!sidebarCollapsed && <span className="whitespace-nowrap">Meu Perfil</span>}
                     </NavLink>
 
-                    <NavLink to="/plans" className={getNavLinkClass('/plans')} title="Meu Plano">
-                        <svg className={getIconClass('/plans', 'purple')} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <NavLink to="/planos" className={getNavLinkClass('/planos')} title="Meu Plano">
+                        <svg className={getIconClass('/planos', 'purple')} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                         </svg>
                         {!sidebarCollapsed && <span className="whitespace-nowrap">Meu Plano</span>}
