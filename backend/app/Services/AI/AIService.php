@@ -586,7 +586,7 @@ EOT;
             'start' => substr($text, 0, 1000),
             'end' => substr($text, -1000),
         ]);
-        file_put_contents('/var/www/storage/logs/last_full_ai_response.txt', $text);
+        file_put_contents(storage_path('logs/last_full_ai_response.txt'), $text);
 
         $json = $this->responseSanitizer->sanitize($text);
 
