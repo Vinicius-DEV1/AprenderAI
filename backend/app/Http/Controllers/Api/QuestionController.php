@@ -26,6 +26,10 @@ class QuestionController extends Controller
             $query->withExists(['favorites as is_favorite' => fn($q) => $q->where('user_id', $userId)])
                 ->withExists(['notes as has_notes' => fn($q) => $q->where('user_id', $userId)])
                 ->with(['notebooks' => fn($q) => $q->where('user_id', $userId)]);
+
+            if (Auth::user()->isAdmin()) {
+                $query->with(['triageLogs', 'reports.user']);
+            }
         }
 
         // Base Type Blocks: Never return Redação in student endpoints
@@ -117,6 +121,10 @@ class QuestionController extends Controller
             $question->loadExists(['favorites as is_favorite' => fn($q) => $q->where('user_id', $userId)]);
             $question->loadExists(['notes as has_notes' => fn($q) => $q->where('user_id', $userId)]);
             $question->load(['notebooks' => fn($q) => $q->where('user_id', $userId)]);
+
+            if (Auth::user()->isAdmin()) {
+                $question->load(['triageLogs', 'reports.user']);
+            }
         }
 
         return new QuestionResource($question);

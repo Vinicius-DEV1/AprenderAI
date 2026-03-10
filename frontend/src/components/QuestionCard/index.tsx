@@ -12,6 +12,8 @@ import katex from 'katex';
 import DialogReportQuestion from './modals/DialogReportQuestion';
 import DialogNotebookManager from './modals/DialogNotebookManager';
 import DialogQuestionStats from './modals/DialogQuestionStats';
+import AdminRevertToTriageModal from './modals/AdminRevertToTriageModal';
+import { useNavigate } from 'react-router-dom';
 
 interface Alternative {
     id: number;
@@ -40,6 +42,11 @@ interface Question {
     is_favorite?: boolean;
     has_notes?: boolean;
     notebook_ids?: number[];
+
+    // Admin only
+    difficulty_reasoning?: string;
+    triage_logs?: any[];
+    reports?: any[];
 }
 
 interface QuestionCardProps {
@@ -60,6 +67,8 @@ export default function QuestionCard({
     const { aiName } = useConfigStore();
     const { user } = useAuthStore();
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
+    const isAdmin = user?.role === 'admin';
 
     const isDiscursive = q.tipo_questao === 'Discursiva';
     const isResultMode = mode === 'result';
@@ -96,6 +105,7 @@ export default function QuestionCard({
     const [showReportModal, setShowReportModal] = useState(false);
     const [showNotebookModal, setShowNotebookModal] = useState(false);
     const [showStatsModal, setShowStatsModal] = useState(false);
+    const [showRevertModal, setShowRevertModal] = useState(false);
 
     // Notes panel state
     const [notes, setNotes] = useState<any[]>([]);
@@ -116,7 +126,7 @@ export default function QuestionCard({
         }
     }, [q.id, mode]);
 
-    const [activeTab, setActiveTab] = useState<'gabarito' | 'chat' | 'history' | 'notes' | null>(isResultMode ? 'gabarito' : null);
+    const [activeTab, setActiveTab] = useState<'gabarito' | 'chat' | 'history' | 'notes' | 'admin_history' | null>(isResultMode ? 'gabarito' : null);
 
     const [chatMessages, setChatMessages] = useState<any[]>([]);
     const [chatInput, setChatInput] = useState('');
@@ -468,7 +478,12 @@ export default function QuestionCard({
     const dc = difficultyMap[q.difficulty] || difficultyMap.medium;
 
     return (
-        <div className="qb-card relative">
+        <div className={`qb-card relative ${isAdmin ? 'border-indigo-200 dark:border-indigo-900/50' : ''}`}>
+            {isAdmin && (
+                <div className="absolute -top-3 left-4 bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm z-20 flex items-center gap-1">
+                    <span className="animate-pulse">🛡️</span> ADMIN VIEW
+                </div>
+            )}
             <div className="flex justify-between items-start mb-4 border-b border-gray-100 dark:border-slate-800 pb-3">
                 <div className="qb-card-meta !mb-0 flex-1 flex flex-wrap gap-1.5 items-center">
                     {q.source === 'ai_generated' && <span className="qb-badge qb-badge-ai">✨ INÉDITA</span>}
@@ -501,7 +516,13 @@ export default function QuestionCard({
                     <button onClick={handleToggleFavorite} disabled={favLoading} className={`p-1.5 rounded-md transition-colors ${isFavorite ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'}`}>{isFavorite ? '⭐' : '☆'}</button>
                     <button onClick={() => setShowNotebookModal(true)} className={`p-1.5 rounded-md transition-colors ${notebookIds.length > 0 ? 'bg-indigo-100 text-indigo-700' : 'text-gray-400 hover:bg-gray-100'}`}>📁</button>
                     <button onClick={() => setShowReportModal(true)} className="p-1.5 rounded-md text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors">🚩</button>
-                    {user?.role === 'admin' && <button onClick={() => setShowStatsModal(true)} className="p-1.5 rounded-md text-gray-400 hover:bg-gray-100 transition-colors">📊</button>}
+                    {user?.role === 'admin' && <button onClick={() => setShowStatsModal(true)} className="p-1.5 rounded-md text-gray-400 hover:bg-gray-100 transition-colors" title="Estatísticas">📊</button>}
+                    {isAdmin && (
+                        <>
+                            <button onClick={() => navigate(`/admin/questions/${q.id}/edit`)} className="p-1.5 rounded-md text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors" title="Editar Questão">✏️</button>
+                            <button onClick={() => setShowRevertModal(true)} className="p-1.5 rounded-md text-gray-400 hover:bg-amber-50 hover:text-amber-600 transition-colors" title="Retornar para Triagem">🔄</button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -555,6 +576,11 @@ export default function QuestionCard({
                         <button className={`qb-action-btn ${activeTab === 'notes' ? '!bg-indigo-600 !text-white' : ''} ${hasNotes && activeTab !== 'notes' ? '!bg-emerald-50 !text-emerald-700 !border-emerald-200' : ''}`} onClick={toggleNotes}>
                             {hasNotes ? '📝' : '✏️'} Minhas Anotações
                         </button>
+                        {isAdmin && (
+                            <button className={`qb-action-btn ${activeTab === 'admin_history' ? '!bg-indigo-600 !text-white' : ''} !border-indigo-200 !text-indigo-600 bg-indigo-50/50`} onClick={() => setActiveTab(activeTab === 'admin_history' ? null : 'admin_history')}>
+                                🛡️ Admin: Histórico & IA
+                            </button>
+                        )}
                         {mode !== 'result' && <button className="qb-action-btn retry" onClick={resetCard}>🔄 Tentar Novamente</button>}
                     </div>
                 )}
@@ -662,11 +688,108 @@ export default function QuestionCard({
                         </div>
                     </motion.div>
                 )}
+
+                {isAdmin && activeTab === 'admin_history' && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl shadow-inner border border-indigo-100 dark:border-indigo-900/30 p-5 mb-4 w-full">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* IA Details */}
+                            <div>
+                                <h4 className="text-indigo-600 font-bold text-[11px] mb-3 uppercase tracking-wider flex items-center gap-2">
+                                    ✨ INSIGHTS DA IA
+                                </h4>
+                                <div className="space-y-4">
+                                    {q.difficulty_reasoning && (
+                                        <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-indigo-50 shadow-sm">
+                                            <div className="text-[10px] font-bold text-slate-400 mb-1 uppercase">Justificativa de Dificuldade</div>
+                                            <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed italic">"{q.difficulty_reasoning}"</div>
+                                        </div>
+                                    )}
+                                    <div className="flex gap-2">
+                                        <div className="flex-1 bg-white dark:bg-slate-800 p-3 rounded-xl border border-indigo-50 shadow-sm text-center">
+                                            <div className="text-[10px] font-bold text-slate-400 mb-1 uppercase">Quality Score</div>
+                                            <div className={`text-xl font-black ${(q.triage_logs?.[0]?.quality_score || 0) > 70 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                                {q.triage_logs?.[0]?.quality_score || 'N/A'}
+                                            </div>
+                                        </div>
+                                        <div className="flex-[2] bg-white dark:bg-slate-800 p-3 rounded-xl border border-indigo-50 shadow-sm">
+                                            <div className="text-[10px] font-bold text-slate-400 mb-1 uppercase">Issues Detectadas</div>
+                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                {q.triage_logs?.[0]?.issues?.length > 0 ? q.triage_logs?.[0]?.issues.map((issue: string) => (
+                                                    <span key={issue} className="bg-red-50 text-red-600 text-[9px] px-1.5 py-0.5 rounded font-bold border border-red-100 uppercase">{issue}</span>
+                                                )) : <span className="text-[10px] text-slate-400">Nenhuma issue crítica detectada.</span>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Triage Timeline */}
+                            <div>
+                                <h4 className="text-indigo-600 font-bold text-[11px] mb-3 uppercase tracking-wider flex items-center gap-2">
+                                    📜 LOGS DE TRIAGEM
+                                </h4>
+                                <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                                    {q.triage_logs && q.triage_logs.length > 0 ? q.triage_logs.map((log: any) => (
+                                        <div key={log.id} className="relative pl-4 border-l-2 border-slate-200 dark:border-slate-700 py-1">
+                                            <div className="absolute -left-[5px] top-2 w-2 h-2 rounded-full bg-slate-300"></div>
+                                            <div className="flex justify-between items-start">
+                                                <div className="text-[10px] font-bold text-slate-800 dark:text-slate-200">
+                                                    {log.type === 'ai_batch' ? '🤖 Triagem IA' : '👤 Ação Manual'}
+                                                </div>
+                                                <div className="text-[9px] text-slate-400">
+                                                    {formatDate(log.created_at)}
+                                                </div>
+                                            </div>
+                                            <div className="text-[10px] text-slate-500 mt-1">
+                                                {log.status === 'approved' ? '✅ Aprovada' : '⚠️ Revisão manual'} por <span className="font-semibold">{log.processed_by}</span>
+                                            </div>
+                                            {log.changes?.reversion_reason && (
+                                                <div className="mt-2 p-2 bg-amber-50 border border-amber-100 rounded text-[10px] text-amber-800 italic">
+                                                    Motivo: {log.changes.reversion_reason}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )) : (
+                                        <div className="text-center py-8 text-slate-400 text-xs italic">Sem logs de triagem registrados.</div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Recent Reports */}
+                        {q.reports && q.reports.length > 0 && (
+                            <div className="mt-8 pt-6 border-t border-indigo-100">
+                                <h4 className="text-red-500 font-bold text-[11px] mb-4 uppercase tracking-wider flex items-center gap-2">
+                                    🚩 DENÚNCIAS RECENTES
+                                </h4>
+                                <div className="space-y-2">
+                                    {q.reports.map((report: any) => (
+                                        <div key={report.id} className="bg-red-50/50 p-3 rounded-xl border border-red-100 flex justify-between items-center">
+                                            <div>
+                                                <div className="text-xs font-bold text-red-900">{report.reason}</div>
+                                                <div className="text-[10px] text-red-400">Enviado por {report.user_name} em {formatDate(report.created_at)}</div>
+                                            </div>
+                                            <div className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${report.status === 'resolved' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                                {report.status === 'resolved' ? 'RESOLVIDO' : 'PENDENTE'}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </motion.div>
+                )}
             </AnimatePresence>
 
             <DialogReportQuestion isOpen={showReportModal} onClose={() => setShowReportModal(false)} questionId={q.id} />
             <DialogNotebookManager isOpen={showNotebookModal} onClose={() => setShowNotebookModal(false)} questionId={q.id} initialNotebookIds={notebookIds} onSaved={setNotebookIds} />
             <DialogQuestionStats isOpen={showStatsModal} onClose={() => setShowStatsModal(false)} questionId={q.id} />
+            <AdminRevertToTriageModal
+                isOpen={showRevertModal}
+                onClose={() => setShowRevertModal(false)}
+                questionId={q.id}
+                onSuccess={() => queryClient.invalidateQueries({ queryKey: ['questions'] })}
+            />
         </div>
     );
 }
