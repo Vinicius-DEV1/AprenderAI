@@ -466,6 +466,33 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                                                         </div>
                                                                     )}
 
+                                                                    {/* Triage Quality Score */}
+                                                                    {item.after?.quality_score !== undefined && (
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Qualidade</span>
+                                                                            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg border ${item.after.quality_score >= 90 ? 'bg-green-50 border-green-100 text-green-700' :
+                                                                                    item.after.quality_score >= 60 ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                                                                        'bg-red-50 border-red-100 text-red-700'
+                                                                                }`}>
+                                                                                <span className="text-[10px] font-black">{item.after.quality_score}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Issues detected by AI */}
+                                                                    {item.after?.issues && item.after.issues.length > 0 && (
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Problemas</span>
+                                                                            <div className="flex flex-wrap gap-1">
+                                                                                {item.after.issues.map((issue: string) => (
+                                                                                    <span key={issue} className="px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-[9px] font-black uppercase tracking-tight">
+                                                                                        {issue}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+
                                                                     {/* Matérias Indicator */}
                                                                     {(item.after?.subjects?.length || 0) > (item.before?.subjects?.length || 0) && (
                                                                         <div className="flex flex-col">

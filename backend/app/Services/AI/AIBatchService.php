@@ -465,6 +465,8 @@ class AIBatchService
                     'explanation' => $question->explanation,
                     'subjects' => $question->subjects->pluck('id')->toArray(),
                     'topics' => $question->topics->pluck('id')->toArray(),
+                    'quality_score' => $qualityScore,
+                    'issues' => $triageIssues,
                 ],
             ];
             $this->triageService->logAutoTriage($question, $triageIssues, $qualityScore, $changesSnapshot);
@@ -492,6 +494,8 @@ class AIBatchService
                         'explanation' => $question->explanation,
                         'subjects' => $question->subjects->pluck('id')->toArray(),
                         'topics' => $question->topics->pluck('id')->toArray(),
+                        'quality_score' => $qualityScore,
+                        'issues' => $triageIssues,
                     ],
                 ]);
             }
