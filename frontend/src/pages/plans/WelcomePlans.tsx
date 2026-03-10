@@ -23,19 +23,25 @@ export default function WelcomePlans() {
         }
     }, [searchParams]);
 
-    const handlePlanSelect = (planName: string, interval: 'monthly' | 'yearly') => {
+    const handlePlanSelect = (slugKeyword: string, interval: 'monthly' | 'yearly') => {
         if (!plans || plans.length === 0) {
             toast.error('Os planos ainda estão carregando. Aguarde um momento.');
             return;
         }
 
         const matchedPlan = plans.find(p => {
-            const name = p.name.toLowerCase();
-            const target = planName.toLowerCase();
-            // Handle both Básico and Basico
-            const nameMatches = name.includes(target) || (target === 'básico' && name.includes('basico'));
-            return nameMatches && p.interval === interval;
-        });
+            const slug = p.slug?.toLowerCase() ?? '';
+            const isExactMatch = slug === slugKeyword.toLowerCase();
+            const isAnnualVariant = slug === `${slugKeyword.toLowerCase()}-annual`;
+            const isAnual = interval === 'yearly';
+
+            const isMatchSlug = isAnual ? (isExactMatch || isAnnualVariant) : isExactMatch;
+            const isMatchInterval = isAnual
+                ? (p.interval === 'year' || p.interval === 'yearly')
+                : (p.interval === 'month' || p.interval === 'monthly');
+
+            return isMatchSlug && isMatchInterval;
+        }) || plans.find(p => p.slug?.toLowerCase().includes(slugKeyword.toLowerCase()));
 
         if (matchedPlan) {
             localStorage.removeItem('intended_plan');
@@ -43,8 +49,8 @@ export default function WelcomePlans() {
             // Move scroll to top to see checkout
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
-            console.error('Plan not found:', planName, interval);
-            toast.error(`Plano "${planName}" não encontrado. Tente novamente.`);
+            console.error('Plan not found:', slugKeyword, interval);
+            toast.error(`Ocorreu um erro ao selecionar o plano. Tente novamente.`);
         }
     };
 
@@ -187,7 +193,7 @@ export default function WelcomePlans() {
                                         </div>
 
                                         <button
-                                            onClick={() => handlePlanSelect('básico', periodo === 'anual' ? 'yearly' : 'monthly')}
+                                            onClick={() => handlePlanSelect('basic', periodo === 'anual' ? 'yearly' : 'monthly')}
                                             className="lp-plan-btn-basic mt-8 cursor-pointer hover:opacity-90 transition-opacity"
                                         >
                                             Escolher Plano Básico
