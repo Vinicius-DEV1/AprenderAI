@@ -249,6 +249,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/api-keys', [AdminApiKeyController::class, 'index']);
             Route::post('/api-keys', [AdminApiKeyController::class, 'store']);
             Route::post('/api-keys/vault', [AdminApiKeyController::class, 'storeVault']);
+            Route::put('/api-keys/vault/{vault}', [AdminApiKeyController::class, 'updateVault']);
+            Route::delete('/api-keys/vault/{vault}', [AdminApiKeyController::class, 'destroyVault']);
             Route::post('/api-keys/{apiKey}/toggle', [AdminApiKeyController::class, 'toggle']);
             Route::post('/api-keys/priority', [AdminApiKeyController::class, 'updatePriority']);
             Route::post('/api-keys/discover', [AdminApiKeyController::class, 'discoverModels']);

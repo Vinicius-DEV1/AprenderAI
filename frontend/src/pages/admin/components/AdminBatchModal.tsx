@@ -243,6 +243,24 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
         }
     };
 
+    const handleNextQuestion = () => {
+        if (!batchDetails?.items) return;
+        const currentIndex = batchDetails.items.findIndex((item: any) => item.question_id === viewQuestionId);
+        if (currentIndex !== -1 && currentIndex < batchDetails.items.length - 1) {
+            setViewQuestionId(batchDetails.items[currentIndex + 1].question_id);
+        } else if (currentIndex === -1 && batchDetails.items.length > 0) {
+            setViewQuestionId(batchDetails.items[0].question_id);
+        }
+    };
+
+    const handlePrevQuestion = () => {
+        if (!batchDetails?.items) return;
+        const currentIndex = batchDetails.items.findIndex((item: any) => item.question_id === viewQuestionId);
+        if (currentIndex > 0) {
+            setViewQuestionId(batchDetails.items[currentIndex - 1].question_id);
+        }
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -866,6 +884,8 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                 isOpen={isQuestionModalOpen}
                 onClose={() => setIsQuestionModalOpen(false)}
                 questionId={viewQuestionId}
+                onNext={(batchDetails?.items?.findIndex((i: any) => i.question_id === viewQuestionId) < (batchDetails?.items?.length || 0) - 1) ? handleNextQuestion : undefined}
+                onPrev={(batchDetails?.items?.findIndex((i: any) => i.question_id === viewQuestionId) > 0) ? handlePrevQuestion : undefined}
             />
         </div>
     );

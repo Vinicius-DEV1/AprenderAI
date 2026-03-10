@@ -139,6 +139,55 @@ class ApiKeyController extends Controller
     }
 
     /**
+     * Update an existing vault key.
+     */
+    public function updateVault(Request $request, ApiKeyVault $vault)
+    {
+        $validated = $request->validate([
+            'nickname' => 'required|string|unique:api_key_vaults,nickname,' . $vault->id,
+            'provider' => 'required|in:openai,gemini,grok',
+            'key' => 'nullable|string',
+        ]);
+
+        $data = [
+            'nickname' => $validated['nickname'],
+            'provider' => $validated['provider'],
+        ];
+
+        if (!empty($validated['key'])) {
+            $data['key'] = $validated['key'];
+        }
+
+        $vault->update($data);
+
+        return response()->json([
+            'message' => 'Chave no cofre atualizada!',
+            'vault' => $vault
+        ]);
+    }
+
+    /**
+     * Delete a vault key if not in use.
+     */
+    public function destroyVault(ApiKeyVault $vault)
+    {
+        $routesCount = $vault->routes()->count();
+
+        if ($routesCount > 0) {
+            return response()->json([
+                'message' => "Esta chave possui {$routesCount} vínculo(s) ativo(s) em Configuração por Funcionalidade. Remova-os antes de excluir a chave do cofre.",
+                'error' => 'active_links'
+            ], 422);
+        }
+
+        $vault->delete();
+
+        return response()->json([
+            'message' => 'Chave removida do cofre com sucesso!'
+        ]);
+    }
+
+    /**
      * Store/Update routing for a model.
      */
     public function store(Request $request)

@@ -126,66 +126,68 @@ export default function ImportReview() {
         question?.alternatives?.some((a: any) => /<img|!\[.*?\]\(.*?\)/i.test(a.content || '') || a.image_path);
 
     return (
-        <div className="py-6 px-4 md:px-6 w-full">
+        <div className="py-4 px-2 md:px-4 w-full">
             <div className="w-full">
-                <div className="flex items-center gap-4 mb-6">
-                    <Link to={`/admin/import/review?${searchParams.toString()}`} className="text-gray-400 hover:text-gray-600">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
+                <div className="flex items-center gap-3 mb-4">
+                    <Link to={`/admin/import/review?${searchParams.toString()}`} className="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
                     </Link>
-                    <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                        Questão #{question.id} — Inspeção Visual
+                    <h2 className="font-bold text-lg text-gray-800 leading-tight">
+                        Questão #{question.id}
                     </h2>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${question.review_status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
-                        {question.review_status === 'pending' ? '⏳ Pendente' : '✅ Aprovada'}
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${question.review_status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                        {question.review_status === 'pending' ? 'Pendente' : 'Aprovada'}
                     </span>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                        <div className="bg-white rounded-lg shadow-sm p-5">
-                            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Metadados</h3>
-                            <dl className="space-y-2 text-sm">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                        <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <span className="w-1 h-1 bg-indigo-400 rounded-full"></span>
+                                Metadados
+                            </h3>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[11px]">
                                 {question.organization && (
-                                    <div className="flex gap-2"><dt className="text-gray-500 w-20 flex-shrink-0">Banca</dt><dd className="font-medium text-gray-800">{question.organization}</dd></div>
+                                    <div className="flex flex-col"><dt className="text-gray-400 font-bold uppercase text-[9px]">Banca</dt><dd className="font-bold text-gray-800">{question.organization}</dd></div>
                                 )}
                                 {question.institution && (
-                                    <div className="flex gap-2"><dt className="text-gray-500 w-20 flex-shrink-0">Órgão</dt><dd className="text-gray-700">{question.institution}</dd></div>
+                                    <div className="flex flex-col"><dt className="text-gray-400 font-bold uppercase text-[9px]">Órgão</dt><dd className="text-gray-700 font-medium">{question.institution}</dd></div>
                                 )}
                                 {question.role && (
-                                    <div className="flex gap-2"><dt className="text-gray-500 w-20 flex-shrink-0">Cargo</dt><dd className="text-gray-700">{question.role}</dd></div>
+                                    <div className="flex flex-col"><dt className="text-gray-400 font-bold uppercase text-[9px]">Cargo</dt><dd className="text-gray-700 font-medium truncate">{question.role}</dd></div>
                                 )}
                                 {question.year && (
-                                    <div className="flex gap-2"><dt className="text-gray-500 w-20 flex-shrink-0">Ano</dt><dd className="text-gray-700">{question.year}</dd></div>
+                                    <div className="flex flex-col"><dt className="text-gray-400 font-bold uppercase text-[9px]">Ano</dt><dd className="text-gray-700 font-medium">{question.year}</dd></div>
                                 )}
                                 {question.subjects?.length > 0 && (
-                                    <div className="flex gap-2 flex-wrap">
-                                        <dt className="text-gray-500 w-20 flex-shrink-0">Matérias</dt>
+                                    <div className="flex flex-col col-span-2"><dt className="text-gray-400 font-bold uppercase text-[9px] mb-1">Matérias</dt>
                                         <dd className="flex flex-wrap gap-1">
                                             {question.subjects.map((s: any) => (
-                                                <span key={s.id || s.name} className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded font-medium">{s.name}</span>
+                                                <span key={s.id || s.name} className="px-1.5 py-0.5 bg-green-50 text-green-700 text-[10px] rounded font-bold border border-green-100">{s.name}</span>
                                             ))}
                                         </dd>
                                     </div>
                                 )}
                                 {importItem && (
-                                    <div className="flex gap-2"><dt className="text-gray-500 w-20 flex-shrink-0">Lote</dt><dd className="text-gray-600 text-xs">{importItem.import?.batch_name ?? '—'}</dd></div>
-                                )}
-                                {importItem?.import?.error_message && (
-                                    <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded text-red-700 text-xs">
-                                        <p className="font-bold mb-1">Log do Lote:</p>
-                                        <p>{importItem.import.error_message}</p>
+                                    <div className="flex flex-col col-span-2 border-t border-gray-50 pt-2 mt-1">
+                                        <dt className="text-gray-400 font-bold uppercase text-[9px]">Lote</dt>
+                                        <dd className="text-gray-500 font-medium italic truncate">{importItem.import?.batch_name ?? '—'}</dd>
                                     </div>
                                 )}
-                            </dl>
+                            </div>
                         </div>
 
-                        <div className="bg-white rounded-lg shadow-sm p-5">
-                            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Enunciado</h3>
-                            <div className="prose prose-indigo max-w-none text-gray-800 text-sm leading-relaxed">
+                        <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <span className="w-1 h-1 bg-indigo-400 rounded-full"></span>
+                                Enunciado
+                            </h3>
+                            <div className="prose prose-indigo max-w-none text-gray-800 text-[13px] leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100">
                                 <ReactMarkdown
                                     urlTransform={urlTransform}
                                     components={{
-                                        img: ({ ...props }) => <img {...props} className="max-w-full h-auto rounded-lg my-4 mx-auto block shadow-sm" />
+                                        img: ({ ...props }) => <img {...props} className="max-w-full h-auto rounded-lg my-2 mx-auto block shadow-sm border-2 border-white" />
                                     }}>
                                     {question.statement}
                                 </ReactMarkdown>
@@ -208,8 +210,11 @@ export default function ImportReview() {
                             ) : null}
                         </div>
 
-                        <div className="bg-white rounded-lg shadow-sm p-5" id="alternatives-card">
-                            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Alternativas</h3>
+                        <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100" id="alternatives-card">
+                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <span className="w-1 h-1 bg-indigo-400 rounded-full"></span>
+                                Alternativas
+                            </h3>
                             {question.alternatives?.length > 0 ? (
                                 <div className="space-y-3">
                                     {question.alternatives.sort((a: any, b: any) => a.label.localeCompare(b.label)).map((alt: any) => (
