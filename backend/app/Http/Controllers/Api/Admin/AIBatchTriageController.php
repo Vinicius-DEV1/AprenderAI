@@ -175,15 +175,25 @@ class AIBatchTriageController extends Controller
             'status' => 'processing',
         ]);
 
+        $chunkSize = $validated['chunk_size'] ?? 5;
+        $totalChunks = ceil($total / $chunkSize);
+
         Cache::put("batch_progress_{$batchId}", [
             'total' => $total,
             'processed' => 0,
             'errors' => 0,
-            'input_tokens' => 0, // Novo campo
-            'output_tokens' => 0, // Novo campo
+            'input_tokens' => 0,
+            'output_tokens' => 0,
             'status' => 'processing',
             'message' => "Iniciando processamento de {$total} questões...",
-            'last_error' => null
+            'last_error' => null,
+            'initial_chunks_total' => $totalChunks,
+            'initial_chunks_processed' => 0,
+            'retry_chunks_total' => 0,
+            'retry_chunks_processed' => 0,
+            'retries_count' => 0,
+            'retries_success' => 0,
+            'retries_failed' => 0
         ], now()->addHours(2));
 
         $chunkSize = $validated['chunk_size'] ?? 5;
