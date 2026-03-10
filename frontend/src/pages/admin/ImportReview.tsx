@@ -120,14 +120,55 @@ export default function ImportReview() {
     const { question, importItem } = data;
 
     const hasImageModels = question?.images?.length > 0;
-    const hasEmbeddedImages = /<img|!\[.*?\]\(.*?\)/i.test(question?.statement || '') ||
-        /<img/i.test(question?.statement_html || '') ||
-        question?.image_path ||
-        question?.alternatives?.some((a: any) => /<img|!\[.*?\]\(.*?\)/i.test(a.content || '') || a.image_path);
+    const hasActiveEditor = hasImageModels;
+
+    const renderActions = (isCompact = false) => (
+        <div className={`space-y-3 ${isCompact ? '' : 'p-5 bg-white rounded-xl shadow-sm border border-gray-100'}`}>
+            {!isCompact && (
+                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <span className="w-1 h-1 bg-indigo-400 rounded-full"></span>
+                    Painel de Controle
+                </h3>
+            )}
+            {question.review_status === 'pending' ? (
+                <button
+                    onClick={() => approveMutation.mutate()}
+                    disabled={approveMutation.isPending}
+                    className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    {approveMutation.isPending ? 'Aprovando...' : 'Aprovar e Publicar'}
+                </button>
+            ) : (
+                <button
+                    onClick={() => revertMutation.mutate()}
+                    disabled={revertMutation.isPending}
+                    className="w-full px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
+                    Retornar para Revisão
+                </button>
+            )}
+
+            <div className="grid grid-cols-2 gap-2">
+                <Link
+                    to={`/admin/questions/${question.id}/edit`}
+                    className="px-3 py-2 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 font-semibold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
+                >
+                    ✍️ Editar
+                </Link>
+                <Link
+                    to={`/admin/import/review?${searchParams.toString()}`}
+                    className="px-3 py-2 bg-gray-50 text-gray-500 rounded-lg text-[11px] font-semibold text-center hover:bg-gray-100 transition-colors"
+                >
+                    ⬅️ Sair
+                </Link>
+            </div>
+        </div>
+    );
 
     return (
         <div className="py-4 px-2 md:px-4 w-full">
             <div className="w-full">
+                {/* Header */}
                 <div className="flex items-center gap-3 mb-4">
                     <Link to={`/admin/import/review?${searchParams.toString()}`} className="text-gray-400 hover:text-gray-600 transition-colors">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
@@ -140,8 +181,12 @@ export default function ImportReview() {
                     </span>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Conditional Layout Grid */}
+                <div className={`grid grid-cols-1 ${hasActiveEditor ? 'lg:grid-cols-2' : 'lg:grid-cols-[1fr_350px]'} gap-4 items-start`}>
+
+                    {/* Left Column: Data Review */}
                     <div className="space-y-3">
+                        {/* Metadados Card */}
                         <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
                             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                                 <span className="w-1 h-1 bg-indigo-400 rounded-full"></span>
@@ -178,6 +223,7 @@ export default function ImportReview() {
                             </div>
                         </div>
 
+                        {/* Statement Card */}
                         <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
                             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                                 <span className="w-1 h-1 bg-indigo-400 rounded-full"></span>
@@ -210,6 +256,7 @@ export default function ImportReview() {
                             ) : null}
                         </div>
 
+                        {/* Alternatives Card */}
                         <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100" id="alternatives-card">
                             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                                 <span className="w-1 h-1 bg-indigo-400 rounded-full"></span>
@@ -251,38 +298,14 @@ export default function ImportReview() {
                             )}
                         </div>
 
-                        <div className="bg-white rounded-lg shadow-sm p-5 space-y-3">
-                            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Ações</h3>
-                            {question.review_status === 'pending' ? (
-                                <button
-                                    onClick={() => approveMutation.mutate()}
-                                    disabled={approveMutation.isPending}
-                                    className="w-full px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium text-sm flex items-center justify-center gap-2">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    Aprovar e Publicar Questão
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={() => revertMutation.mutate()}
-                                    disabled={revertMutation.isPending}
-                                    className="w-full px-4 py-3 bg-orange-500 text-white rounded-md hover:bg-orange-600 font-medium text-sm flex items-center justify-center gap-2">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
-                                    Retornar para Revisão
-                                </button>
-                            )}
-
-                            <Link to={`/admin/questions/${question.id}/edit`} className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 font-medium text-sm flex items-center justify-center gap-2">
-                                ✍️ Abrir no Editor Completo
-                            </Link>
-
-                            <div className="flex gap-2 pt-2 border-t border-gray-100">
-                                <Link to={`/admin/import/review?${searchParams.toString()}`} className="flex-1 px-3 py-2 bg-gray-100 text-gray-600 rounded-md text-sm text-center hover:bg-gray-200">
-                                    ⬅️ Voltar à Lista
-                                </Link>
+                        {/* Mobile Actions for Text-Only */}
+                        {!hasActiveEditor && (
+                            <div className="lg:hidden">
+                                {renderActions()}
                             </div>
-                        </div>
+                        )}
 
-                        {/* Histórico de Triagem */}
+                        {/* History Card */}
                         {historyData && historyData.length > 0 && (
                             <div className="bg-white rounded-lg shadow-sm p-5 space-y-4">
                                 <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide flex items-center gap-2">
@@ -311,8 +334,6 @@ export default function ImportReview() {
                                                 <div className="text-slate-600 text-xs mb-2">
                                                     Por: <span className="font-medium">{log.processed_by === 'system' ? 'IA Batch Triage' : log.processed_by}</span>
                                                 </div>
-
-                                                {/* Issues Detected Array */}
                                                 {log.issues_detected && log.issues_detected.length > 0 && (
                                                     <div className="flex flex-wrap gap-1 mt-2">
                                                         {log.issues_detected.map((iss: string) => (
@@ -322,8 +343,6 @@ export default function ImportReview() {
                                                         ))}
                                                     </div>
                                                 )}
-
-                                                {/* Quality Score */}
                                                 {log.quality_score !== null && (
                                                     <div className="mt-2 text-xs">
                                                         <span className="font-semibold text-slate-500">Qualidade Pedagógica:</span>
@@ -340,8 +359,9 @@ export default function ImportReview() {
                         )}
                     </div>
 
+                    {/* Right Column: Editor OR Control Panel */}
                     <div>
-                        {hasImageModels ? (
+                        {hasActiveEditor ? (
                             <div className="space-y-6">
                                 {question.images.map((img: any) => (
                                     <div key={img.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -355,7 +375,7 @@ export default function ImportReview() {
                                                     if (window.confirm('Remover esta imagem?')) deleteImageMutation.mutate(img.id);
                                                 }}
                                                 className="px-3 py-1.5 bg-red-100 text-red-700 text-xs rounded-md hover:bg-red-200 font-medium">
-                                                🗑️ Remover Imagem
+                                                🗑️ Remover
                                             </button>
                                         </div>
 
@@ -377,13 +397,13 @@ export default function ImportReview() {
                                                 <div className="flex items-center justify-between gap-3">
                                                     <div>
                                                         <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">📄 Enunciado</p>
-                                                        <p className="text-xs text-gray-500 mt-0.5">A imagem recortada substitui a imagem do enunciado.</p>
+                                                        <p className="text-xs text-gray-400 mt-0.5">Recorte substitui a imagem do enunciado.</p>
                                                     </div>
                                                     <button
                                                         onClick={() => { setActiveTarget('statement'); handleSaveCrop(); }}
                                                         disabled={saving}
-                                                        className="flex-shrink-0 px-4 py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-sm flex items-center gap-2 disabled:opacity-60 transition-colors">
-                                                        {saving && activeTarget === 'statement' ? 'Salvando...' : '✂️ Confirmar no Enunciado'}
+                                                        className="flex-shrink-0 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold text-xs flex items-center gap-2 transition-opacity disabled:opacity-50">
+                                                        {saving && activeTarget === 'statement' ? 'Salvando...' : '✂️ Confirmar Recorte'}
                                                     </button>
                                                 </div>
                                             </div>
@@ -392,12 +412,11 @@ export default function ImportReview() {
                                                 <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 mb-2">🔤 Alternativa Visual</p>
                                                 <div className="flex flex-wrap items-center gap-3">
                                                     <div className="flex items-center gap-1.5">
-                                                        <span className="text-xs text-gray-600 font-medium">Letra:</span>
                                                         {['A', 'B', 'C', 'D', 'E'].map(ltr => (
                                                             <button
                                                                 key={ltr}
                                                                 onClick={() => setActiveTarget(ltr)}
-                                                                className={`w-9 h-9 rounded-md font-bold text-sm transition-all ${activeTarget === ltr ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-300' : 'bg-white text-gray-600 hover:bg-indigo-100 border border-gray-300'}`}>
+                                                                className={`w-8 h-8 rounded-md font-bold text-xs transition-all ${activeTarget === ltr ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'}`}>
                                                                 {ltr}
                                                             </button>
                                                         ))}
@@ -405,40 +424,28 @@ export default function ImportReview() {
                                                     <button
                                                         onClick={() => handleSaveCrop()}
                                                         disabled={saving || activeTarget === 'statement'}
-                                                        className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-60 transition-colors">
-                                                        {saving && activeTarget !== 'statement' ? 'Salvando...' : `Salvar como Alt. ${activeTarget === 'statement' ? 'A' : activeTarget}`}
+                                                        className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-bold text-xs transition-opacity disabled:opacity-50">
+                                                        {saving && activeTarget !== 'statement' ? 'Salvando...' : `Salvar Alt. ${activeTarget}`}
                                                     </button>
                                                 </div>
-                                                <p className="text-xs text-gray-400 mt-2">💡 Selecione a letra, ajuste o recorte e salve. O sistema avança para a próxima letra automaticamente.</p>
                                             </div>
                                         </div>
                                     </div>
                                 ))}
-                            </div>
-                        ) : hasEmbeddedImages || question.image_path ? (
-                            <div className="bg-white rounded-lg shadow-sm p-8 text-center border-2 border-dashed border-green-200">
-                                <div className="text-5xl mb-4">🖼️</div>
-                                <h3 className="text-lg font-semibold text-gray-700 mb-2">Imagens Processadas Automaticamente</h3>
-                                <p className="text-sm text-gray-500 mb-4">O novo importador estruturado (ENEM API) detectou imagens anexas e as tratou inserindo o Markdown correspondente dentro do fluxo do enunciado e alternativas. Verifique se a renderização final e o gabarito fazem sentido.</p>
-                                <button
-                                    onClick={() => approveMutation.mutate()}
-                                    className="px-6 py-2.5 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium">
-                                    ✅ Aprovar e Publicar Questão
-                                </button>
+
+                                {/* Sticky Actions for Editor */}
+                                <div className="sticky bottom-4 z-20">
+                                    {renderActions()}
+                                </div>
                             </div>
                         ) : (
-                            <div className="bg-white rounded-lg shadow-sm p-8 text-center">
-                                <div className="text-5xl mb-4">📝</div>
-                                <h3 className="text-lg font-semibold text-gray-700 mb-2">Questão Sem Imagens</h3>
-                                <p className="text-sm text-gray-500 mb-4">Revise o texto do enunciado e as alternativas. Se a transcrição estiver certa, clique em aprovar.</p>
-                                <button
-                                    onClick={() => approveMutation.mutate()}
-                                    className="px-6 py-2.5 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium">
-                                    ✅ Aprovar e Publicar
-                                </button>
+                            /* Sticky Control Panel for Text-Only */
+                            <div className="sticky top-4">
+                                {renderActions()}
                             </div>
                         )}
                     </div>
+
                 </div>
             </div>
         </div>
