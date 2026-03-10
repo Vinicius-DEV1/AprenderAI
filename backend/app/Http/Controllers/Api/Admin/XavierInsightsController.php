@@ -54,6 +54,7 @@ class XavierInsightsController extends Controller
                 'success_rate' => $successRate,
                 'failed_count' => $failedRequests,
                 'cache_entries' => $totalCacheEntries,
+                'current_threshold' => \App\Models\AiSearchRequest::DEFAULT_THRESHOLD,
             ],
             'chart_data' => $historyData,
             'top_prompts' => $topPrompts,
