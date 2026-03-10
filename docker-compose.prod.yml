@@ -165,7 +165,7 @@ services:
     environment:
       MYSQL_ROOT_HOST: '%'
     volumes:
-      - production-db-data:/var/lib/mysql
+      - ./mysql-data:/var/lib/mysql
     # ----------------------------------------------------------------
     # Healthcheck: Docker marks the container healthy only AFTER MySQL
     # is actually accepting connections — not just when the process start.
@@ -191,6 +191,4 @@ networks:
   production-network:
     driver: bridge
 
-volumes:
-  production-db-data:
-    driver: local
+
