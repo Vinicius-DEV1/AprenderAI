@@ -264,13 +264,13 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                         <div className="flex items-center gap-3">
                             <span className="text-xl">
                                 {batchId
-                                    ? (progress?.status === 'completed' ? '✅' : progress?.status === 'failed' ? '❌' : progress?.status === 'cancelled' ? '🛑' : '⏳')
+                                    ? (progress?.status === 'completed' ? '✅' : progress?.status === 'failed' ? '❌' : progress?.status === 'cancelled' ? '🛑' : progress?.status === 'retrying' ? '🔄' : '⏳')
                                     : '🤖'
                                 }
                             </span>
                             <h3 className="text-xl font-black text-gray-900">
                                 {batchId
-                                    ? (progress?.status === 'completed' ? 'Lote Concluído!' : progress?.status === 'failed' ? 'Lote com Falha' : progress?.status === 'cancelled' ? 'Lote Cancelado' : 'Processando Lote...')
+                                    ? (progress?.status === 'completed' ? 'Lote Concluído!' : progress?.status === 'failed' ? 'Lote com Falha' : progress?.status === 'cancelled' ? 'Lote Cancelado' : progress?.status === 'retrying' ? 'Re-tentativa Automática' : 'Processando Lote...')
                                     : step === 'config' ? 'Configurar Lote de IA' : 'Pré-visualização do Lote'
                                 }
                             </h3>
@@ -285,7 +285,7 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                 className="text-gray-400 hover:text-gray-600 font-bold p-2 bg-white rounded-full border border-gray-200 shadow-sm"
                                 title={progress?.status === 'processing' ? "Minimizar para plano de fundo" : "Fechar"}
                             >
-                                {progress?.status === 'processing' ? '➖ Ocultar (Segundo Plano)' : '✕ Fechar'}
+                                {progress?.status === 'processing' || progress?.status === 'retrying' ? '➖ Ocultar (Segundo Plano)' : '✕ Fechar'}
                             </button>
                         ) : (
                             <button onClick={handleFinalize} className="text-gray-400 hover:text-gray-600 font-bold">✕</button>
@@ -301,7 +301,8 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                     }`}>
                                     {progress?.status === 'failed' ? '❌' :
                                         progress?.status === 'cancelled' ? '🛑' :
-                                            progress?.status === 'completed' ? '✅' : '🚀'}
+                                            progress?.status === 'completed' ? '✅' :
+                                                progress?.status === 'retrying' ? '🔄' : '🚀'}
                                 </div>
                                 <div className="w-full max-w-md bg-gray-100 h-4 rounded-full overflow-hidden relative">
                                     {progress?.status === 'processing' && (
@@ -310,8 +311,9 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                     <div
                                         className={`absolute top-0 left-0 h-full transition-all duration-500 ease-out shadow-inner ${progress?.status === 'failed' ? 'bg-red-500' :
                                             progress?.status === 'cancelled' ? 'bg-amber-500' :
-                                                progress?.status === 'completed' ? 'bg-gradient-to-r from-green-400 to-emerald-600' :
-                                                    'bg-gradient-to-r from-indigo-500 to-purple-600'
+                                                progress?.status === 'retrying' ? 'bg-indigo-400 animate-pulse' :
+                                                    progress?.status === 'completed' ? 'bg-gradient-to-r from-green-400 to-emerald-600' :
+                                                        'bg-gradient-to-r from-indigo-500 to-purple-600'
                                             }`}
                                         style={{ width: `${progress && progress.total > 0 ? ((progress.processed + progress.errors) / progress.total) * 100 : 0}%` }}
                                     ></div>
