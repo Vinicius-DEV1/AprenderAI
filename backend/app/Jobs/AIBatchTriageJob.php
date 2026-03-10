@@ -27,11 +27,12 @@ class AIBatchTriageJob implements ShouldQueue
     protected $userId;
     protected $chunkIndex;
     protected $delaySeconds;
+    protected $retryAttempt;
 
     /**
      * Create a new job instance.
      */
-    public function __construct(string $batchId, array $questionIds, string $type, ?string $model = null, bool $reprocess = false, ?int $userId = null, int $chunkIndex = 0, int $delaySeconds = 0)
+    public function __construct(string $batchId, array $questionIds, string $type, ?string $model = null, bool $reprocess = false, ?int $userId = null, int $chunkIndex = 0, int $delaySeconds = 0, int $retryAttempt = 0)
     {
         $this->batchId = $batchId;
         $this->questionIds = $questionIds;
@@ -41,6 +42,7 @@ class AIBatchTriageJob implements ShouldQueue
         $this->userId = $userId;
         $this->chunkIndex = $chunkIndex;
         $this->delaySeconds = $delaySeconds;
+        $this->retryAttempt = $retryAttempt;
     }
 
     /**
@@ -110,7 +112,8 @@ class AIBatchTriageJob implements ShouldQueue
                 'batch_id' => $this->batchId,
                 'chunk_index' => $this->chunkIndex,
                 'applied' => $result['applied'],
-                'errors' => count($result['errors'])
+                'errors' => count($result['errors']),
+                'retry_attempt' => $this->retryAttempt
             ]);
 
             $this->writeChunkPhase('idle');
@@ -119,7 +122,8 @@ class AIBatchTriageJob implements ShouldQueue
             Log::error("[AIBATCH] Batch job failed", [
                 'batch_id' => $this->batchId,
                 'chunk_index' => $this->chunkIndex,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'retry_attempt' => $this->retryAttempt
             ]);
 
             $this->writeChunkPhase('idle');
@@ -222,6 +226,12 @@ class AIBatchTriageJob implements ShouldQueue
                 }
             }
             if ($data['status'] !== 'failed' && ($data['processed'] + $data['errors'] >= $data['total'])) {
+                // AUTO-RETRY LOGIC: Se terminou com erros e é a primeira tentativa
+                if ($data['errors'] > 0 && ($this->retryAttempt ?? 0) < 1) {
+                    $this->triggerAutoRetry($data);
+                    return; // Retorna para não marcar como completed ainda
+                }
+
                 $data['status'] = 'completed';
                 $data['message'] = "Concluído!";
             }
@@ -300,5 +310,63 @@ class AIBatchTriageJob implements ShouldQueue
             count($this->questionIds),
             "FATAL WORKER ERROR: " . $exception->getMessage()
         );
+    }
+
+    /**
+     * Triggers the second attempt for questions that failed in this batch.
+     */
+    protected function triggerAutoRetry(array &$currentProgress): void
+    {
+        $failedItems = \App\Models\AiBatchItem::where('batch_id', $this->batchId)
+            ->where('status', 'failed')
+            ->get();
+
+        if ($failedItems->isEmpty()) {
+            Log::info("[AIBATCH] No failed items to retry for batch {$this->batchId}");
+            $currentProgress['status'] = 'completed';
+            $currentProgress['message'] = "Concluído (Sem falhas para re-tentativa).";
+            Cache::put("batch_progress_{$this->batchId}", $currentProgress, now()->addHours(2));
+            return;
+        }
+
+        $failedIds = $failedItems->pluck('question_id')->toArray();
+        $count = count($failedIds);
+
+        Log::info("[AIBATCH] Triggering AUTO-RETRY Phase", [
+            'batch_id' => $this->batchId,
+            'failed_count' => $count,
+            'original_total' => $currentProgress['total']
+        ]);
+
+        // 1. Atualiza o status para o Frontend ver a mudança
+        $currentProgress['status'] = 'retrying';
+        $currentProgress['message'] = "🔄 Re-tentativa automática iniciada para {$count} questões que falharam...";
+        // Importante: Não resetamos o 'processed', mas resetamos o 'errors' que serão re-tentados
+        $currentProgress['errors'] -= $count;
+        Cache::put("batch_progress_{$this->batchId}", $currentProgress, now()->addHours(2));
+
+        // 2. Atualiza no Banco também
+        \App\Models\AiProcessingBatch::where('batch_id', $this->batchId)->update([
+            'status' => 'retrying',
+            'error_count' => \Illuminate\Support\Facades\DB::raw("error_count - {$count}")
+        ]);
+
+        // 3. Dispara os novos jobs com chunk_size REDUZIDO (2) para garantir sucesso
+        $smallChunkSize = 2;
+        $chunks = array_chunk($failedIds, $smallChunkSize);
+
+        foreach ($chunks as $index => $chunkIds) {
+            dispatch(new self(
+                $this->batchId,
+                $chunkIds,
+                $this->type,
+                $this->model,
+                $this->reprocess,
+                $this->userId,
+                $index + 1000, // Offset index para não colidir visualmente
+                0, // Sem delay na re-tentativa
+                1  // retryAttempt = 1
+            ))->onQueue('ai-batches');
+        }
     }
 }

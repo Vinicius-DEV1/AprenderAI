@@ -204,7 +204,8 @@ class AIBatchTriageController extends Controller
                 $reprocess,
                 $userId,
                 $index,       // chunk index for UI tracking
-                $delaySeconds // delay seconds for UI countdown
+                $delaySeconds, // delay seconds for UI countdown
+                0             // retryAttempt = 0
             );
 
             // Envia para a fila dedicada.
