@@ -56,15 +56,18 @@ class XavierIndexAllCommand extends Command
         $this->info("📋 Mode: {$mode} | Chunk size: {$chunkSize}");
         $this->newLine();
 
-        // Count approved questions
-        $total = Question::published()->where('tipo_questao', '!=', 'Redação')->count();
+        // Count approved questions that don't have vectors yet
+        $total = Question::published()
+            ->where('tipo_questao', '!=', 'Redação')
+            ->whereDoesntHave('vectors')
+            ->count();
 
         if ($total === 0) {
-            $this->warn('No approved questions found. Nothing to index.');
+            $this->warn('No pending approved questions found. Nothing to index.');
             return 0;
         }
 
-        $this->info("🔢 Found {$total} approved questions to index.");
+        $this->info("🔢 Found {$total} pending questions to index.");
         $this->newLine();
 
         $indexed  = 0;
@@ -74,6 +77,7 @@ class XavierIndexAllCommand extends Command
         $this->withProgressBar(
             Question::published()
                 ->where('tipo_questao', '!=', 'Redação')
+                ->whereDoesntHave('vectors')
                 ->when($this->option('limit'), function ($query, $limit) {
                     return $query->limit((int) $limit);
                 })
