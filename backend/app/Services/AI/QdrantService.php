@@ -74,21 +74,22 @@ class QdrantService
      */
     public function ensureConceptsCollection(): bool
     {
-        $response = $this->get("/collections/{$this->conceptsCollection}");
-        if ($response && isset($response['result'])) {
+        // Check if exists
+        try {
+            $this->get("/collections/{$this->conceptsCollection}");
             return true;
+        } catch (\Exception $e) {
+            // Need to create
+            $payload = [
+                'vectors' => [
+                    'size' => (int) config('xavier.qdrant.vector_size', 3072),
+                    'distance' => 'Cosine'
+                ]
+            ];
+            $result = $this->put("/collections/{$this->conceptsCollection}", $payload);
+            Log::info('[Qdrant] Concepts collection created.', ['result' => $result]);
+            return (bool) ($result['result'] ?? false);
         }
-
-        $payload = [
-            'vectors' => [
-                'size'     => $this->vectorSize,
-                'distance' => 'Cosine',
-            ],
-        ];
-
-        $result = $this->put("/collections/{$this->conceptsCollection}", $payload);
-        Log::info('[Qdrant] Concepts collection created.', ['result' => $result]);
-        return (bool) ($result['result'] ?? false);
     }
 
     // ─── Questions ───────────────────────────────────────────────────────────
@@ -113,8 +114,9 @@ class QdrantService
         ];
 
         $result = $this->put("/collections/{$this->questionsCollection}/points?wait=true", $body);
-
-        if (!isset($result['status']) || $result['status'] !== 'ok') {
+ 
+        $status = $result['status'] ?? ($result['result']['status'] ?? null);
+        if (!in_array($status, ['ok', 'completed', 'acknowledged'])) {
             Log::error('[Qdrant] Failed to upsert question.', [
                 'question_id' => $questionId,
                 'result'      => $result,
@@ -138,7 +140,7 @@ class QdrantService
         array $queryVectors,
         array $filters = [],
         int   $limit = 50,
-        float $scoreThreshold = 0.45
+        float $scoreThreshold = 0.30
     ): array {
         $prefetch = [];
  
@@ -148,7 +150,7 @@ class QdrantService
                 'query'           => ['nearest' => $queryVectors['statement']],
                 'using'           => 'statement',
                 'limit'           => $limit * 2,
-                'score_threshold' => max(0.50, $scoreThreshold),
+                'score_threshold' => 0.30,
             ];
         }
  
@@ -158,7 +160,7 @@ class QdrantService
                 'query'           => ['nearest' => $queryVectors['concept']],
                 'using'           => 'concept',
                 'limit'           => $limit * 2,
-                'score_threshold' => max(0.50, $scoreThreshold),
+                'score_threshold' => 0.30,
             ];
         }
 
@@ -225,7 +227,18 @@ class QdrantService
         ];
 
         $result = $this->put("/collections/{$this->conceptsCollection}/points?wait=true", $body);
-        return isset($result['result']['status']) && $result['result']['status'] === 'ok';
+        $status = $result['status'] ?? ($result['result']['status'] ?? null);
+        
+        if (!in_array($status, ['ok', 'completed', 'acknowledged'])) {
+            Log::error('[Qdrant] Failed to upsert concept.', [
+                'concept_id' => $conceptId,
+                'result'     => $result,
+                'body'       => $body
+            ]);
+            return false;
+        }
+        
+        return true;
     }
 
     /**
@@ -246,6 +259,15 @@ class QdrantService
         return $result['result'] ?? [];
     }
 
+    /**
+     * Get detailed information about a collection, including point count.
+     */
+    public function getCollectionInfo(string $name): ?array
+    {
+        $response = $this->get("/collections/{$name}");
+        return $response['result'] ?? null;
+    }
+
     // ─── Health Check ─────────────────────────────────────────────────────────
 
     public function isHealthy(): bool
@@ -260,7 +282,7 @@ class QdrantService
 
     // ─── HTTP Helpers ─────────────────────────────────────────────────────────
 
-    private function get(string $path): ?array
+    public function get(string $path): ?array
     {
         try {
             $response = Http::withHeaders($this->headers)
@@ -274,7 +296,7 @@ class QdrantService
         }
     }
 
-    private function post(string $path, array $body): ?array
+    public function post(string $path, array $body): ?array
     {
         try {
             $response = Http::withHeaders($this->headers)
@@ -295,7 +317,7 @@ class QdrantService
         }
     }
 
-    private function put(string $path, array $body): ?array
+    public function put(string $path, array $body): ?array
     {
         try {
             $response = Http::withHeaders($this->headers)
@@ -312,6 +334,27 @@ class QdrantService
             return $response->json();
         } catch (\Exception $e) {
             Log::error("[Qdrant] PUT {$path} exception: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    public function delete(string $path): ?array
+    {
+        try {
+            $response = Http::withHeaders($this->headers)
+                ->timeout($this->timeout)
+                ->delete($this->baseUrl . $path);
+
+            if ($response->failed()) {
+                Log::error("[Qdrant] DELETE {$path} failed.", [
+                    'status' => $response->status(),
+                    'body'   => $response->body(),
+                ]);
+            }
+
+            return $response->json();
+        } catch (\Exception $e) {
+            Log::error("[Qdrant] DELETE {$path} exception: " . $e->getMessage());
             return null;
         }
     }

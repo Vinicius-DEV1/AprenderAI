@@ -26,6 +26,7 @@ interface FilterOptions {
     notebook_id?: string;
     id?: string;
     favorites_only?: boolean;
+    question_ids?: number[];
 }
 
 // ── Typewriter placeholders (mirrored from Blade original) ──
@@ -108,7 +109,8 @@ export default function QuestionBank() {
         include_discursive: false,
         notebook_id: initialNotebookId,
         id: initialQuestionId,
-        favorites_only: false
+        favorites_only: false,
+        question_ids: []
     });
     const [moreFilters, setMoreFilters] = useState(!!initialNotebookId || !!initialQuestionId);
     const [statsOpen, setStatsOpen] = useState(false);
@@ -272,7 +274,8 @@ export default function QuestionBank() {
             [name]: value,
             // Cascade resets
             ...(name === 'type' ? { subject: '', topic: '', ...(value === 'enem' ? { organization: '', institution: '', role: '' } : {}) } : {}),
-            ...(name === 'subject' ? { topic: '' } : {})
+            ...(name === 'subject' ? { topic: '' } : {}),
+            question_ids: [] // Clear AI results if manual filters change
         }));
         setPage(1);
     };
@@ -286,7 +289,7 @@ export default function QuestionBank() {
         setFilters({
             type: '', subject: '', topic: '', keyword: '', year: '', id: '',
             difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false,
-            notebook_id: '', favorites_only: false
+            notebook_id: '', favorites_only: false, question_ids: []
         });
         setMoreFilters(false);
         setPage(1);
@@ -339,19 +342,22 @@ export default function QuestionBank() {
                 const baseFilters = {
                     type: '', subject: '', topic: '', keyword: '', year: '', id: '',
                     difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false,
-                    notebook_id: '', favorites_only: false
+                    notebook_id: '', favorites_only: false, question_ids: res.data.question_ids || []
                 };
-                const finalFilters = { ...baseFilters, ...res.data.filters };
+                const filtersToApply = res.data.filters || {};
+                const finalFilters = { ...baseFilters, ...filtersToApply };
                 setFilters(finalFilters as FilterOptions);
 
-                if (res.data.filters?.year || res.data.filters?.difficulty || res.data.filters?.organization || res.data.filters?.institution || res.data.filters?.role) {
+                if (finalFilters.year || finalFilters.difficulty || finalFilters.organization || finalFilters.institution || finalFilters.role) {
                     setMoreFilters(true);
                 }
                 setPage(1);
                 if (!res.data.suggestions || res.data.suggestions.length === 0) {
                     setTriggerScroll(true);
                 }
-                setToastMessage(`⚡ Inteligência Instantânea: Busca recuperada do Cache com Xavier.`);
+                setToastMessage(res.data.search_mode === 'vector' 
+                    ? `🧠 Xavier Semantic: ${res.data.total} questões encontradas por significado.`
+                    : `⚡ Inteligência Instantânea: Busca recuperada do Cache.`);
                 setShowToast(true);
                 setTimeout(() => setShowToast(false), 4000);
             } else if (res.data.status === 'queued') {
@@ -387,20 +393,23 @@ export default function QuestionBank() {
                     const baseFilters = {
                         type: '', subject: '', topic: '', keyword: '', year: '', id: '',
                         difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false,
-                        notebook_id: '', favorites_only: false
+                        notebook_id: '', favorites_only: false, question_ids: res.data.question_ids || []
                     };
-                    const finalFilters = { ...baseFilters, ...res.data.filters };
+                    const filtersToApply = res.data.filters || {};
+                    const finalFilters = { ...baseFilters, ...filtersToApply };
                     setFilters(finalFilters as FilterOptions);
 
                     // Auto-show advanced filters if AI sets them
-                    if (res.data.filters?.year || res.data.filters?.difficulty || res.data.filters?.organization) {
+                    if (finalFilters.year || finalFilters.difficulty || finalFilters.organization) {
                         setMoreFilters(true);
                     }
                     setPage(1);
                     if (!res.data.suggestions || res.data.suggestions.length === 0) {
                         setTriggerScroll(true);
                     }
-                    setToastMessage(`✅ Busca realizada com sucesso! ${aiName} encontrou o que você precisava.`);
+                    setToastMessage(res.data.search_mode === 'vector'
+                        ? `🧠 Xavier Semantic: ${res.data.total} questões encontradas por significado.`
+                        : `✅ Busca realizada com sucesso! ${aiName} encontrou o que você precisava.`);
                     setShowToast(true);
                     setTimeout(() => setShowToast(false), 4000);
                 } else if (res.data.status === 'failed') {

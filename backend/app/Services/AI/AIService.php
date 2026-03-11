@@ -619,41 +619,48 @@ EOT;
     }
 
     /**
-     * Gera um embedding usando o Gemini text-embedding-004
+     * Gera um embedding usando o Gemini text-embedding-004 com Engine de Failover.
      */
     public function generateEmbedding(string $text, ?int $userId = null): ?array
     {
-        $startTime = microtime(true);
         try {
-            // Busca uma chave com a capacidade específica de embedding
-            $apiKeyModel = ApiKey::getKeyForCapability(ApiKey::CAPABILITY_EMBEDDING, 'gemini');
+            // Utilizamos o provider 'gemini' forçado, com CAPABILITY_EMBEDDING
+            return $this->executeWithFailover(ApiKey::CAPABILITY_EMBEDDING, function ($apiKeyModel) use ($text, $userId) {
+                $startTime = microtime(true);
+                $apiKey = $apiKeyModel->decrypted_key;
+                
+                // Usando v1beta e gemini-embedding-001 que está disponível para esta conta
+                $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key={$apiKey}";
 
-            if (!$apiKeyModel) {
-                // Fallback para qualquer chave gemini se não houver uma específica
-                $apiKeyModel = ApiKey::getActiveKeyForProvider('gemini');
-            }
-
-            if (!$apiKeyModel) {
-                Log::warning('Nenhuma chave ativa para embeddings.', ['provider' => 'gemini']);
-                return null;
-            }
-
-            $apiKey = $apiKeyModel->decrypted_key;
-            // Usando v1beta e gemini-embedding-001 que está disponível para esta conta
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key={$apiKey}";
-
-            $payload = [
-                'content' => [
-                    'parts' => [
-                        ['text' => $text]
+                $payload = [
+                    'content' => [
+                        'parts' => [
+                            ['text' => $text]
+                        ]
                     ]
-                ]
-            ];
+                ];
 
-            $response = Http::timeout(5)->post($url, $payload);
-            $executionTime = microtime(true) - $startTime;
+                $response = Http::timeout(10)->post($url, $payload);
+                $executionTime = microtime(true) - $startTime;
 
-            if ($response->successful()) {
+                if ($response->failed()) {
+                    $statusCode = $response->status();
+                    $errorMessage = $response->body();
+
+                    $apiKeyModel->update([
+                        'last_error_message' => "[$statusCode] Quota/Error (Embedding)",
+                        'last_error_at' => now(),
+                    ]);
+
+                    if ($statusCode === 429) {
+                        $apiKeyModel->update(['status' => 'quota_exceeded']);
+                    } elseif (in_array($statusCode, [401, 403])) {
+                        $apiKeyModel->update(['status' => 'offline']);
+                    }
+
+                    throw new \Exception("Gemini API Error: " . $errorMessage . " (Status Code: " . $statusCode . ")");
+                }
+
                 $data = $response->json();
                 $vector = $data['embedding']['values'] ?? null;
 
@@ -669,21 +676,18 @@ EOT;
                         'embedding',
                         'gemini-embedding-001'
                     );
+                    
+                    // Increment usage specifically for stats tracking
+                    $apiKeyModel->incrementUsage();
+                    
+                    return $vector;
                 }
 
-                return $vector;
-            }
-
-            Log::error('Erro ao chamar API de Embedding.', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-                'url' => str_replace($apiKey, 'HIDDEN', $url)
-            ]);
-
-            return null;
+                throw new \Exception("Resposta da API de Embedding bem-sucedida, mas vetor vazio ou não encontrado.");
+            }, 'gemini');
 
         } catch (\Exception $e) {
-            Log::error('Exceção ao gerar Embedding.', ['error' => $e->getMessage()]);
+            Log::error('Exceção ao gerar Embedding com Failover.', ['error' => $e->getMessage()]);
             return null;
         }
     }

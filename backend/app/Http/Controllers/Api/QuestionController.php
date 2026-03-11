@@ -102,6 +102,16 @@ class QuestionController extends Controller
             $query->where('role', 'like', '%' . $request->role . '%');
         }
 
+        // Filter by specific IDs (Semantic Results)
+        if ($request->filled('question_ids')) {
+            $ids = is_array($request->question_ids) ? $request->question_ids : explode(',', $request->question_ids);
+            $query->whereIn('id', $ids);
+
+            // Maintain order of IDs if they come from semantic search (ReRank order)
+            $orderString = implode(',', $ids);
+            $query->orderByRaw("FIELD(id, {$orderString})");
+        }
+
         // Keyword/Search filter
         if ($request->filled('keyword')) {
             $query->where(function ($q) use ($request) {
@@ -485,7 +495,12 @@ class QuestionController extends Controller
         $cacheService = app(SemanticCacheService::class);
 
         // ─── LEGACY PATH (feature flag off) ──────────────────────────────────
-        if (!config('xavier.vector_search_enabled', false)) {
+        $isEnabled = config('xavier.vector_search_enabled');
+        if (is_string($isEnabled)) {
+            $isEnabled = filter_var($isEnabled, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        if (!$isEnabled) {
             return $this->legacyAiSearch($request, $user, $cacheService);
         }
 
