@@ -33,6 +33,7 @@ interface Question {
     difficulty: 'easy' | 'medium' | 'hard';
     statement_html: string;
     statement: string;
+    image_path?: string;
     tipo_questao?: 'Objetiva' | 'Discursiva' | 'Redação';
     discursive_answer?: any;
     explanation?: string;
@@ -159,6 +160,9 @@ export default function QuestionCard({
     const renderMd = (text: string) => {
         if (!text) return { __html: '' };
         let processedText = text;
+
+        // Fix LaTeX format escaping corruption: backend sends \frac, but JS JSON parsers sometimes see \f as form-feed
+        processedText = processedText.replace(/\f/g, '\\f');
 
         // Fix Markdown Image URLs: ![alt](/storage/path) or ![alt](storage/path)
         // More robust regex to handle whitespace and potential variations
