@@ -37,6 +37,9 @@ return [
         // Queue name for all indexing jobs
         'queue' => env('EMBEDDINGS_QUEUE', 'embeddings'),
 
+        // Queue name for AI batch processing (triage, classification, etc.)
+        'batch_queue' => env('AI_BATCH_QUEUE', 'embeddings'),
+
         // Pipeline version tag written to question_vectors.pipeline_version
         'pipeline_version' => 'v3_structured',
 

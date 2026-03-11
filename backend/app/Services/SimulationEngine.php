@@ -110,9 +110,24 @@ class SimulationEngine
             // Count real questions available for this subject+type combination
             $query = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subjectNorm));
 
-            // ENEM: strict type filter; concurso: no type restriction
+            if ($tipo === 'concurso') {
+                if (!empty($config['organization']))
+                    $query->whereIn('organization', $config['organization']);
+                if (!empty($config['institution']))
+                    $query->whereIn('institution', $config['institution']);
+                if (!empty($config['role']))
+                    $query->whereIn('role', $config['role']);
+            }
+
+            // ENEM: strict type filter; concurso: exclude ENEM
             if ($tipo === 'enem') {
                 $query->where('type', 'enem');
+            } elseif ($tipo === 'concurso') {
+                $query->where(function ($q) {
+                    $q->whereNull('type')->orWhere('type', '!=', 'enem');
+                })->where(function ($q) {
+                    $q->whereNull('organization')->orWhere('organization', '!=', 'ENEM');
+                });
             }
 
             $available = $query->count();
@@ -168,9 +183,15 @@ class SimulationEngine
                 ->where('source', '!=', 'ai_generated')
                 ->whereNotIn('id', $avoidIds);
 
-            // ENEM: strict type filter. Concurso: no type restriction.
+            // ENEM: strict type filter. Concurso: exclude ENEM
             if ($tipo === 'enem') {
                 $realQuery->where('type', 'enem');
+            } elseif ($tipo === 'concurso') {
+                $realQuery->where(function ($q) {
+                    $q->whereNull('type')->orWhere('type', '!=', 'enem');
+                })->where(function ($q) {
+                    $q->whereNull('organization')->orWhere('organization', '!=', 'ENEM');
+                });
             }
 
             $realQuery = $this->applyDifficultyFilter($realQuery, $diffMode, $alreadyPicked);
@@ -189,10 +210,28 @@ class SimulationEngine
             // Fallback: If not enough questions found without repetition, allow repetition
             if ($realPool->count() < $countRealTarget) {
                 $missingReal = $countRealTarget - $realPool->count();
-                $fallbackPool = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subjectNorm))
+                $fallbackQuery = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subjectNorm))
                     ->where('source', '!=', 'ai_generated')
-                    ->whereNotIn('id', array_merge($alreadyPicked, $realPool->pluck('id')->toArray()))
-                    ->inRandomOrder()
+                    ->whereNotIn('id', array_merge($alreadyPicked, $realPool->pluck('id')->toArray()));
+
+                if ($tipo === 'enem') {
+                    $fallbackQuery->where('type', 'enem');
+                } elseif ($tipo === 'concurso') {
+                    $fallbackQuery->where(function ($q) {
+                        $q->whereNull('type')->orWhere('type', '!=', 'enem');
+                    })->where(function ($q) {
+                        $q->whereNull('organization')->orWhere('organization', '!=', 'ENEM');
+                    });
+                    
+                    if (!empty($config['organization']))
+                        $fallbackQuery->whereIn('organization', $config['organization']);
+                    if (!empty($config['institution']))
+                        $fallbackQuery->whereIn('institution', $config['institution']);
+                    if (!empty($config['role']))
+                        $fallbackQuery->whereIn('role', $config['role']);
+                }
+
+                $fallbackPool = $fallbackQuery->inRandomOrder()
                     ->limit($missingReal)
                     ->get();
                 $realPool = $realPool->merge($fallbackPool);
@@ -207,6 +246,19 @@ class SimulationEngine
 
             if ($tipo === 'enem') {
                 $aiQuery->where('type', 'enem');
+            } elseif ($tipo === 'concurso') {
+                $aiQuery->where(function ($q) {
+                    $q->whereNull('type')->orWhere('type', '!=', 'enem');
+                })->where(function ($q) {
+                    $q->whereNull('organization')->orWhere('organization', '!=', 'ENEM');
+                });
+                
+                if (!empty($config['organization']))
+                    $aiQuery->whereIn('organization', $config['organization']);
+                if (!empty($config['institution']))
+                    $aiQuery->whereIn('institution', $config['institution']);
+                if (!empty($config['role']))
+                    $aiQuery->whereIn('role', $config['role']);
             }
 
             $aiPool = $aiQuery->inRandomOrder()->limit($countAiTarget)->get();
@@ -214,10 +266,28 @@ class SimulationEngine
             // AI Fallback: Allow repeating AI questions if needed
             if ($aiPool->count() < $countAiTarget) {
                 $missingAi = $countAiTarget - $aiPool->count();
-                $fallbackAi = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subjectNorm))
+                $fallbackAiQuery = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subjectNorm))
                     ->where('source', 'ai_generated')
-                    ->whereNotIn('id', array_merge($alreadyPicked, $finalQuestions->pluck('id')->toArray(), $aiPool->pluck('id')->toArray()))
-                    ->inRandomOrder()
+                    ->whereNotIn('id', array_merge($alreadyPicked, $finalQuestions->pluck('id')->toArray(), $aiPool->pluck('id')->toArray()));
+
+                if ($tipo === 'enem') {
+                    $fallbackAiQuery->where('type', 'enem');
+                } elseif ($tipo === 'concurso') {
+                    $fallbackAiQuery->where(function ($q) {
+                        $q->whereNull('type')->orWhere('type', '!=', 'enem');
+                    })->where(function ($q) {
+                        $q->whereNull('organization')->orWhere('organization', '!=', 'ENEM');
+                    });
+                    
+                    if (!empty($config['organization']))
+                        $fallbackAiQuery->whereIn('organization', $config['organization']);
+                    if (!empty($config['institution']))
+                        $fallbackAiQuery->whereIn('institution', $config['institution']);
+                    if (!empty($config['role']))
+                        $fallbackAiQuery->whereIn('role', $config['role']);
+                }
+
+                $fallbackAi = $fallbackAiQuery->inRandomOrder()
                     ->limit($missingAi)
                     ->get();
                 $aiPool = $aiPool->merge($fallbackAi);
@@ -231,9 +301,27 @@ class SimulationEngine
             })->count();
 
             if ($missingSubject > 0) {
-                $emergencyPool = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subjectNorm))
-                    ->whereNotIn('id', $finalQuestions->pluck('id')->toArray())
-                    ->inRandomOrder()
+                $emergencyQuery = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subjectNorm))
+                    ->whereNotIn('id', $finalQuestions->pluck('id')->toArray());
+
+                if ($tipo === 'enem') {
+                    $emergencyQuery->where('type', 'enem');
+                } elseif ($tipo === 'concurso') {
+                    $emergencyQuery->where(function ($q) {
+                        $q->whereNull('type')->orWhere('type', '!=', 'enem');
+                    })->where(function ($q) {
+                        $q->whereNull('organization')->orWhere('organization', '!=', 'ENEM');
+                    });
+                    
+                    if (!empty($config['organization']))
+                        $emergencyQuery->whereIn('organization', $config['organization']);
+                    if (!empty($config['institution']))
+                        $emergencyQuery->whereIn('institution', $config['institution']);
+                    if (!empty($config['role']))
+                        $emergencyQuery->whereIn('role', $config['role']);
+                }
+
+                $emergencyPool = $emergencyQuery->inRandomOrder()
                     ->limit($missingSubject)
                     ->get();
                 $finalQuestions = $finalQuestions->merge($emergencyPool);

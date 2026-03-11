@@ -43,6 +43,9 @@ class AIBatchTriageJob implements ShouldQueue
         $this->chunkIndex = $chunkIndex;
         $this->delaySeconds = $delaySeconds;
         $this->retryAttempt = $retryAttempt;
+
+        // Ensure the job goes to the correct AI-dedicated queue
+        $this->onQueue(config('xavier.embeddings.batch_queue', 'embeddings'));
     }
 
     /**
@@ -385,7 +388,7 @@ class AIBatchTriageJob implements ShouldQueue
                 $index + 1000, // Offset index para não colidir visualmente
                 0, // Sem delay na re-tentativa
                 1  // retryAttempt = 1
-            ))->onQueue('ai-batches');
+            ))->onQueue(config('xavier.embeddings.batch_queue', 'embeddings'));
         }
     }
 }

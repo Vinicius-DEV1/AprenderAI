@@ -29,6 +29,7 @@ class RespondToChatJob implements ShouldQueue
      */
     public function __construct(Simulation $simulation, Question $question, string $userMessage, array $history, int $userId)
     {
+        $this->onQueue('default');
         $this->simulation = $simulation;
         $this->question = $question;
         $this->userMessage = $userMessage;

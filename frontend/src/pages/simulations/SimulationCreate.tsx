@@ -2,6 +2,8 @@ import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createSimulation } from '../../api/simulations';
 import QuotaLimitModal from '../../components/QuotaLimitModal';
+import MultiSearchableSelect from '../../components/MultiSearchableSelect';
+import { useAuthStore } from '../../stores/authStore';
 import api from '../../api/axios';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -93,6 +95,10 @@ export default function SimulationCreate() {
     // Quota Modal State
     const [isQuotaModalOpen, setIsQuotaModalOpen] = useState(false);
     const [quotaData, setQuotaData] = useState({ limit: 0, used: 0 });
+    const [quotaResource, setQuotaResource] = useState('Provas');
+    
+    // User Store for quotas
+    const { user } = useAuthStore();
 
     // ENEM State
     const [selectedEnemMode, setSelectedEnemMode] = useState('mixed');
@@ -135,9 +141,22 @@ export default function SimulationCreate() {
     }, []);
 
     // Filters State
+    const [filterOptions, setFilterOptions] = useState<any>({ bancas: [], orgaos: [], cargos: [] });
     const [organizations, setOrganizations] = useState<string[]>([]);
     const [institutions, setInstitutions] = useState<string[]>([]);
     const [roles, setRoles] = useState<string[]>([]);
+
+    useEffect(() => {
+        const fetchFilters = async () => {
+            try {
+                const res = await api.get('/api/v1/questions/filter-options');
+                setFilterOptions(res.data);
+            } catch (e) {
+                console.error('Failed to fetch filter options', e);
+            }
+        };
+        fetchFilters();
+    }, []);
 
     const [includeEssay, setIncludeEssay] = useState(false);
 
@@ -257,6 +276,7 @@ export default function SimulationCreate() {
         } catch (err: any) {
             if (err.response?.status === 403 && err.response?.data?.quota) {
                 setQuotaData(err.response.data.quota);
+                setQuotaResource(err.response.data.quota.resource || 'Provas');
                 setIsQuotaModalOpen(true);
                 setError(null);
             } else {
@@ -523,33 +543,30 @@ export default function SimulationCreate() {
                                     Filtros Específicos do Edital
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div>
-                                        <input
-                                            type="text"
-                                            value={organizations.join(', ')}
-                                            onChange={(e) => setOrganizations(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-                                            className="w-full text-sm rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 focus:bg-white focus:border-indigo-500 py-2.5 px-4"
-                                            placeholder="Banca (Ex: CESPE)"
-                                        />
-                                    </div>
-                                    <div>
-                                        <input
-                                            type="text"
-                                            value={institutions.join(', ')}
-                                            onChange={(e) => setInstitutions(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-                                            className="w-full text-sm rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 focus:bg-white focus:border-indigo-500 py-2.5 px-4"
-                                            placeholder="Órgão (Ex: TRF)"
-                                        />
-                                    </div>
-                                    <div>
-                                        <input
-                                            type="text"
-                                            value={roles.join(', ')}
-                                            onChange={(e) => setRoles(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-                                            className="w-full text-sm rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 focus:bg-white focus:border-indigo-500 py-2.5 px-4"
-                                            placeholder="Cargo (Ex: Técnico)"
-                                        />
-                                    </div>
+                                    <MultiSearchableSelect
+                                        label="Banca (Ex: CESPE)"
+                                        name="organizations"
+                                        values={organizations}
+                                        options={filterOptions.organizations || []}
+                                        onChange={(_, vals) => setOrganizations(vals as string[])}
+                                        placeholder="Selecionar bancas..."
+                                    />
+                                    <MultiSearchableSelect
+                                        label="Órgão (Ex: TRF)"
+                                        name="institutions"
+                                        values={institutions}
+                                        options={filterOptions.institutions || []}
+                                        onChange={(_, vals) => setInstitutions(vals as string[])}
+                                        placeholder="Selecionar órgãos..."
+                                    />
+                                    <MultiSearchableSelect
+                                        label="Cargo (Ex: Técnico)"
+                                        name="roles"
+                                        values={roles}
+                                        options={filterOptions.roles || []}
+                                        onChange={(_, vals) => setRoles(vals as string[])}
+                                        placeholder="Selecionar cargos..."
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -557,20 +574,25 @@ export default function SimulationCreate() {
 
                     {/* Footer / Actions */}
                     <div className="mt-10 pt-6 border-t border-slate-200 dark:border-slate-700 flex flex-col md:flex-row items-center justify-between gap-6">
-                        <label className="flex items-center gap-3 cursor-pointer group bg-slate-50 dark:bg-slate-800/50 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 w-full md:w-auto hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                        <label className={`flex items-center gap-3 group px-4 py-3 rounded-xl border w-full md:w-auto transition-colors ${(!user?.quotas?.essays || (user.quotas.essays?.used ?? 0) >= (user.quotas.essays?.limit ?? 0)) ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30 cursor-not-allowed opacity-80' : 'bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-pointer'}`}>
                             <div className="relative">
                                 <input
                                     type="checkbox"
-                                    checked={includeEssay}
+                                    checked={includeEssay && (user?.quotas?.essays?.used ?? 0) < (user?.quotas?.essays?.limit ?? 0)}
+                                    disabled={!user?.quotas?.essays || (user.quotas.essays?.used ?? 0) >= (user.quotas.essays?.limit ?? 0)}
                                     onChange={(e) => setIncludeEssay(e.target.checked)}
                                     className="sr-only peer"
                                 />
-                                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full dark:bg-slate-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-500 peer-checked:bg-indigo-600">
+                                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full dark:bg-slate-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-500 peer-checked:bg-indigo-600 peer-disabled:opacity-50">
                                 </div>
                             </div>
                             <div>
                                 <span className="block text-sm font-semibold text-slate-800 dark:text-slate-200">Adicionar Redação Extra</span>
-                                <span className="block text-xs text-slate-500">Gera um tema dissertativo extra</span>
+                                {(!user?.quotas?.essays || (user.quotas.essays?.used ?? 0) >= (user.quotas.essays?.limit ?? 0)) ? (
+                                    <span className="block text-xs text-red-500 font-medium">Limite de redações atingido</span>
+                                ) : (
+                                    <span className="block text-xs text-slate-500">Gera um tema dissertativo extra</span>
+                                )}
                             </div>
                         </label>
 
@@ -600,7 +622,7 @@ export default function SimulationCreate() {
             <QuotaLimitModal
                 isOpen={isQuotaModalOpen}
                 onClose={() => setIsQuotaModalOpen(false)}
-                resource="Provas"
+                resource={quotaResource}
                 used={quotaData.used}
                 limit={quotaData.limit}
                 upgradeRoute="/planos"

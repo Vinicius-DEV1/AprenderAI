@@ -29,6 +29,7 @@ class QuestionResource extends JsonResource
                         'id' => $alt->id,
                         'label' => $alt->label, // Restored property name
                         'content' => $alt->content,
+                        'image_path' => $alt->image_path,
                     ];
 
                     if (request()->boolean('include_answers') || $alt->is_correct) {
@@ -37,6 +38,7 @@ class QuestionResource extends JsonResource
                     return $item;
                 });
             }),
+            'image_path' => $this->image_path,
             'difficulty' => $this->difficulty,
             'organization' => $this->organization,
             'institution' => $this->institution,

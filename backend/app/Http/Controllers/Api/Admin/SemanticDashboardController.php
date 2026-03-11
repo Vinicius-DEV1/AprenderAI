@@ -25,8 +25,10 @@ class SemanticDashboardController extends Controller
     public function index(QdrantService $qdrant)
     {
         // 1. MySQL Data
-        $totalQuestions = Question::published()->count();
-        $indexedQuestions = QuestionVector::distinct('question_id')->count('question_id');
+        $totalQuestions = Question::published()->where('tipo_questao', '!=', 'Redação')->count();
+        $indexedQuestions = QuestionVector::whereHas('question', function ($query) {
+            $query->published()->where('tipo_questao', '!=', 'Redação');
+        })->distinct('question_id')->count('question_id');
         $totalVectors = QuestionVector::count();
         $totalConcepts = Concept::count();
         $indexedConcepts = Concept::whereNotNull('qdrant_indexed_at')->count();
@@ -253,12 +255,17 @@ class SemanticDashboardController extends Controller
     public function reindexAll(Request $request)
     {
         $validated = $request->validate([
-            'limit' => 'nullable|integer|min:1|max:5000'
+            'limit' => 'nullable|integer|min:1|max:5000',
+            'force' => 'nullable|boolean'
         ]);
 
         $params = [];
         if ($request->has('limit')) {
             $params['--limit'] = (int) $validated['limit'];
+        }
+
+        if ($request->boolean('force')) {
+            $params['--force'] = true;
         }
 
         // Don't wait for completion, it can take hours

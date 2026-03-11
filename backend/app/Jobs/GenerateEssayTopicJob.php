@@ -25,6 +25,7 @@ class GenerateEssayTopicJob implements ShouldQueue
      */
     public function __construct(int $essayId)
     {
+        $this->onQueue('default');
         $this->essayId = $essayId;
     }
 
