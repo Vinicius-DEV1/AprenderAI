@@ -253,12 +253,17 @@ class SemanticDashboardController extends Controller
     public function reindexAll(Request $request)
     {
         $validated = $request->validate([
-            'limit' => 'nullable|integer|min:1|max:5000'
+            'limit' => 'nullable|integer|min:1|max:5000',
+            'force' => 'nullable|boolean'
         ]);
 
         $params = [];
         if ($request->has('limit')) {
             $params['--limit'] = (int) $validated['limit'];
+        }
+
+        if ($request->boolean('force')) {
+            $params['--force'] = true;
         }
 
         // Don't wait for completion, it can take hours

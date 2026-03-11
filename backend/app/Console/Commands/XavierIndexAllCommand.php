@@ -26,6 +26,7 @@ class XavierIndexAllCommand extends Command
                             {--sync    : Process synchronously instead of queuing}
                             {--chunk=50 : Number of questions to process per chunk}
                             {--limit=  : Max number of questions to index}
+                            {--force   : Re-index even if the question already has vectors}
                             {--fresh   : Delete and recreate the Qdrant collection before indexing}';
 
     protected $description = 'Batch-index all approved questions into Qdrant (Xavier Semantic Search)';
@@ -56,10 +57,12 @@ class XavierIndexAllCommand extends Command
         $this->info("📋 Mode: {$mode} | Chunk size: {$chunkSize}");
         $this->newLine();
 
-        // Count approved questions that don't have vectors yet
+        // Count approved questions (filter depends on --force)
         $total = Question::published()
             ->where('tipo_questao', '!=', 'Redação')
-            ->whereDoesntHave('vectors')
+            ->when(!$this->option('force'), function ($query) {
+                return $query->whereDoesntHave('vectors');
+            })
             ->count();
 
         if ($total === 0) {
@@ -67,7 +70,7 @@ class XavierIndexAllCommand extends Command
             return 0;
         }
 
-        $this->info("🔢 Found {$total} pending questions to index.");
+        $this->info("🔢 Found {$total} questions to index" . ($this->option('force') ? ' (FORCE MODE)' : '') . ".");
         $this->newLine();
 
         $indexed  = 0;
@@ -77,7 +80,9 @@ class XavierIndexAllCommand extends Command
         $this->withProgressBar(
             Question::published()
                 ->where('tipo_questao', '!=', 'Redação')
-                ->whereDoesntHave('vectors')
+                ->when(!$this->option('force'), function ($query) {
+                    return $query->whereDoesntHave('vectors');
+                })
                 ->when($this->option('limit'), function ($query, $limit) {
                     return $query->limit((int) $limit);
                 })
