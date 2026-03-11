@@ -71,13 +71,13 @@ services:
       - /proc:/host_proc:ro
     env_file: ./backend/.env
     # Prioriza explicitamente a fila 'default' (Simulados/Chats), 'essays' (Redações) e depois a 'import'.
-    # ADICIONADO: 'embeddings' e 'ai-batches' no final para ajudar quando estiverem ociosos.
-    command: php artisan queue:work --queue=default,essays,import,embeddings,ai-batches --sleep=3 --tries=3 --max-time=3600
+    # ADICIONADO: 'ai-batches' (indexação em lote) no final para ajudar quando estiverem ociosos.
+    command: php artisan queue:work --queue=default,essays,import,ai-batches --sleep=3 --tries=3 --max-time=3600
     deploy:
       replicas: 50
       resources:
         limits:
-          memory: 1G # Aumentado para 1G pois agora podem processar embeddings
+          memory: 512M # Mantido em 512M conforme solicitado
     depends_on:
       app:
         condition: service_started
@@ -90,7 +90,7 @@ services:
     networks:
       - production-network
 
-  # AI Dedicated Queue Worker
+  # AI Dedicated Queue Worker (Para tempo real e emergências)
   ai-worker:
     image: aprender-ai-app
     restart: always

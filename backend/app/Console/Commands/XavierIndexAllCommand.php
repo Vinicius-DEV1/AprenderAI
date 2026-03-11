@@ -93,7 +93,7 @@ class XavierIndexAllCommand extends Command
                     if ($isSync) {
                         IndexQuestionVectorJob::dispatchSync($question->id);
                     } else {
-                        IndexQuestionVectorJob::dispatch($question->id);
+                        IndexQuestionVectorJob::dispatch($question->id)->onQueue('ai-batches');
                     }
                     $indexed++;
                 } catch (\Exception $e) {
