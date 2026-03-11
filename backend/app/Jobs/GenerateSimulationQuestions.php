@@ -24,6 +24,7 @@ class GenerateSimulationQuestions implements ShouldQueue
 
     public function __construct(Simulation $simulation, array $data)
     {
+        $this->onQueue('default');
         $this->simulation = $simulation;
         $this->data = $data;
     }
