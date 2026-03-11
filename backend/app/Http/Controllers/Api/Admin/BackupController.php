@@ -128,13 +128,20 @@ class BackupController extends Controller
     {
         $user = $request->user();
         $ip = $request->ip();
+        $isFull = $request->query('full') === '1';
         $timestamp = Carbon::now()->format('Y-m-d_H-i-s');
-        $filename = "backup_local_{$timestamp}.sql.gz";
+        
+        if ($isFull) {
+            $filename = "backup_completo_{$timestamp}.tar.gz";
+        } else {
+            $filename = "backup_local_{$timestamp}.sql.gz";
+        }
 
         // -----------------------------------------------------------------------
         // AUDIT LOG — registrado ANTES do dump para capturar qualquer tentativa
         // -----------------------------------------------------------------------
-        Log::channel('stack')->warning('[BackupController::localDump] Download direto solicitado.', [
+        Log::channel('stack')->warning('[BackupController::localDump] Download solicitado.', [
+            'type' => $isFull ? 'full' : 'sql_only',
             'user_id' => $user->id,
             'user_name' => $user->name,
             'user_email' => $user->email,
@@ -150,14 +157,33 @@ class BackupController extends Controller
         $dbUsername = env('DB_USERNAME');
         $dbPassword = env('DB_PASSWORD');
 
-        $command = sprintf(
-            'MYSQL_PWD=%s mysqldump --host=%s --port=%s --user=%s --single-transaction --skip-lock-tables --routines --triggers %s | gzip',
-            escapeshellarg($dbPassword),
-            escapeshellarg($dbHost),
-            escapeshellarg($dbPort),
-            escapeshellarg($dbUsername),
-            escapeshellarg($dbDatabase)
-        );
+        if ($isFull) {
+            $storagePath = storage_path('app/public');
+            $tmpSql = "/tmp/db_{$timestamp}.sql";
+            
+            // Generate SQL to tmp file, then tar it with the images folder, then delete tmp file
+            $command = sprintf(
+                'MYSQL_PWD=%s mysqldump --host=%s --port=%s --user=%s --single-transaction --skip-lock-tables --routines --triggers %s > %s && tar -cz -C /tmp %s -C %s . && rm %s',
+                escapeshellarg($dbPassword),
+                escapeshellarg($dbHost),
+                escapeshellarg($dbPort),
+                escapeshellarg($dbUsername),
+                escapeshellarg($dbDatabase),
+                escapeshellarg($tmpSql),
+                escapeshellarg(basename($tmpSql)),
+                escapeshellarg($storagePath),
+                escapeshellarg($tmpSql)
+            );
+        } else {
+            $command = sprintf(
+                'MYSQL_PWD=%s mysqldump --host=%s --port=%s --user=%s --single-transaction --skip-lock-tables --routines --triggers %s | gzip',
+                escapeshellarg($dbPassword),
+                escapeshellarg($dbHost),
+                escapeshellarg($dbPort),
+                escapeshellarg($dbUsername),
+                escapeshellarg($dbDatabase)
+            );
+        }
 
         return response()->stream(function () use ($command, $user, $ip, $filename) {
             $descriptorspec = [
