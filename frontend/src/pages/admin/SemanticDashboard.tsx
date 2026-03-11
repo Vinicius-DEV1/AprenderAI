@@ -68,6 +68,7 @@ const SemanticDashboard = () => {
     // Index Modal
     const [isIndexModalOpen, setIsIndexModalOpen] = useState(false);
     const [indexBatchLimit, setIndexBatchLimit] = useState(50);
+    const [indexForce, setIndexForce] = useState(false);
 
     // Test search
     const [searchPrompt, setSearchPrompt] = useState('');
@@ -136,7 +137,10 @@ const SemanticDashboard = () => {
     const handleReindex = async () => {
         try {
             setReindexing(true);
-            const res = await api.post('/api/v1/admin/semantic/reindex', { limit: indexBatchLimit });
+            const res = await api.post('/api/v1/admin/semantic/reindex', { 
+                limit: indexBatchLimit,
+                force: indexForce 
+            });
             toast.success(res.data.message || 'Indexação iniciada!');
             setIsIndexModalOpen(false);
             loadStats();
@@ -467,6 +471,25 @@ const SemanticDashboard = () => {
                                 <p className="text-[10px] text-slate-400">
                                     Custo estimado: aprox. ${(indexBatchLimit * 0.0001).toFixed(4)} USD (estimativa baseada em texto médio).
                                 </p>
+                            </div>
+
+                            <div className="mb-6">
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <div className="relative">
+                                        <input 
+                                            type="checkbox" 
+                                            className="sr-only" 
+                                            checked={indexForce}
+                                            onChange={(e) => setIndexForce(e.target.checked)}
+                                        />
+                                        <div className={clsx("block w-10 h-6 rounded-full transition-colors", indexForce ? "bg-amber-500" : "bg-slate-300 dark:bg-slate-600")}></div>
+                                        <div className={clsx("dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform", indexForce && "transform translate-x-4")}></div>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Forçar Re-indexação</span>
+                                        <p className="text-[10px] text-slate-500">Ignora se a questão já possui vetores e atualiza com a nova lógica.</p>
+                                    </div>
+                                </label>
                             </div>
 
                             <div className="flex gap-3">
