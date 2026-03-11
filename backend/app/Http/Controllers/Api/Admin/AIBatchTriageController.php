@@ -222,7 +222,7 @@ class AIBatchTriageController extends Controller
             // Envia para a fila dedicada.
             // O delay agora é tratado DENTRO do job para permitir rastreamento em tempo real.
             // Apenas o primeiro chunk é disparado imediatamente, os demais ficam na fila.
-            $job->onQueue('ai-batches');
+            $job->onQueue(config('xavier.embeddings.batch_queue', 'embeddings'));
             dispatch($job);
         });
 
@@ -536,7 +536,7 @@ class AIBatchTriageController extends Controller
                 $batch->model,
                 false // reprocess
             );
-            $job->onQueue('ai-batches');
+            $job->onQueue(config('xavier.embeddings.batch_queue', 'embeddings'));
             dispatch($job);
         });
 
