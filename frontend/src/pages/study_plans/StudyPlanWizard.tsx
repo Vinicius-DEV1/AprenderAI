@@ -1,17 +1,26 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
+
+// Max polling duration: 5 minutes (150 polls x 2s)
+const MAX_POLL_ATTEMPTS = 150;
 
 export default function StudyPlanWizard() {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [hours, setHours] = useState(4);
     const [examType, setExamType] = useState('enem');
     const [examName, setExamName] = useState('');
     const [examDate, setExamDate] = useState('');
+    const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
     const pollerRef = useRef<NodeJS.Timeout | null>(null);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const pollAttemptsRef = useRef(0);
     const isMounted = useRef(true);
 
     const STORAGE_KEY = 'studyPlanGenerationInProgress';
@@ -19,27 +28,27 @@ export default function StudyPlanWizard() {
 
     useEffect(() => {
         const checkInitialState = async () => {
-            // 1. Check if we have a saved ID in localStorage
             if (localStorage.getItem(STORAGE_KEY) === 'true') {
                 const savedId = localStorage.getItem(PLAN_ID_KEY);
                 if (savedId) {
                     setLoading(true);
+                    startElapsedTimer();
                     pollStatus(parseInt(savedId, 10));
                     return;
                 }
             }
 
-            // 2. Fetch current state from API to see if a plan is processing in background
             try {
                 const { data } = await api.get('/api/v1/study-plan');
                 if (data.view_state === 'wizard' && data.processing_plan_id) {
                     setLoading(true);
                     localStorage.setItem(STORAGE_KEY, 'true');
                     localStorage.setItem(PLAN_ID_KEY, data.processing_plan_id.toString());
+                    startElapsedTimer();
                     pollStatus(data.processing_plan_id);
                 }
             } catch (err) {
-                // Silently fail, user can start a new wizard if nothing returned
+                // Silently fail
             }
         };
 
@@ -48,19 +57,40 @@ export default function StudyPlanWizard() {
         return () => {
             isMounted.current = false;
             if (pollerRef.current) clearInterval(pollerRef.current);
+            if (timerRef.current) clearInterval(timerRef.current);
         };
     }, []);
 
+    const startElapsedTimer = () => {
+        if (timerRef.current) return;
+        timerRef.current = setInterval(() => {
+            setElapsedSeconds(s => s + 1);
+        }, 1000);
+    };
+
     const stopPollingAndClean = () => {
         if (pollerRef.current) clearInterval(pollerRef.current);
+        if (timerRef.current) clearInterval(timerRef.current);
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(PLAN_ID_KEY);
+        pollAttemptsRef.current = 0;
+    };
+
+    // KEY FIX: Invalidate the React Query cache before navigating so the
+    // dashboard component always fetches fresh data instead of showing stale cache.
+    const finishAndRedirect = async () => {
+        stopPollingAndClean();
+        await queryClient.invalidateQueries({ queryKey: ['studyPlanDashboard'] });
+        queryClient.removeQueries({ queryKey: ['studyPlanDashboard'] });
+        navigate('/plano-de-estudo', { replace: true });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        setElapsedSeconds(0);
+        pollAttemptsRef.current = 0;
 
         try {
             const response = await api.post('/api/v1/study-plan', {
@@ -69,7 +99,7 @@ export default function StudyPlanWizard() {
                 exam_name: examName,
                 exam_date: examDate || null
             }, {
-                validateStatus: (status) => status < 500 // Impede o toast lateral vermelho interceptando o 403 silenciosamente
+                validateStatus: (status) => status < 500
             });
 
             if (!isMounted.current) return;
@@ -78,13 +108,13 @@ export default function StudyPlanWizard() {
                 const planId = response.data.study_plan_id;
                 localStorage.setItem(STORAGE_KEY, 'true');
                 if (planId) localStorage.setItem(PLAN_ID_KEY, planId.toString());
+                startElapsedTimer();
                 pollStatus(planId);
             } else if (response.status === 403) {
                 setLoading(false);
                 setError(response.data.message || 'Dados insuficientes para gerar o plano.');
             } else {
-                setLoading(false);
-                navigate('/plano-de-estudo');
+                await finishAndRedirect();
             }
         } catch (err: any) {
             if (!isMounted.current) return;
@@ -96,6 +126,18 @@ export default function StudyPlanWizard() {
 
     const pollStatus = (id?: number) => {
         pollerRef.current = setInterval(async () => {
+            pollAttemptsRef.current++;
+
+            // Guard: max 5 minutes of polling
+            if (pollAttemptsRef.current >= MAX_POLL_ATTEMPTS) {
+                stopPollingAndClean();
+                if (isMounted.current) {
+                    setLoading(false);
+                    setError('A geração está demorando mais que o esperado. Tente novamente ou volte em alguns instantes.');
+                }
+                return;
+            }
+
             try {
                 const params = id ? { id } : {};
                 const res = await api.get('/api/v1/study-plan/status', {
@@ -109,20 +151,23 @@ export default function StudyPlanWizard() {
                 }
 
                 if (res.status === 404) {
-                    stopPollingAndClean();
-                    navigate('/plano-de-estudo');
+                    await finishAndRedirect();
                 } else if (res.data.status === 'ready') {
-                    stopPollingAndClean();
-                    navigate('/plano-de-estudo');
+                    await finishAndRedirect();
                 } else if (res.data.status === 'failed') {
                     stopPollingAndClean();
                     setLoading(false);
-                    setError(res.data.message || 'Falha na geração do plano.');
+                    setError(res.data.message || 'Falha na geração do plano. Tente novamente.');
                 }
             } catch (err) {
                 // Keep polling
             }
         }, 2000);
+    };
+
+    const formatElapsed = (s: number) => {
+        if (s < 60) return `${s}s`;
+        return `${Math.floor(s / 60)}m ${s % 60}s`;
     };
 
     return (
@@ -142,6 +187,9 @@ export default function StudyPlanWizard() {
                                 <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-3">
                                     Xavier está analisando seus dados...
                                 </h3>
+                                <p className="text-slate-500 dark:text-slate-400 mb-2 text-sm font-medium">
+                                    Tempo decorrido: {formatElapsed(elapsedSeconds)}
+                                </p>
                                 <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-md mx-auto leading-relaxed">
                                     A Inteligência Artificial está cruzando seu histórico de erros e acertos para montar o cronograma perfeito. Isso leva cerca de 10 a 30 segundos.
                                 </p>

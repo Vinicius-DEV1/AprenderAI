@@ -1391,9 +1391,9 @@ EOT;
             $stats['overall_accuracy'] = $totalAttempts > 0 ? round(($totalCorrect / $totalAttempts) * 100, 1) : 0;
 
             // Average time per question (from simulations)
-            $sims = $user->simulations()->where('status', 'finished')->where('time_spent', '>', 0)->latest()->take(10)->get();
+            $sims = $user->simulations()->where('status', 'finished')->where('time_elapsed', '>', 0)->latest()->take(10)->get();
             if ($sims->isNotEmpty()) {
-                $totalTime = $sims->sum('time_spent');
+                $totalTime = $sims->sum('time_elapsed');
                 $totalQs = $sims->sum('questions_count');
                 $stats['avg_seconds_per_question'] = $totalQs > 0 ? round($totalTime / $totalQs, 1) : 0;
             }

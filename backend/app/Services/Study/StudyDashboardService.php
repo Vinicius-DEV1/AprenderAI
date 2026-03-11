@@ -279,7 +279,7 @@ class StudyDashboardService
             $recommendations[] = [
                 'icon' => 'pen',
                 'title' => 'Redação: repertório sociocultural',
-                'detail' => 'Escreva 1 redação com foco em repertório sociocultural diversificado. Última nota: ' . ($lastEssay ? (int) $essayScore : 'sem dados') . '/1000.',
+                'detail' => 'Escreva 1 redação com foco em repertório sociocultural diversificado. ' . ($lastEssay ? 'Última nota: ' . (int) $essayScore . '/1000.' : 'Ainda sem redações corrigidas.'),
             ];
         }
 
