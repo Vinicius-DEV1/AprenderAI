@@ -425,7 +425,7 @@ class AIBatchTriageController extends Controller
         $result = $keys->map(function ($key) {
             return [
                 'id' => $key->id,
-                'name' => $key->vault?->name ?? "Chave #{$key->id}",
+                'name' => $key->vault?->nickname ?? "Chave #{$key->id}",
                 'provider' => $key->effective_provider,
                 'model' => $key->preferred_model,
                 'status' => $key->status,

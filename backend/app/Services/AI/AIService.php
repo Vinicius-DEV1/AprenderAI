@@ -1316,7 +1316,7 @@ EOT;
         return $this->executeWithFailover(ApiKey::CAPABILITY_TRIAGE, function ($apiKey) use ($prompt, $batchId, $userId) {
             // Write active key info to cache so frontend can display it
             if ($batchId) {
-                $keyName = $apiKey->vault?->name ?? ("Chave #{$apiKey->id}");
+                $keyName = $apiKey->vault?->nickname ?? ("Chave #{$apiKey->id}");
                 Cache::put("batch_active_key_{$batchId}", [
                     'name' => $keyName,
                     'provider' => $apiKey->effective_provider,
