@@ -66,6 +66,14 @@ class EmbeddingTextBuilder
             $parts[] = implode(', ', $conceptNames);
         }
 
+        // Include the correct alternative to reinforce the "answer" keywords
+        $correctAlternative = $question->alternatives->where('is_correct', true)->first();
+        if ($correctAlternative) {
+            $parts[] = '';
+            $parts[] = 'correct answer:';
+            $parts[] = $this->cleanText($correctAlternative->content);
+        }
+
         return implode("\n", $parts);
     }
 
@@ -133,6 +141,14 @@ class EmbeddingTextBuilder
         $parts[] = '';
         $parts[] = 'explanation:';
         $parts[] = $this->cleanText($question->explanation ?? $question->statement ?? '');
+
+        // Also add the correct answer text to the explanation vector for richer semantics
+        $correctAlternative = $question->alternatives->where('is_correct', true)->first();
+        if ($correctAlternative) {
+            $parts[] = '';
+            $parts[] = 'correct answer content:';
+            $parts[] = $this->cleanText($correctAlternative->content);
+        }
 
         return implode("\n", $parts);
     }
