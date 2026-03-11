@@ -158,12 +158,15 @@ class BackupController extends Controller
         $dbPassword = env('DB_PASSWORD');
 
         if ($isFull) {
-            $storagePath = storage_path('app/public');
             $tmpSql = "/tmp/db_{$timestamp}.sql";
             
-            // Generate SQL to tmp file, then tar it with the images folder, then delete tmp file
+            // Generate SQL to tmp file, then tar it with the images folder AND qdrant data, then delete tmp file
+            // Archive structure:
+            // - db_timestamp.sql
+            // - public/ (images)
+            // - qdrant-backup/ (vector data)
             $command = sprintf(
-                'MYSQL_PWD=%s mysqldump --host=%s --port=%s --user=%s --single-transaction --skip-lock-tables --routines --triggers %s > %s && tar -cz -C /tmp %s -C %s . && rm %s',
+                'MYSQL_PWD=%s mysqldump --host=%s --port=%s --user=%s --single-transaction --skip-lock-tables --routines --triggers %s > %s && tar -cz -C /tmp %s -C /var/www/storage/app public -C /var/www qdrant-backup && rm %s',
                 escapeshellarg($dbPassword),
                 escapeshellarg($dbHost),
                 escapeshellarg($dbPort),
@@ -171,7 +174,6 @@ class BackupController extends Controller
                 escapeshellarg($dbDatabase),
                 escapeshellarg($tmpSql),
                 escapeshellarg(basename($tmpSql)),
-                escapeshellarg($storagePath),
                 escapeshellarg($tmpSql)
             );
         } else {
