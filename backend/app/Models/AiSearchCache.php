@@ -13,12 +13,15 @@ class AiSearchCache extends Model
         'prompt_text',
         'embedding',
         'filters_result',
+        'concept_ids',
         'last_used_at',
     ];
 
     protected $casts = [
-        'embedding' => 'array',
+        'embedding'      => 'array',
         'filters_result' => 'array',
-        'last_used_at' => 'datetime',
+        'concept_ids'    => 'array',
+        'last_used_at'   => 'datetime',
     ];
 }
+

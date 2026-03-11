@@ -1659,4 +1659,91 @@ RETORNE APENAS O JSON:");
         }
         return $formatted;
     }
+
+    /**
+     * Sends a raw text prompt to any available LLM and returns the raw string response.
+     * Used by ConceptExtractionJob and other system jobs that need plain-text output (not JSON).
+     *
+     * @param  string   $prompt   The full prompt to send
+     * @param  int|null $userId   Optional user ID for telemetry attribution
+     * @return string             Raw LLM response text
+     * @throws \Exception         If no API key is available or all providers fail
+     */
+    public function sendRawPrompt(string $prompt, ?int $userId = null): string
+    {
+        return $this->executeWithFailover(ApiKey::CAPABILITY_GENERAL, function ($apiKey) use ($prompt, $userId) {
+            $provider = $apiKey->effective_provider;
+
+            $response = match ($provider) {
+                'gemini' => $this->callGeminiRaw($apiKey, $prompt),
+                'openai' => $this->callOpenAIRaw($apiKey, $prompt),
+                default  => throw new \Exception("Provider not supported for raw prompts: {$provider}"),
+            };
+
+            $apiKey->incrementUsage();
+
+            $this->telemetryService->logRequest(
+                $apiKey,
+                $prompt,
+                ['content' => ['text' => $response], 'usage' => ['total_tokens' => $this->telemetryService->estimateTokens($prompt . $response)]],
+                0,
+                $userId,
+                null,
+                'concept_extraction'
+            );
+
+            return $response;
+        });
+    }
+
+    /**
+     * Calls Gemini and returns the raw text content (not JSON-parsed).
+     */
+    private function callGeminiRaw(ApiKey $apiKey, string $prompt): string
+    {
+        $model        = $apiKey->preferred_model;
+        $decryptedKey = $apiKey->decrypted_key;
+        $url          = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$decryptedKey}";
+
+        $response = Http::timeout(60)
+            ->connectTimeout(10)
+            ->withoutVerifying()
+            ->withHeaders(['Content-Type' => 'application/json'])
+            ->post($url, [
+                'contents'        => [['parts' => [['text' => $prompt]]]],
+                'generationConfig' => ['temperature' => 0.3, 'maxOutputTokens' => 1024],
+            ]);
+
+        if ($response->failed()) {
+            throw new \Exception("Gemini raw call failed: " . $response->body() . " (Status: " . $response->status() . ")");
+        }
+
+        return $response->json('candidates.0.content.parts.0.text') ?? '';
+    }
+
+    /**
+     * Calls OpenAI and returns the raw text content (not JSON-parsed).
+     */
+    private function callOpenAIRaw(ApiKey $apiKey, string $prompt): string
+    {
+        $url   = 'https://api.openai.com/v1/chat/completions';
+        $model = $apiKey->preferred_model ?? 'gpt-4o';
+
+        $response = Http::withToken($apiKey->decrypted_key)
+            ->connectTimeout(10)
+            ->timeout(60)
+            ->post($url, [
+                'model'       => $model,
+                'messages'    => [['role' => 'user', 'content' => $prompt]],
+                'temperature' => 0.3,
+                'max_tokens'  => 1024,
+            ]);
+
+        if ($response->failed()) {
+            throw new \Exception("OpenAI raw call failed: " . $response->body() . " (Status: " . $response->status() . ")");
+        }
+
+        return $response->json('choices.0.message.content') ?? '';
+    }
 }
+

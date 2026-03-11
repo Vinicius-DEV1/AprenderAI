@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concept;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -169,6 +170,18 @@ class Question extends Model
     public function topics()
     {
         return $this->belongsToMany(Topic::class, 'question_topic');
+    }
+
+    /**
+     * Get the educational concepts associated with this question.
+     * Used by EmbeddingTextBuilder and QuestionObserver for semantic indexing.
+     */
+    public function concepts()
+    {
+        return $this->belongsToMany(Concept::class, 'question_concepts', 'question_id', 'concept_id')
+            ->withPivot('confidence')
+            ->withTimestamps()
+            ->orderByPivot('confidence', 'desc');
     }
 
     /**
