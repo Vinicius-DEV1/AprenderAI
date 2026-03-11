@@ -3,7 +3,7 @@ import api from '../../api/axios';
 import { toast } from 'sonner';
 import { 
     Database, Activity, Search, RefreshCw, Settings, Save, Server, 
-    Box, FileJson, CheckCircle2, AlertCircle, PlayCircle 
+    Box, FileJson, CheckCircle2, AlertCircle, PlayCircle, ChevronDown 
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -344,29 +344,72 @@ const SemanticDashboard = () => {
                                 <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mt-4 border-b border-slate-200 dark:border-slate-700 pb-2">
                                     Resultados Ranqueados ({searchResults.results?.length})
                                 </h4>
-                                <div className="overflow-y-auto pr-2 max-h-[400px]">
+                                <div className="overflow-y-auto pr-2 max-h-[500px] space-y-4">
                                     {searchResults.results?.map((res: any) => (
-                                        <div key={res.question_id} className="mb-3 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm hover:border-indigo-300 transition-colors">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300">
-                                                        #{res.rank}
-                                                    </span>
-                                                    <span className="text-sm font-medium text-slate-800 dark:text-white">Q#{res.question_id}</span>
+                                        <details key={res.question_id} className="group mb-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm hover:border-indigo-300 transition-colors overflow-hidden">
+                                            <summary className="flex justify-between items-start p-3 cursor-pointer list-none">
+                                                <div className="flex flex-col gap-1 flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="flex items-center justify-center min-w-[24px] h-6 rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300">
+                                                            #{res.rank}
+                                                        </span>
+                                                        <span className="text-sm font-bold text-slate-800 dark:text-white">Questão #{res.question_id}</span>
+                                                        <div className="flex gap-1 flex-wrap">
+                                                            {res.subjects?.map((s: string) => (
+                                                                <span key={s} className="text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 px-1.5 py-0.5 rounded">{s}</span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 group-open:hidden pr-4">
+                                                        {res.statement.replace(/<[^>]*>?/gm, '')}
+                                                    </p>
                                                 </div>
-                                                <div className="flex gap-2">
-                                                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
-                                                        Vec: {res.qdrant_score.toFixed(3)}
-                                                    </span>
-                                                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800">
-                                                        Final: {res.final_score.toFixed(3)}
-                                                    </span>
+                                                <div className="flex gap-2 shrink-0">
+                                                    <div className="flex flex-col items-end gap-1">
+                                                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
+                                                            Vec: {res.qdrant_score.toFixed(3)}
+                                                        </span>
+                                                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800">
+                                                            Final: {res.final_score.toFixed(3)}
+                                                        </span>
+                                                    </div>
+                                                    <ChevronDown className="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform mt-1" />
                                                 </div>
+                                            </summary>
+                                            
+                                            <div className="p-4 pt-0 border-t border-slate-100 dark:border-slate-700/50 space-y-4">
+                                                <div className="prose prose-sm dark:prose-invert max-w-none">
+                                                    <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Enunciado</h5>
+                                                    <div className="text-sm text-slate-800 dark:text-slate-200" dangerouslySetInnerHTML={{ __html: res.statement }} />
+                                                </div>
+
+                                                {res.alternatives?.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Alternativas</h5>
+                                                        <div className="grid gap-2">
+                                                            {res.alternatives.map((alt: any) => (
+                                                                <div key={alt.label} className={clsx(
+                                                                    "p-2.5 rounded border text-sm flex gap-3",
+                                                                    alt.is_correct 
+                                                                        ? "bg-emerald-50/50 border-emerald-200 dark:bg-emerald-900/10 dark:border-emerald-800/50" 
+                                                                        : "bg-slate-50/50 border-slate-100 dark:bg-slate-900/20 dark:border-slate-800"
+                                                                )}>
+                                                                    <span className={clsx("font-bold", alt.is_correct ? "text-emerald-600" : "text-slate-400")}>{alt.label})</span>
+                                                                    <div dangerouslySetInnerHTML={{ __html: alt.content }} />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {res.explanation && (
+                                                    <div className="bg-amber-50/30 dark:bg-amber-900/10 border border-amber-100/50 dark:border-amber-800/30 p-3 rounded-lg">
+                                                        <h5 className="text-xs font-bold text-amber-600/70 dark:text-amber-500/70 uppercase tracking-widest mb-1">Explicação / Resolução</h5>
+                                                        <div className="text-xs text-slate-700 dark:text-slate-300" dangerouslySetInnerHTML={{ __html: res.explanation }} />
+                                                    </div>
+                                                )}
                                             </div>
-                                            <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-3">
-                                                {res.statement}
-                                            </p>
-                                        </div>
+                                        </details>
                                     ))}
                                 </div>
                             </div>

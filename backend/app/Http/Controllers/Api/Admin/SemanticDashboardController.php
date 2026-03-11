@@ -202,14 +202,25 @@ class SemanticDashboardController extends Controller
         // Format detailed results for frontend
         $detailedResults = [];
         $qIds = array_column($rankedItems, 'question_id');
-        $questions = Question::whereIn('id', $qIds)->get()->keyBy('id');
+        $questions = Question::with(['alternatives', 'subjects', 'topics'])
+            ->whereIn('id', $qIds)
+            ->get()
+            ->keyBy('id');
 
         foreach ($rankedItems as $idx => $item) {
             $q = $questions->get($item['question_id']);
             $detailedResults[] = [
                 'rank'          => $idx + 1,
                 'question_id'   => $item['question_id'],
-                'statement'     => $q ? Str::limit(strip_tags($q->statement), 150) : 'N/A',
+                'statement'     => $q ? $q->statement : 'N/A',
+                'explanation'   => $q ? $q->explanation : null,
+                'alternatives'  => $q ? $q->alternatives->map(fn($a) => [
+                    'label'      => $a->label,
+                    'content'    => $a->content,
+                    'is_correct' => $a->is_correct
+                ]) : [],
+                'subjects'      => $q ? $q->subjects->pluck('name') : [],
+                'topics'        => $q ? $q->topics->pluck('name') : [],
                 'qdrant_score'  => $item['vector_score'] ?? 0,
                 'final_score'   => $item['composite_score'] ?? 0,
                 'source'        => $item['source'] ?? 'unknown',
