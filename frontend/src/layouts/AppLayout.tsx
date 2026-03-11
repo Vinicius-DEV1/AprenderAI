@@ -277,7 +277,7 @@ export default function AppLayout() {
 
                 {/* Page Content */}
                 <main className="flex-1 overflow-y-auto">
-                    <EmailVerificationBanner />
+                    {/* <EmailVerificationBanner /> */}
                     <div className="px-4 pt-2 pb-4 lg:px-8 lg:pt-2 lg:pb-8">
                         <div className="max-w-7xl mx-auto">
                             <Outlet />
