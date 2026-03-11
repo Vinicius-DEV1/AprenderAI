@@ -547,7 +547,7 @@ export default function SimulationCreate() {
                                         label="Banca (Ex: CESPE)"
                                         name="organizations"
                                         values={organizations}
-                                        options={filterOptions.bancas || []}
+                                        options={filterOptions.organizations || []}
                                         onChange={(_, vals) => setOrganizations(vals as string[])}
                                         placeholder="Selecionar bancas..."
                                     />
@@ -555,7 +555,7 @@ export default function SimulationCreate() {
                                         label="Órgão (Ex: TRF)"
                                         name="institutions"
                                         values={institutions}
-                                        options={filterOptions.orgaos || []}
+                                        options={filterOptions.institutions || []}
                                         onChange={(_, vals) => setInstitutions(vals as string[])}
                                         placeholder="Selecionar órgãos..."
                                     />
@@ -563,7 +563,7 @@ export default function SimulationCreate() {
                                         label="Cargo (Ex: Técnico)"
                                         name="roles"
                                         values={roles}
-                                        options={filterOptions.cargos || []}
+                                        options={filterOptions.roles || []}
                                         onChange={(_, vals) => setRoles(vals as string[])}
                                         placeholder="Selecionar cargos..."
                                     />
