@@ -296,7 +296,7 @@ export default function SimulationView() {
                 <div className="bg-white p-8 rounded-xl shadow-lg max-w-md text-center border-t-4 border-red-500">
                     <h2 className="text-xl font-bold text-gray-800 mb-4">Ocorreu um Erro</h2>
                     <p className="text-gray-600 mb-6">Não foi possível processar este simulado. Por favor, tente criar um novo.</p>
-                    <button onClick={() => navigate('/simulados/create')} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Novo Simulado</button>
+                    <button onClick={() => navigate('/simulados/configurar')} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Novo Simulado</button>
                 </div>
             </div>
         );

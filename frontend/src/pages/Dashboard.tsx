@@ -917,7 +917,7 @@ export default function Dashboard() {
                         <div style={{ textAlign: 'center', padding: '18px 10px', color: 'var(--muted2)', fontWeight: 600 }}>
                             Você ainda não realizou nenhuma prova.
                             <div>
-                                <Link to="/simulados/create" className="btn" style={{ marginTop: '12px' }}>Criar Primeira Prova</Link>
+                                <Link to="/simulados/configurar" className="btn" style={{ marginTop: '12px' }}>Criar Primeira Prova</Link>
                             </div>
                         </div>
                     )}
