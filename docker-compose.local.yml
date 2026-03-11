@@ -83,6 +83,31 @@ services:
     deploy:
       replicas: 2
 
+  # ── Embeddings Worker (Semantic Search indexing queue) ──────────────────
+  embeddings-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.local
+    container_name: aprender-ai-embeddings-worker
+    restart: unless-stopped
+    volumes:
+      - ./backend:/var/www
+      - /var/www/vendor
+      - /proc:/host_proc:ro
+    env_file: ./backend/.env
+    command: php artisan queue:work --queue=embeddings --sleep=5 --tries=2 --timeout=120
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    networks:
+      - local-network
+    deploy:
+      replicas: 1
+
   ai-worker:
     build:
       context: ./backend
@@ -123,6 +148,19 @@ services:
     networks:
       - local-network
 
+  # ── Qdrant Vector Database ──────────────────────────────────────────────
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: aprender-ai-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"   # REST API
+      - "6334:6334"   # gRPC
+    volumes:
+      - qdrant-data:/qdrant/storage
+    networks:
+      - local-network
+
   frontend:
     build:
       context: ./frontend
@@ -152,4 +190,6 @@ volumes:
   local-db-data:
     driver: local
   aprender-ai-node-modules:
+    driver: local
+  qdrant-data:
     driver: local
