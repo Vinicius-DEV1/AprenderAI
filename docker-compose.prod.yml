@@ -70,13 +70,14 @@ services:
       - ./qdrant-data:/var/www/qdrant-backup:ro
       - /proc:/host_proc:ro
     env_file: ./backend/.env
-    # Prioriza explicitamente a fila 'default' (Simulados/Chats), 'essays' (Redações) e depois a 'import'
-    command: php artisan queue:work --queue=default,essays,import --sleep=3 --tries=3 --max-time=3600
+    # Prioriza explicitamente a fila 'default' (Simulados/Chats), 'essays' (Redações) e depois a 'import'.
+    # ADICIONADO: 'embeddings' e 'ai-batches' no final para ajudar quando estiverem ociosos.
+    command: php artisan queue:work --queue=default,essays,import,embeddings,ai-batches --sleep=3 --tries=3 --max-time=3600
     deploy:
       replicas: 50
       resources:
         limits:
-          memory: 512M
+          memory: 1G # Aumentado para 1G pois agora podem processar embeddings
     depends_on:
       app:
         condition: service_started
