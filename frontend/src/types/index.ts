@@ -20,6 +20,12 @@ export interface User {
         remaining: number;
         used: number;
     };
+    quotas?: {
+        simulations: { limit: number; used: number };
+        essays: { limit: number; used: number };
+        daily_questions: { limit: number; used: number };
+        ai_questions: { limit: number; used: number };
+    };
     subscriptions?: {
         id: number;
         status: string;
@@ -61,6 +67,7 @@ export interface Question {
     statement: string;
     tipo_questao?: 'Objetiva' | 'Discursiva' | 'Redação' | string;
     type?: string;
+    image_path?: string;
     discursive_answer?: any;
     explanation?: string;
     alternatives: Alternative[];
