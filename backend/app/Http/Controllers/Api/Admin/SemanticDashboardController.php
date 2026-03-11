@@ -14,6 +14,7 @@ use App\Models\SearchInteractionLog;
 use App\Models\AiSearchCache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Str;
 use App\Jobs\InterpretSearchPromptJob;
 
 class SemanticDashboardController extends Controller
@@ -208,7 +209,7 @@ class SemanticDashboardController extends Controller
             $detailedResults[] = [
                 'rank'          => $idx + 1,
                 'question_id'   => $item['question_id'],
-                'statement'     => $q ? substr(strip_tags($q->statement), 0, 150) . '...' : 'N/A',
+                'statement'     => $q ? Str::limit(strip_tags($q->statement), 150) : 'N/A',
                 'qdrant_score'  => $item['vector_score'] ?? 0,
                 'final_score'   => $item['composite_score'] ?? 0,
                 'source'        => $item['source'] ?? 'unknown',
