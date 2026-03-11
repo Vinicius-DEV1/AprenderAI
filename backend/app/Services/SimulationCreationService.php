@@ -207,10 +207,16 @@ class SimulationCreationService
                         ->where(function ($q) {
                             $q->whereNull('organization')->orWhere('organization', '!=', 'ENEM');
                         })
-                        ->whereNotIn('id', array_merge($finalQuestions->pluck('id')->toArray(), $subjectQuestions->pluck('id')->toArray(), $lastSeenIds))
-                        ->inRandomOrder()
-                        ->limit($missing)
-                        ->get();
+                        ->whereNotIn('id', array_merge($finalQuestions->pluck('id')->toArray(), $subjectQuestions->pluck('id')->toArray(), $lastSeenIds));
+                        
+                    if (!empty($context['organization']))
+                        $extra->whereIn('organization', $context['organization']);
+                    if (!empty($context['institution']))
+                        $extra->whereIn('institution', $context['institution']);
+                    if (!empty($context['role']))
+                        $extra->whereIn('role', $context['role']);
+
+                    $extra = $extra->inRandomOrder()->limit($missing)->get();
                     $subjectQuestions = $subjectQuestions->merge($extra);
                 }
 
