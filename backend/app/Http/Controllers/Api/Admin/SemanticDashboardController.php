@@ -50,10 +50,10 @@ class SemanticDashboardController extends Controller
         // 3. Cache & Latency Stats (from SearchInteractionLog and AiSearchCache)
         $totalLogSearches = SearchInteractionLog::distinct('ai_search_id')->count('ai_search_id');
         
-        $l1CacheHits = AiSearchCache::where('cache_type', 'l1')->count();
-        $l2CacheHits = AiSearchCache::where('cache_type', 'l2')->count();
-        $totalCacheHits = $l1CacheHits + $l2CacheHits;
+        // As cache_type column doesn't exist, we show total L2 entries
         $totalCacheEntries = AiSearchCache::count();
+        $l1CacheHits = 0; // Efemero/Redis
+        $l2CacheHits = $totalCacheEntries; // Aproximado para o dashboard
 
         // 4. Jobs Stats (Embeddings Queue)
         $pendingJobs = DB::table('jobs')->where('queue', config('xavier.embeddings.queue', 'embeddings'))->count();
@@ -240,11 +240,20 @@ class SemanticDashboardController extends Controller
      */
     public function reindexAll(Request $request)
     {
+        $validated = $request->validate([
+            'limit' => 'nullable|integer|min:1|max:5000'
+        ]);
+
+        $params = [];
+        if ($request->has('limit')) {
+            $params['--limit'] = (int) $validated['limit'];
+        }
+
         // Don't wait for completion, it can take hours
-        Artisan::queue('xavier:index-all');
+        Artisan::queue('xavier:index-all', $params);
 
         return response()->json([
-            'message' => 'Job xavier:index-all enfileirado com sucesso. Verifique os logs e a fila embeddings.'
+            'message' => 'Job xavier:index-all enfileirado com sucesso.' . ($request->has('limit') ? " Limite: {$validated['limit']} questões." : "")
         ]);
     }
 }

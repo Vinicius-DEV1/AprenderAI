@@ -25,6 +25,7 @@ class XavierIndexAllCommand extends Command
     protected $signature = 'xavier:index-all
                             {--sync    : Process synchronously instead of queuing}
                             {--chunk=50 : Number of questions to process per chunk}
+                            {--limit=  : Max number of questions to index}
                             {--fresh   : Delete and recreate the Qdrant collection before indexing}';
 
     protected $description = 'Batch-index all approved questions into Qdrant (Xavier Semantic Search)';
@@ -73,6 +74,9 @@ class XavierIndexAllCommand extends Command
         $this->withProgressBar(
             Question::published()
                 ->where('tipo_questao', '!=', 'Redação')
+                ->when($this->option('limit'), function ($query, $limit) {
+                    return $query->limit((int) $limit);
+                })
                 ->select('id')
                 ->cursor(),
             function ($question) use ($isSync, &$indexed, &$failed) {

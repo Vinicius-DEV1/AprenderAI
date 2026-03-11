@@ -65,6 +65,10 @@ const SemanticDashboard = () => {
         concept_detection_threshold: 0.45,
     });
 
+    // Index Modal
+    const [isIndexModalOpen, setIsIndexModalOpen] = useState(false);
+    const [indexBatchLimit, setIndexBatchLimit] = useState(50);
+
     // Test search
     const [searchPrompt, setSearchPrompt] = useState('');
     const [searchResults, setSearchResults] = useState<any>(null);
@@ -72,7 +76,7 @@ const SemanticDashboard = () => {
     const loadStats = async () => {
         try {
             setLoading(true);
-            const res = await api.get('/admin/semantic');
+            const res = await api.get('/api/v1/admin/semantic');
             setStats(res.data);
             setConfigState({
                 vector_search_enabled: res.data.config.vector_search_enabled == 1 || res.data.config.vector_search_enabled == true,
@@ -92,7 +96,7 @@ const SemanticDashboard = () => {
     const handleSaveConfig = async () => {
         try {
             setConfigLoading(true);
-            await api.post('/admin/semantic/config', configState);
+            await api.post('/api/v1/admin/semantic/config', configState);
             toast.success('Configuração atualizada. Pode levar alguns segundos para refletir globalmente.');
             await loadStats();
         } catch (error) {
@@ -108,7 +112,7 @@ const SemanticDashboard = () => {
         
         try {
             setTestLoading(true);
-            const res = await api.post('/admin/semantic/test-search', { prompt: searchPrompt });
+            const res = await api.post('/api/v1/admin/semantic/test-search', { prompt: searchPrompt });
             setSearchResults(res.data);
             toast.success('Busca concluída!');
         } catch (error) {
@@ -120,15 +124,14 @@ const SemanticDashboard = () => {
     };
 
     const handleReindex = async () => {
-        if (!confirm('Esta ação irá disparar jobs para verificar e reindexar todas as questões ativas. Deseja continuar?')) return;
-        
         try {
             setReindexing(true);
-            const res = await api.post('/admin/semantic/reindex');
-            toast.success(res.data.message || 'Reindexação iniciada!');
+            const res = await api.post('/api/v1/admin/semantic/reindex', { limit: indexBatchLimit });
+            toast.success(res.data.message || 'Indexação iniciada!');
+            setIsIndexModalOpen(false);
             loadStats();
         } catch (error) {
-            toast.error('Erro ao disparar reindexação.');
+            toast.error('Erro ao disparar indexação.');
         } finally {
             setReindexing(false);
         }
@@ -159,12 +162,12 @@ const SemanticDashboard = () => {
                         <RefreshCw className={clsx("w-4 h-4", loading && "animate-spin")} />
                     </button>
                     <button 
-                        onClick={handleReindex}
+                        onClick={() => setIsIndexModalOpen(true)}
                         disabled={reindexing}
                         className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2"
                     >
                         {reindexing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Server className="w-4 h-4" />}
-                        Reindexar Tudo
+                        Indexar Questões
                     </button>
                 </div>
             </div>
@@ -284,20 +287,20 @@ const SemanticDashboard = () => {
                             Console de Busca Avançado (Debug)
                         </h2>
                         
-                        <form onSubmit={handleTestSearch} className="mb-6 flex gap-3">
+                        <form onSubmit={handleTestSearch} className="mb-6 flex gap-3 items-center">
                             <input 
                                 type="text"
                                 value={searchPrompt}
                                 onChange={(e) => setSearchPrompt(e.target.value)}
                                 placeholder="Digite uma busca para simular a visão da IA (ex: perguntas de matemática nivel medio)"
-                                className="flex-1 rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900"
+                                className="flex-1 w-full min-w-0 rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
                             />
                             <button 
                                 type="submit" 
                                 disabled={testLoading || !searchPrompt}
-                                className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white px-6"
+                                className="flex-none w-auto btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-2.5 flex items-center justify-center rounded-lg shadow-sm"
                             >
-                                {testLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <PlayCircle className="w-5 h-5" />}
+                                {testLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <PlayCircle className="w-5 h-5 text-white" />}
                             </button>
                         </form>
 
@@ -366,6 +369,73 @@ const SemanticDashboard = () => {
                     </div>
                 </div>
             </div>
+            {/* INDEX MODAL */}
+            {isIndexModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-6">
+                            <div className="flex justify-between items-start mb-4">
+                                <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                    <Server className="w-6 h-6 text-indigo-500" />
+                                    Batch Indexer Xavier
+                                </h3>
+                                <button onClick={() => setIsIndexModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                    <RefreshCw className="w-5 h-5" style={{ transform: 'rotate(45deg)' }} />
+                                </button>
+                            </div>
+                            
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                                Dispare jobs de vetorização controlada para economizar nos custos de API.
+                            </p>
+
+                            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl p-4 mb-6">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wider">Pendentes de Indexação</span>
+                                    <span className="text-lg font-bold text-amber-800 dark:text-amber-200">
+                                        {stats ? stats.overview.mysql_published_questions - stats.overview.mysql_indexed_questions : '...'}
+                                    </span>
+                                </div>
+                                <p className="text-[10px] text-amber-600 dark:text-amber-500">
+                                    Questões publicadas (exceto redações) que ainda não possuem vetores sincronizados.
+                                </p>
+                            </div>
+
+                            <div className="space-y-2 mb-8">
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                    Quantas questões deseja indexar nesta leva?
+                                </label>
+                                <input 
+                                    type="number" 
+                                    min="1" max="5000"
+                                    value={indexBatchLimit}
+                                    onChange={(e) => setIndexBatchLimit(parseInt(e.target.value) || 0)}
+                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white"
+                                />
+                                <p className="text-[10px] text-slate-400">
+                                    Custo estimado: aprox. ${(indexBatchLimit * 0.0001).toFixed(4)} USD (estimativa baseada em texto médio).
+                                </p>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button 
+                                    onClick={() => setIsIndexModalOpen(false)}
+                                    className="flex-1 px-4 py-2.5 rounded-xl font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button 
+                                    onClick={handleReindex}
+                                    disabled={reindexing || indexBatchLimit <= 0}
+                                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:shadow-none"
+                                >
+                                    {reindexing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
+                                    Iniciar Batch
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
