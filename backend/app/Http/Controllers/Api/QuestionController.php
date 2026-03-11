@@ -546,11 +546,10 @@ class QuestionController extends Controller
             Log::warning('[Xavier][Search] Step 5 FAILED: concept detection error.', ['err' => $e->getMessage()]);
         }
 
-        // ── Step 5b: LLM Fallback if zero concepts detected ───────────────────
+        // ── Step 5b: Log if zero concepts detected (no longer force fallback) ──
         if (empty($detectedConcepts)) {
-            Log::info('[Xavier][Search] Step 5b: no concepts found, dispatching LLM fallback.');
-            $searchPath = 'llm';
-            return $this->legacyAiSearch($request, $user, $cacheService);
+            Log::info('[Xavier][Search] Step 5b: no concepts found, proceeding with pure vector search.');
+            $searchPath = 'vector_only';
         }
 
         // ── Step 6: Query Expansion via Knowledge Graph ───────────────────────
