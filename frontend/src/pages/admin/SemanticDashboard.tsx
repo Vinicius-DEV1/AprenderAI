@@ -447,13 +447,21 @@ const SemanticDashboard = () => {
 
                             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl p-4 mb-6">
                                 <div className="flex justify-between items-center mb-1">
-                                    <span className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wider">Pendentes de Indexação</span>
-                                    <span className="text-lg font-bold text-amber-800 dark:text-amber-200">
-                                        {stats ? stats.overview.mysql_published_questions - stats.overview.mysql_indexed_questions : '...'}
+                                    <span className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                                        {indexForce ? 'Total de Questões para Re-indexar' : 'Pendentes de Indexação'}
+                                    </span>
+                                    <span className={clsx("text-lg font-bold", indexForce ? "text-indigo-600 dark:text-indigo-400" : "text-amber-800 dark:text-amber-200")}>
+                                        {stats ? (
+                                            indexForce 
+                                                ? stats.overview.mysql_published_questions 
+                                                : stats.overview.mysql_published_questions - stats.overview.mysql_indexed_questions
+                                        ) : '...'}
                                     </span>
                                 </div>
                                 <p className="text-[10px] text-amber-600 dark:text-amber-500">
-                                    Questões publicadas (exceto redações) que ainda não possuem vetores sincronizados.
+                                    {indexForce 
+                                        ? "Modo FORÇAR ativado: Todas as questões publicadas no banco serão processadas novamente."
+                                        : "Questões publicadas (exceto redações) que ainda não possuem vetores sincronizados."}
                                 </p>
                             </div>
 
