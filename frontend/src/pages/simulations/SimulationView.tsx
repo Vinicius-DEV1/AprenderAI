@@ -258,12 +258,23 @@ export default function SimulationView() {
         if (!text) return { __html: '' };
         let processedText = text;
 
-        if (processedText.includes('](/storage/')) {
-            processedText = processedText.replace(/\]\(\/storage\//g, `](${apiUrl}/storage/`);
+        // Fix Markdown Image URLs: ![alt](/storage/path) or ![alt](storage/path)
+        processedText = processedText.replace(/!\[(.*?)\]\(\s*(\/?storage\/.*?)\s*\)/g, (_, alt, url) => {
+            const cleanUrl = url.trim().replace(/^\//, '');
+            const absoluteUrl = `${apiUrl}/${cleanUrl}`.replace(/([^:])\/\//g, '$1/');
+            return `![${alt}](${absoluteUrl})`;
+        });
+
+        // Prevention: Escape numeric starts that look like list items (e.g. "30.")
+        if (/^\d+\.($|\s)/.test(processedText.trim())) {
+            processedText = processedText.replace(/^(\d+)\./, '$1\\.');
         }
-        if (processedText.includes('src="/storage/')) {
-            processedText = processedText.replace(/src="\/storage\//g, `src="${apiUrl}/storage/`);
-        }
+
+        // Fix HTML Image URLs: src="/storage/path" or src="storage/path"
+        processedText = processedText.replace(/src=["']\s*(\/?storage\/.*?)\s*["']/g, (_, url) => {
+            const cleanUrl = url.trim().replace(/^\//, '');
+            return `src="${apiUrl}/${cleanUrl}"`;
+        });
 
         // Render block math \[ ... \]
         processedText = processedText.replace(/\\\[([\s\S]*?)\\\]/g, (match, formula) => {
@@ -520,6 +531,16 @@ export default function SimulationView() {
 
                                 <div className="question-statement" dangerouslySetInnerHTML={renderMd(question.html_statement || question.statement)} />
 
+                                {question.image_path && (
+                                    <div className="mb-4">
+                                        <img
+                                            src={question.image_path.startsWith('http') ? question.image_path : `${apiUrl}/storage/${question.image_path.replace(/^\//, '')}`.replace(/([^:])\/\//g, '$1/')}
+                                            alt="Imagem da questão"
+                                            className="max-w-full h-auto rounded-lg border border-gray-100 dark:border-slate-800 mx-auto block shadow-sm"
+                                        />
+                                    </div>
+                                )}
+
                                 <div className="qb-alternatives-list mt-8">
                                     {(question.alternatives || []).map((alt: any) => (
                                         <div
@@ -539,7 +560,7 @@ export default function SimulationView() {
                                                 )}
                                                 {alt.image_path && (
                                                     <img
-                                                        src={alt.image_path.startsWith('http') ? alt.image_path : `/storage/${alt.image_path}`}
+                                                        src={alt.image_path.startsWith('http') ? alt.image_path : `${apiUrl}/storage/${alt.image_path.replace(/^\//, '')}`.replace(/([^:])\/\//g, '$1/')}
                                                         alt={`Alternativa ${alt.label}`}
                                                         className="max-w-full h-auto rounded object-contain mt-2"
                                                     />
