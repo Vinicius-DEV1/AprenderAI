@@ -20,7 +20,7 @@ if (!$user) {
 }
 auth()->login($user);
 
-$query = "questões sobre interpretação de texto e gramática";
+$query = "questões sobre gramatica";
 echo "Searching for: '{$query}'...\n";
 
 // We can call the controller method directly or use a mock request
@@ -34,11 +34,12 @@ $response = $controller->aiSearch($request);
 $data = $response->getData(true);
 
 echo "\n--- Results ---\n";
-if (empty($data['questions'])) {
+if (empty($data['question_ids'])) {
     echo "No questions found.\n";
 } else {
-    foreach ($data['questions'] as $q) {
-        echo "[ID: {$q['id']}] [Score: " . ($q['search_score'] ?? 'N/A') . "] " . substr($q['statement'], 0, 100) . "...\n";
+    foreach ($data['question_ids'] as $id) {
+        $q = Question::find($id);
+        echo "[ID: {$id}] " . substr($q->statement, 0, 150) . "...\n";
     }
 }
 

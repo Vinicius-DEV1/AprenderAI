@@ -41,7 +41,7 @@ return [
         'pipeline_version' => 'v3_structured',
 
         // Minimum cosine similarity score to accept a concept match
-        'concept_detection_threshold' => env('CONCEPT_DETECTION_THRESHOLD', 0.75),
+        'concept_detection_threshold' => env('CONCEPT_DETECTION_THRESHOLD', 0.45),
 
         // Max expanded concepts passed to Qdrant filter (avoid query dilution)
         'max_expanded_concepts' => 8,
