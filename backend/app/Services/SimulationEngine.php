@@ -213,6 +213,13 @@ class SimulationEngine
                     })->where(function ($q) {
                         $q->whereNull('organization')->orWhere('organization', '!=', 'ENEM');
                     });
+                    
+                    if (!empty($config['organization']))
+                        $fallbackQuery->whereIn('organization', $config['organization']);
+                    if (!empty($config['institution']))
+                        $fallbackQuery->whereIn('institution', $config['institution']);
+                    if (!empty($config['role']))
+                        $fallbackQuery->whereIn('role', $config['role']);
                 }
 
                 $fallbackPool = $fallbackQuery->inRandomOrder()
@@ -236,6 +243,13 @@ class SimulationEngine
                 })->where(function ($q) {
                     $q->whereNull('organization')->orWhere('organization', '!=', 'ENEM');
                 });
+                
+                if (!empty($config['organization']))
+                    $aiQuery->whereIn('organization', $config['organization']);
+                if (!empty($config['institution']))
+                    $aiQuery->whereIn('institution', $config['institution']);
+                if (!empty($config['role']))
+                    $aiQuery->whereIn('role', $config['role']);
             }
 
             $aiPool = $aiQuery->inRandomOrder()->limit($countAiTarget)->get();
@@ -255,6 +269,13 @@ class SimulationEngine
                     })->where(function ($q) {
                         $q->whereNull('organization')->orWhere('organization', '!=', 'ENEM');
                     });
+                    
+                    if (!empty($config['organization']))
+                        $fallbackAiQuery->whereIn('organization', $config['organization']);
+                    if (!empty($config['institution']))
+                        $fallbackAiQuery->whereIn('institution', $config['institution']);
+                    if (!empty($config['role']))
+                        $fallbackAiQuery->whereIn('role', $config['role']);
                 }
 
                 $fallbackAi = $fallbackAiQuery->inRandomOrder()
@@ -282,6 +303,13 @@ class SimulationEngine
                     })->where(function ($q) {
                         $q->whereNull('organization')->orWhere('organization', '!=', 'ENEM');
                     });
+                    
+                    if (!empty($config['organization']))
+                        $emergencyQuery->whereIn('organization', $config['organization']);
+                    if (!empty($config['institution']))
+                        $emergencyQuery->whereIn('institution', $config['institution']);
+                    if (!empty($config['role']))
+                        $emergencyQuery->whereIn('role', $config['role']);
                 }
 
                 $emergencyPool = $emergencyQuery->inRandomOrder()
