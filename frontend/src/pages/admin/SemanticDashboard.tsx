@@ -297,20 +297,20 @@ const SemanticDashboard = () => {
                             Console de Busca Avançado (Debug)
                         </h2>
                         
-                        <form onSubmit={handleTestSearch} className="mb-6 flex gap-3 items-center">
+                        <form onSubmit={handleTestSearch} className="mb-6 flex gap-3 items-stretch w-full">
                             <input 
                                 type="text"
                                 value={searchPrompt}
                                 onChange={(e) => setSearchPrompt(e.target.value)}
                                 placeholder="Digite uma busca para simular a visão da IA (ex: perguntas de matemática nivel medio)"
-                                className="flex-1 w-full min-w-0 rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="flex-1 min-w-0 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white"
                             />
                             <button 
                                 type="submit" 
                                 disabled={testLoading || !searchPrompt}
-                                className="flex-none w-auto btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-2.5 flex items-center justify-center rounded-lg shadow-sm"
+                                className="flex-none bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white px-6 py-2.5 flex items-center justify-center rounded-lg shadow-sm transition-colors"
                             >
-                                {testLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <PlayCircle className="w-5 h-5 text-white" />}
+                                {testLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <PlayCircle className="w-5 h-5" />}
                             </button>
                         </form>
 
