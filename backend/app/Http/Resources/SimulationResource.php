@@ -23,7 +23,7 @@ class SimulationResource extends JsonResource
             'type' => $this->type,
             'status' => $this->status, // 'generating', 'ready', 'in_progress', 'completed'
             'score' => $this->score,
-            'calculated_score' => $this->isFinished() ? ($this->answers_count > 0 ? round(($this->answers->where('is_correct', true)->count() / $this->answers_count) * 100, 1) : 0) : null,
+            'calculated_score' => $this->isFinished() ? ($this->answers->count() > 0 ? round(($this->answers->where('is_correct', true)->count() / $this->answers->count()) * 100, 1) : 0) : null,
             'formatted_date' => $this->created_at->format('d/m/Y'),
             // time_elapsed is the real DB column (finishSimulation() saves seconds elapsed there)
             'time_spent' => $this->time_elapsed,
