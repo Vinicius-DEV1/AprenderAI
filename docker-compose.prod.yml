@@ -73,7 +73,7 @@ services:
     # Prioriza explicitamente a fila 'default' (Simulados/Chats), 'essays' (Redações) e depois a 'import'.
     command: php artisan queue:work --queue=default,essays,import --sleep=3 --tries=3 --max-time=3600
     deploy:
-      replicas: 50
+      replicas: 40
       resources:
         limits:
           memory: 512M # Mantido em 512M conforme solicitado
@@ -102,7 +102,7 @@ services:
     # Filas para processamento do Xavier (embeddings: tempo real, ai-batches: processamento em lote)
     command: php artisan queue:work --queue=embeddings,ai-batches --sleep=3 --tries=3 --timeout=700 --max-time=3600
     deploy:
-      replicas: 2
+      replicas: 5
       resources:
         limits:
           memory: 1G
