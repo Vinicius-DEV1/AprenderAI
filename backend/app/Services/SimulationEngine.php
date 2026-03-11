@@ -110,6 +110,15 @@ class SimulationEngine
             // Count real questions available for this subject+type combination
             $query = Question::published()->whereHas('subjects', fn($q) => $q->where('name', $subjectNorm));
 
+            if ($tipo === 'concurso') {
+                if (!empty($config['organization']))
+                    $query->whereIn('organization', $config['organization']);
+                if (!empty($config['institution']))
+                    $query->whereIn('institution', $config['institution']);
+                if (!empty($config['role']))
+                    $query->whereIn('role', $config['role']);
+            }
+
             // ENEM: strict type filter; concurso: exclude ENEM
             if ($tipo === 'enem') {
                 $query->where('type', 'enem');
