@@ -11,6 +11,7 @@ services:
     working_dir: /var/www
     volumes:
       - ./backend/storage/app/public:/var/www/storage/app/public
+      - ./qdrant-data:/var/www/qdrant-backup:ro
       - /proc:/host_proc:ro
     env_file: ./backend/.env
     depends_on:
@@ -66,6 +67,7 @@ services:
     working_dir: /var/www
     volumes:
       - ./backend/storage/app/public:/var/www/storage/app/public
+      - ./qdrant-data:/var/www/qdrant-backup:ro
       - /proc:/host_proc:ro
     env_file: ./backend/.env
     # Prioriza explicitamente a fila 'default' (Simulados/Chats), 'essays' (Redações) e depois a 'import'
@@ -94,6 +96,7 @@ services:
     working_dir: /var/www
     volumes:
       - ./backend/storage/app/public:/var/www/storage/app/public
+      - ./qdrant-data:/var/www/qdrant-backup:ro
       - /proc:/host_proc:ro
     env_file: ./backend/.env
     # Filas para processamento do Xavier (embeddings: tempo real, ai-batches: processamento em lote)
