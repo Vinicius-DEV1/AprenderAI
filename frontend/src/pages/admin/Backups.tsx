@@ -54,6 +54,7 @@ export default function AdminBackups() {
     const [activeJobId, setActiveJobId] = useState<number | null>(null);
     const [downloadingId, setDownloadingId] = useState<number | null>(null);
     const [localDumping, setLocalDumping] = useState(false);
+    const [fullDumping, setFullDumping] = useState(false);
 
     // -------------------------------------------------------------------------
     // Fetch history + settings
@@ -172,19 +173,22 @@ export default function AdminBackups() {
     // Local dump — streams .sql.gz directly from server to browser (no S3)
     // Every request is logged on the server with the admin's name, IP and time.
     // -------------------------------------------------------------------------
-    const handleLocalDump = async () => {
-        setLocalDumping(true);
-        toast.info('Gerando dump... o download iniciará em breve.');
+    const handleLocalDump = async (isFull = false) => {
+        if (isFull) setFullDumping(true);
+        else setLocalDumping(true);
+        
+        toast.info(isFull ? 'Gerando backup completo (DB + Imagens)... Isso pode demorar alguns minutos.' : 'Gerando dump do banco... o download iniciará em breve.');
         try {
             const res = await api.get('/api/v1/admin/backups/local-dump', {
+                params: { full: isFull ? '1' : '0' },
                 responseType: 'blob',
-                timeout: 600_000, // 10 minutos — tempo para bancos grandes
+                timeout: 1800_000, // 30 minutos — backups com muitas imagens demoram
             });
 
             // Create a temporary <a> element to trigger the browser download
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-            const filename = `backup_local_${timestamp}.sql.gz`;
-            const url = URL.createObjectURL(new Blob([res.data], { type: 'application/gzip' }));
+            const filename = isFull ? `backup_completo_${timestamp}.tar.gz` : `backup_local_${timestamp}.sql.gz`;
+            const url = URL.createObjectURL(new Blob([res.data], { type: isFull ? 'application/gzip' : 'application/gzip' }));
             const link = document.createElement('a');
             link.href = url;
             link.download = filename;
@@ -193,11 +197,12 @@ export default function AdminBackups() {
             link.remove();
             URL.revokeObjectURL(url);
 
-            toast.success('Download do banco concluído!');
+            toast.success(isFull ? 'Download do backup completo concluído!' : 'Download do banco concluído!');
         } catch (err: any) {
-            toast.error(err?.response?.data?.message ?? 'Erro ao gerar o dump local. Verifique os logs.');
+            toast.error(err?.response?.data?.message ?? 'Erro ao gerar o backup. Verifique os logs do servidor.');
         } finally {
             setLocalDumping(false);
+            setFullDumping(false);
         }
     };
 
@@ -236,9 +241,9 @@ export default function AdminBackups() {
                 <div className="flex flex-wrap items-center gap-3">
                     {/* Download Direto (sem S3) */}
                     <button
-                        onClick={handleLocalDump}
-                        disabled={localDumping}
-                        title="Faz o dump do banco e baixa diretamente no seu navegador. Não precisa de S3 configurado. Toda solicitação é registrada nos logs."
+                        onClick={() => handleLocalDump(false)}
+                        disabled={localDumping || fullDumping}
+                        title="Faz o dump apenas do banco MySQL (.sql.gz) e baixa diretamente. Rápido e leve."
                         className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-semibold text-sm hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
                     >
                         {localDumping ? (
@@ -246,14 +251,38 @@ export default function AdminBackups() {
                                 <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                 </svg>
-                                Gerando dump...
+                                Gerando SQL...
                             </>
                         ) : (
                             <>
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                 </svg>
-                                Download Direto
+                                Apenas Banco (SQL)
+                            </>
+                        )}
+                    </button>
+
+                    {/* Download Completo (DB + Imagens) */}
+                    <button
+                        onClick={() => handleLocalDump(true)}
+                        disabled={localDumping || fullDumping}
+                        title="Faz o backup completo do banco de dados E de todas as imagens das questões. Gera um arquivo .tar.gz."
+                        className="flex items-center gap-2 px-5 py-2.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg font-semibold text-sm hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                    >
+                        {fullDumping ? (
+                            <>
+                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Criando Pacote Full...
+                            </>
+                        ) : (
+                            <>
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                                Download Completo (DB + Imagens)
                             </>
                         )}
                     </button>
