@@ -93,7 +93,7 @@ class XavierIndexAllCommand extends Command
                     if ($isSync) {
                         IndexQuestionVectorJob::dispatchSync($question->id);
                     } else {
-                        IndexQuestionVectorJob::dispatch($question->id)->onQueue('ai-batches');
+                        IndexQuestionVectorJob::dispatch($question->id)->onQueue(config('xavier.embeddings.queue', 'embeddings'));
                     }
                     $indexed++;
                 } catch (\Exception $e) {
