@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Question;
+use App\Observers\QuestionObserver;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -25,6 +27,9 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Auth\Events\Registered::class,
             \App\Listeners\SendWelcomeEmail::class
         );
+
+        // ── Xavier Semantic Search: auto-index approved questions ────────────
+        Question::observe(QuestionObserver::class);
 
         // --- Monitoramento de Workers (Performance em Tempo Real) ---
         $startTime = 0;

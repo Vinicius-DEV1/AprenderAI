@@ -3,14 +3,23 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AiSearchRequest;
 use App\Models\Question;
 use App\Models\QuestionInteraction;
-use App\Models\AiSearchRequest;
-use App\Jobs\RespondToStandaloneChatJob;
+use App\Models\SearchInteractionLog;
 use App\Jobs\InterpretSearchPromptJob;
+use App\Jobs\RespondToStandaloneChatJob;
 use App\Http\Resources\QuestionResource;
+use App\Services\AI\AIService;
+use App\Services\AI\EmbeddingTextBuilder;
+use App\Services\AI\HybridSearchService;
+use App\Services\AI\QueryExpansionService;
+use App\Services\AI\QdrantService;
+use App\Services\AI\ReRankService;
+use App\Services\AI\SemanticCacheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class QuestionController extends Controller
 {
@@ -91,6 +100,16 @@ class QuestionController extends Controller
         }
         if ($request->filled('role')) {
             $query->where('role', 'like', '%' . $request->role . '%');
+        }
+
+        // Filter by specific IDs (Semantic Results)
+        if ($request->filled('question_ids')) {
+            $ids = is_array($request->question_ids) ? $request->question_ids : explode(',', $request->question_ids);
+            $query->whereIn('id', $ids);
+
+            // Maintain order of IDs if they come from semantic search (ReRank order)
+            $orderString = implode(',', $ids);
+            $query->orderByRaw("FIELD(id, {$orderString})");
         }
 
         // Keyword/Search filter
@@ -463,61 +482,247 @@ class QuestionController extends Controller
 
     /**
      * Submit a prompt to the AI Search (Busca Assistida)
+     *
+     * Implements the full 9-step Xavier Semantic Search pipeline when
+     * VECTOR_SEARCH_ENABLED=true. Falls back to the legacy SQL+LLM pipeline
+     * (InterpretSearchPromptJob) when the flag is false or Qdrant is unavailable.
      */
     public function aiSearch(Request $request)
     {
-        $request->validate([
-            'prompt' => 'required|string|max:500',
+        $request->validate(['prompt' => 'required|string|max:500']);
+
+        $user       = $request->user();
+        $cacheService = app(SemanticCacheService::class);
+
+        // ─── LEGACY PATH (feature flag off) ──────────────────────────────────
+        $isEnabled = config('xavier.vector_search_enabled');
+        if (is_string($isEnabled)) {
+            $isEnabled = filter_var($isEnabled, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        if (!$isEnabled) {
+            return $this->legacyAiSearch($request, $user, $cacheService);
+        }
+
+        // ─── VECTOR SEARCH PIPELINE (9 steps) ────────────────────────────────
+        Log::info('[Xavier][Search] Starting vector search pipeline.', ['prompt' => $request->prompt]);
+
+        $aiService     = app(AIService::class);
+        $textBuilder   = app(EmbeddingTextBuilder::class);
+        $qdrant        = app(QdrantService::class);
+        $expansion     = app(QueryExpansionService::class);
+        $hybridSearch  = app(HybridSearchService::class);
+        $reranker      = app(ReRankService::class);
+
+        // ── Step 1: Query Normalization ──────────────────────────────────────
+        $normalizedQuery = $textBuilder->buildForQuery($request->prompt);
+        Log::info('[Xavier][Search] Step 1 done: normalized query.', ['q' => $normalizedQuery]);
+
+        // ── Step 2: L1 Cache (exact hash) ────────────────────────────────────
+        $cachedFilters = $cacheService->findExactMatch($normalizedQuery);
+        if ($cachedFilters) {
+            Log::info('[Xavier][Search] Step 2 HIT: L1 cache.');
+            return $this->buildVectorSearchResponse($cachedFilters, $user, $request->prompt, 'l1_cache', []);
+        }
+
+        // ── Step 3: Query Embedding ───────────────────────────────────────────
+        $queryVector = $aiService->generateEmbedding($normalizedQuery, $user->id);
+
+        if (!$queryVector) {
+            Log::warning('[Xavier][Search] Step 3 FAILED: embedding null. Falling back to legacy.');
+            return $this->legacyAiSearch($request, $user, $cacheService);
+        }
+
+        Log::info('[Xavier][Search] Step 3 done: embedding generated.');
+
+        // ── Step 4: L2 Semantic Cache ─────────────────────────────────────────
+        $l2CachedFilters = $cacheService->findSimilarMatch($queryVector, 0.88);
+        if ($l2CachedFilters) {
+            Log::info('[Xavier][Search] Step 4 HIT: L2 semantic cache.');
+            return $this->buildVectorSearchResponse($l2CachedFilters, $user, $request->prompt, 'l2_cache', []);
+        }
+
+        // ── Step 5: Concept Detection via Qdrant ──────────────────────────────
+        $detectedConcepts = [];
+        $searchPath = 'concept';
+
+        try {
+            $conceptThreshold = (float) config('xavier.embeddings.concept_detection_threshold', 0.75);
+            $conceptMatches = $qdrant->searchConcepts($queryVector, 5, $conceptThreshold);
+            $detectedConcepts = array_column($conceptMatches, null, 'payload');
+            // Extract concept slugs from payload
+            $detectedConcepts = array_filter(array_map(
+                fn($match) => $match['payload']['concept_slug'] ?? null,
+                $conceptMatches
+            ));
+            $detectedConcepts = array_values(array_filter($detectedConcepts));
+            Log::info('[Xavier][Search] Step 5 done: concept detection.', ['concepts' => $detectedConcepts]);
+        } catch (\Exception $e) {
+            Log::warning('[Xavier][Search] Step 5 FAILED: concept detection error.', ['err' => $e->getMessage()]);
+        }
+
+        // ── Step 5b: Log if zero concepts detected (no longer force fallback) ──
+        if (empty($detectedConcepts)) {
+            Log::info('[Xavier][Search] Step 5b: no concepts found, proceeding with pure vector search.');
+            $searchPath = 'vector_only';
+        }
+
+        // ── Step 6: Query Expansion via Knowledge Graph ───────────────────────
+        $expandedConceptIds = $expansion->expand($detectedConcepts, depth: 1);
+        Log::info('[Xavier][Search] Step 6 done: query expansion.', ['expanded' => $expandedConceptIds]);
+
+        // ── Step 7: Hybrid Search (Qdrant + SQL fallback) ─────────────────────
+        $queryVectors = [
+            'statement'   => $queryVector,
+            'concept'     => $queryVector,
+            'explanation' => $queryVector,
+        ];
+
+        $sqlFilters = array_filter([
+            'subject'    => $request->get('subject'),
+            'topic'      => $request->get('topic'),
+            'type'       => $request->get('type'),
+            'difficulty' => $request->get('difficulty'),
+            'keyword'    => $request->get('keyword'),
         ]);
 
-        $user = $request->user();
+        $candidateLimit = (int) config('xavier.search.qdrant_candidate_limit', 50);
+        $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, $sqlFilters, $candidateLimit);
+        Log::info('[Xavier][Search] Step 7 done: hybrid search.', ['candidates' => count($candidates)]);
 
+        // ── Step 8: ReRank (top-50 → top-20) ─────────────────────────────────
+        $finalLimit  = (int) config('xavier.search.final_result_limit', 20);
+        $rankedItems = $reranker->rerank($candidates, $finalLimit);
+        $questionIds = array_column($rankedItems, 'question_id');
+        Log::info('[Xavier][Search] Step 8 done: reranked.', ['top' => count($rankedItems)]);
+
+        // ── Step 9: Logging + Learning Loop ──────────────────────────────────
+        $searchRequest = AiSearchRequest::create([
+            'user_id'  => $user->id,
+            'prompt'   => $request->prompt,
+            'status'   => 'completed',
+            'filters'  => ['vector_search' => true, 'question_ids' => $questionIds],
+        ]);
+
+        // Log each result in search_interaction_logs (position tracking)
+        foreach (array_slice($rankedItems, 0, 20) as $idx => $item) {
+            SearchInteractionLog::create([
+                'ai_search_id'        => $searchRequest->id,
+                'user_id'             => $user->id,
+                'question_id'         => $item['question_id'],
+                'rank_position'       => $idx + 1,
+                'was_clicked'         => false,
+                'expanded_concept_ids' => $expandedConceptIds,
+                'search_path'         => $searchPath,
+            ]);
+        }
+
+        // Store in L2 semantic cache for future similar queries
+        $cacheService->storeInCache(
+            $normalizedQuery,
+            $queryVector,
+            ['vector_search' => true, 'question_ids' => $questionIds],
+            $expandedConceptIds
+        );
+
+        Log::info('[Xavier][Search] Step 9 done: logged and cached.', [
+            'request_id' => $searchRequest->id,
+            'total' => count($questionIds),
+        ]);
+
+        return response()->json([
+            'status'        => 'completed',
+            'search_mode'   => 'vector',
+            'search_path'   => $searchPath,
+            'question_ids'  => $questionIds,
+            'total'         => count($questionIds),
+            'concepts'      => $detectedConcepts,
+            'request_id'    => $searchRequest->id,
+        ], 200);
+    }
+
+    /**
+     * Legacy AI search path (SQL + LLM, existing behavior).
+     * Used when VECTOR_SEARCH_ENABLED=false or when vector pipeline cannot proceed.
+     */
+    private function legacyAiSearch(Request $request, $user, SemanticCacheService $cacheService)
+    {
         $userPrompt = trim(strtolower($request->prompt));
-        $cacheService = app(\App\Services\AI\SemanticCacheService::class);
 
         // [Nível 1] Busca Exata (Hash MD5) - Instantâneo Síncrono
         $cachedFilters = $cacheService->findExactMatch($userPrompt);
 
-        // [Nível 2] Busca por Similaridade (Embeddings) - Quase Instantâneo Síncrono (~500ms)
+        // [Nível 2] Busca por Similaridade (Embeddings) - Quase Instantâneo Síncrono
         if (!$cachedFilters) {
-            $aiService = app(\App\Services\AI\AIService::class);
-            $vector = $aiService->generateEmbedding($userPrompt, $user->id);
+            $aiService = app(AIService::class);
+            $vector    = $aiService->generateEmbedding($userPrompt, $user->id);
             if ($vector) {
                 $cachedFilters = $cacheService->findSimilarMatch($vector, AiSearchRequest::DEFAULT_THRESHOLD);
             }
         }
 
-        // Se encontrou no Cache Instantâneo da Request HTTTP:
         if ($cachedFilters) {
-            // Grava histórico p/ Analytics
             AiSearchRequest::create([
-                'user_id' => $user->id,
-                'prompt' => $request->prompt,
-                'status' => 'completed',
-                'filters' => $cachedFilters,
+                'user_id'              => $user->id,
+                'prompt'               => $request->prompt,
+                'status'               => 'completed',
+                'filters'              => $cachedFilters,
                 'similarity_threshold' => AiSearchRequest::DEFAULT_THRESHOLD,
             ]);
 
             return response()->json([
-                'status' => 'completed',
-                'filters' => $cachedFilters,
+                'status'         => 'completed',
+                'filters'        => $cachedFilters,
                 'suggestion_tip' => $cachedFilters['suggestion_tip'] ?? null,
-                'suggestions' => $cachedFilters['suggestions'] ?? [],
+                'suggestions'    => $cachedFilters['suggestions'] ?? [],
             ], 200);
         }
 
-        // Caso Inédito: Cria o registro e manda pro Xavier trabalhar na Fila Background
+        // Caso inédito: dispara o Xavier Background
         $searchRequest = AiSearchRequest::create([
             'user_id' => $user->id,
-            'prompt' => $request->prompt,
-            'status' => 'pending',
+            'prompt'  => $request->prompt,
+            'status'  => 'pending',
         ]);
 
         InterpretSearchPromptJob::dispatch($searchRequest);
 
         return response()->json([
-            'status' => 'queued',
-            'request_id' => $searchRequest->id
+            'status'     => 'queued',
+            'request_id' => $searchRequest->id,
+        ], 200);
+    }
+
+    /**
+     * Build a completed response from cached filters for the vector pipeline.
+     */
+    private function buildVectorSearchResponse(array $cachedFilters, $user, string $prompt, string $searchPath, array $conceptIds)
+    {
+        AiSearchRequest::create([
+            'user_id' => $user->id,
+            'prompt'  => $prompt,
+            'status'  => 'completed',
+            'filters' => $cachedFilters,
+        ]);
+
+        // Return question_ids if stored as vector result, otherwise return filters
+        if (isset($cachedFilters['question_ids'])) {
+            return response()->json([
+                'status'       => 'completed',
+                'search_mode'  => 'vector',
+                'search_path'  => $searchPath,
+                'question_ids' => $cachedFilters['question_ids'],
+                'total'        => count($cachedFilters['question_ids']),
+                'concepts'     => $conceptIds,
+            ], 200);
+        }
+
+        // Legacy cache format (filters-based)
+        return response()->json([
+            'status'         => 'completed',
+            'filters'        => $cachedFilters,
+            'suggestion_tip' => $cachedFilters['suggestion_tip'] ?? null,
+            'suggestions'    => $cachedFilters['suggestions'] ?? [],
         ], 200);
     }
 
