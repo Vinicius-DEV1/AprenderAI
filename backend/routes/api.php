@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\Admin\ApiPricingController;
 use App\Http\Controllers\Api\Admin\PaymentSettingsController;
 use App\Http\Controllers\Api\Admin\ExamController;
 use App\Http\Controllers\Api\Admin\BackupController;
+use App\Http\Controllers\Api\Admin\SemanticDashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -307,6 +308,14 @@ Route::prefix('v1')->group(function () {
             Route::prefix('xavier')->group(function () {
                 Route::get('/insights', [\App\Http\Controllers\Api\Admin\XavierInsightsController::class, 'index']);
                 Route::get('/history', [\App\Http\Controllers\Api\Admin\XavierInsightsController::class, 'history']);
+            });
+
+            // Semantic Dashboard
+            Route::prefix('semantic')->group(function () {
+                Route::get('/', [SemanticDashboardController::class, 'index']);
+                Route::post('/config', [SemanticDashboardController::class, 'updateConfig']);
+                Route::post('/test-search', [SemanticDashboardController::class, 'testSearch']);
+                Route::post('/reindex', [SemanticDashboardController::class, 'reindexAll']);
             });
 
             // Admin Question Import

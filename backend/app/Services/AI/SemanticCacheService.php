@@ -121,8 +121,13 @@ class SemanticCacheService
 
     /**
      * Armazena um resultado válido no Cache.
+     *
+     * @param  string   $prompt
+     * @param  array    $embeddingVector
+     * @param  array    $filtersResult
+     * @param  string[] $conceptIds   Optional: concept IDs detected in this search (for learning loop)
      */
-    public function storeInCache(string $prompt, array $embeddingVector, array $filtersResult): void
+    public function storeInCache(string $prompt, array $embeddingVector, array $filtersResult, array $conceptIds = []): void
     {
         try {
             $hash = md5(trim(strtolower($prompt)));
@@ -130,14 +135,18 @@ class SemanticCacheService
             AiSearchCache::updateOrCreate(
                 ['prompt_hash' => $hash],
                 [
-                    'prompt_text' => $prompt,
-                    'embedding' => $embeddingVector,
+                    'prompt_text'    => $prompt,
+                    'embedding'      => $embeddingVector,
                     'filters_result' => $filtersResult,
-                    'last_used_at' => now(),
+                    'concept_ids'    => !empty($conceptIds) ? $conceptIds : null,
+                    'last_used_at'   => now(),
                 ]
             );
 
-            Log::info('[SemanticCache] Novo resultado salvo em cache.', ['prompt' => $prompt]);
+            Log::info('[SemanticCache] Novo resultado salvo em cache.', [
+                'prompt'       => $prompt,
+                'concept_ids'  => $conceptIds,
+            ]);
         } catch (\Exception $e) {
             Log::error('[SemanticCache] Falha ao salvar no cache.', ['error' => $e->getMessage()]);
         }

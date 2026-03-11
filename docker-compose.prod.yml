@@ -11,12 +11,15 @@ services:
     working_dir: /var/www
     volumes:
       - ./backend/storage/app/public:/var/www/storage/app/public
+      - ./qdrant-data:/var/www/qdrant-backup:ro
       - /proc:/host_proc:ro
     env_file: ./backend/.env
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_started
+      qdrant:
         condition: service_started
     networks:
       - production-network
@@ -64,6 +67,7 @@ services:
     working_dir: /var/www
     volumes:
       - ./backend/storage/app/public:/var/www/storage/app/public
+      - ./qdrant-data:/var/www/qdrant-backup:ro
       - /proc:/host_proc:ro
     env_file: ./backend/.env
     # Prioriza explicitamente a fila 'default' (Simulados/Chats), 'essays' (Redações) e depois a 'import'
@@ -80,6 +84,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      qdrant:
+        condition: service_started
     networks:
       - production-network
 
@@ -90,12 +96,13 @@ services:
     working_dir: /var/www
     volumes:
       - ./backend/storage/app/public:/var/www/storage/app/public
+      - ./qdrant-data:/var/www/qdrant-backup:ro
       - /proc:/host_proc:ro
     env_file: ./backend/.env
-    # Fila exclusiva para triagem em lote do Xavier (evita travar o sistema principal)
-    command: php artisan queue:work --queue=ai-batches --sleep=3 --tries=1 --timeout=700 --max-time=3600
+    # Filas para processamento do Xavier (embeddings: tempo real, ai-batches: processamento em lote)
+    command: php artisan queue:work --queue=embeddings,ai-batches --sleep=3 --tries=3 --timeout=700 --max-time=3600
     deploy:
-      replicas: 1
+      replicas: 2
       resources:
         limits:
           memory: 1G
@@ -105,6 +112,8 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_started
+      qdrant:
         condition: service_started
     networks:
       - production-network
@@ -180,10 +189,25 @@ services:
     networks:
       - production-network
 
-  # Redis for Sessions and Cache
   redis:
     image: redis:alpine
     restart: always
+    networks:
+      - production-network
+
+  # Vector Database for Semantic Search
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: always
+    ports:
+      - "6333:6333" # Opcional: exposto para gerenciamento externo se necessário
+    volumes:
+      - ./qdrant-data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     networks:
       - production-network
 
