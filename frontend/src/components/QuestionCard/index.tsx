@@ -168,6 +168,12 @@ export default function QuestionCard({
             return `![${alt}](${absoluteUrl})`;
         });
 
+        // Prevention: Escape numeric starts that look like list items (e.g. "30.")
+        // This avoids 'marked' from creating empty <ol><li></li></ol> when the alternative is just a number.
+        if (/^\d+\.($|\s)/.test(processedText.trim())) {
+            processedText = processedText.replace(/^(\d+)\./, '$1\\.');
+        }
+
         // Fix HTML Image URLs: src="/storage/path" or src="storage/path"
         processedText = processedText.replace(/src=["']\s*(\/?storage\/.*?)\s*["']/g, (_, url) => {
             const cleanUrl = url.trim().replace(/^\//, '');
@@ -527,6 +533,16 @@ export default function QuestionCard({
             </div>
 
             <div className="qb-statement prose prose-sm max-w-none text-slate-700 dark:text-slate-300" dangerouslySetInnerHTML={renderMd(q.statement)} />
+
+            {q.image_path && (
+                <div className="mb-4">
+                    <img
+                        src={q.image_path.startsWith('http') ? q.image_path : `${apiUrl}/storage/${q.image_path.replace(/^\//, '')}`.replace(/([^:])\/\//g, '$1/')}
+                        alt="Imagem da questão"
+                        className="max-w-full h-auto rounded-lg border border-gray-100 dark:border-slate-800 mx-auto block shadow-sm"
+                    />
+                </div>
+            )}
 
             {isDiscursive ? (
                 <div className="qb-discursive-list space-y-6 mt-4">
