@@ -91,6 +91,16 @@ const SemanticDashboard = () => {
 
     useEffect(() => {
         loadStats();
+
+        // Auto-refresh every 10 seconds to show indexing progress
+        const interval = setInterval(() => {
+            // Only refresh if not already loading and not in the middle of a test search
+            if (!loading && !testLoading) {
+                loadStats();
+            }
+        }, 10000);
+
+        return () => clearInterval(interval);
     }, []);
 
     const handleSaveConfig = async () => {
