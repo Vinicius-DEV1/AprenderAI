@@ -29,10 +29,10 @@ export default function StudyPlanEmpty() {
                         </p>
 
                         <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6">
-                            <Link to="/simulados/create?type=enem" className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 bg-blue-600 text-white text-base font-semibold rounded-xl hover:bg-blue-700 hover:shadow-[0_8px_20px_rgba(37,99,235,0.3)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 transform hover:-translate-y-1">
+                            <Link to="/simulados/configurar?type=enem" className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 bg-blue-600 text-white text-base font-semibold rounded-xl hover:bg-blue-700 hover:shadow-[0_8px_20px_rgba(37,99,235,0.3)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 transform hover:-translate-y-1">
                                 Fazer Simulado ENEM
                             </Link>
-                            <Link to="/simulados/create?type=concurso" className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-base font-semibold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-300 transform hover:-translate-y-1">
+                            <Link to="/simulados/configurar?type=concurso" className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-base font-semibold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-300 transform hover:-translate-y-1">
                                 Fazer Simulado Concurso
                             </Link>
                         </div>

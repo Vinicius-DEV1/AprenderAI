@@ -31,6 +31,7 @@ class RespondToStandaloneChatJob implements ShouldQueue
         protected
         int $userId
     ) {
+        $this->onQueue('default');
     }
 
     /**

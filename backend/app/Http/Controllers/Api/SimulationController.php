@@ -100,6 +100,20 @@ class SimulationController extends Controller
             $validated['include_essay'] = false;
         }
 
+        // Guard essay quota if explicitly requested
+        if (!empty($validated['include_essay']) && !$user->canCreateEssay()) {
+            $essayCheck = app(\App\Services\QuotaService::class)->getUsage($user, 'essays');
+            return response()->json([
+                'message' => 'Limite de redações atingido.',
+                'error' => 'Você atingiu o limite de redações do seu plano.',
+                'quota' => [
+                    'limit' => $essayCheck['limit'] ?? 0,
+                    'used' => $essayCheck['used'] ?? 0,
+                    'resource' => 'Redações' // Frontend lerá isso para o QuotaLimitModal
+                ],
+            ], 403);
+        }
+
         // ── Engine-driven path ────────────────────────────────────────────
         if (!empty($validated['model_slug'])) {
             try {

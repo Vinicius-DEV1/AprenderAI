@@ -33,6 +33,7 @@ interface Question {
     difficulty: 'easy' | 'medium' | 'hard';
     statement_html: string;
     statement: string;
+    image_path?: string;
     tipo_questao?: 'Objetiva' | 'Discursiva' | 'Redação';
     discursive_answer?: any;
     explanation?: string;
@@ -160,6 +161,9 @@ export default function QuestionCard({
         if (!text) return { __html: '' };
         let processedText = text;
 
+        // Fix LaTeX format escaping corruption: backend sends \frac, but JS JSON parsers sometimes see \f as form-feed
+        processedText = processedText.replace(/\f/g, '\\f');
+
         // Fix Markdown Image URLs: ![alt](/storage/path) or ![alt](storage/path)
         // More robust regex to handle whitespace and potential variations
         processedText = processedText.replace(/!\[(.*?)\]\(\s*(\/?storage\/.*?)\s*\)/g, (_, alt, url) => {
@@ -167,6 +171,12 @@ export default function QuestionCard({
             const absoluteUrl = `${apiUrl}/${cleanUrl}`.replace(/([^:])\/\//g, '$1/'); // prevent double slashes but keep http://
             return `![${alt}](${absoluteUrl})`;
         });
+
+        // Prevention: Escape numeric starts that look like list items (e.g. "30.")
+        // This avoids 'marked' from creating empty <ol><li></li></ol> when the alternative is just a number.
+        if (/^\d+\.($|\s)/.test(processedText.trim())) {
+            processedText = processedText.replace(/^(\d+)\./, '$1\\.');
+        }
 
         // Fix HTML Image URLs: src="/storage/path" or src="storage/path"
         processedText = processedText.replace(/src=["']\s*(\/?storage\/.*?)\s*["']/g, (_, url) => {
@@ -527,6 +537,16 @@ export default function QuestionCard({
             </div>
 
             <div className="qb-statement prose prose-sm max-w-none text-slate-700 dark:text-slate-300" dangerouslySetInnerHTML={renderMd(q.statement)} />
+
+            {q.image_path && (
+                <div className="mb-4">
+                    <img
+                        src={q.image_path.startsWith('http') ? q.image_path : `${apiUrl}/storage/${q.image_path.replace(/^\//, '')}`.replace(/([^:])\/\//g, '$1/')}
+                        alt="Imagem da questão"
+                        className="max-w-full h-auto rounded-lg border border-gray-100 dark:border-slate-800 mx-auto block shadow-sm"
+                    />
+                </div>
+            )}
 
             {isDiscursive ? (
                 <div className="qb-discursive-list space-y-6 mt-4">

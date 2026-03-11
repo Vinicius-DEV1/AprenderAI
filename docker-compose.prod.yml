@@ -70,13 +70,13 @@ services:
       - ./qdrant-data:/var/www/qdrant-backup:ro
       - /proc:/host_proc:ro
     env_file: ./backend/.env
-    # Prioriza explicitamente a fila 'default' (Simulados/Chats), 'essays' (Redações) e depois a 'import'
+    # Prioriza explicitamente a fila 'default' (Simulados/Chats), 'essays' (Redações) e depois a 'import'.
     command: php artisan queue:work --queue=default,essays,import --sleep=3 --tries=3 --max-time=3600
     deploy:
-      replicas: 50
+      replicas: 40
       resources:
         limits:
-          memory: 512M
+          memory: 512M # Mantido em 512M conforme solicitado
     depends_on:
       app:
         condition: service_started
@@ -89,7 +89,7 @@ services:
     networks:
       - production-network
 
-  # AI Dedicated Queue Worker
+  # AI Dedicated Queue Worker (Para tempo real e emergências)
   ai-worker:
     image: aprender-ai-app
     restart: always

@@ -24,6 +24,7 @@ class GenerateSimulationQuestions implements ShouldQueue
 
     public function __construct(Simulation $simulation, array $data)
     {
+        $this->onQueue('default');
         $this->simulation = $simulation;
         $this->data = $data;
     }
@@ -86,6 +87,7 @@ class GenerateSimulationQuestions implements ShouldQueue
                 ]);
 
                 GenerateEssayTopicJob::dispatch($essay->id);
+                $this->simulation->user->incrementEssayUsage();
                 Log::info("GenerateSimulationQuestions: Essay {$essay->id} created and topic generation dispatched for Simulation {$this->simulation->id}");
             }
 
