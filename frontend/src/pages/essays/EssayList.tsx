@@ -334,7 +334,20 @@ export default function EssayList() {
                                                             </span>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-200 font-bold">
-                                                            {(essay.score > 0 ? essay.score : (essay.feedback_json?.overall_score ?? essay.overall_score ?? essay.score ?? '-'))}
+                                                            {essay.status === 'completed' || essay.status === 'corrigida' ? (
+                                                                (() => {
+                                                                    const raw = essay.score ?? essay.feedback_json?.overall_score ?? essay.overall_score ?? null;
+                                                                    const isEnem = essay.type === 'enem' || !essay.type;
+                                                                    const maxScore = isEnem ? 1000 : 100;
+                                                                    if (raw === null || raw === undefined) return '-';
+                                                                    // Cap legacy concurso scores that were incorrectly saved on 1000 scale
+                                                                    let displayScore = Number(raw);
+                                                                    if (!isEnem && displayScore > 100) {
+                                                                        displayScore = Math.round(displayScore / 10);
+                                                                    }
+                                                                    return `${displayScore} / ${maxScore}`;
+                                                                })()
+                                                            ) : '-'}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                             {(essay.status === 'in_progress' || essay.status === 'pending') ? (

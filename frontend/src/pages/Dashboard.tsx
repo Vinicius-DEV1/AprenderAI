@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Chart, registerables } from 'chart.js';
 import { useDashboard } from '../hooks/useDashboard';
@@ -22,6 +22,16 @@ export default function Dashboard() {
     const enemChartInstance = useRef<Chart | null>(null);
     const concursosChartInstance = useRef<Chart | null>(null);
 
+    // Reactive dark mode detection — responds to theme toggle without page reload
+    const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+    useEffect(() => {
+        const observer = new MutationObserver(() => {
+            setIsDark(document.documentElement.classList.contains('dark'));
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        return () => observer.disconnect();
+    }, []);
+
     // Fetch essay chart data from the essays index endpoint
     const { data: essayData } = useQuery({
         queryKey: ['essays-dashboard-charts'],
@@ -37,7 +47,6 @@ export default function Dashboard() {
     useEffect(() => {
         if (isLoading || !data) return;
 
-        const isDark = document.documentElement.classList.contains('dark');
         const gridColor = isDark ? 'rgba(255,255,255,.06)' : 'rgba(15,23,42,.06)';
         const tickColor = isDark ? 'rgba(255,255,255,.45)' : 'rgba(15,23,42,.55)';
         const legendColor = isDark ? 'rgba(255,255,255,.6)' : 'rgba(15,23,42,.68)';
@@ -181,11 +190,10 @@ export default function Dashboard() {
             progressChartInstance.current?.destroy();
             subjectChartInstance.current?.destroy();
         };
-    }, [data, isLoading]);
+    }, [data, isLoading, isDark]);
 
     // --- Essay Evolution Charts ---
     useEffect(() => {
-        const isDark = document.documentElement.classList.contains('dark');
         const gridColor = isDark ? 'rgba(255,255,255,.06)' : 'rgba(15,23,42,.06)';
         const tickColor = isDark ? 'rgba(255,255,255,.45)' : 'rgba(15,23,42,.55)';
         const commonFont = {
@@ -276,7 +284,7 @@ export default function Dashboard() {
             enemChartInstance.current?.destroy();
             concursosChartInstance.current?.destroy();
         };
-    }, [hasEnem, hasConcursos, enemSeries, concursosSeries]);
+    }, [hasEnem, hasConcursos, enemSeries, concursosSeries, isDark]);
 
     if (isLoading) {
         return (

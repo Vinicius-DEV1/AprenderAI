@@ -54,6 +54,45 @@ class Essay extends Model
         'final_score_locked' => 'boolean',
     ];
 
+    public function getScoreAttribute($value)
+    {
+        if ($this->off_topic) {
+            return 0;
+        }
+        
+        if ($value > 0) {
+            return $value;
+        }
+
+        $feedback = is_string($this->feedback_json) ? json_decode($this->feedback_json, true) : $this->feedback_json;
+        if (is_array($feedback)) {
+            $derived = (int) ($feedback['overall_score'] ?? $feedback['score'] ?? 0);
+            
+            if ($this->type === 'concurso' && $derived > 100) {
+                if (!empty($feedback['competencies']) && is_array($feedback['competencies'])) {
+                    $recalc = 0;
+                    foreach ($feedback['competencies'] as $comp) {
+                        $recalc += min(20, max(0, (int) ($comp['score'] ?? 0)));
+                    }
+                    return min(100, $recalc);
+                } elseif (!empty($feedback['competence_scores']) && is_array($feedback['competence_scores'])) {
+                    $recalc = 0;
+                    foreach ($feedback['competence_scores'] as $score) {
+                        $recalc += min(20, max(0, (int) $score));
+                    }
+                    return min(100, $recalc);
+                }
+                return (int) round($derived / 10);
+            }
+            if ($this->type === 'enem' && $derived > 1000) {
+                return 1000;
+            }
+            return $derived;
+        }
+
+        return (int) $value;
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
