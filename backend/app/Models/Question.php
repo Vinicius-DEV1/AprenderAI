@@ -364,4 +364,12 @@ class Question extends Model
     {
         return $this->hasMany(QuestionTriageLog::class)->orderBy('created_at', 'desc');
     }
+
+    /**
+     * Relationship with Xavier Semantic Vectors (Qdrant metadata)
+     */
+    public function vectors()
+    {
+        return $this->hasOne(QuestionVector::class, 'question_id');
+    }
 }
