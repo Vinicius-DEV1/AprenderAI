@@ -177,7 +177,7 @@ export default function SimulationView() {
         mutationFn: () => finishSimulationApi(id!),
         onSuccess: () => {
             toast.success('Simulado finalizado!');
-            navigate(`/simulados/${id}/result`);
+            navigate(`/simulados/${id}/resultado`);
         },
         onError: (err: any) => {
             toast.error(err.response?.data?.message || 'Erro ao finalizar simulado.');

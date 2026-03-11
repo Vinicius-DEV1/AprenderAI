@@ -315,7 +315,7 @@ export default function SimulationList() {
                                 {simulation.status === 'in_progress' ? (
                                     <Link to={`/simulados/${simulation.id}`} className="btn-view w-full md:w-auto text-center block md:inline-block">Continuar</Link>
                                 ) : (simulation.status === 'corrected' || simulation.status === 'finished') ? (
-                                    <Link to={`/simulados/${simulation.id}/result`} className="btn-view w-full md:w-auto text-center block md:inline-block">Ver Resultado</Link>
+                                    <Link to={`/simulados/${simulation.id}/resultado`} className="btn-view w-full md:w-auto text-center block md:inline-block">Ver Resultado</Link>
                                 ) : (
                                     <Link to={`/simulados/${simulation.id}`} className="btn-view w-full md:w-auto text-center block md:inline-block">Ver</Link>
                                 )}
