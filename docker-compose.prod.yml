@@ -82,8 +82,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-        qdrant:
-          condition: service_started
+      qdrant:
+        condition: service_started
     networks:
       - production-network
 
@@ -110,8 +110,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-        qdrant:
-          condition: service_started
+      qdrant:
+        condition: service_started
     networks:
       - production-network
 
