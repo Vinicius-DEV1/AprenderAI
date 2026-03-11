@@ -186,26 +186,31 @@ class EvaluateEssayJob implements ShouldQueue
                 }
                 $response['improved_version'] = $improved;
 
-                // Correções Pontuais Fallback
-                $fixes = $response['correcoes_pontuais'] ?? $response['ai_suggestions'] ?? $response['corrections'] ?? '';
-                if (is_array($fixes) && empty($fixes)) {
-                    $fixes = '';
-                } elseif (!is_array($fixes)) {
-                    $fixes = trim((string) $fixes);
-                }
+                // Correções Pontuais — normaliza array de objetos (novo formato) ou string
+                $rawFixes = $response['correcoes_pontuais'] ?? $response['ai_suggestions'] ?? $response['corrections'] ?? '';
 
-                if ($fixes === '') {
-                    $fixes = trim((string) ($response['bullet_fixes'] ?? $response['line_edits'] ?? ''));
+                if (is_array($rawFixes)) {
+                    // New format: array of {original, correto, tipo} objects — keep as array
+                    // Filter out empty entries
+                    $rawFixes = array_values(array_filter($rawFixes, fn($f) => isset($f['original']) && trim((string)$f['original']) !== ''));
+                    if (empty($rawFixes)) {
+                        $rawFixes = "Não foram identificadas correções pontuais relevantes neste texto. Confira os comentários gerais e a versão melhorada para aprimorar estrutura e clareza.";
+                    }
+                } else {
+                    $rawFixes = trim((string) $rawFixes);
+                    if ($rawFixes === '') {
+                        $rawFixes = trim((string) ($response['bullet_fixes'] ?? $response['line_edits'] ?? ''));
+                    }
+                    if ($rawFixes === '') {
+                        $rawFixes = "Não foram identificadas correções pontuais relevantes neste texto. Confira os comentários gerais e a versão melhorada para aprimorar estrutura e clareza.";
+                    }
                 }
-
-                if ($fixes === '') {
-                    $fixes = "Não foram identificadas correções pontuais relevantes neste texto. Confira os comentários gerais e a versão melhorada para aprimorar estrutura e clareza.";
-                }
-                $response['correcoes_pontuais'] = $fixes;
+                $response['correcoes_pontuais'] = $rawFixes;
+                $fixes = $rawFixes;
 
                 $response = $this->normalizeAiResponse($response, $this->essay->type);
 
-                // --- FAIL-CLOSED GATE FINAL (MODEL LEVEL) ---
+                // --- SCORE DERIVATION & GUARDRAILS ---
                 if ($isOffTopicNormalPath) {
                     $this->essay->score = 0;
 
@@ -217,9 +222,38 @@ class EvaluateEssayJob implements ShouldQueue
                         }
                     }
                 } else {
-                    // If not off-topic, derive score directly from the normalized response
-                    $derivedScore = (int) ($response['score'] ?? $response['overall_score'] ?? 0);
+                    // Derive score from normalized response
+                    $derivedScore = (int) ($response['overall_score'] ?? $response['score'] ?? 0);
+
+                    // Bug 6 guardrail: concurso max score is 100, not 1000
+                    if ($this->essay->type === 'concurso' && $derivedScore > 100) {
+                        // Recalculate from competencies (each 0-20, total max 100)
+                        if (!empty($response['competencies']) && is_array($response['competencies'])) {
+                            $recalc = 0;
+                            foreach ($response['competencies'] as $comp) {
+                                $recalc += min(20, max(0, (int) ($comp['score'] ?? 0)));
+                            }
+                            $derivedScore = min(100, $recalc);
+                        } elseif (!empty($response['competence_scores']) && is_array($response['competence_scores'])) {
+                            $recalc = 0;
+                            foreach ($response['competence_scores'] as $score) {
+                                $recalc += min(20, max(0, (int) $score));
+                            }
+                            $derivedScore = min(100, $recalc);
+                        } else {
+                            // Last resort: scale down from 1000 to 100
+                            $derivedScore = (int) round($derivedScore / 10);
+                        }
+                        Log::warning("[EvaluateEssayJob] Concurso score exceeded 100 (was {$derivedScore}). Recalculated.", ['essay_id' => $this->essay->id]);
+                    }
+
+                    // ENEM guardrail: max 1000
+                    if ($this->essay->type === 'enem' && $derivedScore > 1000) {
+                        $derivedScore = 1000;
+                    }
+
                     $this->essay->score = $derivedScore;
+                    $response['score'] = $derivedScore;
                 }
 
                 $this->essay->update([
@@ -228,7 +262,18 @@ class EvaluateEssayJob implements ShouldQueue
                     'off_topic' => $isOffTopicNormalPath,
                     'feedback_json' => $response,
                     'evaluated_at' => now(),
-                    'ai_suggestions' => is_array($fixes) ? implode("\n", $fixes) : (string) $fixes,
+                    'ai_suggestions' => (function() use ($fixes) {
+                        if (is_string($fixes)) return $fixes;
+                        if (!is_array($fixes)) return (string) $fixes;
+                        // Array of objects {original, correto, tipo} -- convert to readable text
+                        $lines = array_map(function($f) {
+                            if (is_array($f)) {
+                                return ($f['original'] ?? '') . ' -> ' . ($f['correto'] ?? '') . ' [' . ($f['tipo'] ?? '') . ']';
+                            }
+                            return is_string($f) ? $f : json_encode($f, JSON_UNESCAPED_UNICODE);
+                        }, $fixes);
+                        return implode("\n", $lines);
+                    })(),
                     'improved_version' => $improved,
                 ]);
 

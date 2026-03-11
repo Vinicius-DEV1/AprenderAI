@@ -762,13 +762,45 @@ export default function EssayWrite({
                         {step === 3 && (
                             <form onSubmit={handleStep3Submit} className="space-y-6">
 
-                                {/* Theme display (collapsible) */}
-                                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md text-sm">
-                                    <span className="font-bold">Tema:</span>{' '}
-                                    <span>{theme}</span>
-                                    {themeDescription && themeDescription !== theme && (
-                                        <p className="text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">{themeDescription}</p>
-                                    )}
+                                {/* Theme display */}
+                                <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 overflow-hidden shadow-sm">
+                                    {/* Header */}
+                                    <div className="px-5 py-3 bg-blue-600 dark:bg-blue-800 flex items-center gap-2">
+                                        <svg className="w-4 h-4 text-blue-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <span className="text-xs font-bold text-blue-100 uppercase tracking-widest">Tema da Redação</span>
+                                    </div>
+                                    {/* Content */}
+                                    <div className="px-5 py-4 space-y-3">
+                                        {/* Title */}
+                                        <p className="text-base font-bold text-slate-800 dark:text-slate-100 leading-snug">
+                                            {theme}
+                                        </p>
+                                        {/* Description — formatted */}
+                                        {themeDescription && themeDescription !== theme && (() => {
+                                            const lines = themeDescription.split('\n').filter(l => l.trim() !== '');
+                                            return (
+                                                <div className="space-y-2 border-t border-blue-100 dark:border-blue-800/50 pt-3">
+                                                    {lines.map((line, idx) => {
+                                                        const isBullet = /^[-•*]/.test(line.trim());
+                                                        const text = isBullet ? line.replace(/^[-•*]\s*/, '') : line;
+                                                        if (isBullet) {
+                                                            return (
+                                                                <div key={idx} className="flex items-start gap-2">
+                                                                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400 flex-shrink-0" />
+                                                                    <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{text}</p>
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return (
+                                                            <p key={idx} className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{line}</p>
+                                                        );
+                                                    })}
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
                                 </div>
 
                                 {/* WritingRule card */}
@@ -814,6 +846,9 @@ export default function EssayWrite({
                                             className="lined-paper w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm resize-none font-serif text-lg p-6 disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-gray-800"
                                             placeholder="Escreva sua redação aqui..."
                                             disabled={submitMutation.isPending}
+                                            spellCheck={false}
+                                            autoCorrect="off"
+                                            autoCapitalize="off"
                                         />
 
                                         {/* Warnings */}

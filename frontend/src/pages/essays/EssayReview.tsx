@@ -398,13 +398,29 @@ export default function EssayReview({
 
                                             return (
                                                 <div className="space-y-4">
-                                                    {correctionsList.map((c: any, i: number) => (
-                                                        <div key={i} className="border-l-4 border-yellow-400 pl-4 py-2 bg-gray-50 dark:bg-gray-700 dark:border-yellow-500 rounded-r">
-                                                            <p className="font-mono text-sm text-red-600 dark:text-red-400 mb-1">"{c.excerpt || 'Trecho'}"</p>
-                                                            <p className="font-bold text-gray-800 dark:text-gray-200">{c.issue || 'Problema'}</p>
-                                                            <p className="text-green-600 dark:text-green-400 italic mt-1">Sugestão: {c.suggestion || ''}</p>
-                                                        </div>
-                                                    ))}
+                                                    {correctionsList.map((c: any, i: number) => {
+                                                        const isNewFmt = c.original !== undefined || c.correto !== undefined;
+                                                        return isNewFmt ? (
+                                                            <div key={i} className="border-l-4 border-yellow-400 pl-4 py-2 bg-gray-50 dark:bg-gray-700 dark:border-yellow-500 rounded-r">
+                                                                {c.tipo && (
+                                                                    <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-yellow-700 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30 px-2 py-0.5 rounded mb-2">
+                                                                        {c.tipo}
+                                                                    </span>
+                                                                )}
+                                                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-3">
+                                                                    <p className="font-mono text-sm text-red-600 dark:text-red-400 line-through flex-1">"{c.original || '—'}"</p>
+                                                                    <span className="text-gray-400 text-lg hidden sm:block">&rarr;</span>
+                                                                    <p className="font-mono text-sm text-green-600 dark:text-green-400 flex-1">"{c.correto || '—'}"</p>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div key={i} className="border-l-4 border-yellow-400 pl-4 py-2 bg-gray-50 dark:bg-gray-700 dark:border-yellow-500 rounded-r">
+                                                                <p className="font-mono text-sm text-red-600 dark:text-red-400 mb-1">"{c.excerpt || 'Trecho'}"</p>
+                                                                <p className="font-bold text-gray-800 dark:text-gray-200">{c.issue || 'Problema'}</p>
+                                                                <p className="text-green-600 dark:text-green-400 italic mt-1">Sugestão: {c.suggestion || ''}</p>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             );
                                         })()}

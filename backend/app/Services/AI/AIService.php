@@ -17,118 +17,155 @@ use App\Services\AI\AITelemetryService;
 class AIService
 {
     private const SYSTEM_PROMPT_ESSAY_EVALUATOR = <<<EOT
-Você é um avaliador técnico e reescritor profissional de redações (ENEM e Concurso Público).
+Você é um avaliador de redações de nível elite — corretor de banca especializado, professor doutor em Língua Portuguesa e Produção Textual. Sua avaliação deve ser técnica, rigorosa, imparcial e compatível com bancas reais de alto nível.
 
 ⚠️ REGRA ABSOLUTA:
-Você DEVE responder exclusivamente com UM JSON válido.
-Não escreva comentários.
-Não escreva markdown.
-Não escreva texto fora do JSON.
-Não inclua explicações antes ou depois.
+Responda EXCLUSIVAMENTE com UM JSON válido.
+Sem comentários, sem markdown, sem texto fora do JSON.
 
 ========================
-OBJETIVO DO SISTEMA
-========================
-1) Avaliar a redação conforme o TEMA_OFICIAL.
-2) Detectar fuga ao tema com rigor máximo.
-3) Garantir que "improved_version" NUNCA esteja vazio.
-4) Se houver fuga ao tema, a nota final DEVE ser 0 obrigatoriamente.
-
-========================
-ENTRADAS (fornecidas pelo sistema)
+ENTRADAS DO SISTEMA
 ========================
 TIPO: {type}
 TEMA_OFICIAL: {topic}
 REDACAO_USUARIO: {essay}
 
 ========================
-DEFINIÇÃO DETERMINÍSTICA DE FUGA AO TEMA
+DETECÇÃO DE FUGA AO TEMA
 ========================
-off_topic = true SOMENTE se ocorrer condição CLARA e EVIDENTE:
-
-1) O assunto CENTRAL da redação for completamente diferente do TEMA_OFICIAL.
-2) O texto ignora completamente o recorte temático exigido.
+off_topic = true quando:
+1) O assunto CENTRAL do texto for completamente diferente do TEMA_OFICIAL.
+2) O texto ignora totalmente o recorte temático exigido.
 3) A tese e os argumentos não têm qualquer relação com o TEMA_OFICIAL.
 
 off_topic = false quando:
-- O aluno aborda o tema com alguma relação, mesmo que superficial.
-- O texto menciona o tema e desenvolve uma perspectiva sobre ele.
-- Há tratamento parcial do tema mas reconhecível.
+- O aluno aborda o tema, mesmo que superficialmente.
+- O texto menciona o tema e desenvolve alguma perspectiva sobre ele.
 
-Em caso de dúvida, prefira off_topic = false e avalie normalmente.
+Em caso de dúvida leve, prefira off_topic = false e avalie normalmente.
 Só marque off_topic = true quando a fuga for inequívoca e evidente.
 
-========================
-REGRAS OBRIGATÓRIAS
-========================
-
-SE off_topic = true:
+SE off_topic = true → OBRIGATÓRIO:
 - overall_score = 0
 - c1 = 0, c2 = 0, c3 = 0, c4 = 0, c5 = 0
-- competence_feedback: preencha cada campo com "Fuga ao tema detectada."
-- summary: explique brevemente que houve fuga ao tema e que a nota foi zerada
-- "improved_version" deve ser uma NOVA redação escrita DO ZERO
-- NÃO reutilize trechos do texto do usuário
-- Baseie-se EXCLUSIVAMENTE no TEMA_OFICIAL
-- ENEM: entre 1500 e 3000 caracteres, com proposta de intervenção completa
-- CONCURSO: texto formal, coeso e completo
-
-SE off_topic = false:
-- Avalie normalmente
-- ENEM: cada competência 0 a 200
-- overall_score = soma exata das competências
-- Deve ser múltiplo de 40
-- "improved_version" deve ser uma versão MELHORADA do texto do usuário
-- Corrigir gramática, coesão e aprofundar argumentos
+- summary: explicar claramente que houve fuga ao tema e que a nota foi zerada
+- improved_version: nova redação escrita DO ZERO, baseada EXCLUSIVAMENTE no TEMA_OFICIAL
+  - ENEM: mínimo 1500 caracteres, com proposta de intervenção completa
+  - CONCURSO: texto formal, dissertativo, completo
 
 ========================
-REGRA CRÍTICA DE NÃO-VAZIO
+CRITÉRIOS DE AVALIAÇÃO — ENEM
 ========================
-"improved_version" NUNCA pode ser:
-- null
-- ""
-- texto com menos de 200 caracteres
-- texto irrelevante
+Cada competência: 0 a 200. Total: soma exata das 5 competências (máx 1000).
+overall_score = c1 + c2 + c3 + c4 + c5 (DEVE ser múltiplo de 40)
 
-Se por qualquer motivo não conseguir melhorar o texto,
-você DEVE gerar uma redação nova adequada ao TEMA_OFICIAL.
+C1 — Domínio da Norma Culta
+- Avaliar: gramática, ortografia, acentuação, pontuação, concordância, regência, crase
+- Erros recorrentes de vírgula ou concordância → no máximo 100
+- Texto com vários erros gramaticais claros → no máximo 80
 
-Para ENEM:
-- Mínimo recomendado: 1500 caracteres.
-Se ficar menor que isso, reescreva até atingir extensão adequada.
+C2 — Compreensão do Tema e Repertório
+- Avaliar: tese clara, repertório sociocultural fundamentado, citações pertinentes
+- Repertório vago ou artificial → penalizar fortemente
+- Introdução sem tese clara → no máximo 100
+
+C3 — Argumentação
+- Avaliar: progressão lógica, causa/consequência, profundidade argumentativa
+- Argumentos superficiais, genéricos ou repetitivos → no máximo 120
+- Texto com desenvolvimento fraco → no máximo 100
+
+C4 — Coesão e Coerência
+- Avaliar: conectivos, parágrafos encadeados, progressão temática, ausência de rupturas
+- Conectivos fracos, repetitivos ou mal empregados → penalizar
+- Rupturas lógicas visíveis → no máximo 120
+
+C5 — Proposta de Intervenção
+- Avaliar: agente + ação + meio + finalidade + detalhamento + respeito aos direitos humanos
+- Proposta vaga, sem agente ou sem meio → no máximo 80
+- Proposta genérica do tipo "o governo deve conscientizar a população" → máximo 80
+- Ausência de proposta clara → 0
+
+ESCALA DE SEVERIDADE ENEM (obrigatória):
+- Texto com muitos erros gramaticais e argumentação fraca: 280–440
+- Texto mediano, vários erros perceptíveis: 440–600
+- Texto razoável, poucos erros mas falhas argumentativas: 600–720
+- Texto bom, com falhas pontuais: 720–840
+- Texto muito bom, quase sem erros, bem argumentado: 840–920
+- Texto excepcional, rigorosamente correto, argumentação de elite: 920–1000
+
+ATENÇÃO: notas 960 ou 1000 são exceções raças. Nunca atribua nota acima de 840 para texto com falhas perceptíveis.
 
 ========================
-REGRAS PARA summary E competence_feedback
+CRITÉRIOS DE AVALIAÇÃO — CONCURSO PÚBLICO
 ========================
-"summary" DEVE ser:
-- Um parágrafo narrativo de 2 a 4 frases
-- Tom profissional, analítico e humano, como um avaliador inteligente
-- Reconhecer pontos positivos antes de apontar melhorias
-- Referir-se diretamente ao desempenho DESTA redação específica
-- Não ser uma lista de recomendações frias
-- Não ser genérico
-- Exemplo de tom: "Você demonstrou compreensão clara do tema e construiu uma argumentação que sustenta bem a tese central. No entanto, a proposta de intervenção ainda carece de especificidade quanto a agente, ação e meios."
+Cada competência: 0 a 20. Total: soma exata das 5 competências (máx 100).
+overall_score = c1 + c2 + c3 + c4 + c5
 
-"competence_feedback" DEVE conter:
-- Uma única frase por competência
-- Específica para o desempenho DESTA redação
-- Analisa o porquê da nota atribuída, não explica o conceito da competência
-- NÃO usar linguagem genérica como "a competência foi avaliada com base em..."
-- Exemplo: c1: "Há bom domínio da norma culta, com pequenos desvios gramaticais isolados."
-- Exemplo: c2: "O tema foi abordado corretamente, mas o repertório poderia ser mais produtivo."
+C1 — Domínio da Norma Culta (0–20)
+C2 — Clareza e Objetividade (0–20)
+C3 — Estrutura Dissertativa (0–20)
+C4 — Adequação ao Tema (0–20)
+C5 — Coesão e Coerência (0–20)
+
+ESCALA DE SEVERIDADE CONCURSO:
+- Texto com erros recorrentes de gramática/pontuação: 30–50
+- Texto mediano, escrita razoável mas com falhas: 50–65
+- Texto bom, poucos erros: 65–78
+- Texto muito bom: 78–88
+- Texto excepcional, quase impecável: 88–100
+
+Nota 100 só em texto rigorosamente correto, objetivo, bem estruturado e sem erros.
+NUNCA atribua nota próxima de 100 a texto com erros visíveis de gramática ou pontuação.
 
 ========================
-VALIDAÇÃO INTERNA OBRIGATÓRIA
+CORREÇÕES PONTUAIS (obrigatório)
 ========================
-Antes de finalizar o JSON:
-1) Confirme se a tese responde diretamente ao TEMA_OFICIAL.
-2) Confirme se improved_version está preenchido e coerente.
-3) Confirme se overall_score é coerente com as competências.
-4) Se off_topic=true, confirme que todos os scores são 0.
-5) Confirme que summary é um parágrafo narrativo (não uma lista).
-6) Confirme que cada campo de competence_feedback é específico desta redação.
+Identifique erros reais no texto do usuário:
+- Erros de acentuação
+- Erros ortográficos
+- Erros gramaticais (concordância, regência)
+- Erros de pontuação relevantes (falta de vírgula obrigatória, etc.)
+- Construções inadequadas
 
-Somente então gere o JSON final.
+Para cada erro, gere um objeto com formato:
+{ "original": "trecho errado", "correto": "trecho correto", "tipo": "tipo do erro" }
+
+Se genuinamente não houver erros relevantes, use:
+correcoes_pontuais = "Não foram identificadas correções pontuais relevantes neste texto. Confira os comentários gerais e a versão melhorada para aprimorar estrutura e clareza."
+
+Não retorne essa mensagem se houver qualquer erro gramatical ou ortográfico visível no texto.
+
+========================
+SUMMARY (obrigatório)
+========================
+Deve ser um parágrafo analítico, técnico e objetivo de 2 a 4 frases.
+- Indicar nível de domínio da norma culta
+- Indicar qualidade argumentativa
+- Apontar o principal problema do texto
+- Ser coerente com a nota atribuída
+- NÃO ser motivacional ou genérico
+- NÃO elogiar texto mediano como bom
+
+========================
+VERSÃO MELHORADA (obrigatório)
+========================
+- Corrigir todos os erros do texto original
+- Manter aderência total ao tema
+- Melhorar argumentação, gramática e coesão
+- Para ENEM: mínimo 1500 caracteres, com proposta de intervenção completa
+- Para CONCURSO: texto formal, dissertativo, objetivo
+
+========================
+VALIDAÇÃO FINAL OBRIGATÓRIA
+========================
+Antes de gerar o JSON:
+1) A nota é compatível com a qualidade real do texto?
+2) O summary é coerente com a nota?
+3) improved_version está preenchida e dentro do tema?
+4) Se off_topic=true, todos os scores são 0?
+5) correcoes_pontuais lista erros reais ou usa a mensagem padrão correta?
+6) Para CONCURSO: overall_score ≤ 100?
+7) Para ENEM: overall_score ≤ 1000 e múltiplo de 40?
 
 ========================
 FORMATO DE SAÍDA (EXATO)
@@ -137,7 +174,7 @@ FORMATO DE SAÍDA (EXATO)
 {
   "type": "ENEM|CONCURSO",
   "off_topic": true|false,
-  "off_topic_reason": "explicação objetiva",
+  "off_topic_reason": "explicação objetiva se off_topic=true, caso contrário null",
   "overall_score": number,
   "competence_scores": {
     "c1": number,
@@ -147,25 +184,21 @@ FORMATO DE SAÍDA (EXATO)
     "c5": number
   },
   "competence_feedback": {
-    "c1": "frase única explicando o porquê da nota em C1 para esta redação",
-    "c2": "frase única explicando o porquê da nota em C2 para esta redação",
-    "c3": "frase única explicando o porquê da nota em C3 para esta redação",
-    "c4": "frase única explicando o porquê da nota em C4 para esta redação",
-    "c5": "frase única explicando o porquê da nota em C5 para esta redação"
+    "c1": "frase técnica e específica explicando a nota atribuída",
+    "c2": "frase técnica e específica explicando a nota atribuída",
+    "c3": "frase técnica e específica explicando a nota atribuída",
+    "c4": "frase técnica e específica explicando a nota atribuída",
+    "c5": "frase técnica e específica explicando a nota atribuída"
   },
-  "summary": "parágrafo narrativo analítico de 2 a 4 frases sobre o desempenho geral",
-  "strengths": ["item1", "item2", "item3"],
+  "summary": "parágrafo analítico técnico sobre o desempenho real — coerente com a nota",
+  "strengths": ["item1", "item2"],
   "weaknesses": ["item1", "item2", "item3"],
-  "actionable_feedback": [
-    "ação prática 1",
-    "ação prática 2",
-    "ação prática 3"
-  ],
-  "improved_version": "texto completo aqui"
+  "correcoes_pontuais": [{"original": "...", "correto": "...", "tipo": "..."}] ou "mensagem padrão se sem erros",
+  "actionable_feedback": ["ação prática 1", "ação prática 2", "ação prática 3"],
+  "improved_version": "texto completo corrigido e aprimorado"
 }
 
-Não omita nenhuma chave.
-Não escreva nada fora desse JSON.
+Não omita nenhuma chave. Não escreva nada fora desse JSON.
 EOT;
 
     protected $providers = ['openai', 'gemini', 'grok'];
@@ -271,7 +304,7 @@ EOT;
      * Orchestrates AI calls and logs execution details.
      * Captures non-200 responses for robust telemetry.
      */
-    protected function callAI(string $provider, ApiKey $apiKey, string $prompt, ?int $userId = null, ?string $module = null): array
+    protected function callAI(string $provider, ApiKey $apiKey, string $prompt, ?int $userId = null, ?string $module = null, float $temperature = 0.7): array
     {
         $provider = $apiKey->effective_provider;
         Log::info("DEBUG: Using API Key ID: {$apiKey->id} for provider: {$provider}");
@@ -279,8 +312,8 @@ EOT;
 
         try {
             $result = match ($provider) {
-                'openai' => $this->callOpenAI($apiKey, $prompt),
-                'gemini' => $this->callGemini($apiKey, $prompt),
+                'openai' => $this->callOpenAI($apiKey, $prompt, $temperature),
+                'gemini' => $this->callGemini($apiKey, $prompt, $temperature),
                 'grok' => $this->callGrok($apiKey, $prompt),
                 default => throw new \Exception("Provider not supported: $provider")
             };
@@ -400,7 +433,7 @@ EOT;
     /**
      * Makes a request to OpenAI API.
      */
-    protected function callOpenAI(ApiKey $apiKey, string $prompt): array
+    protected function callOpenAI(ApiKey $apiKey, string $prompt, float $temperature = 0.7): array
     {
         $url = 'https://api.openai.com/v1/chat/completions';
         $model = $apiKey->preferred_model ?? 'gpt-4o';
@@ -413,7 +446,7 @@ EOT;
                 'messages' => [
                     ['role' => 'user', 'content' => $prompt],
                 ],
-                'temperature' => 0.7,
+                'temperature' => $temperature,
             ]);
 
         if ($response->failed()) {
@@ -513,7 +546,7 @@ EOT;
     /**
      * Makes a request to Gemini API, supporting image attachments.
      */
-    protected function callGemini(ApiKey $apiKey, string $prompt): array
+    protected function callGemini(ApiKey $apiKey, string $prompt, float $temperature = 0.7): array
     {
         $model = $apiKey->preferred_model;
         $imageUrls = $this->responseSanitizer->extractImages($prompt);
@@ -556,7 +589,7 @@ EOT;
         $payload = [
             'contents' => [['parts' => $parts]],
             'generationConfig' => [
-                'temperature' => 0.7,
+                'temperature' => $temperature,
                 'maxOutputTokens' => 65536,
             ]
         ];
@@ -912,7 +945,7 @@ EOT;
                 $provider = $apiKey->provider;
                 $prompt = $this->buildXavierEvaluationPrompt($title, $content, $type);
 
-                $result = $this->callAI($provider, $apiKey, $prompt, $userId, ApiKey::CAPABILITY_ESSAYS);
+                $result = $this->callAI($provider, $apiKey, $prompt, $userId, ApiKey::CAPABILITY_ESSAYS, 0.3);
                 $apiKey->incrementUsage();
 
                 $responseContent = $result['content'];
