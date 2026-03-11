@@ -102,7 +102,7 @@ services:
     # Filas para processamento do Xavier (embeddings: tempo real, ai-batches: processamento em lote)
     command: php artisan queue:work --queue=embeddings,ai-batches --sleep=3 --tries=3 --timeout=700 --max-time=3600
     deploy:
-      replicas: 5
+      replicas: 2
       resources:
         limits:
           memory: 1G
