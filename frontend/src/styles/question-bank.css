@@ -1383,4 +1383,27 @@
 .katex-block-wrapper::-webkit-scrollbar-thumb {
     background: #e2e8f0;
     border-radius: 10px;
-}
+}
+
+/* ── KaTeX Table & Array Borders ── */
+.katex .mtable {
+    border-collapse: collapse !important;
+}
+
+.katex .array-cell {
+    line-height: 1.2 !important;
+}
+
+/* Ensure vertical lines and horizontal lines from \hline are visible */
+.katex .vlist-t {
+    border-color: currentColor !important;
+}
+
+.katex .hline, 
+.katex .vertical-separator {
+    border-top-width: 1px !important;
+    border-top-style: solid !important;
+    border-color: currentColor !important;
+    opacity: 0.8;
+}
+
