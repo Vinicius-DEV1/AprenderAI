@@ -142,7 +142,7 @@ class AIBatchService
         $prompt .= "   - Se não usar ID existente, retorne string nova no array. `subjects` = áreas (ex: 'Matemática'). `topics` = assuntos (ex: 'Trigonometria'). MÁXIMO 1 a 4 palavras. Iniciais Maiúsculas.\n";
         $prompt .= "4. TRIAGEM ESTRUTURAL OBRIGATÓRIA: Para CADA questão, preencha o campo `triage` com:\n";
         $prompt .= "   - `issues`: array de problemas detectados. Valores possíveis:\n";
-        $prompt .= "     * `no_alternatives` — questão objetiva sem alternativas\n";
+        $prompt .= "     * `no_alternatives` — questão OBJETIVA (múltipla escolha/certo-errado) sem alternativas. NUNCA aplique este erro a questões Discursivas ou Temas de Redação.\n";
         $prompt .= "     * `no_statement` — tem alternativas mas enunciado vazio ou ausente\n";
         $prompt .= "     * `wrong_answer` — gabarito inválido: nenhum correto, múltiplos corretos, ou gabarito inexistente nas alternativas\n";
         $prompt .= "     * `has_image` — questão contém imagem (requer revisão visual humana)\n";
@@ -429,6 +429,12 @@ class AIBatchService
             $triageData = is_array($data['triage'] ?? null) ? $data['triage'] : [];
             $triageIssues = is_array($triageData['issues'] ?? null) ? $triageData['issues'] : [];
             $qualityScore = isset($triageData['quality_score']) ? (int) $triageData['quality_score'] : 100;
+
+            // Salvaguarda: Questões reconhecidamente sem alternativas (discursiva/redação) não devem ter o issue 'no_alternatives'
+            $isNonObjective = in_array(strtolower($question->format ?? ''), ['discursiva', 'redacao']) || in_array(strtolower($question->tipo_questao ?? ''), ['discursiva', 'redacao']);
+            if ($isNonObjective && !empty($triageIssues)) {
+                $triageIssues = array_values(array_filter($triageIssues, fn($issue) => $issue !== 'no_alternatives'));
+            }
 
             // --- Validação Final de Status ---
             // Recarregamos o modelo e relações para garantir que o estado em memória reflita o DB (após os syncs)
