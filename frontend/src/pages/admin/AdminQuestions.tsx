@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useUIStore } from '../../stores/uiStore';
 import AdminDeleteQuestionModal from './components/AdminDeleteQuestionModal';
-import SmartPagination from './SmartPagination';
+import SmartPagination from '../../components/admin/SmartPagination';
 
 export default function AdminQuestions() {
     const queryClient = useQueryClient();
