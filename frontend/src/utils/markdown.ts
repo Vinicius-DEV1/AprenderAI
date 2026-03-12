@@ -35,10 +35,17 @@ export const renderMd = (text: string) => {
 
     // --- LaTeX Delimiters Logic ---
 
+    // Pre-process Formula to support 'tabular' by converting to 'array' (KaTeX support)
+    const normalizeFormula = (f: string) => {
+        return f
+            .replace(/\\begin{tabular}(\{.*?\})/g, '\\begin{array}$1')
+            .replace(/\\end{tabular}/g, '\\end{array}');
+    };
+
     // 1. Render block math $$ ... $$
     processedText = processedText.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
         try {
-            return `<div class="katex-block-wrapper my-2">${katex.renderToString(formula, { displayMode: true, throwOnError: false, trust: true })}</div>`;
+            return `<div class="katex-block-wrapper my-2">${katex.renderToString(normalizeFormula(formula), { displayMode: true, throwOnError: false, trust: true })}</div>`;
         } catch (e) {
             return match;
         }
@@ -47,7 +54,7 @@ export const renderMd = (text: string) => {
     // 2. Render block math \[ ... \]
     processedText = processedText.replace(/\\\[([\s\S]*?)\\\]/g, (match, formula) => {
         try {
-            return `<div class="katex-block-wrapper my-2">${katex.renderToString(formula, { displayMode: true, throwOnError: false, trust: true })}</div>`;
+            return `<div class="katex-block-wrapper my-2">${katex.renderToString(normalizeFormula(formula), { displayMode: true, throwOnError: false, trust: true })}</div>`;
         } catch (e) {
             return match;
         }
@@ -56,7 +63,7 @@ export const renderMd = (text: string) => {
     // 3. Render inline math \( ... \)
     processedText = processedText.replace(/\\\(([\s\S]*?)\\\)/g, (match, formula) => {
         try {
-            return katex.renderToString(formula, { displayMode: false, throwOnError: false, trust: true });
+            return katex.renderToString(normalizeFormula(formula), { displayMode: false, throwOnError: false, trust: true });
         } catch (e) {
             return match;
         }
@@ -67,7 +74,7 @@ export const renderMd = (text: string) => {
     // Usually $ should be followed by a non-whitespace and preceded by a space or start of line.
     processedText = processedText.replace(/(^|[^\\])\$([\s\S]*?)\$/g, (match, prefix, formula) => {
         try {
-            return `${prefix}${katex.renderToString(formula, { displayMode: false, throwOnError: false, trust: true })}`;
+            return `${prefix}${katex.renderToString(normalizeFormula(formula), { displayMode: false, throwOnError: false, trust: true })}`;
         } catch (e) {
             return match;
         }
