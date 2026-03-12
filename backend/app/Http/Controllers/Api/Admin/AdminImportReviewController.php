@@ -98,9 +98,18 @@ class AdminImportReviewController extends Controller
     {
         $question = Question::with(['alternatives', 'images', 'subjects', 'topics', 'importItem.import.uploader'])->findOrFail($id);
 
+        $baseQuery = $this->applyFilters($request);
+
+        // Next is the next item in the list (if we consider latest/desc, next is smaller ID)
+        $nextId = (clone $baseQuery)->where('id', '<', $id)->orderBy('id', 'desc')->value('id');
+        // Prev is the one before (larger ID if latest/desc)
+        $prevId = (clone $baseQuery)->where('id', '>', $id)->orderBy('id', 'asc')->value('id');
+
         return response()->json([
             'question' => $question,
-            'importItem' => $question->importItem
+            'importItem' => $question->importItem,
+            'next_id' => $nextId,
+            'prev_id' => $prevId
         ]);
     }
 
