@@ -484,7 +484,7 @@ export default function ImportReview() {
                                 ))}
 
                                 {/* Sticky Actions for Editor */}
-                                <div className="sticky bottom-4 z-20">
+                                <div className="sticky top-4 z-20">
                                     {renderActions()}
                                 </div>
                             </div>
