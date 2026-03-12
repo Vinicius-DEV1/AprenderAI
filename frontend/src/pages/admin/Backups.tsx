@@ -177,7 +177,12 @@ export default function AdminBackups() {
         if (isFull) setFullDumping(true);
         else setLocalDumping(true);
         
-        toast.info(isFull ? 'Gerando backup completo (DB + Imagens)... Isso pode demorar alguns minutos.' : 'Gerando dump do banco... o download iniciará em breve.');
+        const toastId = toast.loading(
+            isFull 
+                ? 'Gerando backup completo (DB + Imagens)... Isso pode demorar alguns minutos.' 
+                : 'Gerando dump do banco... o download iniciará em breve.'
+        );
+
         try {
             const res = await api.get('/api/v1/admin/backups/local-dump', {
                 params: { full: isFull ? '1' : '0' },
@@ -197,9 +202,9 @@ export default function AdminBackups() {
             link.remove();
             URL.revokeObjectURL(url);
 
-            toast.success(isFull ? 'Download do backup completo concluído!' : 'Download do banco concluído!');
+            toast.success(isFull ? 'Download do backup completo concluído!' : 'Download do banco concluído!', { id: toastId });
         } catch (err: any) {
-            toast.error(err?.response?.data?.message ?? 'Erro ao gerar o backup. Verifique os logs do servidor.');
+            toast.error(err?.response?.data?.message ?? 'Erro ao gerar o backup. Verifique os logs do servidor.', { id: toastId });
         } finally {
             setLocalDumping(false);
             setFullDumping(false);
