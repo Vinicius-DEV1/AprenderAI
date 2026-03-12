@@ -279,79 +279,100 @@ class QuestionImportService
         ");
         $questions = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-        $stats = ['total' => 0, 'pending' => 0, 'approved' => 0];
+        $stats = ['total' => 0, 'pending' => 0, 'approved' => 0, 'skipped' => 0];
 
         // Atualização inicial do total_questions 
         $import->update(['total_questions' => count($questions)]);
 
         foreach ($questions as $qData) {
             DB::transaction(function () use ($qData, $imageMap, $import, $uploader, &$stats) {
-                // Gera uma chave única robusta baseada no conteúdo da questão
+                // 1. A Nova Chave Única (Fim da Duplicação)
+                // Usando organization + year + institution + role + number
                 $uniqueString = trim($qData['organization'] ?? '') . '|' .
                     trim($qData['year'] ?? '') . '|' .
                     trim($qData['institution'] ?? '') . '|' .
                     trim($qData['role'] ?? '') . '|' .
-                    trim($qData['statement'] ?? '');
+                    trim($qData['number'] ?? '');
 
                 $externalId = md5($uniqueString);
+                $incomingHash = $qData['content_hash'] ?? null;
 
-                // Criação ou Atualização da questão base (Upsert)
-                $question = Question::updateOrCreate(
-                    ['external_id' => $externalId],
-                    [
-                        'type' => 'concurso',
-                        'institution' => $qData['institution'] ?? null,
-                        'organization' => $qData['organization'] ?? null,
-                        'role' => $qData['role'] ?? null,
-                        'year' => $qData['year'] ?? null,
-                        'statement' => $qData['statement'] ?? '',
-                        'difficulty' => 'medium',
-                    ]
-                );
+                // 2. O "Smart Upsert" (Otimização de Banco)
+                $existingQuestion = Question::where('external_id', $externalId)->first();
 
-                // Se a questão acabou de ser criada, defina o status inicial e processe as imagens
-                if ($question->wasRecentlyCreated) {
-                    $hasImages = !empty($qData['image_path']);
-                    $status = $qData['review_status'] ?? 'pending';
+                if ($existingQuestion && $existingQuestion->content_hash !== null && $existingQuestion->content_hash === $incomingHash) {
+                    // Hash é idêntico: ignora completamente (pula para a próxima)
+                    $stats['skipped']++;
+                    $stats['total']++;
+                    return; // Continua para a próxima iteração do foreach (saindo do transaction closure)
+                }
 
-                    if ($hasImages) {
-                        $status = 'review';
+                // Parse da Resposta Discursiva (Pode ser string ou JSON)
+                $discursiveAnswer = null;
+                if (!empty($qData['discursive_answer'])) {
+                    $parsedAnswer = json_decode($qData['discursive_answer'], true);
+                    $discursiveAnswer = (json_last_error() === JSON_ERROR_NONE)
+                        ? $parsedAnswer
+                        : $qData['discursive_answer'];
+                }
+
+                $tipoQuestao = $qData['tipo_questao'] ?? 'Objetiva';
+                $hasImages = !empty($qData['image_path']);
+                $status = $qData['review_status'] ?? 'pending';
+
+                if ($hasImages && $status !== 'approved') {
+                    $status = 'review';
+                }
+
+                $payload = [
+                    'type' => 'concurso',
+                    'institution' => $qData['institution'] ?? null,
+                    'organization' => $qData['organization'] ?? null,
+                    'role' => $qData['role'] ?? null,
+                    'year' => $qData['year'] ?? null,
+                    'number' => $qData['number'] ?? null,
+                    // 3. O Update Completo
+                    'statement' => $qData['statement'] ?? '',
+                    'difficulty' => 'medium',
+                    'review_status' => $status,
+                    'tipo_questao' => $tipoQuestao,
+                    'arquivo_origem' => $qData['arquivo_origem'] ?? null,
+                    'discursive_answer' => $discursiveAnswer,
+                    'pdf_page' => $qData['pdf_page'] ?? null,
+                    'origin' => $qData['origin'] ?? null,
+                    'source_url' => $qData['source_url'] ?? null,
+                    'extracted_at' => $qData['extracted_at'] ?? null,
+                    'content_hash' => $incomingHash,
+                    'updated_at' => $qData['updated_at'] ?? now(),
+                ];
+
+                if ($existingQuestion) {
+                    // Update existente
+                    $existingQuestion->update($payload);
+                    $question = $existingQuestion;
+
+                    // Tratamento de Imagens: excluir antigas
+                    foreach ($question->images as $img) {
+                        if (!empty($img->path)) {
+                            Storage::disk(self::IMPORT_STORAGE_DISK)->delete($img->path);
+                        }
                     }
+                    $question->images()->delete();
+                } else {
+                    // Cria nova
+                    $payload['external_id'] = $externalId;
+                    $question = Question::create($payload);
+                }
 
-                    // Preenche os novos campos na criação
-                    $tipoQuestao = $qData['tipo_questao'] ?? 'Objetiva';
-
-                    // Parse da Resposta Discursiva (Pode ser string ou JSON)
-                    $discursiveAnswer = null;
-                    if (!empty($qData['discursive_answer'])) {
-                        $parsedAnswer = json_decode($qData['discursive_answer'], true);
-                        $discursiveAnswer = (json_last_error() === JSON_ERROR_NONE)
-                            ? $parsedAnswer
-                            : $qData['discursive_answer'];
-                    }
-
-                    $question->update([
-                        'review_status' => $status,
-                        'tipo_questao' => $tipoQuestao,
-                        'number' => $qData['number'] ?? null,
-                        'arquivo_origem' => $qData['arquivo_origem'] ?? null,
-                        'discursive_answer' => $discursiveAnswer,
-                        'pdf_page' => $qData['pdf_page'] ?? null,
-                        'origin' => $qData['origin'] ?? null,
-                        'source_url' => $qData['source_url'] ?? null,
-                        'extracted_at' => $qData['extracted_at'] ?? null,
-                    ]);
-
-                    // Insere instâncias de imagem iterativamente para a relação 1:N
-                    if (!empty($qData['image_path'])) {
-                        $imagePaths = explode(',', $qData['image_path']);
-                        foreach ($imagePaths as $imgPath) {
-                            $imgPath = trim($imgPath);
-                            if (isset($imageMap[$imgPath])) {
-                                $question->images()->create([
-                                    'path' => $imageMap[$imgPath],
-                                ]);
-                            }
+                // Insere instâncias de imagem iterativamente para a relação 1:N
+                if ($hasImages) {
+                    $imagePaths = explode(',', $qData['image_path']);
+                    foreach ($imagePaths as $imgPath) {
+                        $imgPath = trim($imgPath);
+                        if (isset($imageMap[$imgPath])) {
+                            $question->images()->create([
+                                'path' => $imageMap[$imgPath],
+                            ]);
                         }
                     }
                 }
