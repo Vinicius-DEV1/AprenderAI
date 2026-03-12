@@ -75,8 +75,8 @@ export const renderMd = (text: string) => {
 
     try {
         const html = marked.parse(processedText) as string;
-        return { __html: DOMPurify.sanitize(html) };
+        return { __html: DOMPurify.sanitize(html, { ADD_TAGS: ['u'] }) };
     } catch (e) {
-        return { __html: DOMPurify.sanitize(processedText) };
+        return { __html: DOMPurify.sanitize(processedText, { ADD_TAGS: ['u'] }) };
     }
 };
