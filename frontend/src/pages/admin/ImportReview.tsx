@@ -5,7 +5,7 @@ import api from '../../api/axios';
 import { toast } from 'sonner';
 import Cropper from 'react-cropper';
 import 'cropperjs/dist/cropper.css';
-import ReactMarkdown from 'react-markdown';
+import { renderMd } from '../../utils/markdown';
 
 export default function ImportReview() {
     const { id } = useParams();
@@ -107,12 +107,6 @@ export default function ImportReview() {
 
     const apiUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
 
-    const urlTransform = (uri: string) => {
-        if (uri.startsWith('/storage')) {
-            return `${apiUrl}${uri}`;
-        }
-        return uri;
-    };
 
     if (isLoading) return <div className="p-8">Carregando revisão...</div>;
     if (!data?.question) return <div className="p-8 text-red-500">Questão não encontrada.</div>;
@@ -301,15 +295,7 @@ export default function ImportReview() {
                                 <span className="w-1 h-1 bg-indigo-400 rounded-full"></span>
                                 Enunciado
                             </h3>
-                            <div className="prose prose-indigo max-w-none text-gray-800 text-[13px] leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                <ReactMarkdown
-                                    urlTransform={urlTransform}
-                                    components={{
-                                        img: ({ ...props }) => <img {...props} className="max-w-full h-auto rounded-lg my-2 mx-auto block shadow-sm border-2 border-white" />
-                                    }}>
-                                    {question.statement}
-                                </ReactMarkdown>
-                            </div>
+                            <div className="prose prose-indigo max-w-none text-gray-800 text-[13px] leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100 dark:text-slate-300" dangerouslySetInnerHTML={renderMd(question.statement)} />
 
                             {hasImageModels ? (
                                 <div className="mt-4 pt-4 border-t border-gray-100">
@@ -345,15 +331,7 @@ export default function ImportReview() {
                                                 {(alt.content?.startsWith('questions_images/') || alt.content?.startsWith('storage/')) ? (
                                                     <img src={alt.content.startsWith('http') ? alt.content : `${apiUrl}/storage/${alt.content.replace('storage/', '')}`} alt={`Alternativa ${alt.label}`} className="max-w-full h-auto rounded border border-gray-200" />
                                                 ) : (
-                                                    <div className="prose prose-indigo max-w-none text-sm text-gray-700 alternatives-markdown">
-                                                        <ReactMarkdown
-                                                            urlTransform={urlTransform}
-                                                            components={{
-                                                                img: ({ ...props }) => <img {...props} className="max-w-full h-auto rounded-lg border border-gray-200 block my-2" />
-                                                            }}>
-                                                            {alt.content}
-                                                        </ReactMarkdown>
-                                                    </div>
+                                                    <div className="prose prose-indigo max-w-none text-sm text-gray-700 alternatives-markdown dark:text-slate-300" dangerouslySetInnerHTML={renderMd(alt.content)} />
                                                 )}
                                             </div>
                                             {alt.is_correct && (

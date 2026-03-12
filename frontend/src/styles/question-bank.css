@@ -1362,3 +1362,25 @@
         transform: translate(-50%, -50%);
     }
 }
+
+/* ── KaTeX Block Wrapper (Mobile Friendly) ── */
+.katex-block-wrapper {
+    overflow-x: auto !important;
+    max-width: 100%;
+    padding: 0.5rem 0;
+    margin: 0.5rem 0;
+    width: 100%;
+}
+
+.katex-block-wrapper::-webkit-scrollbar {
+    height: 4px;
+}
+
+.katex-block-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.katex-block-wrapper::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
+}

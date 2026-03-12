@@ -5,8 +5,7 @@ import { toast } from 'sonner';
 import api from '../../api/axios';
 import { useUIStore } from '../../stores/uiStore';
 import EssayWrite from '../essays/EssayWrite';
-import { marked } from 'marked';
-import katex from 'katex';
+import { renderMd } from '../../utils/markdown';
 import '../../styles/question-bank.css';
 
 // Local API calls just for this view's specific needs (polling/answering)
@@ -254,52 +253,6 @@ export default function SimulationView() {
 
     const apiUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
 
-    const renderMd = (text: string) => {
-        if (!text) return { __html: '' };
-        let processedText = text;
-
-        // Fix Markdown Image URLs: ![alt](/storage/path) or ![alt](storage/path)
-        processedText = processedText.replace(/!\[(.*?)\]\(\s*(\/?storage\/.*?)\s*\)/g, (_, alt, url) => {
-            const cleanUrl = url.trim().replace(/^\//, '');
-            const absoluteUrl = `${apiUrl}/${cleanUrl}`.replace(/([^:])\/\//g, '$1/');
-            return `![${alt}](${absoluteUrl})`;
-        });
-
-        // Prevention: Escape numeric starts that look like list items (e.g. "30.")
-        if (/^\d+\.($|\s)/.test(processedText.trim())) {
-            processedText = processedText.replace(/^(\d+)\./, '$1\\.');
-        }
-
-        // Fix HTML Image URLs: src="/storage/path" or src="storage/path"
-        processedText = processedText.replace(/src=["']\s*(\/?storage\/.*?)\s*["']/g, (_, url) => {
-            const cleanUrl = url.trim().replace(/^\//, '');
-            return `src="${apiUrl}/${cleanUrl}"`;
-        });
-
-        // Render block math \[ ... \]
-        processedText = processedText.replace(/\\\[([\s\S]*?)\\\]/g, (match, formula) => {
-            try {
-                return `<div class="katex-block-wrapper my-2">${katex.renderToString(formula, { displayMode: true, throwOnError: false })}</div>`;
-            } catch (e) {
-                return match;
-            }
-        });
-
-        // Render inline math \( ... \)
-        processedText = processedText.replace(/\\\(([\s\S]*?)\\\)/g, (match, formula) => {
-            try {
-                return katex.renderToString(formula, { displayMode: false, throwOnError: false });
-            } catch (e) {
-                return match;
-            }
-        });
-
-        try {
-            return { __html: marked.parse(processedText) as string };
-        } catch (e) {
-            return { __html: processedText };
-        }
-    };
 
     if (hasError) {
         return (

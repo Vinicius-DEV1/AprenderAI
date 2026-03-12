@@ -5,8 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
 import api from '../../api/axios';
-import { marked } from 'marked';
-import katex from 'katex';
+import { renderMd } from '../../utils/markdown';
 
 // Modals
 import DialogReportQuestion from './modals/DialogReportQuestion';
@@ -142,9 +141,6 @@ export default function QuestionCard({
     const [historyLoading, setHistoryLoading] = useState(false);
     const [historyLoaded, setHistoryLoaded] = useState(false);
 
-    useEffect(() => {
-        marked.setOptions({ breaks: true, gfm: true });
-    }, []);
 
     const scrollToBottom = () => {
         if (chatHistoryRef.current) {
@@ -160,58 +156,6 @@ export default function QuestionCard({
 
     const apiUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
 
-    const renderMd = (text: string) => {
-        if (!text) return { __html: '' };
-        let processedText = text;
-
-        // Fix LaTeX format escaping corruption: backend sends \frac, but JS JSON parsers sometimes see \f as form-feed
-        processedText = processedText.replace(/\f/g, '\\f');
-
-        // Fix Markdown Image URLs: ![alt](/storage/path) or ![alt](storage/path)
-        // More robust regex to handle whitespace and potential variations
-        processedText = processedText.replace(/!\[(.*?)\]\(\s*(\/?storage\/.*?)\s*\)/g, (_, alt, url) => {
-            const cleanUrl = url.trim().replace(/^\//, ''); // remove leading slash
-            const absoluteUrl = `${apiUrl}/${cleanUrl}`.replace(/([^:])\/\//g, '$1/'); // prevent double slashes but keep http://
-            return `![${alt}](${absoluteUrl})`;
-        });
-
-        // Prevention: Escape numeric starts that look like list items (e.g. "30.")
-        // This avoids 'marked' from creating empty <ol><li></li></ol> when the alternative is just a number.
-        if (/^\d+\.($|\s)/.test(processedText.trim())) {
-            processedText = processedText.replace(/^(\d+)\./, '$1\\.');
-        }
-
-        // Fix HTML Image URLs: src="/storage/path" or src="storage/path"
-        processedText = processedText.replace(/src=["']\s*(\/?storage\/.*?)\s*["']/g, (_, url) => {
-            const cleanUrl = url.trim().replace(/^\//, '');
-            const absoluteUrl = `${apiUrl}/${cleanUrl}`.replace(/([^:])\/\//g, '$1/');
-            return `src="${absoluteUrl}"`;
-        });
-
-        // Render block math \[ ... \]
-        processedText = processedText.replace(/\\\[([\s\S]*?)\\\]/g, (match, formula) => {
-            try {
-                return `<div class="katex-block-wrapper my-2">${katex.renderToString(formula, { displayMode: true, throwOnError: false })}</div>`;
-            } catch (e) {
-                return match;
-            }
-        });
-
-        // Render inline math \( ... \)
-        processedText = processedText.replace(/\\\(([\s\S]*?)\\\)/g, (match, formula) => {
-            try {
-                return katex.renderToString(formula, { displayMode: false, throwOnError: false });
-            } catch (e) {
-                return match;
-            }
-        });
-
-        try {
-            return { __html: marked.parse(processedText) as string };
-        } catch (e) {
-            return { __html: processedText };
-        }
-    };
 
     const sanitizeHTML = (html: string) => {
         if (!html) return '';
@@ -649,8 +593,8 @@ export default function QuestionCard({
                                 <h4 className="font-bold text-indigo-900 mb-4 flex items-center gap-2">📋 Espelho de Correção</h4>
                                 <div className="space-y-4">
                                     {typeof q.discursive_answer === 'object' ? Object.entries(q.discursive_answer).map(([k, v]) => (
-                                        <div key={k} className="bg-white p-3 rounded-md border border-indigo-100 shadow-sm"><strong className="text-indigo-800">Padrao ({k}):</strong><div className="text-sm mt-1">{String(v)}</div></div>
-                                    )) : <div className="bg-white p-3 rounded-md shadow-sm">{q.discursive_answer || "Não disponível."}</div>}
+                                        <div key={k} className="bg-white p-3 rounded-md border border-indigo-100 shadow-sm"><strong className="text-indigo-800">Padrao ({k}):</strong><div className="text-sm mt-1 prose prose-sm max-w-none dark:text-slate-300" dangerouslySetInnerHTML={renderMd(String(v))} /></div>
+                                    )) : <div className="bg-white p-3 rounded-md shadow-sm prose prose-sm max-w-none dark:text-slate-300" dangerouslySetInnerHTML={renderMd(q.discursive_answer || "Não disponível.")} />}
                                 </div>
                             </div>
                         ) : (
