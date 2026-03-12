@@ -173,7 +173,7 @@ class AdminImportReviewController extends Controller
     public function revert(Request $request, $id)
     {
         $question = Question::findOrFail($id);
-        $question->update(['review_status' => 'pending']); // or review if we consider it back to review stage
+        $question->update(['review_status' => 'review']); // or review if we consider it back to review stage
 
         $this->triageService->logManualAction($question, 'manual_review', [], Auth::id());
 

@@ -63,8 +63,15 @@ export interface Question {
     number?: string;
     subjects: { id: number; name: string }[];
     difficulty: 'easy' | 'medium' | 'hard';
-    statement_html: string;
-    statement: string;
+    statement_html?: string;
+    statement?: string;
+    review_status?: string;
+    triage_logs?: {
+        id: number;
+        status: string;
+        issues_detected?: string[];
+        quality_score?: number;
+    }[];
     tipo_questao?: 'Objetiva' | 'Discursiva' | 'Redação' | string;
     type?: string;
     image_path?: string;

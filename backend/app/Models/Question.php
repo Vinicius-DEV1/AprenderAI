@@ -43,6 +43,13 @@ class Question extends Model
         'discursive_answer' => 'array',
     ];
 
+    /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array
+     */
+    protected $appends = ['statement_html'];
+
     public function alternatives()
     {
         return $this->hasMany(QuestionAlternative::class);

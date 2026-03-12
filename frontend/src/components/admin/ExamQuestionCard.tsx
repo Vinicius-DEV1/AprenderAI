@@ -11,6 +11,10 @@ interface ExamQuestionCardProps {
 
 export default function ExamQuestionCard({ question, index }: ExamQuestionCardProps) {
     const isDiscursive = question.type === 'concurso' && question.tipo_questao === 'Discursiva';
+    const isInTriage = question.review_status === 'review';
+    const triageLog = question.triage_logs?.[0];
+    const score = triageLog?.quality_score;
+    const issues = triageLog?.issues_detected;
 
     // Viewer.js instance ref
     const galleryRef = React.useRef<HTMLDivElement>(null);
@@ -90,28 +94,51 @@ export default function ExamQuestionCard({ question, index }: ExamQuestionCardPr
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden break-inside-avoid mb-6">
             {/* Header */}
-            <div className="bg-gray-50 px-5 py-3 border-b border-gray-200 flex justify-between items-center">
-                <div className="flex gap-3 items-center">
-                    <span className="bg-gray-800 text-white rounded-md px-2 py-0.5 text-xs font-bold">
-                        #{index + 1}
-                    </span>
-                    <span className="text-sm font-semibold text-gray-700">
-                        {question.number ? `Questão ${question.number}` : 'Questão Sem Número'}
-                    </span>
+            <div className="bg-gray-50 px-5 py-3 border-b border-gray-200 flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                    <div className="flex gap-3 items-center">
+                        <span className="bg-gray-800 text-white rounded-md px-2 py-0.5 text-xs font-bold">
+                            #{index + 1}
+                        </span>
+                        <span className="text-sm font-semibold text-gray-700">
+                            {question.number ? `Questão ${question.number}` : 'Questão Sem Número'}
+                        </span>
+                    </div>
+                    <div className="flex gap-2">
+                        {isInTriage && (
+                            <span className="text-xs px-2 py-1 rounded font-medium bg-amber-100 text-amber-800">
+                                Triagem Manual
+                            </span>
+                        )}
+                        <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">ID: {question.id}</span>
+                        <span className={`text-xs px-2 py-1 rounded font-medium ${isDiscursive ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
+                            {isDiscursive ? 'Discursiva/Redação' : 'Objetiva'}
+                        </span>
+                    </div>
                 </div>
-                <div className="flex gap-2">
-                    <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">ID: {question.id}</span>
-                    <span className={`text-xs px-2 py-1 rounded font-medium ${isDiscursive ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
-                        {isDiscursive ? 'Discursiva/Redação' : 'Objetiva'}
-                    </span>
-                </div>
+
+                {/* AI Triage Tags */}
+                {(score !== undefined || (issues && issues.length > 0)) && (
+                    <div className="flex gap-2 flex-wrap mt-1">
+                        {score !== undefined && (
+                            <span className={`text-xs px-2 py-1 rounded font-medium border ${score >= 80 ? 'bg-green-50 text-green-700 border-green-200' : score >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                                Score IA: {score}/100
+                            </span>
+                        )}
+                        {issues && issues.length > 0 && (
+                            <span className="text-xs px-2 py-1 rounded font-medium bg-red-50 text-red-700 border border-red-200" title={issues.join(', ')}>
+                                {issues.length} Issues Detectadas
+                            </span>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className="p-5 flex flex-col gap-6">
                 {/* Statement */}
                 <div
                     className="prose prose-sm max-w-none text-gray-800"
-                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(question.statement_html || '') }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(question.statement_html ? question.statement_html : (question.statement ? question.statement.replace(/\n/g, '<br/>') : '')) }}
                 />
 
                 {/* Images */}
