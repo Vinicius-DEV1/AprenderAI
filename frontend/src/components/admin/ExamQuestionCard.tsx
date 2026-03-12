@@ -1,6 +1,6 @@
 import React from 'react';
 import { Question } from '../../types';
-import DOMPurify from 'dompurify';
+import { renderMd } from '../../utils/markdown';
 import Viewer from 'viewerjs';
 import 'viewerjs/dist/viewer.css';
 
@@ -68,13 +68,13 @@ export default function ExamQuestionCard({ question, index }: ExamQuestionCardPr
 
                 {typeof content === 'string' ? (
                     <div
-                        className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content.replace(/\n/g, '<br/>')) }}
+                        className="text-gray-700 text-sm leading-relaxed prose prose-sm max-w-none dark:text-slate-300"
+                        dangerouslySetInnerHTML={renderMd(content)}
                     />
                 ) : Array.isArray(content) ? (
                     <ul className="list-disc pl-5 space-y-2 text-sm text-gray-700">
                         {content.map((item, idx) => (
-                            <li key={idx}>{item}</li>
+                            <li key={idx} className="prose prose-sm max-w-none dark:text-slate-300" dangerouslySetInnerHTML={renderMd(String(item))} />
                         ))}
                     </ul>
                 ) : (
@@ -82,7 +82,7 @@ export default function ExamQuestionCard({ question, index }: ExamQuestionCardPr
                         {Object.entries(content).map(([key, val], idx) => (
                             <div key={idx} className="flex flex-col">
                                 <span className="font-semibold text-gray-800 capitalize mb-1">{key}:</span>
-                                <span className="text-gray-700 text-sm whitespace-pre-wrap">{String(val)}</span>
+                                <div className="text-gray-700 text-sm prose prose-sm max-w-none dark:text-slate-300" dangerouslySetInnerHTML={renderMd(String(val))} />
                             </div>
                         ))}
                     </div>
@@ -137,8 +137,8 @@ export default function ExamQuestionCard({ question, index }: ExamQuestionCardPr
             <div className="p-5 flex flex-col gap-6">
                 {/* Statement */}
                 <div
-                    className="prose prose-sm max-w-none text-gray-800"
-                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(question.statement_html ? question.statement_html : (question.statement ? question.statement.replace(/\n/g, '<br/>') : '')) }}
+                    className="prose prose-sm max-w-none text-gray-800 dark:text-slate-300"
+                    dangerouslySetInnerHTML={renderMd(question.statement_html ? question.statement_html : (question.statement || ''))}
                 />
 
                 {/* Images */}
@@ -171,8 +171,8 @@ export default function ExamQuestionCard({ question, index }: ExamQuestionCardPr
                                             {alt.label}
                                         </div>
                                         <div
-                                            className="text-gray-700 text-sm mt-1"
-                                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(alt.content || '') }}
+                                            className="text-gray-700 text-sm mt-1 prose prose-sm max-w-none dark:text-slate-300"
+                                            dangerouslySetInnerHTML={renderMd(alt.content || '')}
                                         />
                                     </div>
                                 ))
