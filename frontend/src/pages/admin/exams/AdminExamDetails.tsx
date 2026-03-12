@@ -29,8 +29,8 @@ export default function AdminExamDetails() {
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto pb-10">
-            {/* Sticky Header */}
-            <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 sticky top-4 z-10 flex flex-col gap-2">
+            {/* Header */}
+            <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 flex flex-col gap-2">
                 <div className="flex justify-between items-center">
                     <button
                         onClick={() => navigate('/admin/provas')}
