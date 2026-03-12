@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useUIStore } from '../../stores/uiStore';
 import AdminDeleteQuestionModal from './components/AdminDeleteQuestionModal';
+import SmartPagination from './SmartPagination';
 
 export default function AdminQuestions() {
     const queryClient = useQueryClient();
@@ -397,20 +398,12 @@ export default function AdminQuestions() {
                         </div>
 
                         {/* Triage Pagination */}
-                        <div className="p-4 bg-gray-50/50 flex justify-center border-t border-gray-50">
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setTriagePage(p => Math.max(1, p - 1))}
-                                    disabled={triagePage === 1}
-                                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-xs font-bold disabled:opacity-50 hover:bg-gray-50 transition"
-                                >←</button>
-                                <span className="text-xs font-black self-center text-gray-400 px-4">PÁGINA {triagePage}</span>
-                                <button
-                                    onClick={() => setTriagePage(p => p + 1)}
-                                    disabled={pendingQuestions.data.length < 10}
-                                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-xs font-bold disabled:opacity-50 hover:bg-gray-50 transition"
-                                >→</button>
-                            </div>
+                        <div className="p-4 bg-gray-50/50 border-t border-gray-50">
+                            <SmartPagination
+                                currentPage={triagePage}
+                                lastPage={pendingQuestions.last_page || 1}
+                                onPageChange={setTriagePage}
+                            />
                         </div>
                     </div>
                 </div>
@@ -613,18 +606,11 @@ export default function AdminQuestions() {
                         {/* Main Pagination */}
                         <div className="p-6 bg-gray-50/30 border-t border-gray-100 flex items-center justify-between">
                             <span className="text-xs font-black text-gray-400 uppercase">Total: {questions.total} questões</span>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                                    disabled={page === 1}
-                                    className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-gray-50 transition"
-                                >Anterior</button>
-                                <button
-                                    onClick={() => setPage(p => p + 1)}
-                                    disabled={!questions.next_page_url}
-                                    className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-gray-50 transition"
-                                >Próxima</button>
-                            </div>
+                            <SmartPagination
+                                currentPage={page}
+                                lastPage={questions.last_page || 1}
+                                onPageChange={setPage}
+                            />
                         </div>
                     </>
                 )}
@@ -716,18 +702,11 @@ export default function AdminQuestions() {
                         {reportsData && (
                             <div className="p-6 bg-red-50/30 border-t border-red-50 flex items-center justify-between">
                                 <span className="text-xs font-black text-gray-500 uppercase">Total: {reportsData.total} relatadas</span>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setReportsPage(p => Math.max(1, p - 1))}
-                                        disabled={reportsPage === 1}
-                                        className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-gray-50 transition"
-                                    >Anterior</button>
-                                    <button
-                                        onClick={() => setReportsPage(p => p + 1)}
-                                        disabled={!reportsData.next_page_url}
-                                        className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-gray-50 transition"
-                                    >Próxima</button>
-                                </div>
+                                <SmartPagination
+                                    currentPage={reportsPage}
+                                    lastPage={reportsData.last_page || 1}
+                                    onPageChange={setReportsPage}
+                                />
                             </div>
                         )}
                     </>
@@ -810,20 +789,13 @@ export default function AdminQuestions() {
                         </div>
 
                         {trashedData?.questions && trashedData.questions.last_page > 1 && (
-                            <div className="p-6 bg-gray-50/50 border-t items-center justify-between flex">
+                            <div className="p-6 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
                                 <span className="text-xs font-black text-gray-500 uppercase">Página {trashedPage} de {trashedData.questions.last_page}</span>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setTrashedPage(p => Math.max(1, p - 1))}
-                                        disabled={trashedPage === 1}
-                                        className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-gray-50 transition"
-                                    >Anterior</button>
-                                    <button
-                                        onClick={() => setTrashedPage(p => p + 1)}
-                                        disabled={trashedPage >= trashedData.questions.last_page}
-                                        className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-gray-50 transition"
-                                    >Próxima</button>
-                                </div>
+                                <SmartPagination
+                                    currentPage={trashedPage}
+                                    lastPage={trashedData.questions.last_page || 1}
+                                    onPageChange={setTrashedPage}
+                                />
                             </div>
                         )}
                     </>

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
 import { toast } from 'sonner';
+import SmartPagination from '../../components/admin/SmartPagination';
 
 export default function ImportReviewIndex() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -226,21 +227,15 @@ export default function ImportReviewIndex() {
 
                                 {/* Pagination */}
                                 {pendingQuestions.last_page > 1 && (
-                                    <div className="flex justify-center gap-2 mt-6">
-                                        {Array.from({ length: pendingQuestions.last_page }, (_, i) => i + 1).map(p => (
-                                            <button
-                                                key={p}
-                                                onClick={() => {
-                                                    const newParams = new URLSearchParams(searchParams);
-                                                    newParams.set('page', p.toString());
-                                                    setSearchParams(newParams);
-                                                }}
-                                                className={`px-3 py-1 rounded ${page === p.toString() ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'}`}
-                                            >
-                                                {p}
-                                            </button>
-                                        ))}
-                                    </div>
+                                    <SmartPagination
+                                        currentPage={Number(page)}
+                                        lastPage={pendingQuestions.last_page}
+                                        onPageChange={(p) => {
+                                            const newParams = new URLSearchParams(searchParams);
+                                            newParams.set('page', p.toString());
+                                            setSearchParams(newParams);
+                                        }}
+                                    />
                                 )}
                             </>
                         ) : (
