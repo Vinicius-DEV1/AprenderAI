@@ -121,6 +121,7 @@ export default function ImportReview() {
 
     const hasImageModels = question?.images?.length > 0;
     const hasActiveEditor = hasImageModels;
+    const latestAILog = historyData?.find((log: any) => log.triage_type === 'ai_batch');
 
     const renderActions = (isCompact = false) => (
         <div className={`space-y-3 ${isCompact ? '' : 'p-5 bg-white rounded-xl shadow-sm border border-gray-100'}`}>
@@ -130,7 +131,7 @@ export default function ImportReview() {
                     Painel de Controle
                 </h3>
             )}
-            {question.review_status === 'pending' ? (
+            {question.review_status === 'pending' || question.review_status === 'review' ? (
                 <button
                     onClick={() => approveMutation.mutate()}
                     disabled={approveMutation.isPending}
@@ -176,8 +177,8 @@ export default function ImportReview() {
                     <h2 className="font-bold text-lg text-gray-800 leading-tight">
                         Questão #{question.id}
                     </h2>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${question.review_status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
-                        {question.review_status === 'pending' ? 'Pendente' : 'Aprovada'}
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${question.review_status === 'pending' || question.review_status === 'review' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                        {question.review_status === 'pending' || question.review_status === 'review' ? 'Em Revisão' : 'Aprovada'}
                     </span>
                 </div>
 
@@ -218,6 +219,33 @@ export default function ImportReview() {
                                     <div className="flex flex-col col-span-2 border-t border-gray-50 pt-2 mt-1">
                                         <dt className="text-gray-400 font-bold uppercase text-[9px]">Lote</dt>
                                         <dd className="text-gray-500 font-medium italic truncate">{importItem.import?.batch_name ?? '—'}</dd>
+                                    </div>
+                                )}
+                                {latestAILog && (
+                                    <div className="flex flex-col col-span-2 border-t border-gray-100 pt-3 mt-2">
+                                        <div className="flex justify-between items-center mb-1.5">
+                                            <dt className="text-indigo-500 font-bold uppercase text-[10px] flex items-center gap-1.5 tracking-wider">
+                                                <span>🤖</span> Análise da IA
+                                            </dt>
+                                            {latestAILog.quality_score !== null && (
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${latestAILog.quality_score >= 80 ? 'bg-green-100 text-green-700' : latestAILog.quality_score >= 60 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                                                    Score: {latestAILog.quality_score}/100
+                                                </span>
+                                            )}
+                                        </div>
+                                        <dd className="flex flex-wrap gap-1 mt-1">
+                                            {latestAILog.issues_detected?.length > 0 ? (
+                                                latestAILog.issues_detected.map((iss: string) => (
+                                                    <span key={iss} className="px-1.5 py-0.5 bg-red-50 text-red-700 text-[10px] uppercase font-bold tracking-wider rounded border border-red-100 flex items-center gap-1">
+                                                        <span>🚫</span> {iss.replace(/_/g, ' ')}
+                                                    </span>
+                                                ))
+                                            ) : (
+                                                <span className="px-1.5 py-0.5 bg-green-50 text-green-700 text-[10px] uppercase font-bold tracking-wider rounded border border-green-100 flex items-center gap-1">
+                                                    <span>✅</span> Sem problemas
+                                                </span>
+                                            )}
+                                        </dd>
                                     </div>
                                 )}
                             </div>

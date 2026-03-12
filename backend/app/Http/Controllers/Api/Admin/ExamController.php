@@ -127,22 +127,45 @@ class ExamController extends Controller
     {
         $examId = base64_decode($id);
 
-        $query = Question::with(['alternatives', 'images', 'discursiveResponses']);
+        $query = Question::with([
+            'alternatives',
+            'images',
+            'discursiveResponses',
+            'triageLogs' => function ($q) {
+                // Eager load only the latest log to save bandwidth
+                $q->orderByDesc('created_at')->limit(1);
+            }
+        ]);
 
         if (!empty($examId) && $examId !== 'null') {
             $query->where('arquivo_origem', $examId);
         } else {
+            $query->whereNull('arquivo_origem');
+
             // Complex fallback if arquivo_origem is null, using other metadata
-            // Realistically, we should pass year/org/inst/role in query params 
-            // if we are trying to find an exam without an arquivo_origem.
-            if ($request->filled('year'))
+            if ($request->filled('year')) {
                 $query->where('year', $request->year);
-            if ($request->filled('organization'))
+            } else {
+                $query->whereNull('year');
+            }
+
+            if ($request->filled('organization')) {
                 $query->where('organization', $request->organization);
-            if ($request->filled('institution'))
+            } else {
+                $query->whereNull('organization');
+            }
+
+            if ($request->filled('institution')) {
                 $query->where('institution', $request->institution);
-            if ($request->filled('role'))
+            } else {
+                $query->whereNull('institution');
+            }
+
+            if ($request->filled('role')) {
                 $query->where('role', $request->role);
+            } else {
+                $query->whereNull('role');
+            }
         }
 
         // Must be exactly ID ASC down to the chronological timeline of the PDF parsing.
