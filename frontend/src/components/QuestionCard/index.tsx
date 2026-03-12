@@ -27,6 +27,9 @@ interface Question {
     id: number;
     year?: number;
     organization?: string;
+    institution?: string;
+    role?: string;
+    arquivo_origem?: string;
     source: string;
     subjects: { id: number; name: string }[];
     topics: { id: number; name: string }[];
@@ -531,6 +534,27 @@ export default function QuestionCard({
                         <>
                             <button onClick={() => navigate(`/admin/questions/${q.id}/edit`)} className="p-1.5 rounded-md text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors" title="Editar Questão">✏️</button>
                             <button onClick={() => setShowRevertModal(true)} className="p-1.5 rounded-md text-gray-400 hover:bg-amber-50 hover:text-amber-600 transition-colors" title="Retornar para Triagem">🔄</button>
+                            {(() => {
+                                const idParam = q.arquivo_origem ? btoa(q.arquivo_origem) : 'null';
+                                const examParams = new URLSearchParams();
+                                if (!q.arquivo_origem) {
+                                    if (q.year) examParams.append('year', q.year.toString());
+                                    if (q.organization) examParams.append('organization', q.organization);
+                                    if (q.institution) examParams.append('institution', q.institution);
+                                    if (q.role) examParams.append('role', q.role);
+                                }
+                                const examUrl = `/admin/provas/${idParam}${examParams.toString() ? '?' + examParams.toString() : ''}`;
+
+                                return (
+                                    <button
+                                        onClick={() => window.open(examUrl, '_blank')}
+                                        className="p-1.5 rounded-md text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                                        title="Ver Prova Completa"
+                                    >
+                                        📄
+                                    </button>
+                                );
+                            })()}
                         </>
                     )}
                 </div>
