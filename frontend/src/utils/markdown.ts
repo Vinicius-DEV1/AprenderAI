@@ -38,7 +38,7 @@ export const renderMd = (text: string) => {
     // 1. Render block math $$ ... $$
     processedText = processedText.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
         try {
-            return `<div class="katex-block-wrapper my-2">${katex.renderToString(formula, { displayMode: true, throwOnError: false })}</div>`;
+            return `<div class="katex-block-wrapper my-2">${katex.renderToString(formula, { displayMode: true, throwOnError: false, trust: true })}</div>`;
         } catch (e) {
             return match;
         }
@@ -47,7 +47,7 @@ export const renderMd = (text: string) => {
     // 2. Render block math \[ ... \]
     processedText = processedText.replace(/\\\[([\s\S]*?)\\\]/g, (match, formula) => {
         try {
-            return `<div class="katex-block-wrapper my-2">${katex.renderToString(formula, { displayMode: true, throwOnError: false })}</div>`;
+            return `<div class="katex-block-wrapper my-2">${katex.renderToString(formula, { displayMode: true, throwOnError: false, trust: true })}</div>`;
         } catch (e) {
             return match;
         }
@@ -56,7 +56,7 @@ export const renderMd = (text: string) => {
     // 3. Render inline math \( ... \)
     processedText = processedText.replace(/\\\(([\s\S]*?)\\\)/g, (match, formula) => {
         try {
-            return katex.renderToString(formula, { displayMode: false, throwOnError: false });
+            return katex.renderToString(formula, { displayMode: false, throwOnError: false, trust: true });
         } catch (e) {
             return match;
         }
@@ -67,7 +67,7 @@ export const renderMd = (text: string) => {
     // Usually $ should be followed by a non-whitespace and preceded by a space or start of line.
     processedText = processedText.replace(/(^|[^\\])\$([\s\S]*?)\$/g, (match, prefix, formula) => {
         try {
-            return `${prefix}${katex.renderToString(formula, { displayMode: false, throwOnError: false })}`;
+            return `${prefix}${katex.renderToString(formula, { displayMode: false, throwOnError: false, trust: true })}`;
         } catch (e) {
             return match;
         }

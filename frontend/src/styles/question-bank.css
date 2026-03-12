@@ -1406,4 +1406,14 @@
     border-color: currentColor !important;
     opacity: 0.8;
 }
+
+/* Specific support for tabular and arrays with grids */
+.katex .mtable .array-cell {
+    border: 0.5px solid currentColor !important;
+    padding: 2px 4px !important;
+}
+
+.katex .mtable .vlist-t {
+    border-color: currentColor !important;
+}
 
