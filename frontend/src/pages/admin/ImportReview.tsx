@@ -17,9 +17,9 @@ export default function ImportReview() {
     const queryClient = useQueryClient();
 
     const { data, isLoading } = useQuery({
-        queryKey: ['admin-import-review', id],
+        queryKey: ['admin-import-review', id, Object.fromEntries(searchParams)],
         queryFn: async () => {
-            const res = await api.get(`/api/v1/admin/import/review/${id}`);
+            const res = await api.get(`/api/v1/admin/import/review/${id}`, { params: Object.fromEntries(searchParams) });
             return res.data;
         }
     });
@@ -162,6 +162,24 @@ export default function ImportReview() {
                 >
                     ⬅️ Sair
                 </Link>
+            </div>
+
+            {/* Navigation Buttons */}
+            <div className="grid grid-cols-2 gap-2 mt-2">
+                <button
+                    disabled={!data?.prev_id}
+                    onClick={() => navigate(`/admin/import/review/${data.prev_id}?${searchParams.toString()}`)}
+                    className="px-3 py-2 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
+                >
+                    ◄ Ant.
+                </button>
+                <button
+                    disabled={!data?.next_id}
+                    onClick={() => navigate(`/admin/import/review/${data.next_id}?${searchParams.toString()}`)}
+                    className="px-3 py-2 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
+                >
+                    Próx. ►
+                </button>
             </div>
 
             {/* View Full Exam Button */}
