@@ -168,13 +168,14 @@ export default function ImportIndex() {
             case 'processing': return { class: 'bg-blue-100 text-blue-700', label: '⏳ Processando' };
             case 'completed': return { class: 'bg-green-100 text-green-700', label: '✅ Concluído' };
             case 'failed': return { class: 'bg-red-100 text-red-700', label: '❌ Falhou' };
+            case 'reverted': return { class: 'bg-amber-100 text-amber-700', label: '⏪ Revertido' };
             default: return { class: 'bg-gray-100 text-gray-600', label: status || 'N/A' };
         }
     };
 
     return (
         <div className="py-12">
-            <div className="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
+            <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
 
                 {/* Header */}
                 <div className="flex justify-between items-center mb-6">
@@ -348,21 +349,26 @@ export default function ImportIndex() {
                                                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.class}`}>{statusInfo.label}</span>
                                                 </td>
                                                 <td className="px-4 py-3 text-xs text-gray-500">{imp.created_at ? new Date(imp.created_at).toLocaleDateString() : 'N/A'}</td>
-                                                <td className="px-4 py-3">
+                                                <td className="px-4 py-3 text-right">
                                                     <div className="flex items-center gap-2 justify-end">
-                                                        {(imp.pending_count || 0) > 0 && (
+                                                        <Link to={`/admin/import/${imp.id}/summary`} className="px-3 py-1 bg-indigo-50 text-indigo-600 border border-indigo-200 text-xs rounded hover:bg-indigo-100 font-medium whitespace-nowrap">
+                                                            Visualizar Importação
+                                                        </Link>
+                                                        {imp.status !== 'reverted' && (imp.pending_count || 0) > 0 && (
                                                             <Link to={`/admin/import/review?import_id=${imp.id}`} className="px-3 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600 font-medium">
                                                                 Revisar
                                                             </Link>
                                                         )}
-                                                        <button
-                                                            onClick={() => handleDeleteBatch(imp.id)}
-                                                            className="px-3 py-1 bg-red-50 text-red-600 text-xs rounded hover:bg-red-100 font-medium flex items-center gap-1 border border-red-200 transition-colors whitespace-nowrap"
-                                                            title="Desfazer e excluir pacote completo"
-                                                        >
-                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                                            Desfazer
-                                                        </button>
+                                                        {imp.status !== 'reverted' && imp.status !== 'processing' && (
+                                                            <button
+                                                                onClick={() => handleDeleteBatch(imp.id)}
+                                                                className="px-3 py-1 bg-red-50 text-red-600 text-xs rounded hover:bg-red-100 font-medium flex items-center gap-1 border border-red-200 transition-colors whitespace-nowrap"
+                                                                title="Desfazer e excluir pacote completo"
+                                                            >
+                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                                Desfazer
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>

@@ -68,6 +68,7 @@ import AdminPromptEditor from './pages/admin/PromptEditor';
 import AdminSettings from './pages/admin/CacheSettings';
 import AdminPaymentSettings from './pages/admin/PaymentSettings';
 import AdminImport from './pages/admin/ImportIndex';
+import AdminImportSummary from './pages/admin/AdminImportSummary';
 import AdminImportReviewIndex from './pages/admin/ImportReviewIndex';
 import AdminImportReview from './pages/admin/ImportReview';
 import EnemImport from './pages/admin/EnemImport';
@@ -247,6 +248,7 @@ function App() {
 
                             <Route path="enem-import" element={<><MetaTags title="Admin: Importação ENEM" /><EnemImport /></>} />
                             <Route path="import" element={<><MetaTags title="Admin: Importação" /><AdminImport /></>} />
+                            <Route path="import/:import_id/summary" element={<><MetaTags title="Admin: Resumo de Importação" /><AdminImportSummary /></>} />
                             <Route path="import/review" element={<><MetaTags title="Admin: Revisão - Lista" /><AdminImportReviewIndex /></>} />
                             <Route path="import/review/:id" element={<><MetaTags title="Admin: Inspeção de Questão" /><AdminImportReview /></>} />
 

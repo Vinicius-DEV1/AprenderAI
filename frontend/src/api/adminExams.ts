@@ -26,6 +26,7 @@ export const getAdminExamsList = async (page: number = 1, filters?: any): Promis
         if (filters.institution) url += `&institution=${filters.institution}`;
         if (filters.role) url += `&role=${filters.role}`;
         if (filters.sort) url += `&sort=${filters.sort}`;
+        if (filters.import_id) url += `&import_id=${filters.import_id}`;
     }
     const response = await axios.get(url);
     return response.data;
@@ -40,6 +41,7 @@ export const getAdminExamDetails = async (encodedId: string, filters?: any): Pro
         if (filters.organization) params.append('organization', filters.organization);
         if (filters.institution) params.append('institution', filters.institution);
         if (filters.role) params.append('role', filters.role);
+        if (filters.import_id) params.append('import_id', filters.import_id);
         url += params.toString();
     }
     const response = await axios.get(url);

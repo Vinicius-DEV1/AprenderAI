@@ -5,7 +5,6 @@ import { useAuthStore } from '../stores/authStore';
 import { logout as apiLogout } from '../api/auth';
 import { useUIStore } from '../stores/uiStore';
 import { useQueryClient } from '@tanstack/react-query';
-import EmailVerificationBanner from '../components/EmailVerificationBanner';
 
 export default function AppLayout() {
     const config = useConfigStore();
