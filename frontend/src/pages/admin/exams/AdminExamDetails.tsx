@@ -24,14 +24,14 @@ export default function AdminExamDetails() {
     });
 
     const questions = response?.data || [];
-    const [visibleCount, setVisibleCount] = useState(5);
+    const [visibleCount, setVisibleCount] = useState(10);
     const observerTarget = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const observer = new IntersectionObserver(
             entries => {
                 if (entries[0].isIntersecting) {
-                    setVisibleCount(prev => Math.min(prev + 5, questions.length));
+                    setVisibleCount(prev => Math.min(prev + 10, questions.length));
                 }
             },
             { threshold: 0.1, rootMargin: '200px' }

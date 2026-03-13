@@ -30,6 +30,9 @@ export const renderMd = (text: string) => {
     // Fix LaTeX format escaping corruption: backend sends \frac, but JS JSON parsers sometimes see \f as form-feed
     processedText = processedText.replace(/\f/g, '\\f');
 
+    // Fix literal '\n' strings that come escaped from the backend JSON payload
+    processedText = processedText.replace(/\\n/g, '\n');
+
     // Fix Markdown Image URLs: ![alt](/storage/path) or ![alt](storage/path)
     processedText = processedText.replace(/!\[(.*?)\]\(\s*(\/?storage\/.*?)\s*\)/g, (_, alt, url) => {
         const cleanUrl = url.trim().replace(/^\//, ''); // remove leading slash
