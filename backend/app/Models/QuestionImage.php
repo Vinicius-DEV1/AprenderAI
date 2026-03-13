@@ -19,7 +19,7 @@ class QuestionImage extends Model
     public function getImageUrlAttribute()
     {
         if (!$this->path) return null;
-        return \Illuminate\Support\Facades\Storage::disk('public')->url($this->path);
+        return '/storage/' . ltrim($this->path, '/');
     }
 
     public function question()

@@ -310,9 +310,9 @@ class Question extends Model
                 $alt = $matches[1];
                 $url = $matches[2];
 
-                // Se o caminho for relativo ao nosso storage (questoes/...), gera a URL completa
+                // Se o caminho for relativo ao nosso storage (questoes/...), gera a URL relativa correta
                 if (!str_starts_with($url, 'http') && (str_starts_with($url, 'questoes/') || str_starts_with($url, '/questoes/'))) {
-                    $url = \Illuminate\Support\Facades\Storage::disk('public')->url(ltrim($url, '/'));
+                    $url = '/storage/' . ltrim($url, '/');
                 }
 
                 return '<img src="' . $url . '" alt="' . $alt . '" class="max-w-full h-auto rounded-lg my-4 mx-auto block shadow-sm" loading="lazy">';
