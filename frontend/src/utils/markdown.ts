@@ -4,7 +4,6 @@ import DOMPurify from 'dompurify';
 
 marked.setOptions({ breaks: true, gfm: true });
 
-const apiUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
 
 export const renderMd = (text: string) => {
     if (!text) return { __html: '' };
@@ -27,6 +26,7 @@ export const renderMd = (text: string) => {
         .replace(/&lt;\/details&gt;/gi, '</details>')
         .replace(/&lt;summary&gt;/gi, '<summary>')
         .replace(/&lt;\/summary&gt;/gi, '</summary>')
+        .replace(/&lt;img\s+(.*?)\s*&gt;/gi, '<img $1>')
         .replace(/&lt;br\s*\/?&gt;/gi, '<br>')
         .replace(/&#0?39;/g, "'")
         .replace(/&quot;/g, '"');
@@ -47,9 +47,8 @@ export const renderMd = (text: string) => {
 
     // Fix Markdown Image URLs: ![alt](/storage/path) or ![alt](storage/path)
     processedText = processedText.replace(/!\[(.*?)\]\(\s*(\/?storage\/.*?)\s*\)/g, (_, alt, url) => {
-        const cleanUrl = url.trim().replace(/^\//, ''); // remove leading slash
-        const absoluteUrl = `${apiUrl}/${cleanUrl}`.replace(/([^:])\/\//g, '$1/'); // prevent double slashes but keep http://
-        return `![${alt}](${absoluteUrl})`;
+        const cleanUrl = url.trim().replace(/^\/?storage\//, '').replace(/^\//, ''); 
+        return `![${alt}](/storage/${cleanUrl})`;
     });
 
     // Prevention: Escape numeric starts that look like list items (e.g. "30.")
@@ -60,9 +59,8 @@ export const renderMd = (text: string) => {
 
     // Fix HTML Image URLs: src="/storage/path" or src="storage/path"
     processedText = processedText.replace(/src=["']\s*(\/?storage\/.*?)\s*["']/g, (_, url) => {
-        const cleanUrl = url.trim().replace(/^\//, '');
-        const absoluteUrl = `${apiUrl}/${cleanUrl}`.replace(/([^:])\/\//g, '$1/');
-        return `src="${absoluteUrl}"`;
+        const cleanUrl = url.trim().replace(/^\/?storage\//, '').replace(/^\//, '');
+        return `src="/storage/${cleanUrl}"`;
     });
 
     // --- LaTeX Delimiters Logic (Placeholder System) ---
@@ -129,9 +127,9 @@ export const renderMd = (text: string) => {
     });
 
     try {
-        return { __html: DOMPurify.sanitize(html, { ADD_TAGS: ['u', 'details', 'summary'] }) };
+        return { __html: DOMPurify.sanitize(html, { ADD_TAGS: ['u', 'details', 'summary', 'img'], ADD_ATTR: ['src', 'alt', 'class', 'loading'] }) };
     } catch (e) {
-        return { __html: DOMPurify.sanitize(processedText, { ADD_TAGS: ['u', 'details', 'summary'] }) };
+        return { __html: DOMPurify.sanitize(processedText, { ADD_TAGS: ['u', 'details', 'summary', 'img'], ADD_ATTR: ['src', 'alt', 'class', 'loading'] }) };
     }
 };
 
