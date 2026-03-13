@@ -247,7 +247,7 @@ details > *:not(summary) {
 }
 
 details > summary + * {
-    @apply pt-2;
+    @apply pt-2 mt-0;
 }
 
 details > *:last-child {
