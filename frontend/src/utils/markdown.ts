@@ -23,6 +23,10 @@ export const renderMd = (text: string) => {
         .replace(/&lt;\/strong&gt;/gi, '</strong>')
         .replace(/&lt;em&gt;/gi, '<em>')
         .replace(/&lt;\/em&gt;/gi, '</em>')
+        .replace(/&lt;details&gt;/gi, '<details>')
+        .replace(/&lt;\/details&gt;/gi, '</details>')
+        .replace(/&lt;summary&gt;/gi, '<summary>')
+        .replace(/&lt;\/summary&gt;/gi, '</summary>')
         .replace(/&lt;br\s*\/?&gt;/gi, '<br>')
         .replace(/&#0?39;/g, "'")
         .replace(/&quot;/g, '"');
@@ -117,9 +121,9 @@ export const renderMd = (text: string) => {
     });
 
     try {
-        return { __html: DOMPurify.sanitize(html, { ADD_TAGS: ['u'] }) };
+        return { __html: DOMPurify.sanitize(html, { ADD_TAGS: ['u', 'details', 'summary'] }) };
     } catch (e) {
-        return { __html: DOMPurify.sanitize(processedText, { ADD_TAGS: ['u'] }) };
+        return { __html: DOMPurify.sanitize(processedText, { ADD_TAGS: ['u', 'details', 'summary'] }) };
     }
 };
 

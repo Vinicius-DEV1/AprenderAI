@@ -205,3 +205,47 @@ input:focus {
     @apply bg-slate-800 border-slate-700 text-white;
     border-color: #334155 !important;
 }
+/* Premium Details/Summary Styling */
+details {
+    @apply bg-white border border-slate-200 rounded-xl overflow-hidden transition-all duration-300 shadow-sm my-4 w-full;
+}
+
+details[open] {
+    @apply shadow-md border-indigo-200 ring-1 ring-indigo-50;
+}
+
+summary {
+    @apply flex items-center gap-2 p-4 font-bold text-slate-700 cursor-pointer transition-all duration-200 list-none select-none;
+    background: linear-gradient(to right, #f8fafc, #ffffff);
+}
+
+summary:hover {
+    @apply bg-slate-50 text-indigo-600 translate-x-1;
+}
+
+summary::-webkit-details-marker {
+    display: none;
+}
+
+/* Custom indicator if needed, but the emoji is already there */
+summary::after {
+    content: '↓';
+    @apply ml-auto text-slate-300 transition-transform duration-300 font-normal;
+}
+
+details[open] summary::after {
+    @apply rotate-180 text-indigo-500;
+}
+
+details[open] summary {
+    @apply border-b border-slate-100 bg-white text-indigo-700;
+}
+
+/* Ensure content inside details has padding */
+details > *:not(summary) {
+    @apply px-6 py-4;
+}
+
+details p {
+    @apply mb-4 last:mb-0;
+}
