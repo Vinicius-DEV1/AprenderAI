@@ -14,6 +14,7 @@ export default function AdminExamDetails() {
     if (searchParams.get('organization')) filters.organization = searchParams.get('organization');
     if (searchParams.get('institution')) filters.institution = searchParams.get('institution');
     if (searchParams.get('role')) filters.role = searchParams.get('role');
+    if (searchParams.get('import_id')) filters.import_id = searchParams.get('import_id');
 
     const { data: response, isLoading, isError } = useQuery({
         queryKey: ['adminExamDetails', id, filters],
@@ -33,7 +34,7 @@ export default function AdminExamDetails() {
             <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 flex flex-col gap-2">
                 <div className="flex justify-between items-center">
                     <button
-                        onClick={() => navigate('/admin/provas')}
+                        onClick={() => navigate(filters.import_id ? `/admin/import/${filters.import_id}/summary` : '/admin/provas')}
                         className="flex items-center text-sm text-gray-700 hover:text-primary-600 font-medium"
                     >
                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

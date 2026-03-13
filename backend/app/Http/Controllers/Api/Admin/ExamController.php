@@ -38,6 +38,9 @@ class ExamController extends Controller
         if ($request->filled('role')) {
             $query->where('role', 'like', '%' . $request->role . '%');
         }
+        if ($request->filled('import_id')) {
+            $query->whereHas('importItem', fn($q) => $q->where('import_id', $request->import_id));
+        }
 
         // Sorting
         $sort = $request->get('sort', 'last_update');
@@ -200,6 +203,13 @@ class ExamController extends Controller
                 $query->whereNull('role');
             }
         }
+
+        if ($request->filled('import_id')) {
+            $query->whereHas('importItem', function ($q) use ($request) {
+                $q->where('import_id', $request->import_id);
+            });
+        }
+
 
         // Must be exactly ID ASC down to the chronological timeline of the PDF parsing.
         $questions = $query->orderBy('id', 'asc')->get();

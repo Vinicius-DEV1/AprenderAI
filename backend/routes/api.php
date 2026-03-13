@@ -51,6 +51,9 @@ Route::prefix('v1')->group(function () {
     // Público
     Route::get('/config', [ConfigController::class, 'index'])->name('api.config');
     Route::post('/login', [AuthController::class, 'login'])->name('api.login');
+    Route::get('/login', function () {
+        return response()->json(['message' => 'Unauthenticated.'], 401);
+    })->name('login');
     Route::post('/register', [AuthController::class, 'register'])->name('api.register');
 
     // Verificacao via URL enviada por Email (agora com prefixo api. automatico)

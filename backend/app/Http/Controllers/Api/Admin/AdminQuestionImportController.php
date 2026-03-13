@@ -178,13 +178,18 @@ class AdminQuestionImportController extends Controller
                 // Delete items explicitly (cascade would work but this is safer for auditing)
                 \App\Models\QuestionImportItem::where('import_id', $import->id)->delete();
 
-                // Delete the import record itself
-                $import->delete();
+                // Instead of deleting the record, mark as reverted and reset counts
+                $import->update([
+                    'status' => 'reverted',
+                    'pending_count' => 0,
+                    'approved_count' => 0,
+                    'processed_questions' => 0,
+                ]);
             });
 
             return response()->json([
                 'success' => true,
-                'message' => 'Lote revertido e excluído com sucesso.'
+                'message' => 'Lote revertido com sucesso (Log mantido).'
             ]);
         } catch (\Exception $e) {
             Log::error("[AdminQuestionImportController] Error rolling back batch {$id}: " . $e->getMessage());

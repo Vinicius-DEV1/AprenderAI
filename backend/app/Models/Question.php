@@ -36,11 +36,15 @@ class Question extends Model
         'origin',
         'source_url',
         'extracted_at',
+        'last_scraped_at',
+        'scraper_update_count',
     ];
 
     protected $casts = [
         'format' => 'string',
         'discursive_answer' => 'array',
+        'last_scraped_at' => 'datetime',
+        'scraper_update_count' => 'integer',
     ];
 
     /**
@@ -300,9 +304,19 @@ class Question extends Model
         // 2. Processar Imagens Markdown: ![](URL) -> <img ...>
         // O regex busca a sintaxe Markdown de imagem e converte para uma tag <img>
         // com classes CSS pré-definidas para garantir boa exibição e centralização.
-        $html = preg_replace(
+        $html = preg_replace_callback(
             '/!\[(.*?)\]\((.*?)\)/',
-            '<img src="$2" alt="$1" class="max-w-full h-auto rounded-lg my-4 mx-auto block shadow-sm" loading="lazy">',
+            function ($matches) {
+                $alt = $matches[1];
+                $url = $matches[2];
+
+                // Se o caminho for relativo ao nosso storage (questoes/...), gera a URL completa
+                if (!str_starts_with($url, 'http') && (str_starts_with($url, 'questoes/') || str_starts_with($url, '/questoes/'))) {
+                    $url = \Illuminate\Support\Facades\Storage::disk('public')->url(ltrim($url, '/'));
+                }
+
+                return '<img src="' . $url . '" alt="' . $alt . '" class="max-w-full h-auto rounded-lg my-4 mx-auto block shadow-sm" loading="lazy">';
+            },
             $html
         );
 

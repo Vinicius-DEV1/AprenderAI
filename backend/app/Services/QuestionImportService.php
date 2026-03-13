@@ -324,6 +324,8 @@ class QuestionImportService
                     $status = 'review';
                 }
 
+                $extractedAt = !empty($qData['extracted_at']) ? \Carbon\Carbon::parse($qData['extracted_at']) : null;
+
                 $payload = [
                     'type' => 'concurso',
                     'institution' => $qData['institution'] ?? null,
@@ -343,10 +345,33 @@ class QuestionImportService
                     'source_url' => $qData['source_url'] ?? null,
                     'extracted_at' => $qData['extracted_at'] ?? null,
                     'content_hash' => $incomingHash,
-                    'updated_at' => $qData['updated_at'] ?? now(),
                 ];
 
                 if ($existingQuestion) {
+                    $lastScraped = $existingQuestion->last_scraped_at;
+                    
+                    // Proteção de Edição Manual: se o humano alterou via sistema ($updated_at > $last_scraped_at)
+                    if ($existingQuestion->updated_at && $lastScraped && $existingQuestion->updated_at->gt($lastScraped)) {
+                        $stats['skipped']++;
+                        $stats['total']++;
+                        return; // Edição manual intocável. Ignore.
+                    }
+
+                    // Se não tiver data de extração no zip (o que é raro mas possível) pula pra hash
+                    if ($extractedAt) {
+                        // Se a data de extração vinda do ZIP for MENOR ou IGUAL ao que já tínhamos salvo no banco, IGNORE.
+                        if ($lastScraped && $extractedAt->lte($lastScraped)) {
+                            $stats['skipped']++;
+                            $stats['total']++;
+                            return; 
+                        }
+                    }
+
+                    // Se passou das travas acima, significa que ou o scraper extraiu de novo (data maior) ou nós forçamos
+                    $payload['updated_at'] = now();
+                    $payload['last_scraped_at'] = $extractedAt ?? now();
+                    $payload['scraper_update_count'] = $existingQuestion->scraper_update_count + 1;
+
                     // Update existente
                     $existingQuestion->update($payload);
                     $question = $existingQuestion;
@@ -361,6 +386,9 @@ class QuestionImportService
                 } else {
                     // Cria nova
                     $payload['external_id'] = $externalId;
+                    $payload['updated_at'] = $qData['updated_at'] ?? now();
+                    $payload['last_scraped_at'] = $extractedAt ?? now();
+                    $payload['scraper_update_count'] = 0;
                     $question = Question::create($payload);
                 }
 

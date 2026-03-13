@@ -14,6 +14,14 @@ class QuestionImage extends Model
         'path',
     ];
 
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute()
+    {
+        if (!$this->path) return null;
+        return \Illuminate\Support\Facades\Storage::disk('public')->url($this->path);
+    }
+
     public function question()
     {
         return $this->belongsTo(Question::class);
