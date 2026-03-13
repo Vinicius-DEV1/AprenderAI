@@ -4,6 +4,7 @@ import DOMPurify from 'dompurify';
 
 marked.setOptions({ breaks: true, gfm: true });
 
+const apiUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
 
 export const renderMd = (text: string) => {
     if (!text) return { __html: '' };
@@ -45,10 +46,10 @@ export const renderMd = (text: string) => {
     // Fix literal '\n' strings that come escaped from the backend JSON payload
     processedText = processedText.replace(/\\n/g, '\n');
 
-    // Fix Markdown Image URLs: ![alt](/storage/path) or ![alt](storage/path)
-    processedText = processedText.replace(/!\[(.*?)\]\(\s*(\/?storage\/.*?)\s*\)/g, (_, alt, url) => {
+    // Fix Markdown Image URLs: ![alt](/storage/path), ![alt](storage/path), ![alt](questoes/path)
+    processedText = processedText.replace(/!\[(.*?)\]\(\s*(\/?(?:storage\/|questoes\/).*?)\s*\)/g, (_, alt, url) => {
         const cleanUrl = url.trim().replace(/^\/?storage\//, '').replace(/^\//, ''); 
-        return `![${alt}](/storage/${cleanUrl})`;
+        return `![${alt}](${apiUrl}/storage/${cleanUrl})`;
     });
 
     // Prevention: Escape numeric starts that look like list items (e.g. "30.")
@@ -57,10 +58,10 @@ export const renderMd = (text: string) => {
         processedText = processedText.replace(/^(\d+)\./, '$1\\.');
     }
 
-    // Fix HTML Image URLs: src="/storage/path" or src="storage/path"
-    processedText = processedText.replace(/src=["']\s*(\/?storage\/.*?)\s*["']/g, (_, url) => {
+    // Fix HTML Image URLs: src="/storage/path", src="storage/path", src="questoes/path"
+    processedText = processedText.replace(/src=["']\s*(\/?(?:storage\/|questoes\/).*?)\s*["']/g, (_, url) => {
         const cleanUrl = url.trim().replace(/^\/?storage\//, '').replace(/^\//, '');
-        return `src="/storage/${cleanUrl}"`;
+        return `src="${apiUrl}/storage/${cleanUrl}"`;
     });
 
     // --- LaTeX Delimiters Logic (Placeholder System) ---
