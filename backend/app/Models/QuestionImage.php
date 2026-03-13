@@ -18,8 +18,7 @@ class QuestionImage extends Model
 
     public function getImageUrlAttribute()
     {
-        if (!$this->path) return null;
-        return '/storage/' . ltrim($this->path, '/');
+        return '/storage/' . ltrim($this->path ?? '', '/');
     }
 
     public function question()
