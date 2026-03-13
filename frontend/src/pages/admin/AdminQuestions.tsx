@@ -131,13 +131,14 @@ export default function AdminQuestions() {
 
     const questions = data.questions || { data: [], total: 0 };
     const pendingQuestions = data.pendingQuestions || { data: [] };
-    const meta = data.meta || { total_questions: 0, ai_questions: 0 };
+    const meta = { total_questions: 0, ai_questions: 0, published_questions: 0, ...(data.meta || {}) };
     const counts = data.counts || { pending_total: 0, missing_difficulty: 0, missing_explanation: 0, missing_classification: 0, both_missing: 0 };
     const availableSubjects = data.availableSubjects || [];
     const availableOrganizations = data.availableOrganizations || [];
 
     const stats = [
         { label: 'Total Geral', value: meta.total_questions, color: 'indigo', org: null },
+        { label: 'Total Aprovadas', value: meta.published_questions, color: 'emerald', org: null },
         { label: 'Inéditas IA', value: meta.ai_questions, color: 'purple', org: null },
         ...(meta.questions_by_organization || []).map((org: any) => ({
             label: org.organization,
@@ -149,6 +150,10 @@ export default function AdminQuestions() {
 
     return (
         <div className="p-4 md:p-6 w-full space-y-6 animate-in fade-in duration-500 bg-gray-50/30 min-h-screen">
+            {/* Debug Info (Always visible for now) */}
+            <div className="bg-amber-50 p-2 text-[10px] font-mono border border-amber-200 rounded text-amber-800 flex flex-wrap gap-4">
+               <span>DEBUG: {JSON.stringify(meta)}</span>
+            </div>
             {/* Header */}
             <div className="flex justify-between items-end">
                 <div>
@@ -161,7 +166,7 @@ export default function AdminQuestions() {
             </div>
 
             {/* Mini Dashboard */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-6">
                 {stats.map((s, i) => (
                     <div
                         key={i}
@@ -175,7 +180,7 @@ export default function AdminQuestions() {
                         <div className="flex items-end justify-between mt-4">
                             <span className={`text-4xl font-black text-${s.color}-600`}>{s.value}</span>
                             <span className={`w-8 h-8 rounded-lg bg-${s.color}-50 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition`}>
-                                {s.org ? '🔍' : '📈'}
+                                {s.org ? '🔍' : (s.color === 'emerald' ? '✅' : '📈')}
                             </span>
                         </div>
                     </div>

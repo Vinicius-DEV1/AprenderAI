@@ -8,6 +8,7 @@ export interface AdminExamSummary {
     institution: string | null;
     role: string | null;
     total_questions: number;
+    last_update: string;
 }
 
 export interface AdminExamsResponse {
@@ -23,6 +24,8 @@ export const getAdminExamsList = async (page: number = 1, filters?: any): Promis
         if (filters.year) url += `&year=${filters.year}`;
         if (filters.organization) url += `&organization=${filters.organization}`;
         if (filters.institution) url += `&institution=${filters.institution}`;
+        if (filters.role) url += `&role=${filters.role}`;
+        if (filters.sort) url += `&sort=${filters.sort}`;
     }
     const response = await axios.get(url);
     return response.data;

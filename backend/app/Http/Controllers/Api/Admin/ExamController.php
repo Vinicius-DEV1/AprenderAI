@@ -21,7 +21,8 @@ class ExamController extends Controller
             'organization',
             'institution',
             'role',
-            DB::raw('COUNT(*) as total_questions')
+            DB::raw('COUNT(*) as total_questions'),
+            DB::raw('MAX(id) as latest_id')
         )
             ->groupBy('arquivo_origem', 'year', 'organization', 'institution', 'role');
 
@@ -34,12 +35,44 @@ class ExamController extends Controller
         if ($request->filled('institution')) {
             $query->where('institution', 'like', '%' . $request->institution . '%');
         }
+        if ($request->filled('role')) {
+            $query->where('role', 'like', '%' . $request->role . '%');
+        }
 
-        // Order by year descending and organization
-        $query->orderBy('year', 'desc')
-            ->orderBy('organization', 'asc');
+        // Sorting
+        $sort = $request->get('sort', 'last_update');
+        $direction = $request->get('direction', 'desc');
+
+        if ($sort === 'year') {
+            $query->orderBy('year', $direction)
+                ->orderBy('organization', 'asc');
+        } else {
+            // High-performance sorting: Use MAX(id) instead of timestamp filesort
+            $query->orderBy('latest_id', $direction);
+        }
 
         $exams = $query->paginate(20);
+
+        // Fetch precise dates only for the paginated page (20 groups) to prevent 504 Timeouts
+        $latestIds = collect($exams->items())->pluck('latest_id')->filter()->toArray();
+        if (!empty($latestIds)) {
+            $dates = Question::whereIn('id', $latestIds)->pluck('updated_at', 'id');
+            // Fallback for created_at if updated_at is somehow missing
+            if ($dates->isEmpty() || $dates->containsStrict(null)) {
+                $createdDates = Question::whereIn('id', $latestIds)->pluck('created_at', 'id');
+            }
+
+            foreach ($exams->items() as $exam) {
+                $id = $exam->latest_id;
+                $updated = $dates[$id] ?? null;
+                if (!$updated && isset($createdDates)) {
+                    $updated = $createdDates[$id] ?? null;
+                }
+                
+                // Set the mapped date as a string for frontend parsing
+                $exam->last_update = $updated ? (string) $updated : 'N/A';
+            }
+        }
 
         return response()->json($exams);
     }
