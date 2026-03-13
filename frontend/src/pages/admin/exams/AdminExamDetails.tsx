@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getAdminExamDetails } from '../../../api/adminExams';
@@ -23,6 +24,29 @@ export default function AdminExamDetails() {
     });
 
     const questions = response?.data || [];
+    const [visibleCount, setVisibleCount] = useState(5);
+    const observerTarget = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            entries => {
+                if (entries[0].isIntersecting) {
+                    setVisibleCount(prev => Math.min(prev + 5, questions.length));
+                }
+            },
+            { threshold: 0.1, rootMargin: '200px' }
+        );
+
+        if (observerTarget.current) {
+            observer.observe(observerTarget.current);
+        }
+
+        return () => {
+            if (observerTarget.current) {
+                observer.unobserve(observerTarget.current);
+            }
+        };
+    }, [questions.length]);
 
     const examTitle = id && id !== 'null' ? atob(id) : 'Prova Encontrada via Filtros';
     const examYear = filters.year || questions[0]?.year || 'Ano Indefinido';
@@ -64,9 +88,18 @@ export default function AdminExamDetails() {
                 <div className="text-center py-10 text-gray-500 font-medium">Nenhuma questão encontrada para essa prova.</div>
             ) : (
                 <div className="flex flex-col gap-2">
-                    {questions.map((q, idx) => (
+                    {questions.slice(0, visibleCount).map((q: any, idx: number) => (
                         <ExamQuestionCard key={q.id} question={q} index={idx} />
                     ))}
+                    {visibleCount < questions.length && (
+                        <div ref={observerTarget} className="py-10 text-center text-gray-400 font-medium">
+                            <svg className="animate-spin h-5 w-5 mx-auto mb-2 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Carregando mais questões...
+                        </div>
+                    )}
                 </div>
             )}
         </div>

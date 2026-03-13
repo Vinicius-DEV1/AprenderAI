@@ -25,6 +25,10 @@ export default defineConfig({
                 target: 'http://webserver:80',
                 changeOrigin: true,
             },
+            '/storage': {
+                target: 'http://webserver:80',
+                changeOrigin: true,
+            },
         },
         watch: {
             usePolling: true
