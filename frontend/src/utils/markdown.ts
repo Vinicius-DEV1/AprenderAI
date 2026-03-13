@@ -31,6 +31,11 @@ export const renderMd = (text: string) => {
         .replace(/&#0?39;/g, "'")
         .replace(/&quot;/g, '"');
 
+    // Remove newlines around details/summary to prevent 'marked' from creating extra <br>
+    processedText = processedText
+        .replace(/(<(?:details|summary|b|i|u|strong|em)>)\s*[\r\n]+/gi, '$1')
+        .replace(/[\r\n]+\s*(<\/(?:details|summary|b|i|u|strong|em)>)/gi, '$1');
+
     // Fix LaTeX format escaping corruption: backend sends \frac, but JS JSON parsers sometimes see \f as form-feed
     processedText = processedText.replace(/\f/g, '\\f');
 

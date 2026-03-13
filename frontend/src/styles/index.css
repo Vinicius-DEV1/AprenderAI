@@ -243,7 +243,15 @@ details[open] summary {
 
 /* Ensure content inside details has padding */
 details > *:not(summary) {
-    @apply px-6 py-4;
+    @apply px-6;
+}
+
+details > summary + * {
+    @apply pt-2;
+}
+
+details > *:last-child {
+    @apply pb-4;
 }
 
 details p {
