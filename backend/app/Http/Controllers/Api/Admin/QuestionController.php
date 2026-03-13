@@ -25,6 +25,7 @@ class QuestionController extends Controller
      */
     public function index(Request $request)
     {
+        die("DEBUG: HIT QuestionController@index - Time: " . time());
         // --- 1. Main Bank Query ---
         // Exibimos apenas questões 100% classificadas no Banco Completo
         // Aplicamos redundância de filtros para garantir a exclusão de sem-matéria
@@ -80,7 +81,13 @@ class QuestionController extends Controller
 
         // --- 3. Stats & Available Filters ---
         $stats = [
+            'CANARY' => 'BIRD_FLYING_' . time(),
+            'debug_complete' => Question::complete()->count(),
+            'debug_active' => Question::where('is_active', true)->count(),
+            'debug_review_null' => Question::whereNull('review_status')->count(),
+            'debug_review_approved' => Question::where('review_status', 'approved')->count(),
             'total_questions' => Question::count(),
+            'published_questions' => Question::published()->count(),
             'ai_questions' => Question::where('source', 'ai_generated')->count(),
             'questions_by_organization' => Question::select('organization', \DB::raw('count(*) as total'))
                 ->whereNotNull('organization')
