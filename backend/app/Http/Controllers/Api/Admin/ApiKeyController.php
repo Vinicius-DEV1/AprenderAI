@@ -66,36 +66,69 @@ class ApiKeyController extends Controller
         }
 
         $logs = ApiLog::with('apiKey')->latest()->take(20)->get();
-        $aiLogs = AiRequestLog::with(['user', 'apiKey.vault'])->latest()->take(20)->get();
 
-        $aiRanking = Cache::remember('ai_consumption_ranking', 3600, function () {
-            return AiRequestLog::query()
+        // Analytics Filters
+        $startDate = $request->input('start_date', now()->subDays(14)->toDateString());
+        $endDate = $request->input('end_date', now()->toDateString());
+        $vaultId = $request->input('vault_id');
+        $model = $request->input('model');
+        $module = $request->input('module');
+
+        $analyticsQuery = DB::table('ai_request_logs')
+            ->leftJoin('api_key_vaults', 'ai_request_logs.api_key_id', '=', 'api_key_vaults.id')
+            ->whereDate('ai_request_logs.created_at', '>=', $startDate)
+            ->whereDate('ai_request_logs.created_at', '<=', $endDate);
+
+        if ($vaultId) {
+            $analyticsQuery->where('ai_request_logs.api_key_id', $vaultId);
+        }
+        if ($model) {
+            $analyticsQuery->where('ai_request_logs.model', $model);
+        }
+        if ($module) {
+            $analyticsQuery->where('ai_request_logs.module', $module);
+        }
+
+        $analyticsDaily = (clone $analyticsQuery)
+            ->selectRaw('DATE(ai_request_logs.created_at) as date, ai_request_logs.provider, ai_request_logs.model, api_key_vaults.nickname, COUNT(*) as requests, SUM(ai_request_logs.estimated_cost) as cost, MAX(ai_request_logs.created_at) as last_request_at')
+            ->groupBy('date', 'ai_request_logs.provider', 'ai_request_logs.model', 'api_key_vaults.nickname')
+            ->orderBy('date', 'asc')
+            ->get();
+
+        $analyticsModules = (clone $analyticsQuery)
+            ->selectRaw('module, provider, COUNT(*) as requests, SUM(estimated_cost) as cost')
+            ->whereNotNull('module')
+            ->groupBy('module', 'provider')
+            ->orderByDesc('requests')
+            ->get();
+
+        $aiLogsQuery = AiRequestLog::with(['user', 'apiKey.vault'])
+            ->whereDate('created_at', '>=', $startDate)
+            ->whereDate('created_at', '<=', $endDate);
+
+        if ($vaultId) $aiLogsQuery->where('api_key_id', $vaultId);
+        if ($model) $aiLogsQuery->where('model', $model);
+        if ($module) $aiLogsQuery->where('module', $module);
+
+        $aiLogs = $aiLogsQuery->latest()->take(100)->get();
+
+        $cacheKey = "ai_ranking_{$startDate}_{$endDate}_" . ($vaultId ?? 'all') . "_" . ($model ?? 'all') . "_" . ($module ?? 'all');
+
+        $aiRanking = Cache::remember($cacheKey, 3600, function () use ($startDate, $endDate, $vaultId, $model, $module) {
+            $query = AiRequestLog::query()
                 ->selectRaw('user_id, SUM(tokens_used_total) as total_tokens, SUM(estimated_cost) as total_cost, COUNT(*) as request_count')
                 ->whereNotNull('user_id')
-                ->groupBy('user_id')
+                ->whereDate('created_at', '>=', $startDate)
+                ->whereDate('created_at', '<=', $endDate);
+
+            if ($vaultId) $query->where('api_key_id', $vaultId);
+            if ($model) $query->where('model', $model);
+            if ($module) $query->where('module', $module);
+
+            return $query->groupBy('user_id')
                 ->orderByDesc('total_tokens')
                 ->with('user')
                 ->limit(20)
-                ->get();
-        });
-
-        $analyticsDaily = Cache::remember('api_keys_analytics_daily', 3600, function () {
-            return DB::table('ai_request_logs')
-                ->leftJoin('api_key_vaults', 'ai_request_logs.api_key_id', '=', 'api_key_vaults.id')
-                ->selectRaw('DATE(ai_request_logs.created_at) as date, ai_request_logs.provider, ai_request_logs.model, api_key_vaults.nickname, COUNT(*) as requests, SUM(ai_request_logs.estimated_cost) as cost, MAX(ai_request_logs.created_at) as last_request_at')
-                ->where('ai_request_logs.created_at', '>=', now()->subDays(14))
-                ->groupBy('date', 'ai_request_logs.provider', 'ai_request_logs.model', 'api_key_vaults.nickname')
-                ->orderBy('date', 'asc')
-                ->get();
-        });
-
-        $analyticsModules = Cache::remember('api_keys_analytics_modules', 3600, function () {
-            return DB::table('ai_request_logs')
-                ->selectRaw('module, provider, COUNT(*) as requests, SUM(estimated_cost) as cost')
-                ->where('created_at', '>=', now()->subDays(14))
-                ->whereNotNull('module')
-                ->groupBy('module', 'provider')
-                ->orderByDesc('requests')
                 ->get();
         });
 
