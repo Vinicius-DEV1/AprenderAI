@@ -87,7 +87,7 @@ class AIBatchTriageJob implements ShouldQueue
             'chunk_size' => count($this->questionIds),
         ]);
 
-        $questions = Question::whereIn('id', $this->questionIds)->get();
+        $questions = Question::with('images')->whereIn('id', $this->questionIds)->get();
 
         try {
             Log::info("[AIBATCH] Starting batch job", [

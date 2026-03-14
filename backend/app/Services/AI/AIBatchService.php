@@ -82,9 +82,16 @@ class AIBatchService
                     $missing[] = 'topic';
             }
 
+            $statement = $q->statement;
+            if ($q->relationLoaded('images') && $q->images->isNotEmpty()) {
+                foreach ($q->images as $img) {
+                    $statement .= "\n![image](" . $img->image_url . ")";
+                }
+            }
+
             return [
                 'id' => $q->id,
-                'statement' => $q->statement,
+                'statement' => $statement,
                 'type' => $q->type,
                 'format' => $q->format,
                 'tipo_questao' => $q->tipo_questao,
