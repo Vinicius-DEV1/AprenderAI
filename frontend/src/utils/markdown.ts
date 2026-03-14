@@ -2,7 +2,11 @@ import { marked } from 'marked';
 import katex from 'katex';
 import DOMPurify from 'dompurify';
 
-marked.setOptions({ breaks: true, gfm: true });
+marked.use({ 
+    breaks: true, 
+    gfm: true,
+    async: false 
+});
 
 const apiUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
 
@@ -22,7 +26,7 @@ export const renderMd = (text: string) => {
     const mathPlaceholders: { id: string; code: string; displayMode: boolean; prefix: string }[] = [];
 
     const saveMath = (mathCode: string, displayMode: boolean, prefix = '') => {
-        // Use a unique placeholder that marked is EXTREAMELY unlikely to corrupt
+        // Use a unique placeholder that marked is EXTREMELY unlikely to corrupt
         const id = `@@@MATH_PROTECTED_ID_${mathPlaceholders.length}@@@`;
         mathPlaceholders.push({ id, code: mathCode, displayMode, prefix });
         return `${prefix}${id}`;
@@ -102,7 +106,8 @@ export const renderMd = (text: string) => {
 
     let html = '';
     try {
-        html = marked.parse(processedText) as string;
+        const parsed = marked.parse(processedText);
+        html = typeof parsed === 'string' ? parsed : processedText;
     } catch (e) {
         html = processedText;
     }
