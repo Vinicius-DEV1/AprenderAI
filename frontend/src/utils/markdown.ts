@@ -8,8 +8,40 @@ const apiUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' :
 
 export const renderMd = (text: string) => {
     if (!text) return { __html: '' };
-    let processedText = String(text);
+    
+    // 1. Initial cleanup of common escaping issues from the database
+    // We convert double backslashes to single ones to fix commands like \\to becoming \to.
+    // Also fix form-feed and literal \n strings.
+    let processedText = String(text)
+        .replace(/\\\\/g, '\\') // Fix DB escaping: \\to -> \to
+        .replace(/\f/g, '\\f') // Fix form-feed
+        .replace(/\\n/g, '\n'); // Fix literal \n strings
 
+    // 2. --- LaTeX Delimiters Logic (Placeholder System) ---
+    // Extract math BEFORE any other string manipulations to protect backslashes
+    const mathPlaceholders: { id: string; code: string; displayMode: boolean; prefix: string }[] = [];
+
+    const saveMath = (mathCode: string, displayMode: boolean, prefix = '') => {
+        // Use a unique placeholder that marked is EXTREAMELY unlikely to corrupt
+        const id = `@@@MATH_PROTECTED_ID_${mathPlaceholders.length}@@@`;
+        mathPlaceholders.push({ id, code: mathCode, displayMode, prefix });
+        return `${prefix}${id}`;
+    };
+
+    // 1. Extract block math $$ ... $$
+    processedText = processedText.replace(/\$\$([\s\S]*?)\$\$/g, (_match, formula) => saveMath(formula, true));
+
+    // 2. Extract block math \[ ... \]
+    processedText = processedText.replace(/\\\[([\s\S]*?)\\\]/g, (_match, formula) => saveMath(formula, true));
+
+    // 3. Extract inline math \( ... \)
+    processedText = processedText.replace(/\\\(([\s\S]*?)\\\)/g, (_match, formula) => saveMath(formula, false));
+
+    // 4. Extract inline math $ ... $
+    // Slightly more robust regex to avoid matching escaped \$
+    processedText = processedText.replace(/(^|[^\\])\$([\s\S]*?)\$/g, (_match, prefix, formula) => saveMath(formula, false, prefix));
+
+    // Now proceed with normal transformations on the remaining text
     // Unescape secure tags first (like <u>, <b>, <i>, <strong>, <em>, <br>)
     // The backend uses e() so they arrive as &lt;u&gt;
     processedText = processedText
@@ -33,18 +65,11 @@ export const renderMd = (text: string) => {
         .replace(/&quot;/g, '"');
 
     // Remove newlines and <br> around details/summary to prevent excess spacing
-    // The backend nl2br() adds <br /> which often duplicates with markdown breaks
     processedText = processedText
         .replace(/(<(?:details|summary|b|i|u|strong|em)>)\s*(?:[\r\n]|<br\s*\/?>)+/gi, '$1')
         .replace(/(?:[\r\n]|<br\s*\/?>)+\s*(<\/(?:details|summary|b|i|u|strong|em)>)/gi, '$1')
         .replace(/(<\/(?:details|summary|b|i|u|strong|em)>)\s*(?:[\r\n]|<br\s*\/?>)+/gi, '$1')
         .replace(/(?:[\r\n]|<br\s*\/?>)+\s*(<(?:details|summary|b|i|u|strong|em)>)/gi, '$1');
-
-    // Fix LaTeX format escaping corruption: backend sends \frac, but JS JSON parsers sometimes see \f as form-feed
-    processedText = processedText.replace(/\f/g, '\\f');
-
-    // Fix literal '\n' strings that come escaped from the backend JSON payload
-    processedText = processedText.replace(/\\n/g, '\n');
 
     // Fix Markdown Image URLs: ![alt](/storage/path), ![alt](storage/path), ![alt](questoes/path)
     processedText = processedText.replace(/!\[(.*?)\]\(\s*(\/?(?:storage\/|questoes\/).*?)\s*\)/g, (_, alt, url) => {
@@ -53,7 +78,6 @@ export const renderMd = (text: string) => {
     });
 
     // Prevention: Escape numeric starts that look like list items (e.g. "30.")
-    // This avoids 'marked' from creating empty <ol><li></li></ol> when the alternative is just a number.
     if (/^\d+\.($|\s)/.test(processedText.trim()) && !processedText.includes('\n')) {
         processedText = processedText.replace(/^(\d+)\./, '$1\\.');
     }
@@ -64,10 +88,8 @@ export const renderMd = (text: string) => {
         return `src="${apiUrl}/storage/${cleanUrl}"`;
     });
 
-    // --- LaTeX Delimiters Logic (Placeholder System) ---
-
-    // Pre-process Formula to support 'tabular' by converting to 'array' (KaTeX support)
     const normalizeFormula = (f: string) => {
+        // Pre-process Formula to support KaTeX compatibility
         return f
             .replace(/\\begin{tabular}(\{.*?\})/g, '\\begin{array}$1')
             .replace(/\\end{tabular}/g, '\\end{array}')
@@ -78,26 +100,6 @@ export const renderMd = (text: string) => {
             .replace(/&#39;/g, "'");
     };
 
-    const mathPlaceholders: { id: string; code: string; displayMode: boolean; prefix: string }[] = [];
-
-    const saveMath = (mathCode: string, displayMode: boolean, prefix = '') => {
-        const id = `@@MATH_${mathPlaceholders.length}@@`;
-        mathPlaceholders.push({ id, code: mathCode, displayMode, prefix });
-        return `${prefix}${id}`;
-    };
-
-    // 1. Extract block math $$ ... $$
-    processedText = processedText.replace(/\$\$([\s\S]*?)\$\$/g, (_match, formula) => saveMath(formula, true));
-
-    // 2. Extract block math \[ ... \]
-    processedText = processedText.replace(/\\\[([\s\S]*?)\\\]/g, (_match, formula) => saveMath(formula, true));
-
-    // 3. Extract inline math \( ... \)
-    processedText = processedText.replace(/\\\(([\s\S]*?)\\\)/g, (_match, formula) => saveMath(formula, false));
-
-    // 4. Extract inline math $ ... $
-    processedText = processedText.replace(/(^|[^\\])\$([\s\S]*?)\$/g, (_match, prefix, formula) => saveMath(formula, false, prefix));
-
     let html = '';
     try {
         html = marked.parse(processedText) as string;
@@ -105,7 +107,7 @@ export const renderMd = (text: string) => {
         html = processedText;
     }
 
-    // Restore Math with KaTeX
+    // 3. Restore Math with KaTeX
     mathPlaceholders.forEach(item => {
         let renderedMath = '';
         try {
@@ -122,15 +124,21 @@ export const renderMd = (text: string) => {
             renderedMath = item.displayMode ? `$$${item.code}$$` : `$${item.code}$`;
         }
         
-        // Replace all instances of the placeholder
-        const regex = new RegExp(item.id, 'g');
-        html = html.replace(regex, renderedMath);
+        // Use split/join for safer replacement of the placeholder
+        html = html.split(item.id).join(renderedMath);
     });
 
+    // 4. Final Sanitization
     try {
-        return { __html: DOMPurify.sanitize(html, { ADD_TAGS: ['u', 'details', 'summary', 'img'], ADD_ATTR: ['src', 'alt', 'class', 'loading'] }) };
+        return { __html: DOMPurify.sanitize(html, { 
+            ADD_TAGS: ['u', 'details', 'summary', 'img', 'span', 'div', 'math', 'svg', 'path', 'use', 'annotation', 'semantics', 'msubsup', 'mrow', 'mi', 'mo', 'mn', 'mstyle', 'mtable', 'mtr', 'mtd', 'mspace', 'msqrt', 'mfrac', 'mover', 'munder', 'munderover'], 
+            ADD_ATTR: ['src', 'alt', 'class', 'loading', 'style', 'aria-hidden', 'viewBox', 'd', 'role', 'width', 'height', 'encoding', 'mathbackground', 'mathcolor', 'mathsize', 'mathvariant', 'display'] 
+        }) };
     } catch (e) {
-        return { __html: DOMPurify.sanitize(processedText, { ADD_TAGS: ['u', 'details', 'summary', 'img'], ADD_ATTR: ['src', 'alt', 'class', 'loading'] }) };
+        return { __html: DOMPurify.sanitize(processedText, { 
+            ADD_TAGS: ['u', 'details', 'summary', 'img', 'span', 'div'], 
+            ADD_ATTR: ['src', 'alt', 'class', 'loading'] 
+        }) };
     }
 };
 
