@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../api/axios';
 import { useUIStore } from '../../../stores/uiStore';
 import AdminQuestionViewModal from './AdminQuestionViewModal';
+import { renderMd } from '../../../utils/markdown';
 
 interface BatchModalProps {
     isOpen: boolean;
@@ -507,7 +508,10 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                                             <div className="flex-1">
                                                                 <div className="flex items-center gap-2 mb-2">
                                                                     <span className="px-2 py-1 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-widest">#{item.question_id}</span>
-                                                                    <span className="text-xs font-bold text-gray-400 line-clamp-1 italic">"{item.statement}"</span>
+                                                                    <div 
+                                                                        className="text-xs font-bold text-gray-400 line-clamp-1 italic markdown-content-preview inline-block max-w-[400px]"
+                                                                        dangerouslySetInnerHTML={renderMd(item.statement || '')}
+                                                                    />
                                                                 </div>
 
                                                                 <div className="flex flex-wrap gap-4 mt-3">
@@ -792,7 +796,12 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                             {previewQuestions.map((q, idx) => (
                                                 <tr key={q.id} className="hover:bg-red-50/30 transition-colors">
                                                     <td className="px-4 py-3 text-gray-400 font-mono">#{q.id}</td>
-                                                    <td className="px-4 py-3 text-gray-700 max-w-xs truncate">{q.statement}</td>
+                                                    <td className="px-4 py-3 text-gray-700 max-w-xs truncate">
+                                                        <div 
+                                                            className="truncate markdown-content-preview"
+                                                            dangerouslySetInnerHTML={renderMd(q.statement || '')}
+                                                        />
+                                                    </td>
                                                     <td className="px-4 py-3">
                                                         <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase">{q.subject}</span>
                                                     </td>

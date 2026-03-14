@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import api from '../../../api/axios';
-import ReactMarkdown from 'react-markdown';
+import { renderMd } from '../../../utils/markdown';
 
 interface Props {
     isOpen: boolean;
@@ -39,15 +39,6 @@ export default function AdminQuestionViewModal({ isOpen, onClose, questionId, on
         } finally {
             setLoading(false);
         }
-    };
-
-    const urlTransform = (uri: string) => {
-        if (uri.startsWith('http')) return uri;
-        const cleanUrl = uri.trim().replace(/^\//, '');
-        if (cleanUrl.startsWith('storage/')) {
-            return `${apiUrl}/${cleanUrl}`.replace(/([^:])\/\//g, '$1/');
-        }
-        return uri;
     };
 
     if (!isOpen) return null;
@@ -142,16 +133,10 @@ export default function AdminQuestionViewModal({ isOpen, onClose, questionId, on
                                         <span className="w-1 h-1 bg-indigo-400 rounded-full"></span>
                                         Enunciado
                                     </h3>
-                                    <div className="prose prose-slate max-w-none text-slate-800 bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-sm leading-relaxed text-sm">
-                                        <ReactMarkdown
-                                            urlTransform={urlTransform}
-                                            components={{
-                                                img: ({ ...props }) => <img {...props} className="max-w-full h-auto rounded-xl my-3 mx-auto block shadow-md border-4 border-white" />
-                                            }}
-                                        >
-                                            {question.statement}
-                                        </ReactMarkdown>
-                                    </div>
+                                    <div 
+                                        className="prose prose-slate max-w-none text-slate-800 bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-sm leading-relaxed text-sm markdown-content"
+                                        dangerouslySetInnerHTML={renderMd(question.statement || '')}
+                                    />
                                 </section>
 
                                 {/* Alternatives */}
@@ -176,12 +161,13 @@ export default function AdminQuestionViewModal({ isOpen, onClose, questionId, on
                                                             }`}>
                                                             {alt.label}
                                                         </div>
-                                                        <div className="flex-1 text-xs font-medium text-slate-700 leading-relaxed pt-1">
-                                                            <ReactMarkdown urlTransform={urlTransform}>
-                                                                {alt.content || ''}
-                                                            </ReactMarkdown>
+                                                        <div className="flex-1 text-xs font-medium text-slate-700 leading-relaxed pt-1 flex flex-col gap-2">
+                                                            <div 
+                                                                className="prose prose-sm max-w-none text-slate-700 dark:text-slate-300 markdown-content"
+                                                                dangerouslySetInnerHTML={renderMd(alt.content || '')}
+                                                            />
                                                             {alt.image_path && (
-                                                                <img src={urlTransform(alt.image_path)} className="max-h-24 rounded-lg mt-2 border border-slate-100" />
+                                                                <img src={alt.image_path.startsWith('http') ? alt.image_path : `${apiUrl}/storage/${alt.image_path.replace(/^\//, '').replace(/^storage\//, '')}`.replace(/([^:])\/\//g, '$1/')} className="max-h-24 rounded-lg mt-2 border border-slate-100 self-start" />
                                                             )}
                                                         </div>
                                                         {isCorrect && (
@@ -202,11 +188,10 @@ export default function AdminQuestionViewModal({ isOpen, onClose, questionId, on
                                             <span className="w-1 h-1 bg-amber-400 rounded-full animate-pulse"></span>
                                             Explicação Recomendada
                                         </h3>
-                                        <div className="prose prose-amber max-w-none text-amber-900/80 font-medium leading-relaxed text-xs">
-                                            <ReactMarkdown urlTransform={urlTransform}>
-                                                {question.explanation}
-                                            </ReactMarkdown>
-                                        </div>
+                                        <div 
+                                            className="prose prose-amber max-w-none text-amber-900/80 font-medium leading-relaxed text-xs markdown-content"
+                                            dangerouslySetInnerHTML={renderMd(question.explanation)}
+                                        />
                                     </section>
                                 )}
 
