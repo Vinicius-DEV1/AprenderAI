@@ -97,6 +97,15 @@ export default function AdminQuestionViewModal({ isOpen, onClose, questionId, on
                                     <button onClick={onNext} className="p-1 px-2 hover:bg-white rounded-lg text-slate-400 hover:text-indigo-600 transition text-xs font-black uppercase">Próx ❯</button>
                                 </div>
                             )}
+                            <a
+                                href={`/questoes?id=${questionId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-indigo-200 hover:text-indigo-600 transition shadow-sm mr-2"
+                                title="Abrir esta questão no buscador do portal"
+                            >
+                                🔍 Abrir no Portal
+                            </a>
                             <button
                                 onClick={onClose}
                                 className="w-8 h-8 rounded-lg bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition flex items-center justify-center"

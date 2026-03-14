@@ -78,13 +78,7 @@ class QuestionController extends Controller
 
         $triageQuestions = $triageQuery->orderByDesc('created_at')->paginate(10, ['*'], 'triage_page', $request->get('triage_page', 1));
 
-        // --- 3. Stats & Available Filters ---
         $stats = [
-            'CANARY' => 'BIRD_FLYING_' . time(),
-            'debug_complete' => Question::complete()->count(),
-            'debug_active' => Question::where('is_active', true)->count(),
-            'debug_review_null' => Question::whereNull('review_status')->count(),
-            'debug_review_approved' => Question::where('review_status', 'approved')->count(),
             'total_questions' => Question::count(),
             'published_questions' => Question::published()->count(),
             'ai_questions' => Question::where('source', 'ai_generated')->count(),
@@ -112,7 +106,6 @@ class QuestionController extends Controller
             'counts' => $counts,
             'availableSubjects' => \App\Models\Subject::orderBy('name')->pluck('name'),
             'availableOrganizations' => Question::whereNotNull('organization')->distinct()->pluck('organization'),
-            'DEBUG_CODE_VERSION' => 'FILTER_V2_' . time(),
         ]);
     }
 
