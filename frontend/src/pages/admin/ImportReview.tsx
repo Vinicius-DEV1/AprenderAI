@@ -152,6 +152,24 @@ export default function ImportReview() {
 
     const { question, importItem } = data;
 
+    const isComplete = (q: any) => {
+        const hasExplanation = q.explanation && q.explanation.trim().length > 0;
+        const hasReasoning = q.difficulty_reasoning && q.difficulty_reasoning.trim().length > 0;
+        const hasDifficulty = !!q.difficulty;
+        const hasSubject = q.subjects && q.subjects.length > 0;
+        const hasTopic = q.topics && q.topics.length > 0;
+        
+        return {
+            total: hasExplanation && hasReasoning && hasDifficulty && hasSubject && hasTopic,
+            hasExplanation,
+            hasReasoning,
+            hasDifficulty,
+            hasSubject,
+            hasTopic
+        };
+    };
+
+    const completion = isComplete(data.question);
     const hasImageModels = question?.images?.length > 0;
     const hasActiveEditor = hasImageModels;
     const latestAILog = historyData?.find((log: any) => log.triage_type === 'ai_batch');
@@ -164,22 +182,72 @@ export default function ImportReview() {
                     Painel de Controle
                 </h3>
             )}
-            {question.review_status === 'pending' || question.review_status === 'review' ? (
-                <button
-                    onClick={() => approveMutation.mutate()}
-                    disabled={approveMutation.isPending}
-                    className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    {approveMutation.isPending ? 'Aprovando...' : 'Aprovar e Publicar'}
-                </button>
+            
+            {(question.review_status === 'pending' || question.review_status === 'review') ? (
+                <>
+                    {!completion.total && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+                            <p className="text-[10px] font-bold text-amber-700 uppercase mb-1.5 flex items-center gap-1">
+                                ⚠️ Pendências para Aprovação:
+                            </p>
+                            <ul className="text-[10px] space-y-0.5 text-amber-600 font-medium">
+                                {!completion.hasExplanation && <li>• Falta Explicação da IA</li>}
+                                {!completion.hasReasoning && <li>• Falta Raciocínio de Dificuldade</li>}
+                                {!completion.hasDifficulty && <li>• Selecione o Nível de Dificuldade</li>}
+                                {!completion.hasSubject && <li>• Falta Disciplina/Matéria</li>}
+                                {!completion.hasTopic && <li>• Falta Assunto/Tópico</li>}
+                            </ul>
+                        </div>
+                    )}
+                    <button
+                        onClick={() => approveMutation.mutate()}
+                        disabled={approveMutation.isPending || !completion.total}
+                        className={`w-full px-4 py-3 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] ${completion.total ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-300 cursor-not-allowed'}`}>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        {approveMutation.isPending ? 'Aprovando...' : 'Aprovar e Publicar'}
+                    </button>
+                    
+                    {question.review_status === 'approved' && (
+                        <>
+                            <Link
+                                to={`/questoes?id=${question.id}`}
+                                target="_blank"
+                                className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]"
+                            >
+                                🔍 Abrir no Portal
+                            </Link>
+                            <Link
+                                to={`/admin/questions/${question.id}/edit`}
+                                className="w-full px-4 py-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]"
+                            >
+                                ✏️ Editar Questão
+                            </Link>
+                        </>
+                    )}
+                </>
             ) : (
-                <button
-                    onClick={() => revertMutation.mutate()}
-                    disabled={revertMutation.isPending}
-                    className="w-full px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
-                    Retornar para Revisão
-                </button>
+                <div className="space-y-2">
+                    <Link
+                        to={`/questoes?id=${question.id}`}
+                        target="_blank"
+                        className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]"
+                    >
+                        🔍 Abrir no Portal
+                    </Link>
+                    <Link
+                        to={`/admin/questions/${question.id}/edit`}
+                        className="w-full px-4 py-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]"
+                    >
+                        ✏️ Editar Questão
+                    </Link>
+                    <button
+                        onClick={() => revertMutation.mutate()}
+                        disabled={revertMutation.isPending}
+                        className="w-full px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
+                        Retornar para Revisão
+                    </button>
+                </div>
             )}
 
             <div className="grid grid-cols-2 gap-2">
