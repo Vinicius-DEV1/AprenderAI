@@ -150,10 +150,6 @@ export default function AdminQuestions() {
 
     return (
         <div className="p-4 md:p-6 w-full space-y-6 animate-in fade-in duration-500 bg-gray-50/30 min-h-screen">
-            {/* Debug Info (Always visible for now) */}
-            <div className="bg-amber-50 p-2 text-[10px] font-mono border border-amber-200 rounded text-amber-800 flex flex-wrap gap-4">
-               <span>DEBUG: {JSON.stringify(meta)}</span>
-            </div>
             {/* Header */}
             <div className="flex justify-between items-end">
                 <div>
