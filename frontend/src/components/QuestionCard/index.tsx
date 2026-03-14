@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -60,13 +60,13 @@ interface QuestionCardProps {
     simulationId?: number | null;
 }
 
-export default function QuestionCard({
+const QuestionCard = memo(({
     question: q,
     mode = 'bank',
     userAnswer: initialUserAnswer = null,
     isCorrect: initialIsCorrect = null,
     simulationId = null
-}: QuestionCardProps) {
+}: QuestionCardProps) => {
     const { aiName } = useConfigStore();
     const { user } = useAuthStore();
     const queryClient = useQueryClient();
@@ -128,6 +128,18 @@ export default function QuestionCard({
             api.post(`/api/v1/questions/${q.id}/view`).catch(() => { });
         }
     }, [q.id, mode]);
+
+    const statementHtml = useMemo(() => renderMd(q.statement), [q.statement]);
+    const explanationHtml = useMemo(() => renderMd(explanation || 'Sem comentário disponível.'), [explanation]);
+
+    const renderedAlternatives = useMemo(() => {
+        return [...q.alternatives]
+            .sort((a, b) => a.label.localeCompare(b.label))
+            .map(alt => ({
+                ...alt,
+                renderedContent: renderMd(alt.content)
+            }));
+    }, [q.alternatives]);
 
     const [activeTab, setActiveTab] = useState<'gabarito' | 'chat' | 'history' | 'notes' | 'admin_history' | null>(isResultMode ? 'gabarito' : null);
 
@@ -504,7 +516,7 @@ export default function QuestionCard({
                 </div>
             </div>
 
-            <div className="qb-statement prose prose-sm max-w-none text-slate-700 dark:text-slate-300" dangerouslySetInnerHTML={renderMd(q.statement)} />
+            <div className="qb-statement prose prose-sm max-w-none text-slate-700 dark:text-slate-300" dangerouslySetInnerHTML={statementHtml} />
 
             {q.image_path && (
                 <div className="mb-4">
@@ -527,7 +539,7 @@ export default function QuestionCard({
                 </div>
             ) : (
                 <div className="qb-alternatives-list">
-                    {q.alternatives.sort((a, b) => a.label.localeCompare(b.label)).map(alt => (
+                    {renderedAlternatives.map(alt => (
                         <div
                             key={alt.id}
                             className={`qb-alt ${selectedAnswer === alt.label && !answered ? 'selected' : ''} ${answered && alt.label === (correctAnswer || (alt.is_correct ? alt.label : null)) ? 'correct-reveal' : ''} ${answered && selectedAnswer === alt.label && alt.label !== correctAnswer ? 'incorrect-reveal' : ''} ${answered ? 'disabled' : ''} ${!answered && struckLabels.includes(alt.label) ? 'opacity-40 grayscale' : ''}`}
@@ -536,7 +548,7 @@ export default function QuestionCard({
                         >
                             <div className="qb-alt-letter" style={{ textDecoration: !answered && struckLabels.includes(alt.label) ? 'line-through' : 'none' }}>{alt.label}</div>
                             <div className="flex flex-col gap-2 flex-grow overflow-hidden">
-                                {alt.content && <div className="qb-alt-text prose prose-sm max-w-none text-slate-700 dark:text-slate-300" dangerouslySetInnerHTML={renderMd(alt.content)} />}
+                                {alt.content && <div className="qb-alt-text prose prose-sm max-w-none text-slate-700 dark:text-slate-300" dangerouslySetInnerHTML={alt.renderedContent} />}
                                 {alt.image_path && (
                                     <img
                                         src={alt.image_path.startsWith('http') ? alt.image_path : `${apiUrl}/storage/${alt.image_path.replace(/^\//, '').replace(/^storage\//, '')}`.replace(/([^:])\/\//g, '$1/')}
@@ -600,7 +612,7 @@ export default function QuestionCard({
                         ) : (
                             <div className="qb-explanation mt-0 mb-4 w-full">
                                 <h4>📖 Resolução Comentada</h4>
-                                <div className="qb-explanation-text" dangerouslySetInnerHTML={renderMd(explanation || 'Sem comentário disponível.')} />
+                                <div className="qb-explanation-text" dangerouslySetInnerHTML={explanationHtml} />
                             </div>
                         )}
                     </motion.div>
@@ -780,4 +792,6 @@ export default function QuestionCard({
             />
         </div>
     );
-}
+});
+
+export default QuestionCard;
