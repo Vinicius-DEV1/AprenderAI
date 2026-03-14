@@ -220,7 +220,7 @@ summary {
 }
 
 summary:hover {
-    @apply bg-slate-50 text-indigo-600 translate-x-1;
+    @apply bg-slate-50 text-indigo-600;
 }
 
 summary::-webkit-details-marker {
