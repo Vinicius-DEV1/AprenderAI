@@ -94,6 +94,10 @@ WHERE question_id IN (SELECT id FROM questions WHERE type = 'concurso');
 DELETE FROM search_interaction_logs 
 WHERE question_id IN (SELECT id FROM questions WHERE type = 'concurso');
 
+-- Limpando Cache Semântico (Xavier L1/L2)
+-- Recomenda-se limpar tudo para evitar resultados fantasmas em buscas que atingiriam o cache
+DELETE FROM ai_search_cache;
+
 
 -- --------------------------------------------------------------------------
 -- 4. EXCLUSÃO DA ENTIDADE PRINCIPAL
