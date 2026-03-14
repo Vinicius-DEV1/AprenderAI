@@ -204,20 +204,20 @@ class AdminImportReviewController extends Controller
 
         $validated = $request->validate([
             'target' => ['required', 'string', 'regex:/^(statement|[A-Ea-e])$/'],
-            'x' => ['required', 'integer'],
-            'y' => ['required', 'integer'],
-            'width' => ['required', 'integer'],
-            'height' => ['required', 'integer'],
+            'x'      => ['required', 'numeric'],
+            'y'      => ['required', 'numeric'],
+            'width'  => ['required', 'numeric', 'min:1'],
+            'height' => ['required', 'numeric', 'min:1'],
         ]);
 
         try {
             $publicUrl = $this->importService->saveCrop(
                 $image,
                 $validated['target'],
-                $validated['x'],
-                $validated['y'],
-                $validated['width'],
-                $validated['height']
+                (int) round((float) $validated['x']),
+                (int) round((float) $validated['y']),
+                (int) round((float) $validated['width']),
+                (int) round((float) $validated['height'])
             );
             return response()->json(['success' => true, 'url' => $publicUrl]);
         } catch (\Throwable $e) {
