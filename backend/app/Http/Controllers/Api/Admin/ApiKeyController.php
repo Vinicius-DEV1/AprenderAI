@@ -103,12 +103,12 @@ class ApiKeyController extends Controller
             ->get();
 
         $aiLogsQuery = AiRequestLog::with(['user', 'apiKey.vault'])
-            ->whereDate('created_at', '>=', $startDate)
-            ->whereDate('created_at', '<=', $endDate);
+            ->whereDate('ai_request_logs.created_at', '>=', $startDate)
+            ->whereDate('ai_request_logs.created_at', '<=', $endDate);
 
-        if ($vaultId) $aiLogsQuery->where('api_key_id', $vaultId);
-        if ($model) $aiLogsQuery->where('model', $model);
-        if ($module) $aiLogsQuery->where('module', $module);
+        if ($vaultId) $aiLogsQuery->where('ai_request_logs.api_key_id', $vaultId);
+        if ($model) $aiLogsQuery->where('ai_request_logs.model', $model);
+        if ($module) $aiLogsQuery->where('ai_request_logs.module', $module);
 
         $aiLogs = $aiLogsQuery->latest()->take(100)->get();
 
@@ -116,14 +116,14 @@ class ApiKeyController extends Controller
 
         $aiRanking = Cache::remember($cacheKey, 3600, function () use ($startDate, $endDate, $vaultId, $model, $module) {
             $query = AiRequestLog::query()
-                ->selectRaw('user_id, SUM(tokens_used_total) as total_tokens, SUM(estimated_cost) as total_cost, COUNT(*) as request_count')
-                ->whereNotNull('user_id')
-                ->whereDate('created_at', '>=', $startDate)
-                ->whereDate('created_at', '<=', $endDate);
+                ->selectRaw('ai_request_logs.user_id, SUM(ai_request_logs.tokens_used_total) as total_tokens, SUM(ai_request_logs.estimated_cost) as total_cost, COUNT(*) as request_count')
+                ->whereNotNull('ai_request_logs.user_id')
+                ->whereDate('ai_request_logs.created_at', '>=', $startDate)
+                ->whereDate('ai_request_logs.created_at', '<=', $endDate);
 
-            if ($vaultId) $query->where('api_key_id', $vaultId);
-            if ($model) $query->where('model', $model);
-            if ($module) $query->where('module', $module);
+            if ($vaultId) $query->where('ai_request_logs.api_key_id', $vaultId);
+            if ($model) $query->where('ai_request_logs.model', $model);
+            if ($module) $query->where('ai_request_logs.module', $module);
 
             return $query->groupBy('user_id')
                 ->orderByDesc('total_tokens')
