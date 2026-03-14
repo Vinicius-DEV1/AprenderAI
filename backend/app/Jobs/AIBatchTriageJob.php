@@ -179,7 +179,7 @@ class AIBatchTriageJob implements ShouldQueue
                     'status' => $dbBatch ? $dbBatch->status : 'processing',
                     'last_error' => null,
                     'errors_log' => $dbBatch ? ($dbBatch->errors_log ?? []) : [],
-                    'stats' => [
+                    'stats' => $dbBatch && $dbBatch->stats ? $dbBatch->stats : [
                         'difficulty' => 0,
                         'explanation' => 0,
                         'subjects' => 0,
@@ -205,10 +205,8 @@ class AIBatchTriageJob implements ShouldQueue
             }
 
             // Incrementa os stats
-            foreach ($stats as $key => $val) {
-                if (isset($data['stats'][$key])) {
-                    $data['stats'][$key] += $val;
-                }
+            foreach ($stats as $sKey => $val) {
+                $data['stats'][$sKey] = ($data['stats'][$sKey] ?? 0) + $val;
             }
 
             $data['processed'] += $applied;
@@ -277,7 +275,6 @@ class AIBatchTriageJob implements ShouldQueue
 
             \Illuminate\Support\Facades\DB::table('ai_processing_batches')
                 ->where('batch_id', $this->batchId)
-                ->where('status', '!=', 'completed')
                 ->update($updateData);
 
             if (!empty($detailedErrors) || $errorMessage) {

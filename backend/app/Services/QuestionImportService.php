@@ -567,48 +567,42 @@ class QuestionImportService
         // ETAPA 4: Persistência e Roteamento de Destino
         // ------------------------------------------------------------------
         $isStatement = (strtolower($target) === 'statement');
+        $timestamp = time();
+        $label = $isStatement ? 'statement' : strtoupper($target);
+        
+        // Novo caminho: crops/{question_id}/{label}_{timestamp}.jpg
+        $cropStoragePath = "crops/{$question->id}/{$label}_{$timestamp}.jpg";
+
+        // Garante que o diretório existe
+        $storageDir = dirname($cropStoragePath);
+        if (!Storage::disk(self::IMPORT_STORAGE_DISK)->exists($storageDir)) {
+            Storage::disk(self::IMPORT_STORAGE_DISK)->makeDirectory($storageDir);
+        }
+
+        // Salva o novo arquivo
+        Storage::disk(self::IMPORT_STORAGE_DISK)->put($cropStoragePath, $imageData);
+        $publicUrl = Storage::url($cropStoragePath);
 
         if ($isStatement) {
-            // Lógica de ENUNCIADO: Sobrescreve in-place para eficiência de storage
-            if (in_array($extension, ['png'])) {
-                $originalBasename = pathinfo($image->path, PATHINFO_FILENAME);
-                $storageDir = dirname($image->path);
-                $cropStoragePath = $storageDir . '/' . $originalBasename . '_crop.jpg';
-            } else {
-                $cropStoragePath = $image->path;
-            }
-
-            Storage::disk(self::IMPORT_STORAGE_DISK)->put($cropStoragePath, $imageData);
-
-            if ($cropStoragePath !== $image->path) {
-                Storage::disk(self::IMPORT_STORAGE_DISK)->delete($image->path);
-                $image->update(['path' => $cropStoragePath]);
-            }
+            // Lógica de ENUNCIADO: Atualiza a coluna image_path da Questão
+            // Preserva a model QuestionImage original (fonte) intacta
+            $question->update(['image_path' => $cropStoragePath]);
         } else {
-            // Lógica de ALTERNATIVA: Novo arquivo com sufixo da letra (A, B, C...)
-            $label = strtoupper($target);
-            $originalBasename = pathinfo($image->path, PATHINFO_FILENAME);
-            $storageDir = dirname($image->path);
-            $cropStoragePath = $storageDir . '/' . $originalBasename . '_' . $label . '.jpg';
-
-            Storage::disk(self::IMPORT_STORAGE_DISK)->put($cropStoragePath, $imageData);
-
+            // Lógica de ALTERNATIVA: Atualiza ou cria a alternativa com o novo conteúdo
             $alternative = $question->alternatives()->where('label', $label)->first();
-            $publicUrl = Storage::url($cropStoragePath);
 
             if ($alternative) {
-                $alternative->update(['content' => $publicUrl]);
+                $alternative->update(['content' => $cropStoragePath]);
             } else {
                 $question->alternatives()->create([
-                    'question_id' => $question->id,
                     'label' => $label,
-                    'content' => $publicUrl,
+                    'content' => $cropStoragePath,
                     'is_correct' => false,
                 ]);
             }
         }
 
-        return Storage::url($cropStoragePath);
+        return $publicUrl;
     }
 
     /**

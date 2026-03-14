@@ -193,7 +193,16 @@ class AIBatchTriageController extends Controller
             'retry_chunks_processed' => 0,
             'retries_count' => 0,
             'retries_success' => 0,
-            'retries_failed' => 0
+            'retries_failed' => 0,
+            'stats' => [
+                'difficulty' => 0,
+                'explanation' => 0,
+                'subjects' => 0,
+                'topics' => 0,
+                'sent_to_review' => 0,
+                'approved' => 0,
+                'low_quality' => 0,
+            ]
         ], now()->addHours(2));
 
         $chunkSize = $validated['chunk_size'] ?? 5;
@@ -383,14 +392,26 @@ class AIBatchTriageController extends Controller
                 ],
             ];
         } else {
+            // Prioriza o que está no Cache para o front-end acompanhar o progresso em tempo real
             $data['status'] = $batch->status;
-            // GARANTIA TOTAL: Sempre lê os contadores reais do banco para o cache visual
+            
+            // Se o cache tem stats, mantemos o do cache (que é o agregado atual)
+            // Se não tem, pega do banco
+            if (!isset($data['stats']) || empty($data['stats'])) {
+                $data['stats'] = $batch->stats;
+            }
+            
+            // Atualiza os contadores atômicos vindos do banco para garantir precisão total
             $data['total'] = (int) $batch->total_count;
             $data['processed'] = (int) $batch->processed_count;
             $data['errors'] = (int) $batch->error_count;
-            $data['input_tokens'] = (int) ($batch->input_tokens ?? 0);
-            $data['output_tokens'] = (int) ($batch->output_tokens ?? 0);
-            $data['stats'] = $batch->stats;
+            
+            // Se o cache estiver vazio de tokens, pega do banco
+            if (empty($data['input_tokens'])) {
+                $data['input_tokens'] = (int) ($batch->input_tokens ?? 0);
+                $data['output_tokens'] = (int) ($batch->output_tokens ?? 0);
+                $data['estimated_cost'] = (float) ($batch->estimated_cost ?? 0);
+            }
         }
         // --- FAIL-SAFE DE CONCLUSÃO ---
         // Se a soma de processados + erros atingiu o total, o lote ACABOU.
