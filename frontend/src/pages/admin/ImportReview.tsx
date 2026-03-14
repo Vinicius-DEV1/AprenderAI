@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
@@ -12,7 +12,9 @@ export default function ImportReview() {
     const navigate = useNavigate();
     const [activeTarget, setActiveTarget] = useState<string>('statement');
     const [saving, setSaving] = useState(false);
-    const [cropper, setCropper] = useState<any>();
+    const [lastCropAt, setLastCropAt] = useState<number>(Date.now());
+    // Ref map: imageId → <img> element (react-cropper attaches .cropper on it)
+    const cropperEls = useRef<Record<number, any>>({});
     const [searchParams] = useSearchParams();
     const queryClient = useQueryClient();
 
@@ -70,42 +72,79 @@ export default function ImportReview() {
         }
     });
 
-    const handleSaveCrop = async () => {
-        if (!cropper) return;
+    const handleSaveCrop = async (targetOverride?: string, imageIdOverride?: number) => {
+        const target = targetOverride || activeTarget;
+        const currentImageId = imageIdOverride ?? question?.images?.[0]?.id;
 
-        const imageData = cropper.getData(true);
-        const currentImage = question.images?.[0] || { id: null };
-
-        if (!currentImage.id) {
+        if (!currentImageId) {
             toast.error('Nenhuma imagem encontrada para recortar.');
             return;
         }
 
+        // Access the live CropperJS instance via the element ref (.cropper is set by react-cropper)
+        const el = cropperEls.current[currentImageId];
+        const activeCropper = el?.cropper;
+
+        if (!activeCropper) {
+            toast.error('Editor de recorte não inicializado. Recarregue a página.');
+            console.error('[CropEditor] Sem instância para imageId:', currentImageId);
+            return;
+        }
+
+        let imageData: any;
+        try {
+            imageData = activeCropper.getData();
+        } catch (err) {
+            console.error('[CropEditor] getData() falhou:', err);
+            toast.error('Erro ao ler área de recorte. Tente novamente.');
+            return;
+        }
+
+        const x = Math.round(imageData.x);
+        const y = Math.round(imageData.y);
+        const width = Math.round(imageData.width);
+        const height = Math.round(imageData.height);
+
+        console.log('[CropEditor] Salvando recorte', { target, currentImageId, x, y, width, height });
+
         setSaving(true);
         try {
-            await api.post(`/api/v1/admin/import/review/${currentImage.id}/crop`, {
-                target: activeTarget,
-                x: imageData.x,
-                y: imageData.y,
-                width: imageData.width,
-                height: imageData.height
+            await api.post(`/api/v1/admin/import/review/${currentImageId}/crop`, {
+                target,
+                x,
+                y,
+                width,
+                height,
             });
             toast.success('Recorte salvo com sucesso!');
+            setLastCropAt(Date.now());
+            
+            // Invalida a query para forçar o refetch e atualizar a UI (card da esquerda)
+            queryClient.invalidateQueries({ queryKey: ['admin', 'import', 'review', id] });
 
-            if (activeTarget !== 'statement') {
+            if (target !== 'statement') {
                 const nextMap: any = { 'A': 'B', 'B': 'C', 'C': 'D', 'D': 'E', 'E': 'E' };
-                setActiveTarget(nextMap[activeTarget] || 'A');
+                setActiveTarget(nextMap[target] || 'A');
             }
 
             queryClient.invalidateQueries({ queryKey: ['admin-import-review', id] });
-        } catch (error) {
-            toast.error('Erro ao salvar recorte.');
+        } catch (error: any) {
+            console.error('[CropEditor] Erro ao salvar recorte:', error?.response?.data ?? error);
+            const msg = error?.response?.data?.message || 'Erro ao salvar recorte.';
+            toast.error(msg);
         } finally {
             setSaving(false);
         }
     };
 
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000');
+    const getCacheBustedUrl = (url: string) => {
+        if (!url) return '';
+        const separator = url.includes('?') ? '&' : '?';
+        return `${url}${separator}t=${lastCropAt}`;
+    };
+
+    const baseApiUrl = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000')).replace(/\/$/, '');
+    const apiUrl = baseApiUrl;
 
 
     if (isLoading) return <div className="p-8">Carregando revisão...</div>;
@@ -297,21 +336,16 @@ export default function ImportReview() {
                             </h3>
                             <div className="prose prose-indigo max-w-none text-gray-800 text-[13px] leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100 dark:text-slate-300" dangerouslySetInnerHTML={renderMd(question.statement)} />
 
-                            {hasImageModels ? (
+                            {question.image_path && (
                                 <div className="mt-4 pt-4 border-t border-gray-100">
-                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">🖼️ Imagens do Enunciado</p>
-                                    <div className="space-y-3">
-                                        {question.images.map((img: any) => (
-                                            <img key={img.id} src={img.url || (img.path?.startsWith('http') ? img.path : `${apiUrl}/storage/${img.path.replace('storage/', '')}`)} alt="Imagem do Enunciado" className="max-w-full h-auto rounded border border-gray-200" />
-                                        ))}
-                                    </div>
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">🖼️ Imagem do Enunciado (Recorte)</p>
+                                    <img
+                                        src={getCacheBustedUrl(question.image_path.startsWith('http') ? question.image_path : `${apiUrl}/storage/${question.image_path.replace(/^\//, '').replace(/^storage\//, '')}`.replace(/([^:])\/\//g, '$1/'))}
+                                        alt="Imagem do Enunciado"
+                                        className="max-w-full h-auto rounded border border-gray-200"
+                                    />
                                 </div>
-                            ) : question.image_path ? (
-                                <div className="mt-4 pt-4 border-t border-gray-100">
-                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">🖼️ Imagem do Enunciado</p>
-                                    <img src={question.image_path.startsWith('http') ? question.image_path : `${apiUrl}/storage/${question.image_path.replace('storage/', '')}`} alt="Imagem do Enunciado" className="max-w-full h-auto rounded border border-gray-200" />
-                                </div>
-                            ) : null}
+                            )}
                         </div>
 
                         {/* Alternatives Card */}
@@ -328,8 +362,12 @@ export default function ImportReview() {
                                                 {alt.label})
                                             </span>
                                             <div className="flex-1 min-w-0">
-                                                {(alt.content?.startsWith('questions_images/') || alt.content?.startsWith('storage/')) ? (
-                                                    <img src={alt.content.startsWith('http') ? alt.content : `${apiUrl}/storage/${alt.content.replace('storage/', '')}`} alt={`Alternativa ${alt.label}`} className="max-w-full h-auto rounded border border-gray-200" />
+                                                {(alt.content?.startsWith('questions_images/') || alt.content?.startsWith('crops/') || alt.content?.startsWith('storage/')) ? (
+                                                    <img
+                                                        src={getCacheBustedUrl(alt.content.startsWith('http') ? alt.content : `${apiUrl}/storage/${alt.content.replace(/^\//, '').replace(/^storage\//, '')}`.replace(/([^:])\/\//g, '$1/'))}
+                                                        alt={`Alternativa ${alt.label}`}
+                                                        className="max-w-full h-auto rounded border border-gray-200"
+                                                    />
                                                 ) : (
                                                     <div className="prose prose-indigo max-w-none text-sm text-gray-700 alternatives-markdown dark:text-slate-300" dangerouslySetInnerHTML={renderMd(alt.content)} />
                                                 )}
@@ -431,14 +469,15 @@ export default function ImportReview() {
 
                                         <div className="p-0 bg-gray-900 flex justify-center overflow-hidden">
                                             <Cropper
-                                                src={img.url || (img.path?.startsWith('http') ? img.path : `${apiUrl}/storage/${img.path.replace('storage/', '')}`)}
+                                                src={img.image_url ? `${apiUrl}/${img.image_url.replace(/^\//, '')}`.replace(/([^:])\/\//g, '$1/') : `${apiUrl}/storage/${img.path?.replace(/^\//, '').replace(/^storage\//, '')}`.replace(/([^:])\/\//g, '$1/')}
                                                 style={{ height: 'auto', width: '100%', maxHeight: '600px' }}
+                                                crossOrigin="anonymous"
                                                 initialAspectRatio={undefined}
                                                 guides={true}
                                                 viewMode={1}
                                                 dragMode="move"
                                                 autoCropArea={0.5}
-                                                onInitialized={(instance: any) => setCropper(instance)}
+                                                ref={(el: any) => { if (el) cropperEls.current[img.id] = el; }}
                                             />
                                         </div>
 
@@ -450,7 +489,7 @@ export default function ImportReview() {
                                                         <p className="text-xs text-gray-400 mt-0.5">Recorte substitui a imagem do enunciado.</p>
                                                     </div>
                                                     <button
-                                                        onClick={() => { setActiveTarget('statement'); handleSaveCrop(); }}
+                                                        onClick={() => { setActiveTarget('statement'); handleSaveCrop('statement', img.id); }}
                                                         disabled={saving}
                                                         className="flex-shrink-0 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold text-xs flex items-center gap-2 transition-opacity disabled:opacity-50">
                                                         {saving && activeTarget === 'statement' ? 'Salvando...' : '✂️ Confirmar Recorte'}
@@ -472,8 +511,8 @@ export default function ImportReview() {
                                                         ))}
                                                     </div>
                                                     <button
-                                                        onClick={() => handleSaveCrop()}
-                                                        disabled={saving || activeTarget === 'statement'}
+                                                        onClick={() => handleSaveCrop(undefined, img.id)}
+                                                        disabled={saving}
                                                         className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-bold text-xs transition-opacity disabled:opacity-50">
                                                         {saving && activeTarget !== 'statement' ? 'Salvando...' : `Salvar Alt. ${activeTarget}`}
                                                     </button>
