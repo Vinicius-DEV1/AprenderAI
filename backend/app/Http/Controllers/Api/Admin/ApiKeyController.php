@@ -96,9 +96,9 @@ class ApiKeyController extends Controller
             ->get();
 
         $analyticsModules = (clone $analyticsQuery)
-            ->selectRaw('module, provider, COUNT(*) as requests, SUM(estimated_cost) as cost')
-            ->whereNotNull('module')
-            ->groupBy('module', 'provider')
+            ->selectRaw('ai_request_logs.module, ai_request_logs.provider, COUNT(*) as requests, SUM(ai_request_logs.estimated_cost) as cost')
+            ->whereNotNull('ai_request_logs.module')
+            ->groupBy('ai_request_logs.module', 'ai_request_logs.provider')
             ->orderByDesc('requests')
             ->get();
 
