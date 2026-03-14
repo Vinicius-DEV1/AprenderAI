@@ -101,10 +101,17 @@ export default function AdminQuestionViewModal({ isOpen, onClose, questionId, on
                                 href={`/questoes?id=${questionId}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-indigo-200 hover:text-indigo-600 transition shadow-sm mr-2"
+                                className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-indigo-200 hover:text-indigo-600 transition shadow-sm mr-1"
                                 title="Abrir esta questão no buscador do portal"
                             >
                                 🔍 Abrir no Portal
+                            </a>
+                            <a
+                                href={`/admin/questions/${questionId}/edit`}
+                                className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition shadow-sm mr-2"
+                                title="Editar esta questão"
+                            >
+                                ✏️ Editar Questão
                             </a>
                             <button
                                 onClick={onClose}

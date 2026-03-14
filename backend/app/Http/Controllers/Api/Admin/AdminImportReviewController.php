@@ -119,7 +119,19 @@ class AdminImportReviewController extends Controller
     public function approve(Request $request, $id)
     {
         $question = Question::findOrFail($id);
-        $question->update(['review_status' => 'approved']);
+
+        // Fail if question is still incomplete as per strict requirements
+        if ($question->isIncomplete()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Não é possível aprovar uma questão incompleta. Certifique-se de que a explicação, o raciocínio e a classificação estão preenchidos.'
+            ], 422);
+        }
+
+        $question->update([
+            'review_status' => 'approved',
+            'is_active' => true // Force active so it shows up in search
+        ]);
 
         $this->triageService->logManualAction($question, 'approved', [], Auth::id());
 
@@ -134,7 +146,8 @@ class AdminImportReviewController extends Controller
             $question->importItem->import->decrement('pending_count');
         }
 
-        $nextId = $this->applyFilters($request)->latest()->value('id');
+        // Get the NEXT ID to return for seamless navigation
+        $nextId = $this->applyFilters($request)->latest('id')->value('id');
 
         return response()->json([
             'message' => 'Questão aprovada com sucesso.',
