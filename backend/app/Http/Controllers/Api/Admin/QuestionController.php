@@ -25,7 +25,6 @@ class QuestionController extends Controller
      */
     public function index(Request $request)
     {
-        die("DEBUG: HIT QuestionController@index - Time: " . time());
         // --- 1. Main Bank Query ---
         // Exibimos apenas questões 100% classificadas no Banco Completo
         // Aplicamos redundância de filtros para garantir a exclusão de sem-matéria
