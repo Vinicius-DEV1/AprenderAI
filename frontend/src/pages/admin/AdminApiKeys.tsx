@@ -66,8 +66,11 @@ interface ApiEvent {
 interface AnalyticsDaily {
     date: string;
     provider: string;
+    model?: string;
+    nickname?: string;
     requests: number;
     cost: number;
+    last_request_at?: string;
 }
 
 interface AnalyticsModule {
@@ -182,7 +185,7 @@ function ApiAnalyticsDash({ daily, modules, providers }: { daily: AnalyticsDaily
                             </div>
 
                             {/* Charts */}
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                                 <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                                     <h4 className="text-sm font-bold text-slate-800 mb-4 bg-slate-50 inline-block px-3 py-1 rounded-lg">Uso Diário (Tendência)</h4>
                                     <div className="h-[280px]">
@@ -200,6 +203,47 @@ function ApiAnalyticsDash({ daily, modules, providers }: { daily: AnalyticsDaily
                                             <p className="text-slate-400 font-medium text-sm text-center">Nenhum dado de módulo<br />registrado neste período.</p>
                                         </div>
                                     )}
+                                </div>
+                            </div>
+
+                            {/* Detailed Usage Table */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                                <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                                    <h4 className="text-sm font-bold text-slate-800">Uso Detalhado por Chave e Modelo</h4>
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Últimos 14 dias</span>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-[11px]">
+                                        <thead className="bg-slate-50/50 text-slate-400 uppercase font-black border-b border-slate-100">
+                                            <tr>
+                                                <th className="px-6 py-3">Data</th>
+                                                <th className="px-6 py-3">Chave (Nickname)</th>
+                                                <th className="px-6 py-3">Modelo</th>
+                                                <th className="px-6 py-3 text-center">Requisições</th>
+                                                <th className="px-6 py-3 text-right">Último Uso</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                            {filteredDaily.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime() || (b.last_request_at || '').localeCompare(a.last_request_at || '')).map((d, i) => (
+                                                <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                                                    <td className="px-6 py-3 font-bold text-slate-500">
+                                                        {new Date(d.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                                    </td>
+                                                    <td className="px-6 py-3">
+                                                        <span className="font-black text-slate-700">{d.nickname || 'Direto / Desconhecido'}</span>
+                                                        <p className="text-[9px] text-slate-400 uppercase font-bold tracking-tighter">{d.provider}</p>
+                                                    </td>
+                                                    <td className="px-6 py-3 font-mono text-indigo-600 font-bold">{d.model || 'N/A'}</td>
+                                                    <td className="px-6 py-3 text-center">
+                                                        <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-black">{d.requests}</span>
+                                                    </td>
+                                                    <td className="px-6 py-3 text-right text-slate-400 font-bold">
+                                                        {d.last_request_at ? new Date(d.last_request_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
@@ -233,14 +277,26 @@ export default function AdminApiKeys() {
     const [routingForm, setRoutingForm] = useState({ vault_id: '', preferred_model: '', capabilities: [] as string[] });
     const [discoveryLoading, setDiscoveryLoading] = useState(false);
 
-    const { data, isLoading, isError, error } = useQuery({
+    const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
         queryKey: ['admin-api-keys'],
         queryFn: async () => {
             const res = await api.get('/api/v1/admin/api-keys');
             return res.data;
         },
-        retry: 1
+        retry: 1,
+        refetchInterval: 3600000 // 1 hour auto-refresh
     });
+
+    const handleManualRefresh = async () => {
+        try {
+            toast.loading('Sincronizando dados com provedores...', { id: 'api-sync' });
+            await api.get('/api/v1/admin/api-keys?refresh=1');
+            await refetch();
+            toast.success('Dados atualizados com sucesso!', { id: 'api-sync' });
+        } catch (err) {
+            toast.error('Erro ao sincronizar dados.', { id: 'api-sync' });
+        }
+    };
 
     // Mutations
     const addVaultMutation = useMutation({
@@ -384,7 +440,16 @@ export default function AdminApiKeys() {
             <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                 <div>
                     <h1 className="text-3xl font-black text-slate-800 tracking-tight">SRE Dashboard: APIs 🤖</h1>
-                    <p className="text-slate-500 font-medium">Monitoramento e controle de provedores de IA para o {aiName}.</p>
+                    <div className="flex items-center gap-4 mt-1">
+                        <p className="text-slate-500 font-medium">Monitoramento e controle de provedores de IA para o {aiName}.</p>
+                        <button
+                            onClick={handleManualRefresh}
+                            disabled={isFetching}
+                            className={`flex items-center gap-2 px-3 py-1 bg-white border border-slate-200 rounded-full text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:bg-slate-50 transition-all shadow-sm ${isFetching ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            <svg className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            {isFetching ? 'Sincronizando...' : 'Sincronizar Dados'}
+                        </button>
+                    </div>
                 </div>
                 {data.has_recent_errors && (
                     <motion.div

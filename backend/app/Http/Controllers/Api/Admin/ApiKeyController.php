@@ -24,8 +24,15 @@ class ApiKeyController extends Controller
     /**
      * Get API keys monitoring and logs.
      */
-    public function index()
+    public function index(Request $request)
     {
+        if ($request->has('refresh')) {
+            Cache::forget('ai_consumption_ranking');
+            Cache::forget('api_keys_analytics_daily');
+            Cache::forget('api_keys_analytics_modules');
+            Cache::forget('active_api_keys');
+        }
+
         $vaultKeys = ApiKeyVault::orderBy('nickname')->get();
 
         $availableCapabilities = ApiKey::getAvailableCapabilities();
@@ -59,7 +66,7 @@ class ApiKeyController extends Controller
         }
 
         $logs = ApiLog::with('apiKey')->latest()->take(20)->get();
-        $aiLogs = AiRequestLog::with('user')->latest()->take(20)->get();
+        $aiLogs = AiRequestLog::with(['user', 'apiKey.vault'])->latest()->take(20)->get();
 
         $aiRanking = Cache::remember('ai_consumption_ranking', 3600, function () {
             return AiRequestLog::query()
@@ -74,9 +81,10 @@ class ApiKeyController extends Controller
 
         $analyticsDaily = Cache::remember('api_keys_analytics_daily', 3600, function () {
             return DB::table('ai_request_logs')
-                ->selectRaw('DATE(created_at) as date, provider, COUNT(*) as requests, SUM(estimated_cost) as cost')
-                ->where('created_at', '>=', now()->subDays(14))
-                ->groupBy('date', 'provider')
+                ->leftJoin('api_key_vaults', 'ai_request_logs.api_key_id', '=', 'api_key_vaults.id')
+                ->selectRaw('DATE(ai_request_logs.created_at) as date, ai_request_logs.provider, ai_request_logs.model, api_key_vaults.nickname, COUNT(*) as requests, SUM(ai_request_logs.estimated_cost) as cost, MAX(ai_request_logs.created_at) as last_request_at')
+                ->where('ai_request_logs.created_at', '>=', now()->subDays(14))
+                ->groupBy('date', 'ai_request_logs.provider', 'ai_request_logs.model', 'api_key_vaults.nickname')
                 ->orderBy('date', 'asc')
                 ->get();
         });
