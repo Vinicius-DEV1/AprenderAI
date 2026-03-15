@@ -6,6 +6,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { validateCoupon, processCheckout, getUpgradePreview } from '../../api/subscriptions';
 import { getUser } from '../../api/auth';
 import { IMaskInput } from 'react-imask';
+import { useCheckoutTracking } from '../../hooks/useCheckoutTracking';
 
 interface PlanCheckoutProps {
     embeddedPlanId?: string | number;
@@ -24,6 +25,14 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
 
     const [method, setMethod] = useState<'credit_card' | 'pix'>('credit_card');
     const [installments, setInstallments] = useState<number>(12);
+    
+    // Tracking hook integration
+    const { onPaymentInitiated, onPaymentSuccess, onPixGenerated, onError } = useCheckoutTracking({
+        planId: plan?.id,
+        paymentMethod: method,
+        hadCoupon: !!couponCode,
+    });
+
     const [couponCode, setCouponCode] = useState('');
     const [couponMessage, setCouponMessage] = useState('');
     const [couponSuccess, setCouponSuccess] = useState(false);
@@ -142,6 +151,8 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        onPaymentInitiated(method);
         setIsLoading(true);
         try {
             const payload: any = {
@@ -162,8 +173,10 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
             const response = await processCheckout(plan!.id, payload);
             if (response.data.success) {
                 if (method === 'pix' && !upgradeData?.is_upgrade) {
+                    onPixGenerated();
                     setCheckoutResult(response.data);
                 } else {
+                    onPaymentSuccess();
                     if (onSuccess) {
                         onSuccess();
                     } else {
@@ -175,6 +188,8 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
             const message = err.response?.data?.message || err.response?.data?.errors?.[0]?.description || 'Erro ao processar checkout. Verifique os dados.';
             toast.error(message);
             console.error('[PlanCheckout] Erro:', err.response?.data || err.message);
+            // Track the frontend error mapped from backend
+            onError(err, 'checkout_submit');
         } finally {
             setIsLoading(false);
         }

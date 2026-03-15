@@ -7,18 +7,23 @@ use App\Models\PaymentLog;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Services\AsaasService;
+use App\Services\CheckoutTrackingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
+
 class SubscriptionController extends Controller
 {
     protected AsaasService $asaasService;
+    protected CheckoutTrackingService $tracking;
 
-    public function __construct(AsaasService $asaasService)
+    public function __construct(AsaasService $asaasService, CheckoutTrackingService $tracking)
     {
         $this->asaasService = $asaasService;
+        $this->tracking = $tracking;
     }
+
 
     /**
      * Retorna o histórico de assinaturas do usuário.
@@ -84,6 +89,16 @@ class SubscriptionController extends Controller
         ]);
 
         $user = Auth::user();
+
+        // Track checkout opened + payment initiated
+        $this->tracking->trackEvent(
+            $user->id, 'checkout_opened', $plan->id, 'checkout',
+            $request->payment_method ?? null, [], $request
+        );
+        $this->tracking->trackEvent(
+            $user->id, 'payment_initiated', $plan->id, 'payment',
+            $request->payment_method, ['installment_count' => $request->installment_count ?? null], $request
+        );
 
         // ── GUARD: Detectar assinatura parcelada ativa para upgrade/downgrade ──
         $activeInstallment = Subscription::where('user_id', $user->id)
@@ -219,6 +234,15 @@ class SubscriptionController extends Controller
                     'raw_response' => PaymentLog::sanitize($asaasPayment),
                 ]);
 
+                // Track upgrade success and convert intention
+                $this->tracking->trackEvent(
+                    $user->id, 'payment_success', $plan->id, 'confirmation',
+                    $request->payment_method,
+                    ['upgrade' => true, 'upgrade_total' => $upgradeTotal, 'remaining_months' => $remainingMonths],
+                    $request
+                );
+                $this->tracking->convertIntention($user->id, $plan->id, $activeInstallment->id);
+
                 Log::info('[API Checkout] Upgrade pro-rata processado com sucesso.', [
                     'user_id' => $user->id,
                     'from_plan' => $activeInstallment->plan->name,
@@ -252,6 +276,17 @@ class SubscriptionController extends Controller
                     'plan_id' => $plan->id,
                     'error' => $e->getMessage(),
                 ]);
+                $this->tracking->trackError(
+                    $user->id, 'payment_failed', $plan->id,
+                    $e->getMessage(), 'payment', $request->payment_method ?? null,
+                    null, null, $request
+                );
+                $this->tracking->trackEvent(
+                    $user->id, 'payment_failed', $plan->id, 'payment',
+                    $request->payment_method ?? null,
+                    ['upgrade' => true, 'error' => substr($e->getMessage(), 0, 200)],
+                    $request
+                );
                 return response()->json(['message' => 'Erro ao processar upgrade: ' . $e->getMessage()], 500);
             }
         }
@@ -364,6 +399,15 @@ class SubscriptionController extends Controller
                     'raw_response' => PaymentLog::sanitize($asaasPayment),
                 ]);
 
+                // Track installment success and convert intention
+                $this->tracking->trackEvent(
+                    $user->id, 'payment_success', $plan->id, 'confirmation',
+                    'credit_card',
+                    ['type' => 'installment', 'installment_count' => $installmentCount, 'amount' => $plan->annual_price],
+                    $request
+                );
+                $this->tracking->convertIntention($user->id, $plan->id, $subscription->id);
+
             } else {
                 // ── FLUXO RECORRÊNCIA (Mensal ou Anual PIX) ──
                 try {
@@ -422,6 +466,15 @@ class SubscriptionController extends Controller
                     'is_sandbox' => $this->asaasService->isSandbox(),
                     'raw_response' => PaymentLog::sanitize($asaasSubscription),
                 ]);
+
+                // Track recurring success and convert intention
+                $this->tracking->trackEvent(
+                    $user->id, 'payment_success', $plan->id, 'confirmation',
+                    $request->payment_method,
+                    ['type' => 'recurring', 'amount' => $plan->price, 'interval' => $plan->interval],
+                    $request
+                );
+                $this->tracking->convertIntention($user->id, $plan->id, $subscription->id);
             }
 
             if ($coupon && $discount) {
@@ -455,6 +508,11 @@ class SubscriptionController extends Controller
                             'image' => $pixData['encodedImage'],
                             'expires_at' => $pixExpiresAt->toISOString(),
                         ];
+
+                        $this->tracking->trackEvent(
+                            $user->id, 'pix_generated', $plan->id, 'payment',
+                            'pix', ['expires_at' => $pixExpiresAt->toISOString()], $request
+                        );
                     }
                 }
             } else {
@@ -477,6 +535,19 @@ class SubscriptionController extends Controller
                 'status' => 'failed',
                 'error_message' => $e->getMessage(),
             ]);
+
+            // Track payment failure
+            $this->tracking->trackError(
+                $user->id, 'payment_failed', $plan->id,
+                $e->getMessage(), 'payment', $request->payment_method ?? null,
+                null, null, $request
+            );
+            $this->tracking->trackEvent(
+                $user->id, 'payment_failed', $plan->id, 'payment',
+                $request->payment_method ?? null,
+                ['error' => substr($e->getMessage(), 0, 200)],
+                $request
+            );
 
             return response()->json(['message' => 'Erro ao processar pagamento: ' . $e->getMessage()], 500);
         }

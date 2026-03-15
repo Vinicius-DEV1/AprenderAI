@@ -37,6 +37,8 @@ use App\Http\Controllers\Api\Admin\PaymentSettingsController;
 use App\Http\Controllers\Api\Admin\ExamController;
 use App\Http\Controllers\Api\Admin\BackupController;
 use App\Http\Controllers\Api\Admin\SemanticDashboardController;
+use App\Http\Controllers\Api\CheckoutTrackingController;
+use App\Http\Controllers\Api\Admin\CheckoutAnalyticsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -110,6 +112,14 @@ Route::prefix('v1')->group(function () {
             Route::get('/{plan}/upgrade-preview', [SubscriptionController::class, 'upgradePreview']);
             Route::get('/check-status', [SubscriptionController::class, 'checkStatus']);
             Route::get('/{subscription}/receipt', [SubscriptionController::class, 'receiptUrl']);
+        });
+
+        // Checkout Tracking (fire-and-forget events from the frontend)
+        Route::prefix('tracking')->group(function () {
+            Route::post('/intention', [CheckoutTrackingController::class, 'recordIntention']);
+            Route::post('/event', [CheckoutTrackingController::class, 'trackEvent']);
+            Route::post('/error', [CheckoutTrackingController::class, 'trackFrontendError']);
+            Route::post('/abandonment', [CheckoutTrackingController::class, 'recordAbandonment']);
         });
 
         // Notebooks
@@ -328,6 +338,17 @@ Route::prefix('v1')->group(function () {
                 Route::get('/active-job', [AdminQuestionImportController::class, 'activeJob']);
                 Route::get('/{id}/progress', [AdminQuestionImportController::class, 'progress']);
                 Route::delete('/{id}', [AdminQuestionImportController::class, 'destroy']);
+            });
+
+            // Checkout Observability Dashboard
+            Route::prefix('checkout')->group(function () {
+                Route::get('/overview', [CheckoutAnalyticsController::class, 'overview']);
+                Route::get('/funnel', [CheckoutAnalyticsController::class, 'funnel']);
+                Route::get('/plans-ranking', [CheckoutAnalyticsController::class, 'plansRanking']);
+                Route::get('/errors', [CheckoutAnalyticsController::class, 'errors']);
+                Route::get('/user-timeline/{userId}', [CheckoutAnalyticsController::class, 'userTimeline']);
+                Route::get('/abandonments', [CheckoutAnalyticsController::class, 'abandonments']);
+                Route::get('/alerts', [CheckoutAnalyticsController::class, 'alerts']);
             });
 
             // Database Backups
