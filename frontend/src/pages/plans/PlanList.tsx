@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
 import { getSubscriptions, getPaymentReceipt } from '../../api/subscriptions';
+import { trackEvent, trackIntention } from '../../api/checkoutTracking';
 import { toast } from 'sonner';
 import PlanConfirmationModal from '../../components/PlanConfirmationModal';
 import Accordion from '../../components/Accordion';
@@ -160,6 +161,11 @@ export default function PlanList() {
     const userPlanId = user?.plan_id || (user?.plan as any)?.id;
     const currentPlan = plans?.find((p: any) => String(p.id) === String(userPlanId));
 
+    // Track prices_viewed on mount
+    useEffect(() => {
+        trackEvent('prices_viewed', undefined, 'prices');
+    }, []);
+
     const activeInstallment = history.find((sub: any) => sub.status === 'active' && sub.installment_count && new Date(sub.current_period_end).getTime() > Date.now());
 
     const getPlanLevel = (name?: string) => {
@@ -217,6 +223,9 @@ export default function PlanList() {
             toast.error(`Você possui o plano anual parcelado ativo. O downgrade está bloqueado até o fim do período.`);
             return;
         }
+
+        // Track the purchase intention
+        trackIntention(plan.id, '/planos');
 
         // Regra Especial: De Gratuito (Preço 0) para qualquer Pago -> Checkout Direto
         // Se for de Pago para Pago -> Abre Modal para explicar que é ACUMULATIVO (ou redireciona no caso do parcelamento)

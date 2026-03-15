@@ -7,6 +7,7 @@ import { getUser } from './api/auth';
 import { Toaster } from 'sonner';
 import { setBootstrapping } from './api/axios';
 import GuestRoute from './components/GuestRoute';
+import { useErrorTracking } from './hooks/useErrorTracking';
 
 // Layouts & Auth
 import LoginPage from './pages/auth/LoginPage';
@@ -77,6 +78,7 @@ import AdminAnalyticsBehavior from './pages/admin/analytics/Behavior';
 import AdminAnalyticsAcquisition from './pages/admin/analytics/Acquisition';
 import AdminAnalyticsConversion from './pages/admin/analytics/Conversion';
 import AdminAnalyticsMonetization from './pages/admin/analytics/Monetization';
+import AdminCheckoutAnalytics from './pages/admin/analytics/CheckoutAnalytics';
 import AdminMonitor from './pages/admin/Monitor';
 import AdminIntegrations from './pages/admin/Integrations';
 import AdminChatLogs from './pages/admin/AdminChatLogs';
@@ -96,6 +98,9 @@ function App() {
     useConfig();
     const { setUser, setLoading: setAuthLoading, isLoading: authLoading } = useAuthStore();
     const [bootstrapTimedOut, setBootstrapTimedOut] = useState(false);
+
+    // Instrument global frontend error tracking
+    useErrorTracking();
 
     useEffect(() => {
         const checkAuthStatus = async () => {
@@ -257,6 +262,7 @@ function App() {
                             <Route path="analytics/acquisition" element={<><MetaTags title="Admin: Aquisição" /><AdminAnalyticsAcquisition /></>} />
                             <Route path="analytics/conversion" element={<><MetaTags title="Admin: Conversão" /><AdminAnalyticsConversion /></>} />
                             <Route path="analytics/monetization" element={<><MetaTags title="Admin: Monetização" /><AdminAnalyticsMonetization /></>} />
+                            <Route path="analytics/checkout" element={<><MetaTags title="Admin: Checkout Observability" /><AdminCheckoutAnalytics /></>} />
                             <Route path="monitor" element={<><MetaTags title="Admin: Monitoramento" /><AdminMonitor /></>} />
                             <Route path="integrations" element={<><MetaTags title="Admin: Integrações" /><AdminIntegrations /></>} />
                             <Route path="chat-logs/:id" element={<><MetaTags title="Admin: Auditoria IA" /><AdminChatLogs /></>} />

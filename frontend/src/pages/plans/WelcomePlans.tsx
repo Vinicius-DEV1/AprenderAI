@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useConfigStore } from '../../stores/configStore';
 import { toast } from 'sonner';
+import { trackEvent, trackIntention } from '../../api/checkoutTracking';
 import '../../styles/landing-page.css';
 import PlanCheckout from './PlanCheckout';
 import Accordion from '../../components/Accordion';
@@ -21,6 +22,9 @@ export default function WelcomePlans() {
         if (urlPlan?.includes('annual') || storagePlan?.includes('annual')) {
             setPeriodo('anual');
         }
+
+        // Track that user reached the prices / plan selection page
+        trackEvent('prices_viewed', undefined, 'prices');
     }, [searchParams]);
 
     const handlePlanSelect = (slugKeyword: string, interval: 'monthly' | 'yearly') => {
@@ -45,9 +49,12 @@ export default function WelcomePlans() {
 
         if (matchedPlan) {
             localStorage.removeItem('intended_plan');
+            // Track purchase intention from welcome/onboarding flow
+            trackIntention(matchedPlan.id, '/welcome-plans');
             setSelectedPlanId(matchedPlan.id);
             // Move scroll to top to see checkout
             window.scrollTo({ top: 0, behavior: 'smooth' });
+
         } else {
             console.error('Plan not found:', slugKeyword, interval);
             toast.error(`Ocorreu um erro ao selecionar o plano. Tente novamente.`);
