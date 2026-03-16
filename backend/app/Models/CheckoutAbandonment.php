@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class CheckoutAbandonment extends Model
 {
+    protected $table = 'checkout_abandonment';
+
     protected $fillable = [
         'user_id',
         'plan_id',
