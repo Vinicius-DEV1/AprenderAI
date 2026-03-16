@@ -73,6 +73,7 @@ const SemanticDashboard = () => {
     const [configLoading, setConfigLoading] = useState(false);
     const [testLoading, setTestLoading] = useState(false);
     const [reindexing, setReindexing] = useState(false);
+    const [clearingCache, setClearingCache] = useState(false);
     
     // Config form
     const [configState, setConfigState] = useState({
@@ -166,6 +167,23 @@ const SemanticDashboard = () => {
         }
     };
 
+    const handleClearCache = async () => {
+        if (!confirm('Isso apagará todo o histórico de buscas otimizadas (L1/L2 Cache). Próximas buscas podem demorar mais para processar. Deseja continuar?')) {
+            return;
+        }
+
+        try {
+            setClearingCache(true);
+            const res = await api.post('/api/v1/admin/semantic/clear-cache');
+            toast.success(res.data.message);
+            loadStats();
+        } catch (error) {
+            toast.error('Erro ao limpar o cache.');
+        } finally {
+            setClearingCache(false);
+        }
+    };
+
     if (loading && !stats) {
         return <div className="p-8 flex justify-center"><RefreshCw className="w-8 h-8 animate-spin text-indigo-500" /></div>;
     }
@@ -189,6 +207,15 @@ const SemanticDashboard = () => {
                         title="Atualizar Dados"
                     >
                         <RefreshCw className={clsx("w-4 h-4", loading && "animate-spin")} />
+                    </button>
+                    <button 
+                        onClick={handleClearCache}
+                        disabled={clearingCache}
+                        className="btn btn-secondary text-red-600 border-red-200 hover:bg-red-50 flex items-center gap-2"
+                        title="Limpar Cache de Busca"
+                    >
+                        {clearingCache ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                        Limpar Cache
                     </button>
                     <button 
                         onClick={() => setIsIndexModalOpen(true)}
