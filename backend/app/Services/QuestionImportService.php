@@ -107,10 +107,10 @@ class QuestionImportService
     }
 
     /**
-     * Ponto de entrada processado por Background Jobs (Fila).
-     * 
-     * Executa a extração a partir do .zip salvo no storage local
-     * e orquestra as dependências gerando o feedback de progresso no DB.
+     * Ponto de entrada processado por Background Jobs (Fila) — MODO ORIGINAL MONOLÍTICO.
+     *
+     * Mantido por compatibilidade. Para novos imports, o ProcessQuestionImportJob
+     * usa o modo paralelo via prepareForParallelProcessing + processChunk.
      *
      * @param  QuestionImport $import  Registro do lote atual sendo processado.
      * @param  string         $zipPath Caminho do .zip salvo no disk(local).
@@ -144,16 +144,16 @@ class QuestionImportService
             $stats = $this->importFromDatabase($dbPath, $imageMap, $import, $uploader);
 
             $import->update([
-                'total_questions' => $stats['total'],
-                'pending_count' => $stats['pending'],
-                'approved_count' => $stats['approved'],
+                'total_questions'     => $stats['total'],
+                'pending_count'       => $stats['pending'],
+                'approved_count'      => $stats['approved'],
                 'processed_questions' => $stats['total'],
-                'status' => 'completed',
+                'status'              => 'completed',
             ]);
 
         } catch (\Throwable $e) {
             $import->update([
-                'status' => 'failed',
+                'status'        => 'failed',
                 'error_message' => $e->getMessage(),
             ]);
             Log::error("[QuestionImportService - Job] Falha no lote #{$import->id}: " . $e->getMessage());
@@ -161,6 +161,145 @@ class QuestionImportService
         } finally {
             $this->cleanupTmpDir($tmpDir);
         }
+    }
+
+    /**
+     * MODO PARALELO — ETAPA 1: Preparação pelo Orquestrador.
+     *
+     * Extrai o ZIP, migra imagens para o storage definitivo e conta o total de questões.
+     * É executado UMA ÚNICA VEZ pelo ProcessQuestionImportJob (orquestrador).
+     *
+     * Retorna os dados necessários para que o orquestrador despache os chunks:
+     *   - 'db_path'     → caminho absoluto do SQLite extraído (usado por cada chunk)
+     *   - 'tmp_dir'     → diretório temporário (será limpo pelo FinalizeImportJob)
+     *   - 'total_count' → total de questões no SQLite (para calcular o número de chunks)
+     *
+     * @param  QuestionImport $import         Registro do lote.
+     * @param  string         $absoluteZipPath Caminho absoluto do ZIP no servidor.
+     * @return array           ['db_path', 'tmp_dir', 'total_count']
+     * @throws \RuntimeException Em caso de falha na extração ou SQLite inválido.
+     */
+    public function prepareForParallelProcessing(QuestionImport $import, string $absoluteZipPath): array
+    {
+        // UUID único para este lote: garante que importações simultâneas não colidam
+        $tmpDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'import_' . Str::uuid();
+
+        Log::info("[QuestionImportService] Extraindo ZIP para processamento paralelo", [
+            'import_id' => $import->id,
+            'zip_path'  => $absoluteZipPath,
+            'tmp_dir'   => $tmpDir,
+        ]);
+
+        // ETAPA 1: Extração do ZIP para o diretório temporário
+        $this->extractZip($absoluteZipPath, $tmpDir);
+
+        // ETAPA 2: Identifica o arquivo SQLite e o slug da banca
+        $dbPath    = $this->findDatabaseFile($tmpDir);
+        $bancaSlug = strtolower(
+            preg_replace('/^banco_/', '', pathinfo($dbPath, PATHINFO_FILENAME))
+        );
+
+        // ETAPA 3: Migra todas as imagens para o storage permanente.
+        // Isso é feito aqui (pelo orquestrador) pois é uma operação de I/O que precisa
+        // ocorrer antes que qualquer chunk comece (os chunks referenciam as imagens migradas).
+        $imageMap = $this->migrateImages($tmpDir, $bancaSlug);
+
+        // Persiste o mapeamento de imagens no banco para que os chunks possam usá-lo.
+        // Usamos o campo error_message temporariamente como repositório do imageMap serializado.
+        // Isso evita a necessidade de uma nova coluna no banco.
+        $import->update([
+            'error_message' => json_encode(['_image_map' => $imageMap]),
+        ]);
+
+        // ETAPA 4: Conta o total de questões no SQLite (sem carregar tudo na memória)
+        $sqlite = new \PDO("sqlite:{$dbPath}");
+        $sqlite->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $countStmt  = $sqlite->query("SELECT COUNT(*) FROM questions");
+        $totalCount = (int) $countStmt->fetchColumn();
+
+        Log::info("[QuestionImportService] Preparação concluída: {$totalCount} questões encontradas no SQLite.", [
+            'import_id' => $import->id,
+            'banca'     => $bancaSlug,
+            'images'    => count($imageMap),
+        ]);
+
+        return [
+            'db_path'     => $dbPath,
+            'tmp_dir'     => $tmpDir,
+            'total_count' => $totalCount,
+        ];
+    }
+
+    /**
+     * MODO PARALELO — ETAPA 2: Processamento de um Chunk específico.
+     *
+     * É chamado por cada ProcessImportQuestionChunkJob em paralelo.
+     * Cada chunk lê apenas as questões no intervalo [offset, offset+limit) do SQLite.
+     *
+     * Segurança contra Race Condition:
+     *   - `firstOrCreate` em Subject e Topic usa o índice UNIQUE de slug para garantir
+     *     que, mesmo que dois workers tentem criar a mesma matéria simultaneamente,
+     *     apenas um terá sucesso e o outro lirá o registro criado.
+     *   - `Question::where('external_id', ...)->first()` + check de hash garante o upsert
+     *     idempotente de questões.
+     *
+     * @param  string         $dbPath  Caminho absoluto do SQLite.
+     * @param  QuestionImport $import  Registro pai do lote.
+     * @param  int            $offset  Índice da primeira questão do chunk (0-based).
+     * @param  int            $limit   Número máximo de questões a processar.
+     * @return array          Estatísticas do chunk: ['total', 'pending', 'approved', 'skipped']
+     */
+    public function processChunk(string $dbPath, QuestionImport $import, int $offset, int $limit): array
+    {
+        // Recupera o imageMap salvo pelo orquestrador (serializado no campo error_message)
+        $importData = json_decode($import->error_message ?? '{}', true);
+        $imageMap   = $importData['_image_map'] ?? [];
+
+        // Conecta ao SQLite do lote
+        $sqlite = new \PDO("sqlite:{$dbPath}");
+        $sqlite->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+
+        // Query com LIMIT/OFFSET para pegar apenas a "fatia" deste chunk
+        $stmt = $sqlite->prepare("
+            SELECT
+                q.*,
+                e.organization,
+                e.year,
+                e.institution,
+                e.role,
+                e.origin,
+                e.source_url,
+                e.extracted_at,
+                (SELECT GROUP_CONCAT(s.name)
+                 FROM question_subject qs
+                 JOIN subjects s ON s.id = qs.subject_id
+                 WHERE qs.question_id = q.id) AS materias,
+                (SELECT GROUP_CONCAT(t.name)
+                 FROM question_topic qt
+                 JOIN topics t ON t.id = qt.topic_id
+                 WHERE qt.question_id = q.id) AS assuntos
+            FROM questions q
+            LEFT JOIN exams e ON q.exam_id = e.id
+            LIMIT :limit OFFSET :offset
+        ");
+
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        $questions = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        // Carrega o uploader (necessário para a lógica interna; usa o primeiro admin como fallback)
+        $uploader = User::find($import->uploaded_by) ?? User::first();
+
+        // Processa as questões deste chunk e atualiza o progresso atomicamente
+        $stats = $this->importFromDatabase($dbPath, $imageMap, $import, $uploader, $offset, $limit);
+
+        // Atualiza o contador de progresso no banco (incremento atômico via increment)
+        // Não usa update direto para evitar race conditions com outros chunks concorrentes
+        $import->increment('processed_questions', $stats['total']);
+
+        return $stats;
     }
 
     /**
@@ -241,48 +380,99 @@ class QuestionImportService
 
     /**
      * Processa o banco SQLite e persiste as questões no banco de produção.
-     * 
-     * Utiliza Database Transactions para garantir integridade.
-     * Realiza o mapeamento automático de matérias (Subjects).
+     *
+     * Suporta dois modos de operação:
+     *   1. MODO COMPLETO (padrão): Carrega todas as questões do SQLite em memória.
+     *      Usado pelo fluxo legado (processZipFromJob) para compatibilidade.
+     *   2. MODO CHUNK (offset+limit): Carrega apenas uma fatia específica das questões.
+     *      Usado pelo processChunk para processamento paralelo com múltiplos workers.
+     *
+     * Segurança contra Race Conditions (modo chunk):
+     *   - firstOrCreate para Subject/Topic usa o índice UNIQUE de slug no banco.
+     *     Se dois workers tentarem criar a mesma matéria ao mesmo tempo, o MySQL
+     *     rejeita a segunda inserção com DuplicateEntry. O `firstOrCreate` do Eloquent
+     *     detecta esse erro e retorna o registro já existente silenciosamente.
      *
      * @param  string         $dbPath   Caminho do SQLite.
      * @param  array          $imageMap Mapeamento de imagens processadas.
      * @param  QuestionImport $import   Registro do lote atual.
      * @param  User           $uploader Usuário executor.
-     * @return array          Estatísticas da importação [total, pending, approved].
+     * @param  int|null       $offset   (Opcional) Índice inicial para processamento em chunk.
+     * @param  int|null       $limit    (Opcional) Máximo de questões para este chunk.
+     * @return array          Estatísticas da importação [total, pending, approved, skipped].
      */
-    private function importFromDatabase(string $dbPath, array $imageMap, QuestionImport $import, User $uploader): array
-    {
+    protected function importFromDatabase(
+        string $dbPath,
+        array $imageMap,
+        QuestionImport $import,
+        User $uploader,
+        ?int $offset = null,
+        ?int $limit = null
+    ): array {
         $sqlite = new \PDO("sqlite:{$dbPath}");
         $sqlite->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
-        $stmt = $sqlite->query("
-            SELECT 
-                q.*,
-                e.organization,
-                e.year,
-                e.institution,
-                e.role,
-                e.origin,
-                e.source_url,
-                e.extracted_at,
-                (SELECT GROUP_CONCAT(s.name) 
-                 FROM question_subject qs 
-                 JOIN subjects s ON s.id = qs.subject_id 
-                 WHERE qs.question_id = q.id) AS materias,
-                (SELECT GROUP_CONCAT(t.name) 
-                 FROM question_topic qt 
-                 JOIN topics t ON t.id = qt.topic_id 
-                 WHERE qt.question_id = q.id) AS assuntos
-            FROM questions q
-            LEFT JOIN exams e ON q.exam_id = e.id
-        ");
+        // Modo CHUNK: usa LIMIT + OFFSET para processar apenas a fatia deste worker.
+        // Modo COMPLETO: carrega todas as questões (sem LIMIT/OFFSET).
+        if ($offset !== null && $limit !== null) {
+            $stmt = $sqlite->prepare("
+                SELECT
+                    q.*,
+                    e.organization,
+                    e.year,
+                    e.institution,
+                    e.role,
+                    e.origin,
+                    e.source_url,
+                    e.extracted_at,
+                    (SELECT GROUP_CONCAT(s.name)
+                     FROM question_subject qs
+                     JOIN subjects s ON s.id = qs.subject_id
+                     WHERE qs.question_id = q.id) AS materias,
+                    (SELECT GROUP_CONCAT(t.name)
+                     FROM question_topic qt
+                     JOIN topics t ON t.id = qt.topic_id
+                     WHERE qt.question_id = q.id) AS assuntos
+                FROM questions q
+                LEFT JOIN exams e ON q.exam_id = e.id
+                LIMIT :limit OFFSET :offset
+            ");
+            $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+            $stmt->execute();
+        } else {
+            $stmt = $sqlite->query("
+                SELECT
+                    q.*,
+                    e.organization,
+                    e.year,
+                    e.institution,
+                    e.role,
+                    e.origin,
+                    e.source_url,
+                    e.extracted_at,
+                    (SELECT GROUP_CONCAT(s.name)
+                     FROM question_subject qs
+                     JOIN subjects s ON s.id = qs.subject_id
+                     WHERE qs.question_id = q.id) AS materias,
+                    (SELECT GROUP_CONCAT(t.name)
+                     FROM question_topic qt
+                     JOIN topics t ON t.id = qt.topic_id
+                     WHERE qt.question_id = q.id) AS assuntos
+                FROM questions q
+                LEFT JOIN exams e ON q.exam_id = e.id
+            ");
+        }
+
         $questions = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         $stats = ['total' => 0, 'pending' => 0, 'approved' => 0, 'skipped' => 0];
 
-        // Atualização inicial do total_questions 
-        $import->update(['total_questions' => count($questions)]);
+        // No modo completo, atualiza o total_questions no registro do import.
+        // No modo chunk, o orquestrador já fez isso antes de despachar os chunks.
+        if ($offset === null) {
+            $import->update(['total_questions' => count($questions)]);
+        }
 
         foreach ($questions as $qData) {
             DB::transaction(function () use ($qData, $imageMap, $import, $uploader, &$stats) {
