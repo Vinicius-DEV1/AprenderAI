@@ -3,7 +3,7 @@ import api from '../../api/axios';
 import { toast } from 'sonner';
 import { 
     Database, Activity, Search, RefreshCw, Settings, Save, Server, 
-    Box, FileJson, CheckCircle2, AlertCircle, PlayCircle, ChevronDown 
+    Box, FileJson, CheckCircle2, AlertCircle, PlayCircle, ChevronDown, Clock
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -29,13 +29,28 @@ interface DashboardStats {
     jobs: {
         pending: number;
         failed: number;
+        recent_failures?: Array<{
+            id: number;
+            failed_at: string;
+            payload: string;
+            error_preview: string;
+        }>;
     };
+    recent_searches?: Array<{
+        id: number;
+        user_name: string;
+        prompt: string;
+        status: string;
+        created_at: string;
+        similarity_threshold: number;
+    }>;
     config: {
         vector_search_enabled: boolean | string;
         concept_detection_threshold: number;
         qdrant_candidate_limit: number;
         final_result_limit: number;
         rerank_weights: Record<string, number>;
+        pipeline_version?: string;
     };
 }
 
@@ -283,6 +298,47 @@ const SemanticDashboard = () => {
                         </div>
                     </div>
 
+                    {stats && stats.config.pipeline_version && (
+                        <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 rounded-xl p-6 shadow-sm flex items-start gap-4">
+                            <div className="p-3 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                                <Database className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Pipeline Ativo</h3>
+                                <div className="mt-1 flex items-center gap-2">
+                                    <span className="font-mono text-lg font-bold text-indigo-700 dark:text-indigo-400">
+                                        {stats.config.pipeline_version}
+                                    </span>
+                                </div>
+                                <p className="text-xs text-slate-500 mt-2">
+                                    Versão de indexação atual. Útil para debugar se as questões já adotaram novos pesos.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {stats && stats.jobs.recent_failures && stats.jobs.recent_failures.length > 0 && (
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-red-200 dark:border-red-900/50 p-6 shadow-sm">
+                            <h2 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-4 flex items-center gap-2">
+                                <AlertCircle className="w-5 h-5" />
+                                Últimas Falhas (Embeddings)
+                            </h2>
+                            <div className="space-y-3">
+                                {stats.jobs.recent_failures.map((job) => (
+                                    <div key={job.id} className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-900/30 text-sm">
+                                        <div className="flex justify-between items-start mb-1 text-xs">
+                                            <span className="font-medium text-red-800 dark:text-red-300">#{job.id} - {job.payload}</span>
+                                            <span className="text-red-500 whitespace-nowrap ml-2">{new Date(job.failed_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                        </div>
+                                        <p className="text-red-600 dark:text-red-400 font-mono text-[10px] break-all line-clamp-2" title={job.error_preview}>
+                                            {job.error_preview}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {stats && (
                         <div className="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-sm overflow-hidden text-sm">
                            <h3 className="text-indigo-400 font-medium mb-3 flex items-center gap-2"><FileJson className="w-4 h-4"/> Rerank Weights Dump</h3>
@@ -424,6 +480,68 @@ const SemanticDashboard = () => {
                             </div>
                         )}
                     </div>
+                    
+                    {/* RECENT SEARCHES PANEL */}
+                    {stats && stats.recent_searches && (
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm overflow-hidden">
+                            <h2 className="text-lg font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                                <Activity className="w-5 h-5 text-emerald-500" />
+                                Buscas Recentes (Ao Vivo)
+                            </h2>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm whitespace-nowrap border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
+                                            <th className="font-medium px-4 py-3 bg-slate-50 dark:bg-slate-800/50">Data</th>
+                                            <th className="font-medium px-4 py-3 bg-slate-50 dark:bg-slate-800/50">Usuário</th>
+                                            <th className="font-medium px-4 py-3 bg-slate-50 dark:bg-slate-800/50">Prompt Buscado</th>
+                                            <th className="font-medium px-4 py-3 bg-slate-50 dark:bg-slate-800/50">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-200">
+                                        {stats.recent_searches.map((search) => (
+                                            <tr key={search.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/20 transition-colors">
+                                                <td className="px-4 py-3 text-xs text-slate-500">
+                                                    <div className="flex items-center gap-1.5 flex-nowrap shrink-0">
+                                                        <Clock className="w-3.5 h-3.5" />
+                                                        {search.created_at}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400 flex items-center justify-center text-xs font-bold shrink-0">
+                                                            {search.user_name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <span className="truncate max-w-[120px]">{search.user_name}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 font-medium text-slate-800 dark:text-white whitespace-normal break-words max-w-sm">
+                                                    “{search.prompt}”
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={clsx(
+                                                        "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase border",
+                                                        search.status === 'completed' ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800/50" :
+                                                        search.status === 'failed' ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50" :
+                                                        "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50"
+                                                    )}>
+                                                        {search.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {stats.recent_searches.length === 0 && (
+                                            <tr>
+                                                <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
+                                                    Nenhuma busca registrada no banco ainda.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
             {/* INDEX MODAL */}

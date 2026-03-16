@@ -52,11 +52,47 @@ class SemanticDashboardController extends Controller
 
         // 3. Cache & Latency Stats (from SearchInteractionLog and AiSearchCache)
         $totalLogSearches = SearchInteractionLog::distinct('ai_search_id')->count('ai_search_id');
-        
         // As cache_type column doesn't exist, we show total L2 entries
         $totalCacheEntries = AiSearchCache::count();
         $l1CacheHits = 0; // Efemero/Redis
         $l2CacheHits = $totalCacheEntries; // Aproximado para o dashboard
+
+        // 4. Jobs Stats (Embeddings Queue)
+        $pendingJobs = DB::table('jobs')->where('queue', config('xavier.embeddings.queue', 'embeddings'))->count();
+        $failedJobs = DB::table('failed_jobs')->where('queue', config('xavier.embeddings.queue', 'embeddings'))->count();
+
+        // 5. Detailed Failed Jobs
+        $failedJobsDetails = DB::table('failed_jobs')
+            ->where('queue', config('xavier.embeddings.queue', 'embeddings'))
+            ->orderBy('failed_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function ($job) {
+                // Extract just the first line of the exception for readability
+                $exceptionLines = explode("\n", $job->exception);
+                return [
+                    'id' => $job->id,
+                    'failed_at' => $job->failed_at,
+                    'payload' => json_decode($job->payload, true)['displayName'] ?? 'Unknown Job',
+                    'error_preview' => $exceptionLines[0] ?? 'Unknown Error',
+                ];
+            });
+
+        // 6. Recent Searches (from AiSearchRequest which logs user prompts)
+        $recentSearches = \App\Models\AiSearchRequest::with('user:id,name,email')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($req) {
+                return [
+                    'id' => $req->id,
+                    'user_name' => $req->user ? $req->user->name : 'System/Guest',
+                    'prompt' => $req->prompt,
+                    'status' => $req->status,
+                    'created_at' => $req->created_at->format('d/m/Y H:i:s'),
+                    'similarity_threshold' => $req->similarity_threshold,
+                ];
+            });
 
         // 4. Jobs Stats (Embeddings Queue)
         $pendingJobs = DB::table('jobs')->where('queue', config('xavier.embeddings.queue', 'embeddings'))->count();
@@ -84,13 +120,16 @@ class SemanticDashboardController extends Controller
             'jobs' => [
                 'pending' => $pendingJobs,
                 'failed'  => $failedJobs,
+                'recent_failures' => $failedJobsDetails,
             ],
+            'recent_searches' => $recentSearches,
             'config' => [
                 'vector_search_enabled'       => config('xavier.vector_search_enabled'),
                 'concept_detection_threshold' => config('xavier.embeddings.concept_detection_threshold'),
                 'qdrant_candidate_limit'      => config('xavier.search.qdrant_candidate_limit'),
                 'final_result_limit'          => config('xavier.search.final_result_limit'),
                 'rerank_weights'              => config('xavier.search.rerank_weights'),
+                'pipeline_version'            => config('xavier.embeddings.pipeline_version'),
             ]
         ]);
     }
