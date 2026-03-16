@@ -69,10 +69,14 @@ class IndexQuestionVectorJob implements ShouldQueue
         // Compute hash of all 3 texts combined to detect content changes
         $combinedHash = hash('sha256', $statementText . $conceptText . $explanationText);
 
-        // Check if already indexed with same content
+        // Check if already indexed with same content AND same pipeline version
         $vectorRecord = QuestionVector::find($this->questionId);
-        if ($vectorRecord && !$vectorRecord->hasContentChanged($combinedHash)) {
-            Log::info("[Xavier][IndexQuestion] Skipping #{$this->questionId} — content unchanged (hash match).");
+        $currentPipeline = config('xavier.embeddings.pipeline_version', 'v3_structured');
+        
+        if ($vectorRecord && 
+            !$vectorRecord->hasContentChanged($combinedHash) && 
+            $vectorRecord->pipeline_version === $currentPipeline) {
+            Log::info("[Xavier][IndexQuestion] Skipping #{$this->questionId} — content and pipeline unchanged.");
             return;
         }
 
