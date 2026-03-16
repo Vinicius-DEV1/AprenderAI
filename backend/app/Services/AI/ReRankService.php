@@ -67,7 +67,8 @@ class ReRankService
             ->pluck(DB::raw('COUNT(*) as cnt'), 'question_id')
             ->toArray();
 
-        $maxPopularity = !empty($popularityCounts) ? max($popularityCounts) : 1;
+        $maxVectorScore = !empty($candidates) ? max(array_column($candidates, 'score')) : 1.0;
+        $maxPopularity  = !empty($popularityCounts) ? max($popularityCounts) : 1;
 
         // Score each candidate
         $scored = [];
@@ -75,11 +76,14 @@ class ReRankService
             $qid     = $candidate['question_id'];
             $payload = $candidate['payload'] ?? [];
 
-            $vectorScore     = $this->normalizeVector((float) $candidate['score']);
+            // Vector score is normalized relative to the best candidate in this batch
+            // This handles the transition from Cosine (0-1) to RRF (0-0.05) seamlessly.
+            $vectorScore     = $this->normalizeVector((float) $candidate['score'], (float) $maxVectorScore);
             $popularityScore = $this->normalizePopularity($popularityCounts[$qid] ?? 0, $maxPopularity);
             $qualityScore    = $this->qualityScore($payload['difficulty'] ?? null);
             $recencyScore    = $this->recencyScore((int) ($payload['year'] ?? 0));
 
+            // Weights are applied to unified [0, 1] scales
             $composite = ($vectorScore     * $this->wVector)
                        + ($popularityScore * $this->wPopularity)
                        + ($qualityScore    * $this->wQuality)
@@ -105,10 +109,12 @@ class ReRankService
 
     // ─── Normalizers ─────────────────────────────────────────────────────────
 
-    private function normalizeVector(float $score): float
+    private function normalizeVector(float $score, float $max): float
     {
-        // Qdrant cosine scores are [0, 1]; clamp just in case
-        return max(0.0, min(1.0, $score));
+        if ($max <= 0) {
+            return 0.0;
+        }
+        return min(1.0, $score / $max);
     }
 
     private function normalizePopularity(int $count, int $max): float

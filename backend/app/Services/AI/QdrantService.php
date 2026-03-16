@@ -150,7 +150,7 @@ class QdrantService
                 'query'           => ['nearest' => $queryVectors['statement']],
                 'using'           => 'statement',
                 'limit'           => $limit * 2,
-                'score_threshold' => 0.30,
+                'score_threshold' => $scoreThreshold,
             ];
         }
  
@@ -160,7 +160,7 @@ class QdrantService
                 'query'           => ['nearest' => $queryVectors['concept']],
                 'using'           => 'concept',
                 'limit'           => $limit * 2,
-                'score_threshold' => 0.30,
+                'score_threshold' => $scoreThreshold,
             ];
         }
 
