@@ -93,6 +93,19 @@ class HybridSearchService
                 'match' => ['value' => $sqlFilters['type']],
             ];
         }
+        
+        // Filter by concepts (Semantic Expansion)
+        // We use 'should' instead of 'must' to allow results that match the vector
+        // even if they don't have the explicit concept tagged, but boost those with concepts.
+        $should = [];
+        if (!empty($conceptIds)) {
+            foreach ($conceptIds as $slug) {
+                $should[] = [
+                    'key' => 'concepts',
+                    'match' => ['value' => $slug]
+                ];
+            }
+        }
 
         // Filter by difficulty
         if (!empty($sqlFilters['difficulty'])) {
@@ -108,7 +121,11 @@ class HybridSearchService
             'match' => ['value' => true],
         ];
 
-        return empty($must) ? [] : ['must' => $must];
+        $filter = [];
+        if (!empty($must)) $filter['must'] = $must;
+        if (!empty($should)) $filter['should'] = $should;
+
+        return $filter;
     }
 
     /**

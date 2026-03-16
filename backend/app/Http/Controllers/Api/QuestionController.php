@@ -549,13 +549,14 @@ class QuestionController extends Controller
         try {
             $conceptThreshold = (float) config('xavier.embeddings.concept_detection_threshold', 0.75);
             $conceptMatches = $qdrant->searchConcepts($queryVector, 5, $conceptThreshold);
-            $detectedConcepts = array_column($conceptMatches, null, 'payload');
-            // Extract concept slugs from payload
+            
+            // Extract concept slugs from payload — Correctly mapping without using array as index key
             $detectedConcepts = array_filter(array_map(
                 fn($match) => $match['payload']['concept_slug'] ?? null,
                 $conceptMatches
             ));
-            $detectedConcepts = array_values(array_filter($detectedConcepts));
+            
+            $detectedConcepts = array_values(array_unique($detectedConcepts));
             Log::info('[Xavier][Search] Step 5 done: concept detection.', ['concepts' => $detectedConcepts]);
         } catch (\Exception $e) {
             Log::warning('[Xavier][Search] Step 5 FAILED: concept detection error.', ['err' => $e->getMessage()]);
