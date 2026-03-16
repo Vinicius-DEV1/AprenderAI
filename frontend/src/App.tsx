@@ -76,7 +76,7 @@ import EnemImport from './pages/admin/EnemImport';
 import AdminAnalytics from './pages/admin/Analytics';
 import AdminAnalyticsBehavior from './pages/admin/analytics/Behavior';
 import AdminAnalyticsAcquisition from './pages/admin/analytics/Acquisition';
-import AdminAnalyticsConversion from './pages/admin/analytics/Conversion';
+import AdminAnalyticsConversion from './pages/admin/analytics/Monetization';
 import AdminAnalyticsMonetization from './pages/admin/analytics/Monetization';
 import AdminCheckoutAnalytics from './pages/admin/analytics/CheckoutAnalytics';
 import AdminMonitor from './pages/admin/Monitor';
@@ -91,6 +91,9 @@ import AdminExamDetails from './pages/admin/exams/AdminExamDetails';
 import AdminBackups from './pages/admin/Backups';
 import SemanticDashboard from './pages/admin/SemanticDashboard';
 import PlatformMonitor from './pages/admin/PlatformMonitor';
+import SupportAdmin from './pages/admin/SupportAdmin';
+import BannersAdmin from './pages/admin/BannersAdmin';
+import SuggestionsAdmin from './pages/admin/SuggestionsAdmin';
 import Analytics from './components/Analytics';
 
 function App() {
@@ -276,6 +279,11 @@ function App() {
                             {/* Exams (Provas) */}
                             <Route path="provas" element={<><MetaTags title="Admin: Provas (PDFs)" /><AdminExamsList /></>} />
                             <Route path="provas/:id" element={<><MetaTags title="Admin: Detalhes da Prova" /><AdminExamDetails /></>} />
+
+                            {/* Engagement */}
+                            <Route path="suporte" element={<><MetaTags title="Admin: Suporte" /><SupportAdmin /></>} />
+                            <Route path="comunicados" element={<><MetaTags title="Admin: Comunicados e Banners" /><BannersAdmin /></>} />
+                            <Route path="sugestoes" element={<><MetaTags title="Admin: Sugestões" /><SuggestionsAdmin /></>} />
 
                             {/* Backups */}
                             <Route path="backups" element={<><MetaTags title="Admin: Backup do Banco" /><AdminBackups /></>} />

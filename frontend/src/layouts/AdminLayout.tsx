@@ -138,7 +138,34 @@ export default function AdminLayout() {
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
                                         Cupons
                                     </NavLink>
+                                </div>
+                            </div>
 
+                            {/* SEÇÃO: ENGAJAMENTO */}
+                            <div>
+                                <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Engajamento</p>
+                                <div className="space-y-1">
+                                    <NavLink to="/admin/suporte" className={getNavLinkClass('/admin/suporte')}>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8h2a2 2 0 06l-4 4-2-2m-2-4h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                                        Suporte / Tickets
+                                    </NavLink>
+
+                                    <NavLink to="/admin/comunicados" className={getNavLinkClass('/admin/comunicados')}>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>
+                                        Comunicados
+                                    </NavLink>
+
+                                    <NavLink to="/admin/sugestoes" className={getNavLinkClass('/admin/sugestoes')}>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                        Sugestões
+                                    </NavLink>
+                                </div>
+                            </div>
+
+                            {/* SEÇÃO: CONFIGURAÇÕES */}
+                            <div>
+                                <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Configurações</p>
+                                <div className="space-y-1">
                                     <NavLink to="/admin/payment-settings" className={getNavLinkClass('/admin/payment-settings')}>
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
                                         Pagamentos

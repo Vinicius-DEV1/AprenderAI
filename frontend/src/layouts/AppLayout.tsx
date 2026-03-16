@@ -6,6 +6,10 @@ import { logout as apiLogout } from '../api/auth';
 import { useUIStore } from '../stores/uiStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePlatformTracking } from '../hooks/usePlatformTracking';
+import SupportChat from '../components/SupportChat';
+import NotificationBell from '../components/NotificationBell';
+import BannerDisplay from '../components/BannerDisplay';
+import SuggestionButton from '../components/SuggestionButton';
 
 export default function AppLayout() {
     const config = useConfigStore();
@@ -269,6 +273,7 @@ export default function AppLayout() {
                         <span className="font-bold text-lg text-slate-800 dark:text-slate-100">{config.appName}</span>
                     </div>
                     <div className="flex items-center gap-2">
+                        <NotificationBell />
                         <button onClick={toggleTheme} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                             <span className="text-lg">{darkMode ? '☀️' : '🌙'}</span>
                         </button>
@@ -280,6 +285,7 @@ export default function AppLayout() {
 
                 {/* Page Content */}
                 <main className="flex-1 overflow-y-auto">
+                    <BannerDisplay />
                     {/* <EmailVerificationBanner /> */}
                     <div className="px-4 pt-2 pb-4 lg:px-8 lg:pt-2 lg:pb-8">
                         <div className="max-w-7xl mx-auto">
@@ -288,6 +294,9 @@ export default function AppLayout() {
                     </div>
                 </main>
             </div>
+            {/* Engagement: Floating widgets (support chat + suggestion button) */}
+            <SupportChat />
+            <SuggestionButton />
         </div>
     );
 }
