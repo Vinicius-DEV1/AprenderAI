@@ -39,6 +39,8 @@ use App\Http\Controllers\Api\Admin\BackupController;
 use App\Http\Controllers\Api\Admin\SemanticDashboardController;
 use App\Http\Controllers\Api\CheckoutTrackingController;
 use App\Http\Controllers\Api\Admin\CheckoutAnalyticsController;
+use App\Http\Controllers\Api\PlatformTrackingController;
+use App\Http\Controllers\Api\Admin\AdminPlatformMonitorController;
 
 /*
 |--------------------------------------------------------------------------
@@ -120,6 +122,14 @@ Route::prefix('v1')->group(function () {
             Route::post('/event', [CheckoutTrackingController::class, 'trackEvent']);
             Route::post('/error', [CheckoutTrackingController::class, 'trackFrontendError']);
             Route::post('/abandonment', [CheckoutTrackingController::class, 'recordAbandonment']);
+        });
+
+        // Platform Monitoring Tracking (native, internal — all authenticated users)
+        Route::prefix('platform')->group(function () {
+            Route::post('/session/start', [PlatformTrackingController::class, 'sessionStart']);
+            Route::post('/session/end', [PlatformTrackingController::class, 'sessionEnd']);
+            Route::post('/heartbeat', [PlatformTrackingController::class, 'heartbeat']);
+            Route::post('/event', [PlatformTrackingController::class, 'event']);
         });
 
         // Notebooks
@@ -360,6 +370,18 @@ Route::prefix('v1')->group(function () {
                 Route::get('/{id}/download', [BackupController::class, 'download']);
                 Route::post('/settings', [BackupController::class, 'updateSettings']);
                 Route::get('/local-dump', [BackupController::class, 'localDump']);
+            });
+
+            // Platform Monitor Dashboard (native internal analytics)
+            Route::prefix('platform-monitor')->group(function () {
+                Route::get('/overview', [AdminPlatformMonitorController::class, 'overview']);
+                Route::get('/online', [AdminPlatformMonitorController::class, 'online']);
+                Route::get('/logins', [AdminPlatformMonitorController::class, 'logins']);
+                Route::get('/questions', [AdminPlatformMonitorController::class, 'questions']);
+                Route::get('/simulations', [AdminPlatformMonitorController::class, 'simulations']);
+                Route::get('/essays', [AdminPlatformMonitorController::class, 'essays']);
+                Route::get('/activity', [AdminPlatformMonitorController::class, 'activity']);
+                Route::get('/user/{id}', [AdminPlatformMonitorController::class, 'userDetail']);
             });
         });
     });

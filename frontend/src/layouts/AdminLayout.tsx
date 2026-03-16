@@ -186,6 +186,11 @@ export default function AdminLayout() {
                                         Observabilidade
                                     </NavLink>
 
+                                    <NavLink to="/admin/platform-monitor" className={getNavLinkClass('/admin/platform-monitor')}>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                                        Uso da Plataforma
+                                    </NavLink>
+
                                     <NavLink to="/admin/monitor" className={getNavLinkClass('/admin/monitor')}>
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
                                         Monitoramento
