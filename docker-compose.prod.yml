@@ -206,11 +206,6 @@ services:
       - "6333:6333" # Opcional: exposto para gerenciamento externo se necessário
     volumes:
       - ./qdrant-data:/qdrant/storage
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
     networks:
       - production-network
 
