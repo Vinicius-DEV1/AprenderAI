@@ -73,27 +73,27 @@ class CheckoutAnalyticsController extends Controller
             [
                 'step'  => 'prices_viewed',
                 'label' => 'Visualizou Preços',
-                'count' => CheckoutEvent::where('event_type', 'prices_viewed')->where('created_at', '>=', $since)->distinct('user_id')->count('user_id'),
+                'count' => CheckoutEvent::where('event_type', 'prices_viewed')->where('created_at', '>=', $since)->count(DB::raw('DISTINCT user_id')),
             ],
             [
                 'step'  => 'plan_clicked',
                 'label' => 'Clicou em Plano',
-                'count' => PurchaseIntention::where('created_at', '>=', $since)->distinct('user_id')->count('user_id'),
+                'count' => PurchaseIntention::where('created_at', '>=', $since)->count(DB::raw('DISTINCT user_id')),
             ],
             [
                 'step'  => 'checkout_opened',
                 'label' => 'Abriu Checkout',
-                'count' => CheckoutEvent::where('event_type', 'checkout_opened')->where('created_at', '>=', $since)->distinct('user_id')->count('user_id'),
+                'count' => CheckoutEvent::where('event_type', 'checkout_opened')->where('created_at', '>=', $since)->count(DB::raw('DISTINCT user_id')),
             ],
             [
                 'step'  => 'payment_initiated',
                 'label' => 'Enviou Pagamento',
-                'count' => CheckoutEvent::where('event_type', 'payment_initiated')->where('created_at', '>=', $since)->distinct('user_id')->count('user_id'),
+                'count' => CheckoutEvent::where('event_type', 'payment_initiated')->where('created_at', '>=', $since)->count(DB::raw('DISTINCT user_id')),
             ],
             [
                 'step'  => 'payment_success',
                 'label' => 'Pagamento Confirmado',
-                'count' => CheckoutEvent::where('event_type', 'payment_success')->where('created_at', '>=', $since)->distinct('user_id')->count('user_id'),
+                'count' => CheckoutEvent::where('event_type', 'payment_success')->where('created_at', '>=', $since)->count(DB::raw('DISTINCT user_id')),
             ],
         ];
 
