@@ -314,4 +314,22 @@ class SemanticDashboardController extends Controller
             'message' => 'Job xavier:index-all enfileirado com sucesso.' . ($request->has('limit') ? " Limite: {$validated['limit']} questões." : "")
         ]);
     }
+
+    /**
+     * Clear all semantic search caches and interaction logs to force fresh processing.
+     */
+    public function clearCache()
+    {
+        try {
+            // Truncate cache table
+            \Illuminate\Support\Facades\DB::table('ai_search_cache')->truncate();
+            
+            // Clear application cache as well just in case
+            \Illuminate\Support\Facades\Artisan::call('cache:clear');
+
+            return response()->json(['message' => 'Cache de busca semântica limpo com sucesso. Todas as próximas buscas serão processadas do zero pelo Xavier.']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Falha ao limpar cache: ' . $e->getMessage()], 500);
+        }
+    }
 }
