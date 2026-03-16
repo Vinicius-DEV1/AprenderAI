@@ -3,7 +3,6 @@ import {
     getCheckoutOverview,
     getCheckoutFunnel,
     getCheckoutPlansRanking,
-    getCheckoutErrors,
     getCheckoutAbandonments,
     getCheckoutAlerts,
     CheckoutOverview,
@@ -19,17 +18,14 @@ import {
     TrendingUp, 
     TrendingDown, 
     AlertTriangle, 
-    CheckCircle2, 
-    MousePointer2, 
     Clock, 
     ChevronRight,
     Trophy,
     Target,
     Zap,
-    History,
+    History as HistoryIcon,
     ShoppingCart,
     MapPin,
-    Smartphone,
     Monitor,
     Gift
 } from 'lucide-react';
@@ -46,7 +42,7 @@ import {
     Legend,
     ArcElement,
 } from 'chart.js';
-import { Pie, Bar } from 'react-chartjs-2';
+import { Pie } from 'react-chartjs-2';
 
 ChartJS.register(
     CategoryScale,
@@ -67,7 +63,6 @@ export default function CheckoutAnalytics() {
     const [overview, setOverview] = useState<CheckoutOverview | null>(null);
     const [funnel, setFunnel] = useState<FunnelStep[]>([]);
     const [ranking, setRanking] = useState<PlanRanking[]>([]);
-    const [errors, setErrors] = useState<any[]>([]);
     const [abandonments, setAbandonments] = useState<CheckoutAbandonmentItem[]>([]);
     const [alerts, setAlerts] = useState<CheckoutAlert[]>([]);
 
@@ -82,14 +77,12 @@ export default function CheckoutAnalytics() {
                     overviewRes,
                     funnelRes,
                     rankingRes,
-                    errorsRes,
                     abandonmentsRes,
                     alertsRes
                 ] = await Promise.all([
                     getCheckoutOverview(days),
                     getCheckoutFunnel(days),
                     getCheckoutPlansRanking(days),
-                    getCheckoutErrors(days),
                     getCheckoutAbandonments(days),
                     getCheckoutAlerts()
                 ]);
@@ -99,7 +92,6 @@ export default function CheckoutAnalytics() {
                 setOverview(overviewRes.data);
                 setFunnel(funnelRes.data.funnel);
                 setRanking(rankingRes.data.ranking);
-                setErrors(errorsRes.data.data || []);
                 setAbandonments(abandonmentsRes.data.abandonments || []);
                 setAlerts(alertsRes.data.alerts || []);
                 
@@ -345,7 +337,7 @@ export default function CheckoutAnalytics() {
                     </h3>
                     <div className="space-y-4">
                         {ranking.map((plan, idx) => (
-                            <div key={plan.id} className="group flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-500/20 transition-all">
+                            <div key={plan.plan_id} className="group flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-500/20 transition-all">
                                 <div className="flex items-center gap-4">
                                     <div className="text-lg font-black text-slate-300 dark:text-slate-700">0{idx + 1}</div>
                                     <div>
@@ -399,7 +391,7 @@ export default function CheckoutAnalytics() {
                     <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
                             <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                                <History className="text-orange-500" /> Leads Perdidos (Abandono Inteligente)
+                                <HistoryIcon className="text-orange-500" /> Leads Perdidos (Abandono Inteligente)
                             </h3>
                             <p className="text-sm text-slate-500 mt-1">Identificamos o usuário mesmo antes da compra ser finalizada.</p>
                         </div>
@@ -466,7 +458,7 @@ export default function CheckoutAnalytics() {
                                                 {new Date(ab.created_at).toLocaleDateString('pt-BR')}
                                             </div>
                                             <div className="text-xs text-slate-400 font-medium">
-                                                {new Date(ab.created_at).toLocaleTimeString('pt-BR', { hour: '2xl', minute: '2xl' })}
+                                                {new Date(ab.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                             </div>
                                         </td>
                                     </tr>
