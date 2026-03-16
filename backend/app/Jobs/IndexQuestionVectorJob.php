@@ -150,6 +150,7 @@ class IndexQuestionVectorJob implements ShouldQueue
             'institution'   => $question->institution,
             'is_active'     => (bool) $question->is_active,
             'review_status' => $question->review_status,
+            'concepts'      => $question->concepts->pluck('id')->toArray(),
             // Popularity signal for ReRankService
             'answer_count'  => $question->userAnswers()->count(),
         ];
