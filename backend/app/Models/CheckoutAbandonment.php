@@ -20,6 +20,9 @@ class CheckoutAbandonment extends Model
         'time_spent_seconds',
         'payment_method_selected',
         'had_coupon',
+        'ip',
+        'device',
+        'browser',
     ];
 
     protected $casts = [
