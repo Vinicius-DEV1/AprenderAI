@@ -26,17 +26,17 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
     const [method, setMethod] = useState<'credit_card' | 'pix'>('credit_card');
     const [installments, setInstallments] = useState<number>(12);
     
+    const [couponCode, setCouponCode] = useState('');
+    const [couponMessage, setCouponMessage] = useState('');
+    const [couponSuccess, setCouponSuccess] = useState(false);
+    const [finalPrice, setFinalPrice] = useState<number>(Number(plan?.price) || 0);
+
     // Tracking hook integration
     const { onPaymentInitiated, onPaymentSuccess, onPixGenerated, onError } = useCheckoutTracking({
         planId: plan?.id,
         paymentMethod: method,
         hadCoupon: !!couponCode,
     });
-
-    const [couponCode, setCouponCode] = useState('');
-    const [couponMessage, setCouponMessage] = useState('');
-    const [couponSuccess, setCouponSuccess] = useState(false);
-    const [finalPrice, setFinalPrice] = useState<number>(Number(plan?.price) || 0);
 
     const isAnnualPlan = plan?.interval === 'yearly';
     const isInstallment = isAnnualPlan && method === 'credit_card' && installments > 1;
