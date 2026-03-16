@@ -42,6 +42,18 @@ use App\Http\Controllers\Api\Admin\CheckoutAnalyticsController;
 use App\Http\Controllers\Api\PlatformTrackingController;
 use App\Http\Controllers\Api\Admin\AdminPlatformMonitorController;
 
+// Engagement System
+use App\Http\Controllers\Api\SupportController;
+use App\Http\Controllers\Api\BannerController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\FeatureFeedbackController;
+use App\Http\Controllers\Api\SuggestionController;
+use App\Http\Controllers\Api\Admin\SupportAdminController;
+use App\Http\Controllers\Api\Admin\BannerAdminController;
+use App\Http\Controllers\Api\Admin\NotificationAdminController;
+use App\Http\Controllers\Api\Admin\FeedbackAdminController;
+use App\Http\Controllers\Api\Admin\SuggestionAdminController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes — Prefixo: /api/v1
@@ -177,6 +189,37 @@ Route::prefix('v1')->group(function () {
         Route::prefix('user')->group(function () {
             Route::put('/profile', [ProfileController::class, 'update']);
             Route::put('/password', [ProfileController::class, 'updatePassword']);
+        });
+
+        // ── Engagement: Support Chat (user-facing) ────────────────────────────
+        Route::prefix('support')->group(function () {
+            Route::get('/tickets', [SupportController::class, 'index']);
+            Route::post('/tickets', [SupportController::class, 'store']);
+            Route::get('/tickets/{id}', [SupportController::class, 'show']);
+            Route::post('/tickets/{id}/messages', [SupportController::class, 'sendMessage']);
+        });
+
+        // ── Engagement: Banners (user-facing) ─────────────────────────────────
+        Route::prefix('banners')->group(function () {
+            Route::get('/active', [BannerController::class, 'active']);
+            Route::post('/{banner}/interact', [BannerController::class, 'interact']);
+        });
+
+        // ── Engagement: Notifications (user-facing) ───────────────────────────
+        Route::prefix('notifications')->group(function () {
+            Route::get('/', [NotificationController::class, 'index']);
+            Route::post('/read-all', [NotificationController::class, 'markAllRead']);
+            Route::post('/{id}/read', [NotificationController::class, 'markRead']);
+        });
+
+        // ── Engagement: Feature Feedback 👍/👎 ────────────────────────────────
+        Route::post('/feedback', [FeatureFeedbackController::class, 'store']);
+
+        // ── Engagement: User Suggestions ──────────────────────────────────────
+        Route::prefix('suggestions')->group(function () {
+            Route::get('/', [SuggestionController::class, 'index']);
+            Route::post('/', [SuggestionController::class, 'store']);
+            Route::post('/{id}/vote', [SuggestionController::class, 'vote']);
         });
 
         // Admin
@@ -371,6 +414,39 @@ Route::prefix('v1')->group(function () {
                 Route::get('/{id}/download', [BackupController::class, 'download']);
                 Route::post('/settings', [BackupController::class, 'updateSettings']);
                 Route::get('/local-dump', [BackupController::class, 'localDump']);
+            });
+
+            // ── Engagement: Support Admin ─────────────────────────────────────
+            Route::prefix('support')->group(function () {
+                Route::get('/tickets', [SupportAdminController::class, 'index']);
+                Route::get('/tickets/{id}', [SupportAdminController::class, 'show']);
+                Route::post('/tickets/{id}/reply', [SupportAdminController::class, 'reply']);
+                Route::patch('/tickets/{id}/status', [SupportAdminController::class, 'updateStatus']);
+            });
+
+            // ── Engagement: Banners Admin ──────────────────────────────────────
+            Route::prefix('banners')->group(function () {
+                Route::get('/', [BannerAdminController::class, 'index']);
+                Route::post('/', [BannerAdminController::class, 'store']);
+                Route::get('/{banner}', [BannerAdminController::class, 'show']);
+                Route::post('/{banner}', [BannerAdminController::class, 'update']); // POST for multipart/form-data
+                Route::delete('/{banner}', [BannerAdminController::class, 'destroy']);
+                Route::get('/{banner}/stats', [BannerAdminController::class, 'stats']);
+            });
+
+            // ── Engagement: Notifications Admin ───────────────────────────────
+            Route::prefix('notifications')->group(function () {
+                Route::get('/', [NotificationAdminController::class, 'index']);
+                Route::post('/send', [NotificationAdminController::class, 'send']);
+            });
+
+            // ── Engagement: Feature Feedback Admin ────────────────────────────
+            Route::get('/feedback', [FeedbackAdminController::class, 'index']);
+
+            // ── Engagement: Suggestions Admin ─────────────────────────────────
+            Route::prefix('suggestions')->group(function () {
+                Route::get('/', [SuggestionAdminController::class, 'index']);
+                Route::patch('/{suggestion}/status', [SuggestionAdminController::class, 'updateStatus']);
             });
 
             // Platform Monitor Dashboard (native internal analytics)
