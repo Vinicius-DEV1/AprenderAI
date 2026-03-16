@@ -963,6 +963,7 @@
 
 @media (max-width: 768px) {
     .qb-filter-row {
+        display: flex;
         flex-direction: column;
         align-items: stretch;
     }

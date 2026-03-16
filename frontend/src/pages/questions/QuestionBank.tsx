@@ -447,18 +447,18 @@ export default function QuestionBank() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
                 {/* Original Header Restored + New Metrics */}
-                <div className="qb-header" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'nowrap', gap: '32px' }}>
-                    <div className="qb-header-left" style={{ flexShrink: 0 }}>
+                <div className="qb-header w-full flex-col md:flex-row items-start md:items-center gap-4 md:gap-8">
+                    <div className="qb-header-left shrink-0">
                         <h1>📘 Banco de Questões</h1>
                         <p>Resolva questões, veja explicações e tire dúvidas com {aiName}</p>
                     </div>
-                    <div className="qb-header-right" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px', flex: 1 }}>
-                        <button className="qb-btn-desempenho" onClick={() => setStatsOpen(true)} style={{ whiteSpace: 'nowrap' }}>
+                    <div className="qb-header-right flex flex-col items-start md:items-end gap-3 flex-1 w-full">
+                        <button className="qb-btn-desempenho whitespace-nowrap" onClick={() => setStatsOpen(true)}>
                             📊 Ver Meu Desempenho
                         </button>
 
                         {/* Status bar */}
-                        <div className="qb-header-stats" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'flex-end' }}>
+                        <div className="qb-header-stats flex flex-wrap gap-2 justify-start md:justify-end w-full">
                             <div className="qb-stat">
                                 <div className="val">{engagementData?.total_answered || 0}</div>
                                 <div className="lbl">Respondidas</div>
@@ -491,7 +491,7 @@ export default function QuestionBank() {
 
                         {/* Discrete Sparkline within the header limits */}
                         {engagementData?.sparkline && engagementData.sparkline.length > 0 && (
-                            <div style={{ width: '100%', maxWidth: '200px', height: '24px', display: 'flex', alignItems: 'flex-end', gap: '2px', opacity: 0.8 }} title="Produtividade dos últimos 14 dias">
+                            <div className="w-full max-w-[200px] h-6 flex items-end gap-[2px] opacity-80 mt-2 md:mt-0" title="Produtividade dos últimos 14 dias">
                                 {engagementData.sparkline.map((day: any, idx: number) => {
                                     const maxVal = Math.max(...engagementData.sparkline.map((d: any) => d.value), 1);
                                     const height = (day.value / maxVal) * 100;
@@ -557,8 +557,8 @@ export default function QuestionBank() {
                                 <div dangerouslySetInnerHTML={{ __html: aiMessage || aiSuggestion || '' }} />
                                 <div className="xavier-btns-row">
                                     {aiSuggestions.map((sug, idx) => (
-                                        <button key={idx} className="xavier-sug-btn" onClick={() => applyXavierSuggestion(sug.filters)}>
-                                            <span style={{ fontSize: '14px' }}>🔍</span>
+                                        <button key={idx} className="xavier-sug-btn w-full sm:w-auto" onClick={() => applyXavierSuggestion(sug.filters)}>
+                                            <span className="text-[14px]">🔍</span>
                                             {sug.label}
                                         </button>
                                     ))}
@@ -580,8 +580,8 @@ export default function QuestionBank() {
 
                     <div className="qb-ai-search-container">
                         <div className="qb-ai-glow"></div>
-                        <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '16px' }}>
-                            <span style={{ fontSize: '20px' }}>✨</span>
+                        <div className="flex items-center pl-4">
+                            <span className="text-xl">✨</span>
                         </div>
                         <input
                             type="text"
