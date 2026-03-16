@@ -90,6 +90,7 @@ import AdminExamsList from './pages/admin/exams/AdminExamsList';
 import AdminExamDetails from './pages/admin/exams/AdminExamDetails';
 import AdminBackups from './pages/admin/Backups';
 import SemanticDashboard from './pages/admin/SemanticDashboard';
+import PlatformMonitor from './pages/admin/PlatformMonitor';
 import Analytics from './components/Analytics';
 
 function App() {
@@ -278,6 +279,9 @@ function App() {
 
                             {/* Backups */}
                             <Route path="backups" element={<><MetaTags title="Admin: Backup do Banco" /><AdminBackups /></>} />
+
+                            {/* Platform Monitor */}
+                            <Route path="platform-monitor" element={<><MetaTags title="Admin: Monitoramento da Plataforma" /><PlatformMonitor /></>} />
 
                         </Route>
                     </Route>

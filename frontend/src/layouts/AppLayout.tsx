@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import { logout as apiLogout } from '../api/auth';
 import { useUIStore } from '../stores/uiStore';
 import { useQueryClient } from '@tanstack/react-query';
+import { usePlatformTracking } from '../hooks/usePlatformTracking';
 
 export default function AppLayout() {
     const config = useConfigStore();
@@ -12,6 +13,9 @@ export default function AppLayout() {
     const { sidebarCollapsed, setSidebarCollapsed } = useUIStore();
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Native platform usage tracking (sessions, heartbeats, events)
+    usePlatformTracking();
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
