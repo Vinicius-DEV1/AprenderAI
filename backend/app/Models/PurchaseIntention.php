@@ -14,6 +14,7 @@ class PurchaseIntention extends Model
         'user_id',
         'plan_id',
         'plan_amount',
+        'had_coupon',
         'source_page',
         'device',
         'browser',

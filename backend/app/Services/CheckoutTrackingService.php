@@ -64,14 +64,15 @@ class CheckoutTrackingService
     ): ?PurchaseIntention {
         try {
             return PurchaseIntention::create([
-                'user_id'    => $userId,
-                'plan_id'    => $planId,
-                'plan_amount' => $planAmount,
-                'source_page' => $sourcePage,
-                'device'     => $this->detectDevice($request),
-                'browser'    => $request?->userAgent() ? substr($request->userAgent(), 0, 100) : null,
-                'ip'         => $request?->ip(),
-                'status'     => PurchaseIntention::STATUS_PENDING,
+                'user_id'     => $userId,
+                'plan_id'     => $planId,
+                'plan_amount'  => $planAmount,
+                'had_coupon'   => $request?->has('coupon_code') || ($request?->input('metadata.had_coupon') === true),
+                'source_page'  => $sourcePage,
+                'device'      => $this->detectDevice($request),
+                'browser'     => $request?->userAgent() ? substr($request->userAgent(), 0, 100) : null,
+                'ip'          => $request?->ip(),
+                'status'      => PurchaseIntention::STATUS_PENDING,
             ]);
         } catch (\Throwable $e) {
             Log::warning('[CheckoutTracking] Failed to record intention', [
@@ -96,10 +97,14 @@ class CheckoutTrackingService
                 ->first();
 
             if ($intention) {
+                $subscription = \App\Models\Subscription::find($subscriptionId);
+                $finalAmount = $subscription ? (float) $subscription->amount : $intention->plan_amount;
+
                 $timeToConvert = (int) $intention->created_at->diffInSeconds(now());
                 $intention->update([
                     'status'                   => PurchaseIntention::STATUS_CONVERTED,
                     'converted_at'             => now(),
+                    'plan_amount'              => $finalAmount,
                     'time_to_convert_seconds'  => $timeToConvert,
                     'subscription_id'          => $subscriptionId,
                 ]);
@@ -177,7 +182,8 @@ class CheckoutTrackingService
         ?string $lastStep,
         ?int $timeSpentSeconds,
         ?string $paymentMethodSelected,
-        bool $hadCoupon = false
+        bool $hadCoupon = false,
+        ?Request $request = null
     ): void {
         try {
             CheckoutAbandonment::create([
@@ -187,6 +193,9 @@ class CheckoutTrackingService
                 'time_spent_seconds'       => $timeSpentSeconds,
                 'payment_method_selected'  => $paymentMethodSelected,
                 'had_coupon'               => $hadCoupon,
+                'ip'                       => $request?->ip(),
+                'device'                   => $this->detectDevice($request),
+                'browser'                  => $request?->userAgent() ? substr($request->userAgent(), 0, 100) : null,
             ]);
         } catch (\Throwable $e) {
             Log::warning('[CheckoutTracking] Failed to record abandonment', [

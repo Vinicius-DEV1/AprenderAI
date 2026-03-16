@@ -28,13 +28,23 @@ class CheckoutAnalyticsController extends Controller
         $days = (int) $request->get('days', 30);
         $since = now()->subDays($days);
 
-        $intentions     = PurchaseIntention::where('created_at', '>=', $since)->count();
-        $checkoutsOpened = CheckoutEvent::where('event_type', 'checkout_opened')->where('created_at', '>=', $since)->count();
-        $paymentsInitiated = CheckoutEvent::where('event_type', 'payment_initiated')->where('created_at', '>=', $since)->count();
+        $intentions       = PurchaseIntention::where('created_at', '>=', $since)->count();
+        $uniqueIntentions = PurchaseIntention::where('created_at', '>=', $since)->count(DB::raw('DISTINCT COALESCE(user_id, ip)'));
+        $gainedRevenue    = PurchaseIntention::converted()->where('created_at', '>=', $since)->sum('plan_amount');
+        $lostRevenue      = PurchaseIntention::abandoned()->where('created_at', '>=', $since)->sum('plan_amount');
+
+        $checkoutsOpened    = CheckoutEvent::where('event_type', 'checkout_opened')->where('created_at', '>=', $since)->count();
+        $paymentsInitiated  = CheckoutEvent::where('event_type', 'payment_initiated')->where('created_at', '>=', $since)->count();
         $paymentsSuccess    = CheckoutEvent::where('event_type', 'payment_success')->where('created_at', '>=', $since)->count();
         $paymentsFailed     = CheckoutEvent::where('event_type', 'payment_failed')->where('created_at', '>=', $since)->count();
-        $abandonments       = CheckoutAbandonment::where('created_at', '>=', $since)->count();
         $pricesViewed       = CheckoutEvent::where('event_type', 'prices_viewed')->where('created_at', '>=', $since)->count();
+
+        $abandonments       = CheckoutAbandonment::where('created_at', '>=', $since)->count();
+        $abandonmentsCoupon = CheckoutAbandonment::where('created_at', '>=', $since)->where('had_coupon', true)->count();
+        $conversionsCoupon  = CheckoutEvent::where('event_type', 'payment_success')
+                                ->where('created_at', '>=', $since)
+                                ->where('metadata->hadCoupon', true)
+                                ->count();
 
         $conversionRate = $intentions > 0
             ? round(($paymentsSuccess / $intentions) * 100, 2)
@@ -46,17 +56,39 @@ class CheckoutAnalyticsController extends Controller
             ->whereNotNull('time_to_convert_seconds')
             ->avg('time_to_convert_seconds');
 
+        // V2 Metrics: Devices & Origins
+        $devices = PurchaseIntention::where('created_at', '>=', $since)
+            ->whereNotNull('device')
+            ->select('device', DB::raw('count(*) as intentions'), DB::raw('sum(case when status = "converted" then 1 else 0 end) as conversions'))
+            ->groupBy('device')
+            ->get();
+
+        $topOrigins = PurchaseIntention::where('created_at', '>=', $since)
+            ->whereNotNull('source_page')
+            ->select('source_page', DB::raw('count(*) as total'))
+            ->groupBy('source_page')
+            ->orderByDesc('total')
+            ->take(5)
+            ->get();
+
         return response()->json([
             'period_days'           => $days,
             'prices_viewed'         => $pricesViewed,
             'purchase_intentions'   => $intentions,
+            'unique_intentions'     => $uniqueIntentions,
+            'gained_revenue'        => (float) $gainedRevenue,
+            'lost_revenue'          => (float) $lostRevenue,
             'checkouts_opened'      => $checkoutsOpened,
             'payments_initiated'    => $paymentsInitiated,
             'payments_success'      => $paymentsSuccess,
             'payments_failed'       => $paymentsFailed,
             'abandonments'          => $abandonments,
+            'abandonments_coupon'   => $abandonmentsCoupon,
+            'conversions_coupon'    => $conversionsCoupon,
             'conversion_rate'       => $conversionRate,
             'avg_time_to_convert_minutes' => $avgTimeToConvert ? round($avgTimeToConvert / 60, 1) : null,
+            'devices'               => $devices,
+            'top_origins'           => $topOrigins,
         ]);
     }
 
@@ -288,16 +320,56 @@ class CheckoutAnalyticsController extends Controller
             ->orderByDesc('created_at')
             ->take(50)
             ->get()
-            ->map(fn($a) => [
-                'id'               => $a->id,
-                'user_email'       => $a->user?->email ?? 'Desconhecido',
-                'plan_name'        => $a->plan?->name ?? 'N/A',
-                'last_step'        => $a->last_step_reached,
-                'time_spent_mins'  => $a->time_spent_seconds ? round($a->time_spent_seconds / 60, 1) : null,
-                'payment_method'   => $a->payment_method_selected,
-                'had_coupon'       => $a->had_coupon,
-                'created_at'       => $a->created_at->toDateTimeString(),
-            ]);
+            ->map(function ($a) use ($since) {
+                // Determine Identity
+                $userName = 'Visitante Anônimo';
+                $userEmail = '-';
+                $userAvatar = null;
+                $userId = null;
+
+                if ($a->user) {
+                    $userId = $a->user->id;
+                    $userName = $a->user->name;
+                    $userEmail = $a->user->email;
+                    $userAvatar = $a->user->avatar ?? null;
+                } else {
+                    $userName = "Visitante (IP: " . ($a->ip ?? 'Desconhecido') . ")";
+                }
+                
+                // Fetch recent errors for this user/IP to show "Attempts" history
+                $errorQuery = CheckoutError::where('created_at', '>=', $since);
+                if ($userId) {
+                    $errorQuery->where('user_id', $userId);
+                } else if ($a->session_id) {
+                     // We don't have session_id on abandonment right now, so we skip exact anonymous trace
+                     // But we can fallback to IP for visitors if we add it in the future.
+                } else {
+                     $errorQuery->whereRaw('1 = 0'); // empty
+                }
+
+                $errors = [];
+                if ($userId) {
+                    $errors = $errorQuery->select('error_type', DB::raw('count(*) as count'))
+                                     ->groupBy('error_type')
+                                     ->get()
+                                     ->toArray();
+                }
+
+                return [
+                    'id'               => $a->id,
+                    'user_id'          => $userId,
+                    'user_name'        => $userName,
+                    'user_email'       => $userEmail,
+                    'user_avatar'      => $userAvatar,
+                    'plan_name'        => $a->plan?->name ?? 'N/A',
+                    'last_step'        => $a->last_step_reached,
+                    'time_spent_mins'  => $a->time_spent_seconds ? round($a->time_spent_seconds / 60, 1) : null,
+                    'payment_method'   => $a->payment_method_selected,
+                    'had_coupon'       => $a->had_coupon,
+                    'error_history'    => $errors,
+                    'created_at'       => $a->created_at->toDateTimeString(),
+                ];
+            });
 
         return response()->json(['abandonments' => $items]);
     }

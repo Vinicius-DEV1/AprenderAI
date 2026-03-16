@@ -2,17 +2,35 @@ import axios from './axios';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
+export interface DeviceConversion {
+    device: string;
+    intentions: number;
+    conversions: number;
+}
+
+export interface TopOrigin {
+    source_page: string;
+    total: number;
+}
+
 export interface CheckoutOverview {
     period_days: number;
     prices_viewed: number;
     purchase_intentions: number;
+    unique_intentions: number;
+    gained_revenue: number;
+    lost_revenue: number;
     checkouts_opened: number;
     payments_initiated: number;
     payments_success: number;
     payments_failed: number;
     abandonments: number;
+    abandonments_coupon: number;
+    conversions_coupon: number;
     conversion_rate: number;
     avg_time_to_convert_minutes: number | null;
+    devices: DeviceConversion[];
+    top_origins: TopOrigin[];
 }
 
 export interface FunnelStep {
@@ -41,6 +59,21 @@ export interface CheckoutAlert {
     detail: string;
 }
 
+export interface CheckoutAbandonmentItem {
+    id: number;
+    user_id: number | null;
+    user_name: string;
+    user_email: string;
+    user_avatar: string | null;
+    plan_name: string;
+    last_step: string;
+    time_spent_mins: number | null;
+    payment_method: string | null;
+    had_coupon: boolean;
+    error_history: { error_type: string; count: number }[];
+    created_at: string;
+}
+
 // ─── API Functions ─────────────────────────────────────────────────────────
 
 export const getCheckoutOverview = (days = 30) =>
@@ -59,7 +92,7 @@ export const getCheckoutUserTimeline = (userId: number | string) =>
     axios.get(`/api/v1/admin/checkout/user-timeline/${userId}`);
 
 export const getCheckoutAbandonments = (days = 30) =>
-    axios.get(`/api/v1/admin/checkout/abandonments?days=${days}`);
+    axios.get<{ abandonments: CheckoutAbandonmentItem[] }>(`/api/v1/admin/checkout/abandonments?days=${days}`);
 
 export const getCheckoutAlerts = () =>
     axios.get<{ alerts: CheckoutAlert[]; total: number }>('/api/v1/admin/checkout/alerts');

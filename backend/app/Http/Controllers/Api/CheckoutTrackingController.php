@@ -130,7 +130,8 @@ class CheckoutTrackingController extends Controller
             $data['last_step_reached'] ?? null,
             $data['time_spent_seconds'] ?? null,
             $data['payment_method_selected'] ?? null,
-            (bool) ($data['had_coupon'] ?? false)
+            (bool) ($data['had_coupon'] ?? false),
+            $request
         );
 
         // Mark corresponding intention as abandoned
