@@ -89,7 +89,10 @@ services:
     networks:
       - production-network
 
-  # AI Dedicated Queue Worker (Para tempo real e emergências)
+  # AI Dedicated Queue Worker (Para embeddings e triagem em lote)
+  # ESCALA: 4 réplicas para maximizar o throughput de AI.
+  # Cada worker, graças ao round-robin do Redis (ApiKey::getKeysForCapability),
+  # inicia com uma chave de API diferente — evitando rate-limit simultâneo.
   ai-worker:
     image: aprender-ai-app
     restart: always
@@ -102,7 +105,7 @@ services:
     # Filas para processamento do Xavier (embeddings: tempo real, ai-batches: processamento em lote)
     command: php artisan queue:work --queue=embeddings,ai-batches --sleep=3 --tries=3 --timeout=700 --max-time=3600
     deploy:
-      replicas: 2
+      replicas: 4  # Aumentado de 2 para 4 — cada replica usa uma chave diferente via round-robin
       resources:
         limits:
           memory: 1G

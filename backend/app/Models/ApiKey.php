@@ -116,11 +116,28 @@ class ApiKey extends Model
         return static::getKeysForCapability($capability, $provider)->first();
     }
     /**
-     * Motor de Roteamento M:N.
-     * Retorna uma Collection ordenada de chaves disponíveis para o Failover Loop.
+     * Motor de Roteamento M:N com Round-Robin via Redis.
+     *
+     * Retorna uma Collection ordenada de chaves para o Failover Loop.
+     * A GRANDE MELHORIA aqui é o offset de rotação:
+     *   - Um contador global por Capability é incrementado atomicamente no Redis.
+     *   - O valor do contador (mod total de chaves) define qual chave é a "primeira" da lista.
+     *   - Resultado: Workers concorrentes (ex: 4 workers de embeddings) sempre iniciam
+     *     com chaves diferentes, distribuindo a carga e evitando que todos "atropelem"
+     *     a chave de prioridade máxima ao mesmo tempo.
+     *
+     * Exemplo com 4 chaves e 4 workers simultâneos:
+     *   Worker 1 → contador=1 → inicia na Chave[1]
+     *   Worker 2 → contador=2 → inicia na Chave[2]
+     *   Worker 3 → contador=3 → inicia na Chave[3]
+     *   Worker 4 → contador=4 → inicia na Chave[0] (volta ao início, 4 % 4 = 0)
+     *
+     * A blacklist global (Redis) garante que, se uma chave queimar (429), todos os
+     * workers são avisados imediatamente e pulam a chave problemática.
      */
     public static function getKeysForCapability(string $capability, ?string $provider = null): Collection
     {
+        // Lê a lista negra de chaves temporariamente banidas (erros 429, etc.)
         $cacheKeys = \Illuminate\Support\Facades\Cache::get('api_key_blacklist', []);
 
         $query = static::where('is_active', true)
@@ -131,7 +148,7 @@ class ApiKey extends Model
             $query->where('provider', $provider);
         }
 
-        // Tentar buscar as chaves com a nova arquitetura M:N ordenadas pela prioridade
+        // --- Tenta buscar com a arquitetura nova M:N (ApiKeyCapability) ---
         $keys = (clone $query)
             ->where(function ($q) use ($capability) {
                 $q->whereHas('capabilitiesList', function ($sq) use ($capability) {
@@ -155,54 +172,84 @@ class ApiKey extends Model
             ])
             ->get()
             ->sortBy(function ($key) {
+                // Ordena pela prioridade menor = mais importante
                 return $key->capabilitiesList->first()->priority ?? 999;
             })
             ->values();
 
-        if ($keys->isNotEmpty()) {
-            return $keys;
-        }
+        // --- Fallback para arquitetura legada (coluna JSON) ---
+        if ($keys->isEmpty()) {
+            $legacyKeys = collect();
 
-        // --- Fallback para arquitetura legada (coluna JSON) até a migração de dados estar completa ---
-
-        $legacyKeys = collect();
-
-        // 1. Prioridade Máxima: Chave exata para a Capabillity requerida
-        $key1 = (clone $query)
-            ->where(function ($q) use ($capability) {
-                $q->whereJsonContains('capabilities', $capability);
-                if ($capability === self::CAPABILITY_GENERAL) {
-                    $q->orWhereNull('capabilities')
-                        ->orWhere('capabilities', '[]')
-                        ->orWhere('capabilities', '');
-                }
-            })
-            ->orderBy('is_primary', 'desc')
-            ->orderBy('last_used_at', 'asc')
-            ->first();
-
-        if ($key1)
-            $legacyKeys->push($key1);
-
-        // 2. Fallback Inteligente: Tentar uma chave de Uso Geral ('general')
-        if (!$key1 && $capability !== self::CAPABILITY_GENERAL) {
-            $key2 = (clone $query)
-                ->where(function ($q) {
-                    $q->whereJsonContains('capabilities', self::CAPABILITY_GENERAL)
-                        ->orWhereNull('capabilities')
-                        ->orWhere('capabilities', '[]')
-                        ->orWhere('capabilities', '');
+            // 1. Prioridade Máxima: Chave exata para a Capability requerida
+            $key1 = (clone $query)
+                ->where(function ($q) use ($capability) {
+                    $q->whereJsonContains('capabilities', $capability);
+                    if ($capability === self::CAPABILITY_GENERAL) {
+                        $q->orWhereNull('capabilities')
+                            ->orWhere('capabilities', '[]')
+                            ->orWhere('capabilities', '');
+                    }
                 })
                 ->orderBy('is_primary', 'desc')
                 ->orderBy('last_used_at', 'asc')
                 ->first();
 
-            if ($key2)
-                $legacyKeys->push($key2);
+            if ($key1) $legacyKeys->push($key1);
+
+            // 2. Fallback Inteligente: Tenta uma chave de Uso Geral ('general')
+            if (!$key1 && $capability !== self::CAPABILITY_GENERAL) {
+                $key2 = (clone $query)
+                    ->where(function ($q) {
+                        $q->whereJsonContains('capabilities', self::CAPABILITY_GENERAL)
+                            ->orWhereNull('capabilities')
+                            ->orWhere('capabilities', '[]')
+                            ->orWhere('capabilities', '');
+                    })
+                    ->orderBy('is_primary', 'desc')
+                    ->orderBy('last_used_at', 'asc')
+                    ->first();
+
+                if ($key2) $legacyKeys->push($key2);
+            }
+
+            $keys = $legacyKeys;
         }
 
-        // 3. Removido Fallback Absoluto que causava exibição em todas as rotas
-        return $legacyKeys;
+        // -------------------------------------------------------------------
+        // ROUND-ROBIN: Rotação de Offset via Redis
+        //
+        // Se houver mais de uma chave disponível, aplica o round-robin:
+        //   1. Incrementa atomicamente um contador por capability no Redis.
+        //      O TTL de 24h garante que o contador seja zerado diariamente,
+        //      evitando acúmulo infinito de um inteiro (não há risco prático,
+        //      mas é uma boa prática de cleanup).
+        //   2. Calcula o offset inicial: contador % total_de_chaves.
+        //   3. Reordena a Collection para começar a partir desse offset.
+        // -------------------------------------------------------------------
+        if ($keys->count() > 1) {
+            // Chave Redis única por capability para evitar interferência entre rotas
+            $redisKey = "ai_key_rotation_index_{$capability}";
+
+            // Incremento atômico: thread/process-safe sem precisar de Lock adicional,
+            // pois o Redis é single-threaded internamente.
+            $counter = \Illuminate\Support\Facades\Redis::incr($redisKey);
+
+            // Define TTL de 24h apenas na primeira criação da chave
+            // (para evitar que o contador cresça infinitamente em produção)
+            if ($counter === 1) {
+                \Illuminate\Support\Facades\Redis::expire($redisKey, 86400); // 24 horas
+            }
+
+            // Calcula o índice de início via módulo (garante que volta ao 0 ao passar do fim)
+            $offset = ($counter - 1) % $keys->count();
+
+            // Rearranja a Collection começando do offset e envolvendo o final como um anel circular
+            // Ex: keys=[A,B,C,D], offset=2 → resultado=[C,D,A,B]
+            $keys = $keys->slice($offset)->merge($keys->slice(0, $offset))->values();
+        }
+
+        return $keys;
     }
 
     /**

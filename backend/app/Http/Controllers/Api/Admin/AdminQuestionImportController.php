@@ -46,9 +46,11 @@ class AdminQuestionImportController extends Controller
         ]);
 
         $request->validate([
-            'zip_file' => ['required', 'file', 'mimes:zip', 'max:204800'],
+            // Limite de 10GB = 10 * 1024 * 1024 KB = 10485760 KB
+            // O `max` do Laravel para arquivos usa KILOBYTES.
+            'zip_file' => ['required', 'file', 'mimes:zip', 'max:10485760'],
         ], [
-            'zip_file.max' => 'O arquivo é muito grande (Máx: 200MB).',
+            'zip_file.max'   => 'O arquivo é muito grande (Máx: 10GB).',
             'zip_file.mimes' => 'O arquivo deve ser um .zip válido.',
         ]);
 
