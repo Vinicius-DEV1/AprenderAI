@@ -71,6 +71,30 @@ class CheckoutAnalyticsController extends Controller
             ->take(5)
             ->get();
 
+        // V3: Approval Rates by Method
+        $approvalRates = CheckoutEvent::whereIn('event_type', ['payment_success', 'payment_failed'])
+            ->where('created_at', '>=', $since)
+            ->whereNotNull('payment_method')
+            ->select('payment_method', 
+                DB::raw('sum(case when event_type = "payment_success" then 1 else 0 end) as success'),
+                DB::raw('count(*) as total')
+            )
+            ->groupBy('payment_method')
+            ->get()
+            ->map(function($item) {
+                $item->rate = $item->total > 0 ? round(($item->success / $item->total) * 100, 1) : 0;
+                return $item;
+            });
+
+        // V3: Top regions by IP (Proxy for Geo)
+        $topRegions = PurchaseIntention::where('created_at', '>=', $since)
+            ->whereNotNull('ip')
+            ->select('ip', DB::raw('count(*) as total'))
+            ->groupBy('ip')
+            ->orderByDesc('total')
+            ->take(10)
+            ->get();
+
         return response()->json([
             'period_days'           => $days,
             'prices_viewed'         => $pricesViewed,
@@ -89,6 +113,8 @@ class CheckoutAnalyticsController extends Controller
             'avg_time_to_convert_minutes' => $avgTimeToConvert ? round($avgTimeToConvert / 60, 1) : null,
             'devices'               => $devices,
             'top_origins'           => $topOrigins,
+            'approval_rates'        => $approvalRates,
+            'top_regions'           => $topRegions, // Note: In a real env, this would be State/City
         ]);
     }
 
@@ -432,5 +458,32 @@ class CheckoutAnalyticsController extends Controller
             'alerts' => $alerts,
             'total'  => count($alerts),
         ]);
+    }
+
+    /**
+     * GET /admin/checkout/timeline
+     * Live activity feed of recent checkout events.
+     */
+    public function timeline(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $limit = (int) $request->get('limit', 50);
+
+        $events = CheckoutEvent::with(['user', 'plan'])
+            ->orderByDesc('created_at')
+            ->take($limit)
+            ->get()
+            ->map(fn($e) => [
+                'id'             => $e->id,
+                'event_type'     => $e->event_type,
+                'user_name'      => $e->user?->name ?? 'Visitante Anônimo',
+                'user_avatar'    => $e->user?->avatar ?? null,
+                'plan_name'      => $e->plan?->name ?? 'N/A',
+                'payment_method' => $e->payment_method,
+                'metadata'       => $e->metadata,
+                'created_at'     => $e->created_at->toDateTimeString(),
+                'time_ago'       => $e->created_at->diffForHumans(),
+            ]);
+
+        return response()->json(['events' => $events]);
     }
 }

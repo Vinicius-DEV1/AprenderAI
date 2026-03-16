@@ -13,6 +13,30 @@ export interface TopOrigin {
     total: number;
 }
 
+export interface ApprovalRate {
+    payment_method: string;
+    success: number;
+    total: number;
+    rate: number;
+}
+
+export interface GeoRegion {
+    ip: string;
+    total: number;
+}
+
+export interface TimelineEvent {
+    id: number;
+    event_type: string;
+    user_name: string;
+    user_avatar: string | null;
+    plan_name: string;
+    payment_method: string | null;
+    metadata: any;
+    created_at: string;
+    time_ago: string;
+}
+
 export interface CheckoutOverview {
     period_days: number;
     prices_viewed: number;
@@ -31,6 +55,8 @@ export interface CheckoutOverview {
     avg_time_to_convert_minutes: number | null;
     devices: DeviceConversion[];
     top_origins: TopOrigin[];
+    approval_rates: ApprovalRate[];
+    top_regions: GeoRegion[];
 }
 
 export interface FunnelStep {
@@ -96,3 +122,6 @@ export const getCheckoutAbandonments = (days = 30) =>
 
 export const getCheckoutAlerts = () =>
     axios.get<{ alerts: CheckoutAlert[]; total: number }>('/api/v1/admin/checkout/alerts');
+
+export const getCheckoutTimeline = (limit = 50) =>
+    axios.get<{ events: TimelineEvent[] }>(`/api/v1/admin/checkout/timeline?limit=${limit}`);

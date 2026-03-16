@@ -5,11 +5,13 @@ import {
     getCheckoutPlansRanking,
     getCheckoutAbandonments,
     getCheckoutAlerts,
+    getCheckoutTimeline,
     CheckoutOverview,
     FunnelStep,
     PlanRanking,
     CheckoutAlert,
-    CheckoutAbandonmentItem
+    CheckoutAbandonmentItem,
+    TimelineEvent
 } from '../../../api/checkoutAnalytics';
 import { toast } from 'sonner';
 import { 
@@ -18,6 +20,7 @@ import {
     TrendingUp, 
     TrendingDown, 
     AlertTriangle, 
+    CheckCircle2,
     Clock, 
     ChevronRight,
     Trophy,
@@ -42,7 +45,7 @@ import {
     Legend,
     ArcElement,
 } from 'chart.js';
-import { Pie } from 'react-chartjs-2';
+import { Pie, Bar } from 'react-chartjs-2';
 
 ChartJS.register(
     CategoryScale,
@@ -65,50 +68,58 @@ export default function CheckoutAnalytics() {
     const [ranking, setRanking] = useState<PlanRanking[]>([]);
     const [abandonments, setAbandonments] = useState<CheckoutAbandonmentItem[]>([]);
     const [alerts, setAlerts] = useState<CheckoutAlert[]>([]);
+    const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
+
+    const loadDashboard = async () => {
+        setLoading(true);
+        try {
+            const [
+                overviewRes,
+                funnelRes,
+                rankingRes,
+                abandonmentsRes,
+                alertsRes,
+                timelineRes
+            ] = await Promise.all([
+                getCheckoutOverview(days),
+                getCheckoutFunnel(days),
+                getCheckoutPlansRanking(days),
+                getCheckoutAbandonments(days),
+                getCheckoutAlerts(),
+                getCheckoutTimeline(20)
+            ]);
+
+            setOverview(overviewRes.data);
+            setFunnel(funnelRes.data.funnel);
+            setRanking(rankingRes.data.ranking);
+            setAbandonments(abandonmentsRes.data.abandonments || []);
+            setAlerts(alertsRes.data.alerts || []);
+            setTimeline(timelineRes.data.events || []);
+            
+        } catch (err) {
+            console.error('Failed to load checkout analytics', err);
+            toast.error('Erro ao carregar dados de observabilidade do checkout.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        let isMounted = true;
-        
-        const loadDashboard = async () => {
-            setLoading(true);
-            try {
-                // Fetch all data in parallel
-                const [
-                    overviewRes,
-                    funnelRes,
-                    rankingRes,
-                    abandonmentsRes,
-                    alertsRes
-                ] = await Promise.all([
-                    getCheckoutOverview(days),
-                    getCheckoutFunnel(days),
-                    getCheckoutPlansRanking(days),
-                    getCheckoutAbandonments(days),
-                    getCheckoutAlerts()
-                ]);
-
-                if (!isMounted) return;
-
-                setOverview(overviewRes.data);
-                setFunnel(funnelRes.data.funnel);
-                setRanking(rankingRes.data.ranking);
-                setAbandonments(abandonmentsRes.data.abandonments || []);
-                setAlerts(alertsRes.data.alerts || []);
-                
-            } catch (err) {
-                console.error('Failed to load checkout analytics', err);
-                toast.error('Erro ao carregar dados de observabilidade do checkout.');
-            } finally {
-                if (isMounted) setLoading(false);
-            }
-        };
-
         loadDashboard();
-
-        return () => {
-            isMounted = false;
-        };
     }, [days]);
+
+    // Live Timeline Pulling (every 30s)
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            try {
+                const res = await getCheckoutTimeline(20);
+                setTimeline(res.data.events);
+            } catch (e) {
+                // Fail silently for refresh
+            }
+        }, 30000);
+        return () => clearInterval(interval);
+    }, []);
 
     if (loading && !overview) {
         return (
@@ -151,6 +162,25 @@ export default function CheckoutAnalytics() {
             data: [conversionsWithCoupon, totalConversions - conversionsWithCoupon],
             backgroundColor: ['rgba(139, 92, 246, 0.8)', 'rgba(100, 116, 139, 0.3)'],
             borderWidth: 0,
+        }]
+    };
+
+    // Chart Data: Approval Rates (V3)
+    const approvalData = {
+        labels: overview?.approval_rates.map(r => r.payment_method.toUpperCase()) || [],
+        datasets: [{
+            label: 'Taxa de Aprovação %',
+            data: overview?.approval_rates.map(r => r.rate) || [],
+            backgroundColor: [
+                'rgba(16, 185, 129, 0.6)',
+                'rgba(99, 102, 241, 0.6)',
+            ],
+            borderColor: [
+                'rgb(16, 185, 129)',
+                'rgb(99, 102, 241)',
+            ],
+            borderWidth: 2,
+            borderRadius: 8,
         }]
     };
 
@@ -307,35 +337,84 @@ export default function CheckoutAnalytics() {
                     </div>
                 </div>
 
-                {/* Vertical Panels: Device & Coupons */}
-                <div className="xl:col-span-4 space-y-6">
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                            <Monitor size={16} /> Dispositivos
-                        </h4>
-                        <div className="h-48 flex justify-center">
-                            <Pie data={deviceData} options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10, weight: 'bold' } } } } }} />
-                        </div>
+                {/* Timeline / Live Feed (V3) */}
+                <div className="xl:col-span-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm overflow-hidden flex flex-col h-[500px]">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                            <Zap size={16} className="text-indigo-500" /> Atividade Live
+                        </h3>
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></div>
                     </div>
 
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                            <Gift size={16} /> Impacto de Cupons
-                        </h4>
-                        <div className="h-48 flex justify-center">
-                            <Pie data={couponData} options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10, weight: 'bold' } } } } }} />
-                        </div>
+                    <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+                        {timeline.length > 0 ? timeline.map((evt) => (
+                            <div key={evt.id} className="p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm transition-all hover:scale-[1.02]">
+                                <div className="flex items-start gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                        {evt.user_avatar ? <img src={evt.user_avatar} className="w-full h-full object-cover" /> : <Users size={14} className="text-indigo-600" />}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{evt.user_name}</div>
+                                        <div className="text-[10px] text-slate-500 mt-0.5">
+                                            {evt.event_type.replace('_', ' ').toUpperCase()} • {evt.plan_name}
+                                        </div>
+                                        <div className="text-[8px] font-black text-indigo-500 uppercase mt-1">{evt.time_ago}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        )) : (
+                            <div className="h-full flex items-center justify-center text-slate-400 text-xs italic">
+                                Aguardando eventos...
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
 
-            {/* Plan Performance & Top Origins */}
+            {/* Metrics Row 2: Charts (V3) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                        <Monitor size={14} /> Dispositivos
+                    </h4>
+                    <div className="h-44 flex justify-center">
+                        <Pie data={deviceData} options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10, weight: 'bold' } } } } }} />
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                        <Gift size={14} /> Impacto Cupons
+                    </h4>
+                    <div className="h-44 flex justify-center">
+                         <Pie data={couponData} options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10, weight: 'bold' } } } } }} />
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                        <CheckCircle2 size={14} className="text-emerald-500" /> Taxas de Aprovação
+                    </h4>
+                    <div className="h-44">
+                        <Bar 
+                            data={approvalData} 
+                            options={{ 
+                                maintainAspectRatio: false, 
+                                scales: { x: { grid: { display: false } }, y: { beginAtZero: true, max: 100, ticks: { callback: (v: any) => `${v}%`, font: { size: 10 } } } },
+                                plugins: { legend: { display: false } }
+                            }} 
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Plan Performance & Top Regions (V3) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-sm">
                     <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-widest mb-8 flex items-center gap-2">
                         <Trophy className="text-amber-500" /> Top Planos por Performance
                     </h3>
-                    <div className="space-y-4">
+                    <div className="space-y-4 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
                         {ranking.map((plan, idx) => (
                             <div key={plan.plan_id} className="group flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-500/20 transition-all">
                                 <div className="flex items-center gap-4">
@@ -363,24 +442,31 @@ export default function CheckoutAnalytics() {
                 </div>
 
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-sm">
-                    <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-widest mb-8 flex items-center gap-2">
-                        <MapPin className="text-red-500" /> Top Telas de Origem
-                    </h3>
-                    <div className="space-y-6">
-                        {overview?.top_origins.map((origin, idx) => {
-                             const pct = Math.round((origin.total / (overview?.purchase_intentions || 1)) * 100);
+                    <div className="flex justify-between items-center mb-8">
+                        <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                            <MapPin className="text-red-500" /> Regiões (IP Proxy V3)
+                        </h3>
+                        <div className="text-[10px] font-black text-slate-400 uppercase">Top 10 IPs ativos</div>
+                    </div>
+                    <div className="space-y-4">
+                        {overview?.top_regions.map((region, idx) => {
+                             const pct = Math.round((region.total / (overview?.purchase_intentions || 1)) * 100);
                              return (
-                                <div key={idx} className="space-y-2">
-                                    <div className="flex justify-between items-center px-1">
-                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300 font-mono tracking-tighter">{origin.source_page}</span>
-                                        <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">{pct}%</span>
+                                <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300 font-mono italic">{region.ip}</span>
                                     </div>
-                                    <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                        <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${pct}%` }}></div>
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-xs font-black text-slate-400 uppercase">{region.total} Cliques</span>
+                                        <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">{pct}%</span>
                                     </div>
                                 </div>
                              )
                         })}
+                        {overview?.top_regions.length === 0 && (
+                            <div className="py-20 text-center text-slate-400 italic">Sem dados geográficos</div>
+                        )}
                     </div>
                 </div>
             </div>

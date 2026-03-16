@@ -349,6 +349,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('/user-timeline/{userId}', [CheckoutAnalyticsController::class, 'userTimeline']);
                 Route::get('/abandonments', [CheckoutAnalyticsController::class, 'abandonments']);
                 Route::get('/alerts', [CheckoutAnalyticsController::class, 'alerts']);
+                Route::get('/timeline', [CheckoutAnalyticsController::class, 'timeline']);
             });
 
             // Database Backups
