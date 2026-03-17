@@ -85,18 +85,24 @@ class CheckoutTrackingService
     }
 
     /**
-     * Convert the most recent pending purchase intention for a user+plan combo.
+     * Convert the most recent pending or abandoned purchase intention for a user+plan combo.
+     * Returns true if it successfully converted an intention, false otherwise.
      */
-    public function convertIntention(int $userId, int $planId, int $subscriptionId): void
+    public function convertIntention(int $userId, int $planId, int $subscriptionId): bool
     {
         try {
             $intention = PurchaseIntention::where('user_id', $userId)
                 ->where('plan_id', $planId)
-                ->where('status', PurchaseIntention::STATUS_PENDING)
+                ->whereIn('status', [PurchaseIntention::STATUS_PENDING, PurchaseIntention::STATUS_ABANDONED])
                 ->latest()
                 ->first();
 
             if ($intention) {
+                // Return false if it was already converted
+                if ($intention->status === PurchaseIntention::STATUS_CONVERTED) {
+                    return false;
+                }
+
                 $subscription = \App\Models\Subscription::find($subscriptionId);
                 $finalAmount = $subscription ? (float) $subscription->amount : $intention->plan_amount;
 
@@ -108,6 +114,7 @@ class CheckoutTrackingService
                     'time_to_convert_seconds'  => $timeToConvert,
                     'subscription_id'          => $subscriptionId,
                 ]);
+                return true;
             }
         } catch (\Throwable $e) {
             Log::warning('[CheckoutTracking] Failed to convert intention', [
@@ -116,6 +123,7 @@ class CheckoutTrackingService
                 'error'   => $e->getMessage(),
             ]);
         }
+        return false;
     }
 
     /**

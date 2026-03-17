@@ -234,14 +234,16 @@ class SubscriptionController extends Controller
                     'raw_response' => PaymentLog::sanitize($asaasPayment),
                 ]);
 
-                // Track upgrade success and convert intention
-                $this->tracking->trackEvent(
-                    $user->id, 'payment_success', $plan->id, 'confirmation',
-                    $request->payment_method,
-                    ['upgrade' => true, 'upgrade_total' => $upgradeTotal, 'remaining_months' => $remainingMonths],
-                    $request
-                );
-                $this->tracking->convertIntention($user->id, $plan->id, $activeInstallment->id);
+                // Track upgrade success and convert intention (only if not PIX)
+                if ($request->payment_method !== 'pix') {
+                    $this->tracking->trackEvent(
+                        $user->id, 'payment_success', $plan->id, 'confirmation',
+                        $request->payment_method,
+                        ['upgrade' => true, 'upgrade_total' => $upgradeTotal, 'remaining_months' => $remainingMonths],
+                        $request
+                    );
+                    $this->tracking->convertIntention($user->id, $plan->id, $activeInstallment->id);
+                }
 
                 Log::info('[API Checkout] Upgrade pro-rata processado com sucesso.', [
                     'user_id' => $user->id,
@@ -467,14 +469,16 @@ class SubscriptionController extends Controller
                     'raw_response' => PaymentLog::sanitize($asaasSubscription),
                 ]);
 
-                // Track recurring success and convert intention
-                $this->tracking->trackEvent(
-                    $user->id, 'payment_success', $plan->id, 'confirmation',
-                    $request->payment_method,
-                    ['type' => 'recurring', 'amount' => $plan->price, 'interval' => $plan->interval],
-                    $request
-                );
-                $this->tracking->convertIntention($user->id, $plan->id, $subscription->id);
+                // Track recurring success and convert intention (only if not PIX)
+                if ($request->payment_method !== 'pix') {
+                    $this->tracking->trackEvent(
+                        $user->id, 'payment_success', $plan->id, 'confirmation',
+                        $request->payment_method,
+                        ['type' => 'recurring', 'amount' => $plan->price, 'interval' => $plan->interval],
+                        $request
+                    );
+                    $this->tracking->convertIntention($user->id, $plan->id, $subscription->id);
+                }
             }
 
             if ($coupon && $discount) {

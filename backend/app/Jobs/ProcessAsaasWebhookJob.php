@@ -54,7 +54,7 @@ class ProcessAsaasWebhookJob implements ShouldQueue
      *
      * @param QuotaService $quotaService
      */
-    public function handle(QuotaService $quotaService)
+    public function handle(QuotaService $quotaService, \App\Services\CheckoutTrackingService $trackingService)
     {
         $data = $this->data;
         // FIX: Remove 'clone' on a boolean — scalar values don't need cloning.
@@ -125,7 +125,7 @@ class ProcessAsaasWebhookJob implements ShouldQueue
 
         // Executa todo o tratamento dentro de uma Transação para evitar Race Conditions
         // The closure returns the list of Asaas subscriptions to cancel AFTER the commit.
-        $subscriptionsToCancel = DB::transaction(function () use ($subscription, $event, $paymentId, $payment, $quotaService, $auditData) {
+        $subscriptionsToCancel = DB::transaction(function () use ($subscription, $event, $paymentId, $payment, $quotaService, $auditData, $trackingService) {
             $user = $subscription->user;
             $plan = $subscription->plan;
 
@@ -255,6 +255,16 @@ class ProcessAsaasWebhookJob implements ShouldQueue
                     ]);
 
                     PaymentLog::create(array_merge($auditData, ['status' => 'success']));
+
+                    // Track deferred PIX or abandoned checkout conversions
+                    if ($trackingService->convertIntention($user->id, $plan->id, $subscription->id)) {
+                        $method = strtolower($subscription->billing_type ?? '') === 'pix' ? 'pix' : 'credit_card';
+                        $trackingService->trackEvent(
+                            $user->id, 'payment_success', $plan->id, 'webhook_confirmation',
+                            $method,
+                            ['type' => 'webhook_reconciliation', 'amount' => $subscription->amount]
+                        );
+                    }
 
                     // Return the list of subscriptions to cancel outside the transaction
                     return $subscriptionsToCancel ?? [];

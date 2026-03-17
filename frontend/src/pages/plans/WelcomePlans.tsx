@@ -24,7 +24,7 @@ export default function WelcomePlans() {
         }
 
         // Track that user reached the prices / plan selection page
-        trackEvent('prices_viewed', undefined, 'prices');
+        trackEvent('prices_viewed', undefined, 'prices', undefined, { source_page: '/welcome-plans' });
     }, [searchParams]);
 
     const handlePlanSelect = (slugKeyword: string, interval: 'monthly' | 'yearly') => {

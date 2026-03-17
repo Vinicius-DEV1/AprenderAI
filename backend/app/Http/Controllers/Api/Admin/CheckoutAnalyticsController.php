@@ -271,7 +271,11 @@ class CheckoutAnalyticsController extends Controller
             ->map(fn($e) => [
                 'timestamp'      => $e->created_at->toDateTimeString(),
                 'event_type'     => $e->event_type,
-                'plan_name'      => $e->plan?->name,
+                'plan_name'      => $e->plan?->name ?? (
+                    ($e->event_type === 'prices_viewed' && isset($e->metadata['source_page'])) 
+                        ? 'Página: ' . $e->metadata['source_page'] 
+                        : null
+                ),
                 'checkout_step'  => $e->checkout_step,
                 'payment_method' => $e->payment_method,
                 'metadata'       => $e->metadata,
@@ -477,7 +481,11 @@ class CheckoutAnalyticsController extends Controller
                 'event_type'     => $e->event_type,
                 'user_name'      => $e->user?->name ?? 'Visitante Anônimo',
                 'user_avatar'    => $e->user?->avatar ?? null,
-                'plan_name'      => $e->plan?->name ?? 'N/A',
+                'plan_name'      => $e->plan?->name ?? (
+                    ($e->event_type === 'prices_viewed' && isset($e->metadata['source_page'])) 
+                        ? 'Página: ' . $e->metadata['source_page'] 
+                        : 'N/A'
+                ),
                 'payment_method' => $e->payment_method,
                 'metadata'       => $e->metadata,
                 'created_at'     => $e->created_at->toDateTimeString(),

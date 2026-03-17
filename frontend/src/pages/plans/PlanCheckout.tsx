@@ -96,6 +96,7 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                 if (freshUser && freshUser.plan_id === plan?.id) {
                     setUser(freshUser);
                     clearInterval(interval);
+                    onPaymentSuccess();
                     toast.success('Pagamento confirmado com sucesso!');
                     if (onSuccess) {
                         onSuccess();
@@ -114,7 +115,7 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
         return () => {
             if (interval) clearInterval(interval);
         };
-    }, [checkoutResult, plan, navigate, setUser]);
+    }, [checkoutResult, plan, navigate, setUser, onPaymentSuccess]);
 
     if (!plan && plans.length > 0) {
         return (

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { trackEvent, trackAbandonment, trackFrontendError } from '../api/checkoutTracking';
 
 interface UseCheckoutTrackingOptions {
@@ -56,10 +56,10 @@ export function useCheckoutTracking({
     };
 
     /** Call this when payment succeeds — suppresses abandonment tracking */
-    const onPaymentSuccess = () => {
+    const onPaymentSuccess = useCallback(() => {
         didConvertRef.current = true;
         lastStepRef.current = 'payment_success';
-    };
+    }, []);
 
     /** Call this when PIX QR code is shown */
     const onPixGenerated = () => {
