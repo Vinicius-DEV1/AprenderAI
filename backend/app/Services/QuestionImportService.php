@@ -268,7 +268,7 @@ class QuestionImportService
      * @param  int            $limit   Número máximo de questões a processar.
      * @return array          Estatísticas do chunk: ['total', 'pending', 'approved', 'skipped']
      */
-    public function processChunk(string $dbPath, QuestionImport $import, int $offset, int $limit): array
+    public function processChunk(string $dbPath, QuestionImport $import, int $offset, int $limit, int $chunkIndex = 0): array
     {
         // Recupera o imageMap do arquivo JSON no tmpDir.
         // Este arquivo é criado pelo prepareForParallelProcessing e é mais robusto que
@@ -321,6 +321,9 @@ class QuestionImportService
         $stmt->execute();
 
         $questions = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $fetchedCount = count($questions);
+
+        Log::error("[DIAGNOSTIC] Chunk #{$chunkIndex} para Import #{$import->id}: Offset {$offset}, Limit {$limit}. Buscou {$fetchedCount} questões do SQLite.");
 
         // Carrega o uploader (necessário para a lógica interna; usa o primeiro admin como fallback)
         $uploader = User::find($import->uploaded_by) ?? User::first();
@@ -330,7 +333,10 @@ class QuestionImportService
 
         // Atualiza o contador de progresso no banco (incremento atômico via increment)
         // Não usa update direto para evitar race conditions com outros chunks concorrentes
+        $before = $import->processed_questions;
         $import->increment('processed_questions', $stats['total']);
+        $import->refresh();
+        Log::error("[DIAGNOSTIC] Chunk #{$chunkIndex} finalizado. Stats Total: {$stats['total']}. Processed: {$before} -> {$import->processed_questions}");
 
         return $stats;
     }

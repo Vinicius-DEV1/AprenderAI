@@ -84,7 +84,7 @@ class ProcessImportQuestionChunkJob implements ShouldQueue
 
         try {
             // Delega para o service o processamento efetivo do chunk
-            $stats = $service->processChunk($this->dbPath, $this->import, $this->offset, $this->limit);
+            $stats = $service->processChunk($this->dbPath, $this->import, $this->offset, $this->limit, $this->chunkIndex);
 
             Log::info("[ProcessImportQuestionChunkJob] Chunk #{$this->chunkIndex} finalizado", [
                 'import_id' => $this->import->id,
