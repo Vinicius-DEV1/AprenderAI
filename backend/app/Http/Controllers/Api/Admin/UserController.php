@@ -204,4 +204,67 @@ class UserController extends Controller
             'byDifficulty' => $statsService->getDifficultyHeatmap($userId),
         ]);
     }
+    /**
+     * Delete user and all associated traces (Wipeout).
+     */
+    public function destroy(Request $request, User $user)
+    {
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($user) {
+                // 1. Collect file paths before records are deleted via cascade
+                $essayImages = \Illuminate\Support\Facades\DB::table('essays')
+                    ->where('user_id', $user->id)
+                    ->whereNotNull('image_path')
+                    ->pluck('image_path');
+
+                $supportAttachments = \Illuminate\Support\Facades\DB::table('support_messages')
+                    ->join('support_tickets', 'support_messages.ticket_id', '=', 'support_tickets.id')
+                    ->where('support_tickets.user_id', $user->id)
+                    ->whereNotNull('attachment_path')
+                    ->pluck('attachment_path');
+
+                // 2. Manual Cleanup: Tables with nullOnDelete or no Foreign Keys
+                
+                // Analytics & Logs
+                \Illuminate\Support\Facades\DB::table('payment_logs')->where('user_id', $user->id)->delete();
+                \Illuminate\Support\Facades\DB::table('ai_request_logs')->where('user_id', $user->id)->delete();
+                \Illuminate\Support\Facades\DB::table('search_interaction_logs')->where('user_id', $user->id)->delete();
+                
+                // Checkout Observability
+                \Illuminate\Support\Facades\DB::table('checkout_events')->where('user_id', $user->id)->delete();
+                \Illuminate\Support\Facades\DB::table('purchase_intentions')->where('user_id', $user->id)->delete();
+                \Illuminate\Support\Facades\DB::table('checkout_errors')->where('user_id', $user->id)->delete();
+                \Illuminate\Support\Facades\DB::table('checkout_abandonment')->where('user_id', $user->id)->delete();
+
+                // Xavier Search legacy traces if any
+                \Illuminate\Support\Facades\DB::table('ai_search_requests')->where('user_id', $user->id)->delete();
+
+                // 3. Delete the User record (Triggers DB-level CASCADE for ~30 other tables)
+                $user->delete();
+
+                // 4. Cleanup Files from Storage
+                foreach ($essayImages as $path) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+                }
+                foreach ($supportAttachments as $path) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+                }
+
+                // Note: We don't delete from Asaas here to avoid blocking on external API failures,
+                // and to keep a record of the financial transaction on the gateway side.
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Usuário e todos os seus rastros foram excluídos permanentemente.'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error("Error on Admin Destroy User {$user->id}: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao processar exclusão total: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

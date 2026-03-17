@@ -179,6 +179,34 @@ export default function UserDetail() {
         }
     });
 
+    const deleteMutation = useMutation({
+        mutationFn: async () => {
+            const res = await api.delete(`/api/v1/admin/users/${id}`);
+            return res.data;
+        },
+        onSuccess: (data) => {
+            toast.success(data.message || 'Usuário excluído permanentemente!');
+            setTimeout(() => {
+                window.location.href = '/admin/users';
+            }, 1000);
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Erro ao excluir usuário.');
+        }
+    });
+
+    const handleDeleteUser = () => {
+        const confirmText = prompt('ALERTA MÁXIMO DE SEGURANÇA!\n\nEsta ação excluirá PERMANENTEMENTE o usuário e TODOS os seus rastros (redações, simulados, histórico financeiro e logs).\n\nPara confirmar, DIGITE O E-MAIL do usuário abaixo:');
+        
+        if (confirmText === user.email) {
+            if (window.confirm('ÚLTIMA CHANCE: Você tem certeza ABSOLUTA? Esta ação é irreversível.')) {
+                deleteMutation.mutate();
+            }
+        } else if (confirmText !== null) {
+            toast.error('O e-mail digitado não confere. Operação cancelada por segurança.');
+        }
+    };
+
     const handleUpdateProfile = (e: React.FormEvent) => {
         e.preventDefault();
         setValidationErrors({});
@@ -769,6 +797,29 @@ export default function UserDetail() {
                                     {!user.subscriptions?.some((s: any) => s.status === 'active') && (
                                         <p className="text-[10px] text-red-500/70 mt-3 text-right uppercase font-bold tracking-widest">Condição não atingida: É necessário ao menos 1 assinatura ativa.</p>
                                     )}
+                                </div>
+
+                                {/* CRITICAL ZONE: TOTAL WIPEOUT */}
+                                <div className="border-2 border-dashed border-red-300 bg-red-50/30 rounded-2xl p-6 mt-12">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center text-white font-bold text-xl">!</div>
+                                        <div>
+                                            <h4 className="font-black text-red-900 uppercase text-sm tracking-tighter">Zona de Exclusão Total (Total Wipeout)</h4>
+                                            <p className="text-xs text-red-700 font-bold uppercase">Ação Irreversível — Sem Backup de Tráfego</p>
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-gray-600 leading-relaxed mb-6 font-medium">
+                                        Esta funcionalidade remove o usuário de todas as tabelas do banco de dados, incluindo registros de analytics, logs de IA, arquivos de imagem no storage e interações de suporte. Utilize apenas para solicitações de exclusão via LGPD ou limpeza total de contas de teste.
+                                    </p>
+                                    <div className="flex justify-end">
+                                        <button
+                                            onClick={handleDeleteUser}
+                                            disabled={deleteMutation.isPending}
+                                            className="px-6 py-3 bg-white border-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white rounded-xl font-black uppercase text-xs transition-all shadow-sm disabled:opacity-50"
+                                        >
+                                            {deleteMutation.isPending ? 'EXCLUINDO TUDO...' : 'Excluir Conta e Todos os Dados'}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         )}
