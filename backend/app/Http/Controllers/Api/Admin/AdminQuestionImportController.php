@@ -142,53 +142,7 @@ class AdminQuestionImportController extends Controller
         $import = QuestionImport::findOrFail($id);
 
         try {
-            \Illuminate\Support\Facades\DB::transaction(function () use ($import, $request) {
-                // Find all question IDs linked to this import
-                $questionIds = \App\Models\QuestionImportItem::where('import_id', $import->id)->pluck('question_id')->toArray();
-
-                if (!empty($questionIds)) {
-                    // Iterate and safely delete to clean up pivots and legacy data
-                    $questions = Question::whereIn('id', $questionIds)->get();
-                    /** @var \App\Models\Question $question */
-                    foreach ($questions as $question) {
-                        // Cleanup orphan records in legacy tables
-                        foreach (['favorites', 'notebook_questions', 'question_reports', 'question_notes'] as $table) {
-                            if (\Illuminate\Support\Facades\Schema::hasTable($table)) {
-                                \Illuminate\Support\Facades\DB::table($table)->where('question_id', $question->id)->delete();
-                            }
-                        }
-
-                        // Log the action for each question
-                        $impactData = [
-                            'admin_id' => $request->user()->id,
-                            'batch_rollback' => $import->id,
-                            'question_id' => $question->id,
-                            'statement_preview' => mb_strimwidth(strip_tags($question->statement), 0, 100, '...'),
-                        ];
-
-                        \App\Models\UserLog::create([
-                            'user_id' => $request->user()->id,
-                            'action' => 'admin_deleted_question_via_rollback',
-                            'description' => json_encode($impactData),
-                            'ip_address' => $request->ip(),
-                        ]);
-
-                        $question->delete();
-                    }
-                }
-
-                // Delete items explicitly (cascade would work but this is safer for auditing)
-                \App\Models\QuestionImportItem::where('import_id', $import->id)->delete();
-
-                // Instead of deleting the record, mark as reverted and reset counts
-                $import->update([
-                    'status' => 'reverted',
-                    'pending_count' => 0,
-                    'approved_count' => 0,
-                    'skipped_count' => 0,
-                    'processed_questions' => 0,
-                ]);
-            });
+            $this->importService->rollback($import, Auth::user(), $request->ip());
 
             return response()->json([
                 'success' => true,

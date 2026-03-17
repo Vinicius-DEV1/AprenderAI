@@ -9,6 +9,7 @@ use App\Models\QuestionImport;
 use App\Models\QuestionImportItem;
 use App\Models\Subject;
 use App\Models\User;
+use App\Models\UserLog;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -588,6 +589,7 @@ class QuestionImportService
 
                     // Update existente
                     $existingQuestion->update($payload);
+                    $import->increment('updated_count'); // Increment updated_count
                     $question = $existingQuestion;
 
                     // Tratamento de Imagens: excluir antigas
