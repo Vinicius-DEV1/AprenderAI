@@ -169,8 +169,8 @@ for CID in $OLD_APP_IDS; do
     docker rm   "$CID" >/dev/null 2>&1 || true
 done
 
-# Agora escala para 1 — como os antigos foram removidos, só o Green existe.
-$COMPOSE up -d --no-recreate --scale $APP_SERVICE=1 $APP_SERVICE
+# Agora que os antigos foram removidos, o container novo (seja index 1 ou 2) permanece 
+# sendo o único 'app' vivo na rede rodando nativamente o ping-pong blue-green da imagem nova!
 
 log_success "Swap concluído. Apenas novo container ativo."
 echo ""
@@ -178,29 +178,18 @@ echo ""
 # =============================================================================
 # PASSO 5: Recarregar Nginx com a nova imagem (frontend atualizado)
 # =============================================================================
-# Usamos `docker stop + start` em vez de force-recreate para evitar o
-# problema com depends_on: service_healthy que causa crash loop.
-# O Nginx foi rebuildo no PASSO 1 — ao reiniciar, ele carrega a nova imagem.
-# Dura ~1-2s. A tela de manutenção é exibida automaticamente no frontend.
-# Sessões NÃO são perdidas (Redis DB 0 intocado).
+# Como os assets do frontend estão DENTRO da nova imagem do webserver,
+# DEVEMOS forçar a recriação do container (com `--force-recreate`).
+# O downtime do Nginx aqui é < 1 segundo, sendo infinitamente mais escalável e
+# menos suscetível a bugs de cache de imagem do que persistir o container.
+# Usamos `--no-deps` para que ele não verifique as dependências do app (já resolvidas).
 # =============================================================================
 log_info "[5/6] Recarregando Nginx com nova imagem (frontend atualizado)..."
-log_info "      ⚡ Isso levará ~1-2s. A tela de manutenção será exibida no frontend."
+log_info "      ⚡ Recriando container webserver (Downtime rápido < 1s)..."
 
-WEBSERVER_CONTAINER=$($COMPOSE ps -q webserver | head -n 1)
+$COMPOSE up -d --force-recreate --no-deps webserver
 
-if [ -n "$WEBSERVER_CONTAINER" ]; then
-    docker stop "$WEBSERVER_CONTAINER" >/dev/null 2>&1 || true
-    # Ao 'start', o Docker reutiliza o container mas com a imagem nova na memória
-    # já que rebuild aconteceu. Como `restart: always` está configurado no compose,
-    # usar `up --no-recreate` é a abordagem segura:
-    $COMPOSE up -d --no-recreate webserver
-    log_success "Nginx recarregado com assets novos do frontend."
-else
-    log_warning "Container Nginx não encontrado. Iniciando do zero..."
-    $COMPOSE up -d webserver
-    log_success "Nginx iniciado."
-fi
+log_success "Nginx recriado com assets novos do frontend com sucesso."
 echo ""
 
 # =============================================================================
