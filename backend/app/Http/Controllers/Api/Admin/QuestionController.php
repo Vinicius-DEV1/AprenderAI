@@ -55,7 +55,7 @@ class QuestionController extends Controller
         // --- 2. Triage Bank Query ---
         $triageQuery = Question::incomplete()
             ->withoutTrashed()
-            ->with(['subjects:id,name', 'topics:id,name']);
+            ->with(['subjects:id,name', 'topics:id,name', 'latestTriageLog']);
 
         if ($request->filled('triage_search')) {
             $triageQuery->where('statement', 'like', '%' . $request->triage_search . '%');

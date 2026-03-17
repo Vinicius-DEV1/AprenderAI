@@ -489,6 +489,23 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                                     * O sistema realizou uma segunda passada em {progress.retry_chunks_total} blocos menores para recuperar itens com erro.
                                                 </p>
                                             )}
+
+                                            {/* API Usage Stats */}
+                                            {progress.stats?.api_usage && Object.keys(progress.stats.api_usage).length > 0 && (
+                                                <div className="mt-6 pt-6 border-t border-slate-200">
+                                                    <h5 className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-3">Distribuição de Chamadas por Chave</h5>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                        {Object.entries(progress.stats.api_usage).map(([keyName, count]) => (
+                                                            <div key={keyName} className="flex items-center justify-between bg-white rounded-xl px-4 py-2 border border-slate-100 shadow-sm transition-hover hover:border-indigo-200 group">
+                                                                <span className="text-xs font-bold text-slate-600 truncate mr-2 flex-1">🔑 {keyName}</span>
+                                                                <span className="text-sm font-black text-indigo-600 bg-indigo-50 group-hover:bg-indigo-600 group-hover:text-white transition-colors px-3 py-0.5 rounded-full min-w-[3.5rem] text-center shadow-sm">
+                                                                    {count as number} <span className="text-[8px] opacity-70 uppercase ml-0.5">reqs</span>
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 

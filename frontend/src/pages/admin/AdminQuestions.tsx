@@ -228,7 +228,8 @@ export default function AdminQuestions() {
                     <div className="w-full bg-white rounded-3xl border border-white shadow-xl flex flex-col overflow-hidden">
                         {/* Triage Filters */}
                         {/* Triage Filters */}
-                        <div className="p-4 border-b border-gray-100 flex flex-wrap lg:flex-nowrap gap-3 bg-gray-50/50 items-center">
+                        {/* Triage Filters */}
+                        <div className="p-4 border-b border-gray-100 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:flex xl:flex-nowrap gap-3 bg-gray-50/50 items-center">
                             <div className="relative flex-grow">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
                                 <input
@@ -239,7 +240,7 @@ export default function AdminQuestions() {
                                 />
                             </div>
                             <select
-                                className="px-4 py-2.5 bg-white rounded-xl text-xs font-bold border border-gray-200 focus:ring-2 focus:ring-indigo-500 transition-all min-w-[160px]"
+                                className="w-full xl:w-[160px] px-4 py-2.5 bg-white rounded-xl text-xs font-bold border border-gray-200 focus:ring-2 focus:ring-indigo-500 transition-all"
                                 value={triageFilters.triage_status}
                                 onChange={e => setTriageFilters(prev => ({ ...prev, triage_status: e.target.value }))}
                             >
@@ -250,7 +251,7 @@ export default function AdminQuestions() {
                                 <option value="both_missing">Crítico (Ambos)</option>
                             </select>
                             <select
-                                className="px-4 py-2.5 bg-white rounded-xl text-xs font-bold border border-gray-200 focus:ring-2 focus:ring-indigo-500 transition-all min-w-[140px]"
+                                className="w-full xl:w-[140px] px-4 py-2.5 bg-white rounded-xl text-xs font-bold border border-gray-200 focus:ring-2 focus:ring-indigo-500 transition-all"
                                 value={triageFilters.triage_subject}
                                 onChange={e => setTriageFilters(prev => ({ ...prev, triage_subject: e.target.value }))}
                             >
@@ -304,6 +305,11 @@ export default function AdminQuestions() {
                                                                 <span className="px-1.5 py-0.5 bg-red-50 text-red-600 text-[8px] rounded font-black border border-red-100 uppercase tracking-tighter">🔴 Crítico</span>
                                                             ) : (
                                                                 <>
+                                                                    {q.latest_triage_log?.issues_detected?.includes('ERRO: IMAGEM NÃO CARREGADA/ALUCINAÇÃO DE TEXTO') && (
+                                                                        <span className="px-1.5 py-0.5 bg-red-600 text-white text-[8px] rounded font-black border border-red-700 uppercase tracking-tighter shadow-sm animate-pulse mb-1 block">
+                                                                            🚫 Mídia Alucinada
+                                                                        </span>
+                                                                    )}
                                                                     {missingDiff && <span className="px-1.5 py-0.5 bg-orange-50 text-orange-600 text-[8px] rounded font-black border border-orange-100 uppercase tracking-tighter">⚡ Dif</span>}
                                                                     {missingExpl && <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[8px] rounded font-black border border-blue-100 uppercase tracking-tighter">📝 Expl</span>}
                                                                     {missingClass && <span className="px-1.5 py-0.5 bg-yellow-50 text-yellow-600 text-[8px] rounded font-black border border-yellow-100 uppercase tracking-tighter">🏷️ Tax</span>}
@@ -451,17 +457,17 @@ export default function AdminQuestions() {
                 </div>
 
                 {activeTab === 'all' && (
-                    <div className="p-4 border-b border-gray-50 bg-white flex flex-wrap gap-2 items-center justify-end">
+                    <div className="p-4 border-b border-gray-50 bg-white grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 items-center">
                         <input
                             name="search"
                             placeholder="Pesquisar..."
-                            className="px-4 py-2 bg-white rounded-xl text-sm font-bold border border-gray-200 focus:ring-2 focus:ring-indigo-500 min-w-[200px]"
+                            className="w-full px-4 py-2 bg-white rounded-xl text-sm font-bold border border-gray-200 focus:ring-2 focus:ring-indigo-500"
                             value={filters.search}
                             onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))}
                         />
                         <select
                             name="subject"
-                            className="px-4 py-2 bg-white rounded-xl text-sm font-bold border border-gray-200 focus:ring-2 focus:ring-indigo-500"
+                            className="w-full px-4 py-2 bg-white rounded-xl text-sm font-bold border border-gray-200 focus:ring-2 focus:ring-indigo-500"
                             value={filters.subject}
                             onChange={e => setFilters(prev => ({ ...prev, subject: e.target.value }))}
                         >
@@ -470,7 +476,7 @@ export default function AdminQuestions() {
                         </select>
                         <select
                             name="source"
-                            className="px-4 py-2 bg-white rounded-xl text-sm font-bold border border-gray-200 focus:ring-2 focus:ring-indigo-500"
+                            className="w-full px-4 py-2 bg-white rounded-xl text-sm font-bold border border-gray-200 focus:ring-2 focus:ring-indigo-500"
                             value={filters.source}
                             onChange={e => setFilters(prev => ({ ...prev, source: e.target.value }))}
                         >
@@ -480,7 +486,7 @@ export default function AdminQuestions() {
                         </select>
                         <select
                             name="organization"
-                            className="px-4 py-2 bg-white rounded-xl text-sm font-bold border border-gray-200 focus:ring-2 focus:ring-indigo-500"
+                            className="w-full px-4 py-2 bg-white rounded-xl text-sm font-bold border border-gray-200 focus:ring-2 focus:ring-indigo-500"
                             value={filters.organization}
                             onChange={e => setFilters(prev => ({ ...prev, organization: e.target.value }))}
                         >

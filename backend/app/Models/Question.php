@@ -361,6 +361,14 @@ class Question extends Model
     }
 
     /**
+     * Get the latest triage log for this question.
+     */
+    public function latestTriageLog()
+    {
+        return $this->hasOne(QuestionTriageLog::class)->latest('created_at');
+    }
+
+    /**
      * Relationship with Xavier Semantic Vectors (Qdrant metadata)
      */
     public function vectors()

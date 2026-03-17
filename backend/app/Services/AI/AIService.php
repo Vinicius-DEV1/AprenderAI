@@ -1337,7 +1337,8 @@ EOT;
             return [
                 'data' => $decoded,
                 'usage' => $result['usage'] ?? ['input_tokens' => 0, 'output_tokens' => 0],
-                'estimated_cost' => $result['estimated_cost'] ?? 0
+                'estimated_cost' => $result['estimated_cost'] ?? 0,
+                'api_key_name' => $apiKey->vault?->nickname ?? "Chave #{$apiKey->id}"
             ];
         });
     }
