@@ -78,6 +78,12 @@ class ProcessQuestionImportJob implements ShouldQueue
         ]);
 
         // Marca o lote como em processamento imediatamente
+        $this->import->refresh();
+        if ($this->import->status === 'reverted') {
+            Log::info("[ProcessQuestionImportJob] Lote #{$this->import->id} foi revertido. Abortando.");
+            return;
+        }
+        
         $this->import->update(['status' => 'processing']);
 
         try {

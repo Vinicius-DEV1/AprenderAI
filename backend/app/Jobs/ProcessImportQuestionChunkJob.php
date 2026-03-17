@@ -69,6 +69,12 @@ class ProcessImportQuestionChunkJob implements ShouldQueue
      */
     public function handle(QuestionImportService $service): void
     {
+        $this->import->refresh();
+        if ($this->import->status === 'reverted') {
+            Log::info("[ProcessImportQuestionChunkJob] Lote #{$this->import->id} foi revertido. Parando processamento do chunk #{$this->chunkIndex}.");
+            return;
+        }
+
         Log::info("[ProcessImportQuestionChunkJob] Iniciando chunk #{$this->chunkIndex}", [
             'import_id' => $this->import->id,
             'offset'    => $this->offset,
