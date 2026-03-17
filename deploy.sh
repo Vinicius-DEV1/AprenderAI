@@ -168,9 +168,19 @@ done
 echo ""
 
 # =============================================================================
-# PASSO 4: Remover container antigo (scale de volta para 1)
+# PASSO 4: Reiniciar workers e schedulers com a nova imagem
 # =============================================================================
-log_info "[4/5] Removendo container antigo (scale: 2 → 1)..."
+# Fazemos isto ENQUANTO temos 2 containers app rodando para garantir 
+# que o pico de CPU do restart dos workers (46+ containers) não comprometa a API.
+log_info "[4/5] Reiniciando workers, schedulers e serviços auxiliares..."
+$COMPOSE up -d --no-deps worker ai-worker scheduler concursos-sync
+
+echo ""
+
+# =============================================================================
+# PASSO 5: Remover container antigo (scale de volta para 1)
+# =============================================================================
+log_info "[5/5] Removendo container antigo (scale: 2 → 1)..."
 log_info "      Requests em andamento no container antigo serão finalizados gracefully."
 
 # Pequena espera para garantir que o nginx propagou o novo upstream
@@ -184,18 +194,8 @@ log_success "Container antigo removido. Apenas novo container ativo."
 # ----------------------------------------------------------------
 # PASSO FINAL: Reload Nginx (DNS Refresh)
 # ----------------------------------------------------------------
-# Força o Nginx a re-resolver o hostname 'app' no Docker DNS.
-# Sem isto, o Nginx pode ficar preso no IP do container deletado (~60s).
-log_info "      Fazendo reload no Nginx para atualizar DNS..."
-$COMPOSE exec -T webserver nginx -s reload || log_warning "Falha ao recarregar Nginx. Ele atualizará o DNS em breve."
-
-echo ""
-
-# =============================================================================
-# PASSO 5: Reiniciar workers e schedulers com a nova imagem
-# =============================================================================
-log_info "[5/5] Reiniciando workers, schedulers e serviços auxiliares..."
-$COMPOSE up -d --no-deps worker ai-worker scheduler concursos-sync
+log_info "      Fazendo reload final no Nginx para limpar DNS..."
+$COMPOSE exec -T webserver nginx -s reload || log_warning "Falha ao recarregar Nginx."
 
 log_success "Todos os serviços atualizados."
 echo ""
