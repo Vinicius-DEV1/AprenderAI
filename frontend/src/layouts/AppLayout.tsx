@@ -9,7 +9,6 @@ import { usePlatformTracking } from '../hooks/usePlatformTracking';
 import SupportChat from '../components/SupportChat';
 import NotificationBell from '../components/NotificationBell';
 import BannerDisplay from '../components/BannerDisplay';
-import SuggestionButton from '../components/SuggestionButton';
 
 export default function AppLayout() {
     const config = useConfigStore();
@@ -294,9 +293,8 @@ export default function AppLayout() {
                     </div>
                 </main>
             </div>
-            {/* Engagement: Floating widgets (support chat + suggestion button) */}
+            {/* Engagement: Floating widgets (support chat) */}
             <SupportChat />
-            <SuggestionButton />
         </div>
     );
 }
