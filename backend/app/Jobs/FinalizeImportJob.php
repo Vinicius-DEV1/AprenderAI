@@ -96,7 +96,8 @@ class FinalizeImportJob implements ShouldQueue
                 'processed_questions'  => $processedCount,
                 'pending_count'        => $pendingCount,
                 'approved_count'       => $approvedCount,
-                'skipped_count'        => $import->skipped_count, // Already updated atomically
+                'skipped_count'        => $import->skipped_count, 
+                'updated_count'        => $import->updated_count,
             ]);
 
             Log::info("[FinalizeImportJob] Import #{$import->id} CONCLUÍDO. Total: {$processedCount}, Pendentes: {$pendingCount}, Aprovadas: {$approvedCount}.");
@@ -106,13 +107,16 @@ class FinalizeImportJob implements ShouldQueue
 
         } elseif ($this->retryCount >= self::MAX_RETRIES) {
             // Atingiu o limite de reagendamentos: falha definitiva
-            Log::error("[FinalizeImportJob] Import #{$import->id} atingiu o limite de " . self::MAX_RETRIES . " verificações. Marcando como falho.");
+            Log::error("[FinalizeImportJob] Import #{$import->id} atingiu o limite de " . self::MAX_RETRIES . " verificações. Marcando como falho e REVERTENDO.");
 
             $import->update([
                 'status'        => 'failed',
                 'processed_questions' => $processedCount,
-                'error_message' => "Timeout: apenas {$processedCount} de {$import->total_questions} questões foram processadas após " . (self::MAX_RETRIES * self::RETRY_DELAY_SECONDS) . "s.",
+                'error_message' => "Timeout: apenas {$processedCount} de {$import->total_questions} questões foram processadas após " . (self::MAX_RETRIES * self::RETRY_DELAY_SECONDS) . "s. O lote foi desfeito automaticamente.",
             ]);
+
+            // Gatilho de reversão automática
+            app(\App\Services\QuestionImportService::class)->rollback($import);
 
             $this->cleanup();
 
@@ -132,12 +136,15 @@ class FinalizeImportJob implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
+        Log::error("[FinalizeImportJob] Falha fatal no job de finalização do lote #{$this->import->id}: " . $exception->getMessage() . ". REVERTENDO.");
+
         $this->import->update([
             'status' => 'failed',
-            'error_message' => "Erro crítico no finalizador: " . $exception->getMessage(),
+            'error_message' => "Erro crítico no finalizador: " . $exception->getMessage() . ". O lote foi desfeito automaticamente.",
         ]);
 
-        Log::error("[FinalizeImportJob] Falha fatal no job de finalização do lote #{$this->import->id}: " . $exception->getMessage());
+        // Gatilho de reversão automática
+        app(\App\Services\QuestionImportService::class)->rollback($this->import);
     }
 
     /**
