@@ -23,6 +23,21 @@ services:
         condition: service_started
     networks:
       - production-network
+    # ----------------------------------------------------------------
+    # HEALTHCHECK — Verifica se o PHP-FPM concluiu toda a inicialização.
+    # O sentinel /tmp/app_ready é criado pelo docker-entrypoint.sh APÓS:
+    #   1. Migrações concluídas
+    #   2. Cache otimizado (optimize)
+    #   3. PHP-FPM pronto para aceitar conexões
+    # O webserver usa condition: service_healthy — NUNCA recebe tráfego
+    # antes deste check passar. Isso elimina os 500/502 durante deploy.
+    # ----------------------------------------------------------------
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/app_ready || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30        # até 150s de espera total (suficiente para migrate + optimize)
+      start_period: 20s  # aguarda o processo PHP iniciar antes do primeiro teste
     deploy:
       resources:
         limits:
@@ -45,7 +60,10 @@ services:
       - ./certbot/www:/var/www/certbot
     depends_on:
       app:
-        condition: service_started
+        # IMPORTANTE: service_healthy garante que o nginx SÓ inicia quando o
+        # PHP-FPM estiver COMPLETAMENTE pronto (migrate + optimize + sentinel).
+        # Era service_started — isso causava os 502/500 durante deploy.
+        condition: service_healthy
     networks:
       - production-network
 

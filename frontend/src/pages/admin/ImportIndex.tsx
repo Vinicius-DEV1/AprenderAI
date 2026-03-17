@@ -320,6 +320,7 @@ export default function ImportIndex() {
                                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Admin</th>
                                         <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Total</th>
                                         <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Ignoradas</th>
+                                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Atualizadas</th>
                                         <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Pendentes</th>
                                         <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Aprovadas</th>
                                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -339,6 +340,13 @@ export default function ImportIndex() {
                                                 <td className="px-4 py-1.5 text-center">
                                                     {(imp.skipped_count || 0) > 0 ? (
                                                         <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">{imp.skipped_count}</span>
+                                                    ) : (
+                                                        <span className="text-gray-300">0</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-1.5 text-center">
+                                                    {(imp.updated_count || 0) > 0 ? (
+                                                        <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-xs font-medium">{imp.updated_count}</span>
                                                     ) : (
                                                         <span className="text-gray-300">0</span>
                                                     )}
