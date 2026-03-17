@@ -75,7 +75,11 @@ CURRENT_SCALE=$($COMPOSE ps --format json $APP_SERVICE 2>/dev/null | \
 log_info "[2/5] Subindo segundo container com nova imagem (scale: ${CURRENT_SCALE} → 2)..."
 log_info "      O container atual continua servindo enquanto o novo inicializa."
 
-$COMPOSE up -d --no-recreate --scale $APP_SERVICE=2
+# CRÍTICO: Especificar $APP_SERVICE no final limita o escopo do 'up' APENAS
+# ao serviço app. Sem isso, o Docker reconcilia toda a stack — incluindo o
+# webserver que depende de service_healthy contra o container antigo (que
+# não tem healthcheck) — causando "dependency failed to start".
+$COMPOSE up -d --no-recreate --scale $APP_SERVICE=2 $APP_SERVICE
 
 log_success "2 containers rodando. Nginx balanceará entre eles."
 echo ""
@@ -94,7 +98,7 @@ while true; do
     if [ $ELAPSED -ge $TIMEOUT ]; then
         log_error "Timeout após ${TIMEOUT}s! Novo container não ficou saudável."
         log_warning "Revertendo para 1 container (o antigo ainda está rodando)..."
-        $COMPOSE up -d --no-recreate --scale $APP_SERVICE=1 2>/dev/null || true
+        $COMPOSE up -d --no-recreate --scale $APP_SERVICE=1 $APP_SERVICE 2>/dev/null || true
         log_error "Deploy FALHOU. Logs do app:"
         $COMPOSE logs --tail=80 $APP_SERVICE
         exit 1
@@ -143,7 +147,8 @@ log_info "      Requests em andamento no container antigo serão finalizados gra
 # Pequena espera para garantir que o nginx propagou o novo upstream
 sleep 3
 
-$COMPOSE up -d --scale $APP_SERVICE=1
+# Novamente: especificar $APP_SERVICE para não tocar em webserver/workers
+$COMPOSE up -d --scale $APP_SERVICE=1 $APP_SERVICE
 
 log_success "Container antigo removido. Apenas novo container ativo."
 echo ""
