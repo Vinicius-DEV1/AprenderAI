@@ -28,6 +28,7 @@ class UserResource extends JsonResource
             'subscription_start' => $this->plan_started_at,
             'subscription_end' => $this->plan_expires_at,
             'created_at' => $this->created_at,
+            'is_new_user' => $this->created_at && $this->created_at->diffInMinutes(now()) < 15,
             'stats' => [
                 'total_simulations' => $this->stats->total_simulations ?? 0,
                 'total_essays' => $this->stats->total_essays ?? 0,

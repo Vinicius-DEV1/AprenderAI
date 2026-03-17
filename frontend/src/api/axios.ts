@@ -134,7 +134,11 @@ api.interceptors.response.use(
                 // Durante um deploy, o backend pode retornar 503/502/500 temporariamente.
                 // Em vez de exibir um toast de erro, ativamos o overlay de deploy.
                 activateDeployMode();
-                // Suprime o toast — o DeployOverlay já informa o usuário visualmente.
+                
+                // BLOQUEIO CRÍTICO: Para evitar que componentes mostrem seus próprios
+                // toasts (ex: no .catch()), retornamos uma promise que nunca resolve.
+                // O DeployOverlay assumirá o controle da UI.
+                return new Promise(() => {});
             }
         } else if (!error.response) {
             // Network Error / servidor completamente offline
