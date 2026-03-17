@@ -653,24 +653,38 @@ EOT;
 
     /**
      * Gera um embedding usando o Gemini gemini-embedding-001 (3072 dims) com Engine de Failover.
+     *
+     * O parâmetro $taskType informa ao Gemini a finalidade do embedding, permitindo
+     * otimização interna do vetor para o caso de uso:
+     *   - 'RETRIEVAL_DOCUMENT': usado na indexação de documentos (questões, conceitos)
+     *   - 'RETRIEVAL_QUERY': usado na busca — otimizado para encontrar documentos relevantes
+     *
+     * @param  string      $text     Texto a ser embedado
+     * @param  int|null    $userId   ID do usuário para telemetria (null para jobs de sistema)
+     * @param  string      $taskType Tipo de tarefa Gemini: RETRIEVAL_DOCUMENT ou RETRIEVAL_QUERY
+     * @return array|null  Vetor de 3072 dimensões, ou null em caso de erro
      */
-    public function generateEmbedding(string $text, ?int $userId = null): ?array
+    public function generateEmbedding(string $text, ?int $userId = null, string $taskType = 'RETRIEVAL_DOCUMENT'): ?array
     {
         try {
             // Utilizamos o provider 'gemini' forçado, com CAPABILITY_EMBEDDING
-            return $this->executeWithFailover(ApiKey::CAPABILITY_EMBEDDING, function ($apiKeyModel) use ($text, $userId) {
+            return $this->executeWithFailover(ApiKey::CAPABILITY_EMBEDDING, function ($apiKeyModel) use ($text, $userId, $taskType) {
                 $startTime = microtime(true);
                 $apiKey = $apiKeyModel->decrypted_key;
                 
-                // Usando v1beta e gemini-embedding-001 que está disponível para esta conta
+                // Gemini Embedding API — gemini-embedding-001 (3072 dims, suporta taskType)
                 $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key={$apiKey}";
 
+                // O taskType orienta o modelo a gerar vetores otimizados para o cenário específico:
+                // - RETRIEVAL_DOCUMENT: vetor "de documento" — captura todo o conteúdo para ser encontrado
+                // - RETRIEVAL_QUERY: vetor "de busca" — captura a intenção de busca para encontrar documentos
                 $payload = [
                     'content' => [
                         'parts' => [
                             ['text' => $text]
                         ]
-                    ]
+                    ],
+                    'taskType' => $taskType,
                 ];
 
                 $response = Http::timeout(10)->post($url, $payload);
