@@ -196,7 +196,7 @@ echo ""
 # PASSO 6: Reiniciar workers e schedulers com a nova imagem
 # =============================================================================
 log_info "[6/6] Reiniciando workers, schedulers e serviços auxiliares..."
-$COMPOSE up -d --no-deps worker ai-worker scheduler concursos-sync
+$COMPOSE up -d --force-recreate --no-deps worker ai-worker scheduler concursos-sync
 
 log_success "Workers e schedulers reiniciados."
 echo ""
