@@ -105,6 +105,7 @@ class ProcessQuestionImportJob implements ShouldQueue
             // ETAPA 3: Calcula quantos chunks são necessários
             $totalChunks = (int) ceil($totalCount / self::CHUNK_SIZE);
 
+            Log::error("[DIAGNOSTIC] Orquestrador #{$this->import->id}: Preparação concluída. Total: {$totalCount} questões. Despachando {$totalChunks} chunks.");
             Log::info("[ProcessQuestionImportJob] Lote #{$this->import->id}: {$totalCount} questões → {$totalChunks} chunks de " . self::CHUNK_SIZE, [
                 'db_path'      => $dbPath,
                 'total_chunks' => $totalChunks,

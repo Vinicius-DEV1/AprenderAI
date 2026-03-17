@@ -60,7 +60,10 @@ class FinalizeImportJob implements ShouldQueue
     public function handle(): void
     {
         // Recarrega o import do banco para ter o estado mais atual
-        $import = $this->import->fresh();
+        $import = $this->import;
+        $import->refresh();
+
+        Log::error("[DIAGNOSTIC] FinalizeImportJob #{$import->id} Iniciado. Status: {$import->status}, Progress: {$import->processed_questions}/{$import->total_questions}. Retry: {$this->retryCount}");
 
         // Se o import já foi finalizado (completed/failed/reverted) por outra causa, para aqui.
         // ATENÇÃO: só faz cleanup se não for 'processing' — evitar deletar SQLite ainda necessário.
