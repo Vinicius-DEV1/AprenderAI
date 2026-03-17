@@ -24,8 +24,8 @@ return [
             'questions' => 'questions_vectors',
             'concepts'  => 'concepts_vectors',
         ],
-        // Named vector dimensions (Gemini embedding-001 = 3072, text-embedding-004 = 768)
-        'vector_size' => env('QDRANT_VECTOR_SIZE', 768),
+        // Named vector dimensions — gemini-embedding-001 = 3072 dims
+        'vector_size' => env('QDRANT_VECTOR_SIZE', 3072),
     ],
 
     /*

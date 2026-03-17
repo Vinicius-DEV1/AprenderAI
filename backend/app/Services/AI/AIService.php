@@ -652,7 +652,7 @@ EOT;
     }
 
     /**
-     * Gera um embedding usando o Gemini text-embedding-004 com Engine de Failover.
+     * Gera um embedding usando o Gemini gemini-embedding-001 (3072 dims) com Engine de Failover.
      */
     public function generateEmbedding(string $text, ?int $userId = null): ?array
     {

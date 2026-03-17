@@ -154,8 +154,8 @@ class SemanticCacheService
 
     /**
      * Calcula o Dot Product de dois arrays.
-     * Como o Gemini (text-embedding-004) já retorna arrays normalizados L2 (tamanho do vetor 1),
-     * O Dot Product é IDENTICO matemático à Similaridade de Cosseno.
+     * Como o Gemini (gemini-embedding-001) já retorna arrays normalizados L2 (magnitude = 1),
+     * O Dot Product é IDÊNTICO matemático à Similaridade de Cosseno.
      */
     private function calculateDotProduct(array $vecA, array $vecB): float
     {
