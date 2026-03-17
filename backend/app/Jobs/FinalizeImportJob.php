@@ -73,18 +73,17 @@ class FinalizeImportJob implements ShouldQueue
             return;
         }
 
-        // Conta quantos itens já foram salvos no banco (via QuestionImportItem)
-        $processedCount = QuestionImportItem::where('import_id', $import->id)->count();
+        // O progresso (processed_questions) é atualizado atomicamente pelos chunks via increment().
+        // NÃO devemos sobrescrever esse valor com o count() de QuestionImportItem, pois se houverem
+        // questões duplicadas no SQLite, o count() será menor que total_questions, travando a importação.
+        $processedProgress = $import->processed_questions;
 
-        Log::info("[FinalizeImportJob] Import #{$import->id}: {$processedCount}/{$import->total_questions} questões processadas.", [
+        Log::info("[FinalizeImportJob] Import #{$import->id}: {$processedProgress}/{$import->total_questions} questões processadas (Items únicos: " . QuestionImportItem::where('import_id', $import->id)->count() . ").", [
             'retry_count' => $this->retryCount,
         ]);
 
-        // Atualiza a contagem de progresso para o frontend em tempo real
-        $import->update(['processed_questions' => $processedCount]);
-
         // Verifica se está completo ou se ainda há work pendente
-        $isComplete = ($import->total_questions > 0) && ($processedCount >= $import->total_questions);
+        $isComplete = ($import->total_questions > 0) && ($processedProgress >= $import->total_questions);
 
         if ($isComplete) {
             // Finalização bem-sucedida: calcula as estatísticas finais e atualiza o status
@@ -116,8 +115,8 @@ class FinalizeImportJob implements ShouldQueue
 
             $import->update([
                 'status'              => 'failed',
-                'processed_questions' => $processedCount,
-                'error_message'       => "Timeout: apenas {$processedCount} de {$import->total_questions} questões foram processadas após " . (self::MAX_RETRIES * self::RETRY_DELAY_SECONDS) . "s.",
+                'processed_questions' => $processedProgress,
+                'error_message'       => "Timeout: apenas {$processedProgress} de {$import->total_questions} questões foram processadas (ou contabilizadas como únicas) após " . (self::MAX_RETRIES * self::RETRY_DELAY_SECONDS) . "s.",
             ]);
 
             // Gatilho de reversão automática
