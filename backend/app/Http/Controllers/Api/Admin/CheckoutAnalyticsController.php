@@ -28,42 +28,47 @@ class CheckoutAnalyticsController extends Controller
         $days = (int) $request->get('days', 30);
         $since = now()->subDays($days);
 
-        $intentions       = PurchaseIntention::where('created_at', '>=', $since)->count();
-        $uniqueIntentions = PurchaseIntention::where('created_at', '>=', $since)->count(DB::raw('DISTINCT COALESCE(user_id, ip)'));
-        $gainedRevenue    = PurchaseIntention::converted()->where('created_at', '>=', $since)->sum('plan_amount');
-        $lostRevenue      = PurchaseIntention::abandoned()->where('created_at', '>=', $since)->sum('plan_amount');
+        $intentions       = PurchaseIntention::withoutAdmins()->where('created_at', '>=', $since)->count();
+        $uniqueIntentions = PurchaseIntention::withoutAdmins()->where('created_at', '>=', $since)->count(DB::raw('DISTINCT COALESCE(user_id, ip)'));
+        $gainedRevenue    = PurchaseIntention::withoutAdmins()->converted()->where('created_at', '>=', $since)->sum('plan_amount');
+        $lostRevenue      = PurchaseIntention::withoutAdmins()->abandoned()->where('created_at', '>=', $since)->sum('plan_amount');
 
-        $checkoutsOpened    = CheckoutEvent::where('event_type', 'checkout_opened')->where('created_at', '>=', $since)->count();
-        $paymentsInitiated  = CheckoutEvent::where('event_type', 'payment_initiated')->where('created_at', '>=', $since)->count();
-        $paymentsSuccess    = CheckoutEvent::where('event_type', 'payment_success')->where('created_at', '>=', $since)->count();
-        $paymentsFailed     = CheckoutEvent::where('event_type', 'payment_failed')->where('created_at', '>=', $since)->count();
-        $pricesViewed       = CheckoutEvent::where('event_type', 'prices_viewed')->where('created_at', '>=', $since)->count();
 
-        $abandonments       = CheckoutAbandonment::where('created_at', '>=', $since)->count();
-        $abandonmentsCoupon = CheckoutAbandonment::where('created_at', '>=', $since)->where('had_coupon', true)->count();
-        $conversionsCoupon  = CheckoutEvent::where('event_type', 'payment_success')
+        $checkoutsOpened    = CheckoutEvent::withoutAdmins()->where('event_type', 'checkout_opened')->where('created_at', '>=', $since)->count();
+        $paymentsInitiated  = CheckoutEvent::withoutAdmins()->where('event_type', 'payment_initiated')->where('created_at', '>=', $since)->count();
+        $paymentsSuccess    = CheckoutEvent::withoutAdmins()->where('event_type', 'payment_success')->where('created_at', '>=', $since)->count();
+        $paymentsFailed     = CheckoutEvent::withoutAdmins()->where('event_type', 'payment_failed')->where('created_at', '>=', $since)->count();
+        $pricesViewed       = CheckoutEvent::withoutAdmins()->where('event_type', 'prices_viewed')->where('created_at', '>=', $since)->count();
+        
+        $abandonments       = CheckoutAbandonment::withoutAdmins()->where('created_at', '>=', $since)->count();
+        $abandonmentsCoupon = CheckoutAbandonment::withoutAdmins()->where('created_at', '>=', $since)->where('had_coupon', true)->count();
+
+        $conversionsCoupon  = CheckoutEvent::withoutAdmins()->where('event_type', 'payment_success')
                                 ->where('created_at', '>=', $since)
                                 ->where('metadata->hadCoupon', true)
                                 ->count();
+
 
         $conversionRate = $intentions > 0
             ? round(($paymentsSuccess / $intentions) * 100, 2)
             : 0;
 
         // Average time to convert (in minutes)
-        $avgTimeToConvert = PurchaseIntention::converted()
+        $avgTimeToConvert = PurchaseIntention::withoutAdmins()->converted()
             ->where('created_at', '>=', $since)
             ->whereNotNull('time_to_convert_seconds')
             ->avg('time_to_convert_seconds');
 
+
         // V2 Metrics: Devices & Origins
-        $devices = PurchaseIntention::where('created_at', '>=', $since)
+        $devices = PurchaseIntention::withoutAdmins()->where('created_at', '>=', $since)
             ->whereNotNull('device')
             ->select('device', DB::raw('count(*) as intentions'), DB::raw('sum(case when status = "converted" then 1 else 0 end) as conversions'))
             ->groupBy('device')
             ->get();
 
-        $topOrigins = PurchaseIntention::where('created_at', '>=', $since)
+
+        $topOrigins = PurchaseIntention::withoutAdmins()->where('created_at', '>=', $since)
             ->whereNotNull('source_page')
             ->select('source_page', DB::raw('count(*) as total'))
             ->groupBy('source_page')
@@ -71,8 +76,9 @@ class CheckoutAnalyticsController extends Controller
             ->take(5)
             ->get();
 
+
         // V3: Approval Rates by Method
-        $approvalRates = CheckoutEvent::whereIn('event_type', ['payment_success', 'payment_failed'])
+        $approvalRates = CheckoutEvent::withoutAdmins()->whereIn('event_type', ['payment_success', 'payment_failed'])
             ->where('created_at', '>=', $since)
             ->whereNotNull('payment_method')
             ->select('payment_method', 
@@ -81,19 +87,21 @@ class CheckoutAnalyticsController extends Controller
             )
             ->groupBy('payment_method')
             ->get()
+
             ->map(function($item) {
                 $item->rate = $item->total > 0 ? round(($item->success / $item->total) * 100, 1) : 0;
                 return $item;
             });
 
         // V3: Top regions by IP (Proxy for Geo)
-        $topRegions = PurchaseIntention::where('created_at', '>=', $since)
+        $topRegions = PurchaseIntention::withoutAdmins()->where('created_at', '>=', $since)
             ->whereNotNull('ip')
             ->select('ip', DB::raw('count(*) as total'))
             ->groupBy('ip')
             ->orderByDesc('total')
             ->take(10)
             ->get();
+
 
         return response()->json([
             'period_days'           => $days,
@@ -131,28 +139,29 @@ class CheckoutAnalyticsController extends Controller
             [
                 'step'  => 'prices_viewed',
                 'label' => 'Visualizou Preços',
-                'count' => CheckoutEvent::where('event_type', 'prices_viewed')->where('created_at', '>=', $since)->count(DB::raw('DISTINCT user_id')),
+                'count' => CheckoutEvent::withoutAdmins()->where('event_type', 'prices_viewed')->where('created_at', '>=', $since)->count(DB::raw('DISTINCT user_id')),
             ],
             [
                 'step'  => 'plan_clicked',
                 'label' => 'Clicou em Plano',
-                'count' => PurchaseIntention::where('created_at', '>=', $since)->count(DB::raw('DISTINCT user_id')),
+                'count' => PurchaseIntention::withoutAdmins()->where('created_at', '>=', $since)->count(DB::raw('DISTINCT user_id')),
             ],
             [
                 'step'  => 'checkout_opened',
                 'label' => 'Abriu Checkout',
-                'count' => CheckoutEvent::where('event_type', 'checkout_opened')->where('created_at', '>=', $since)->count(DB::raw('DISTINCT user_id')),
+                'count' => CheckoutEvent::withoutAdmins()->where('event_type', 'checkout_opened')->where('created_at', '>=', $since)->count(DB::raw('DISTINCT user_id')),
             ],
             [
                 'step'  => 'payment_initiated',
                 'label' => 'Enviou Pagamento',
-                'count' => CheckoutEvent::where('event_type', 'payment_initiated')->where('created_at', '>=', $since)->count(DB::raw('DISTINCT user_id')),
+                'count' => CheckoutEvent::withoutAdmins()->where('event_type', 'payment_initiated')->where('created_at', '>=', $since)->count(DB::raw('DISTINCT user_id')),
             ],
             [
                 'step'  => 'payment_success',
                 'label' => 'Pagamento Confirmado',
-                'count' => CheckoutEvent::where('event_type', 'payment_success')->where('created_at', '>=', $since)->count(DB::raw('DISTINCT user_id')),
+                'count' => CheckoutEvent::withoutAdmins()->where('event_type', 'payment_success')->where('created_at', '>=', $since)->count(DB::raw('DISTINCT user_id')),
             ],
+
         ];
 
         // Calculate drop-off rates between steps
@@ -180,23 +189,24 @@ class CheckoutAnalyticsController extends Controller
 
         $plans = Plan::all()->keyBy('id');
 
-        $clicks = PurchaseIntention::where('created_at', '>=', $since)
+        $clicks = PurchaseIntention::withoutAdmins()->where('created_at', '>=', $since)
             ->select('plan_id', DB::raw('count(*) as total_clicks'))
             ->groupBy('plan_id')
             ->pluck('total_clicks', 'plan_id');
 
-        $conversions = PurchaseIntention::converted()
+        $conversions = PurchaseIntention::withoutAdmins()->converted()
             ->where('created_at', '>=', $since)
             ->select('plan_id', DB::raw('count(*) as total_conversions'))
             ->groupBy('plan_id')
             ->pluck('total_conversions', 'plan_id');
 
-        $checkouts = CheckoutEvent::where('event_type', 'checkout_opened')
+        $checkouts = CheckoutEvent::withoutAdmins()->where('event_type', 'checkout_opened')
             ->where('created_at', '>=', $since)
             ->whereNotNull('plan_id')
             ->select('plan_id', DB::raw('count(*) as total_checkouts'))
             ->groupBy('plan_id')
             ->pluck('total_checkouts', 'plan_id');
+
 
         $ranking = $plans->map(function ($plan) use ($clicks, $conversions, $checkouts) {
             $c = (int) ($clicks[$plan->id] ?? 0);
@@ -225,17 +235,18 @@ class CheckoutAnalyticsController extends Controller
         $days = (int) $request->get('days', 30);
         $since = now()->subDays($days);
 
-        $errorsByType = CheckoutError::where('created_at', '>=', $since)
+        $errorsByType = CheckoutError::withoutAdmins()->where('created_at', '>=', $since)
             ->select('error_type', DB::raw('count(*) as total'), DB::raw('max(created_at) as last_occurred'))
             ->groupBy('error_type')
             ->orderByDesc('total')
             ->get();
 
-        $recentErrors = CheckoutError::with(['user', 'plan'])
+        $recentErrors = CheckoutError::withoutAdmins()->with(['user', 'plan'])
             ->where('created_at', '>=', $since)
             ->orderByDesc('created_at')
             ->take(20)
             ->get()
+
             ->map(fn($e) => [
                 'id'             => $e->id,
                 'error_type'     => $e->error_type,
@@ -346,10 +357,11 @@ class CheckoutAnalyticsController extends Controller
         $limit = (int) $request->get('limit', 20);
         $since = now()->subDays($days);
 
-        $paginated = CheckoutAbandonment::with(['user', 'plan'])
+        $paginated = CheckoutAbandonment::withoutAdmins()->with(['user', 'plan'])
             ->where('created_at', '>=', $since)
             ->orderByDesc('created_at')
             ->paginate($limit);
+
 
         $paginated->getCollection()->transform(function ($a) use ($since) {
             // Determine Identity
@@ -368,7 +380,8 @@ class CheckoutAnalyticsController extends Controller
             }
             
             // Fetch recent errors for this user/IP to show "Attempts" history
-            $errorQuery = CheckoutError::where('created_at', '>=', $since);
+            $errorQuery = CheckoutError::withoutAdmins()->where('created_at', '>=', $since);
+
             if ($userId) {
                 $errorQuery->where('user_id', $userId);
             } else {
@@ -411,11 +424,12 @@ class CheckoutAnalyticsController extends Controller
         $alerts = [];
 
         // Alert 1: Many failures of same type in last 2 hours
-        $recentErrors = CheckoutError::where('created_at', '>=', now()->subHours(2))
+        $recentErrors = CheckoutError::withoutAdmins()->where('created_at', '>=', now()->subHours(2))
             ->select('error_type', DB::raw('count(*) as total'))
             ->groupBy('error_type')
             ->having('total', '>=', 5)
             ->get();
+
 
         foreach ($recentErrors as $err) {
             $alerts[] = [
@@ -428,8 +442,9 @@ class CheckoutAnalyticsController extends Controller
         }
 
         // Alert 2: High abandonment rate today
-        $todayCheckouts  = CheckoutEvent::where('event_type', 'checkout_opened')->whereDate('created_at', today())->count();
-        $todayAbandonment = CheckoutAbandonment::whereDate('created_at', today())->count();
+        $todayCheckouts  = CheckoutEvent::withoutAdmins()->where('event_type', 'checkout_opened')->whereDate('created_at', today())->count();
+        $todayAbandonment = CheckoutAbandonment::withoutAdmins()->whereDate('created_at', today())->count();
+
         if ($todayCheckouts >= 5 && $todayAbandonment > 0) {
             $abandonmentRate = round(($todayAbandonment / $todayCheckouts) * 100, 1);
             if ($abandonmentRate >= 70) {
@@ -444,8 +459,9 @@ class CheckoutAnalyticsController extends Controller
         }
 
         // Alert 3: Zero conversions in the last 24h (with enough intent activity)
-        $last24hIntentions  = PurchaseIntention::where('created_at', '>=', now()->subDay())->count();
-        $last24hConversions = PurchaseIntention::converted()->where('created_at', '>=', now()->subDay())->count();
+        $last24hIntentions  = PurchaseIntention::withoutAdmins()->where('created_at', '>=', now()->subDay())->count();
+        $last24hConversions = PurchaseIntention::withoutAdmins()->converted()->where('created_at', '>=', now()->subDay())->count();
+
         if ($last24hIntentions >= 10 && $last24hConversions === 0) {
             $alerts[] = [
                 'type'     => 'zero_conversions',
@@ -470,9 +486,10 @@ class CheckoutAnalyticsController extends Controller
     {
         $limit = (int) $request->get('limit', 20);
 
-        $events = CheckoutEvent::with(['user', 'plan'])
+        $events = CheckoutEvent::withoutAdmins()->with(['user', 'plan'])
             ->orderByDesc('created_at')
             ->paginate($limit);
+
 
         $events->getCollection()->transform(fn($e) => [
             'id'             => $e->id,

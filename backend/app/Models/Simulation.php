@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\FiltersAdmins;
+
 
 class Simulation extends Model
 {
-    use HasFactory;
+    use HasFactory, FiltersAdmins;
+
 
     protected $fillable = [
         'user_id',

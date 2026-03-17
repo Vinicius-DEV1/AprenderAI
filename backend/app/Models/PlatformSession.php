@@ -3,9 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\FiltersAdmins;
+
 
 class PlatformSession extends Model
 {
+    use FiltersAdmins;
+
     protected $fillable = [
         'user_id',
         'session_token',

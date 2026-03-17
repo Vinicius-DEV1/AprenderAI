@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\FiltersAdmins;
+
 
 /**
  * Records all checkout-related failures for diagnostics and alerting.
@@ -11,6 +13,9 @@ use Illuminate\Database\Eloquent\Model;
  */
 class CheckoutError extends Model
 {
+    use FiltersAdmins;
+
+
     protected $fillable = [
         'user_id',
         'plan_id',
