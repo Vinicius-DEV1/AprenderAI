@@ -86,26 +86,38 @@ api.interceptors.response.use(
                     return Promise.reject(error);
                 }
 
-                // Normaliza path para evitar loops
-                const currentPath = window.location.pathname.replace(/\/$/, '') || '/';
-                const publicPaths = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/privacidade', '/uso-justo', '/500', '/verify-email'];
-
-                if (!publicPaths.includes(currentPath)) {
-                    // ESTRATÉGIA ANTI-LOGOUT FALSO:
-                    // Se o erro for 419 (Page Expired) ou 401, mas o servidor estiver oscilando
-                    // (ex: workers reiniciando), damos uma chance ao Modo Deploy.
-                    if (status === 419) {
+                // ESTRATÉGIA ANTI-LOGOUT FALSO:
+                // Antes de deslogar o usuário em um 401/419, verificamos se o servidor está saudável.
+                // Se o healthcheck falhar, assumimos que é um deploy e ativamos o overlay.
+                const checkHealthAndLogout = async () => {
+                    try {
+                        const healthRes = await fetch('/api/health', { method: 'GET', cache: 'no-store' });
+                        if (!healthRes.ok) {
+                            activateDeployMode();
+                            return;
+                        }
+                    } catch {
                         activateDeployMode();
-                        return Promise.reject(error);
+                        return;
                     }
 
-                    const message = status === 419 ? 'Página expirada por inatividade. Recarregando...' : 'Sessão expirada. Faça login novamente.';
-                    toast.error(message);
+                    // Se chegou aqui, o servidor está saudável MAS retornou 401/419 real.
+                    // Aí sim, procedemos com o logout.
+                    const currentPath = window.location.pathname.replace(/\/$/, '') || '/';
+                    const publicPaths = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/privacidade', '/uso-justo', '/500', '/verify-email'];
 
-                    const { logout } = useAuthStore.getState();
-                    logout();
-                    window.location.href = '/login';
-                }
+                    if (!publicPaths.includes(currentPath)) {
+                        const message = status === 419 ? 'Página expirada por inatividade. Recarregando...' : 'Sessão expirada. Faça login novamente.';
+                        toast.error(message);
+
+                        const { logout } = useAuthStore.getState();
+                        logout();
+                        window.location.href = '/login';
+                    }
+                };
+
+                checkHealthAndLogout();
+                return Promise.reject(error);
             }
             // Handle 422 - Validation Errors
             else if (status === 422) {
