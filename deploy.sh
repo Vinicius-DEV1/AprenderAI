@@ -180,6 +180,15 @@ sleep 3
 $COMPOSE up -d --scale $APP_SERVICE=1 $APP_SERVICE
 
 log_success "Container antigo removido. Apenas novo container ativo."
+
+# ----------------------------------------------------------------
+# PASSO FINAL: Reload Nginx (DNS Refresh)
+# ----------------------------------------------------------------
+# Força o Nginx a re-resolver o hostname 'app' no Docker DNS.
+# Sem isto, o Nginx pode ficar preso no IP do container deletado (~60s).
+log_info "      Fazendo reload no Nginx para atualizar DNS..."
+$COMPOSE exec -T webserver nginx -s reload || log_warning "Falha ao recarregar Nginx. Ele atualizará o DNS em breve."
+
 echo ""
 
 # =============================================================================
