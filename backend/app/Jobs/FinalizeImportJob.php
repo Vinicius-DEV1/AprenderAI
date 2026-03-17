@@ -28,8 +28,9 @@ class FinalizeImportJob implements ShouldQueue
     /**
      * Número máximo de reagendamentos antes de desistir.
      * Evita loops infinitos se algum chunk falhar permanentemente.
+     * 600 * 30s = 18.000s = 5 Horas. Suficiente para lotes de 10k+ questões.
      */
-    private const MAX_RETRIES = 30;
+    private const MAX_RETRIES = 600;
 
     /**
      * Delay em segundos entre verificações de progresso.
@@ -50,7 +51,7 @@ class FinalizeImportJob implements ShouldQueue
         public readonly string $zipPath,
         public readonly int $retryCount = 0,
     ) {
-        $this->onQueue('import');
+        $this->onQueue('default');
     }
 
     /**
