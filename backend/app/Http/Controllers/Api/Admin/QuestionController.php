@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Question;
+use App\Models\Subject;
+use App\Models\Topic;
 use App\Http\Resources\QuestionResource;
 use Illuminate\Http\Request;
 
@@ -205,11 +207,23 @@ class QuestionController extends Controller
 
         \DB::beginTransaction();
         try {
-            $question->update(collect($validated)->except(['subjects', 'topics', 'alternatives'])->toArray());
+            // 1. Capture original state for auditing
+            $oldState = [
+                'attributes'   => $question->only(array_keys(collect($validated)->except(['subjects', 'topics', 'alternatives'])->toArray())),
+                'subjects'     => $question->subjects->pluck('name')->toArray(),
+                'topics'       => $question->topics->pluck('name')->toArray(),
+                'alternatives' => $question->alternatives->pluck('content', 'label')->toArray(),
+            ];
 
+            // 2. Update Model
+            $questionData = collect($validated)->except(['subjects', 'topics', 'alternatives'])->toArray();
+            $question->update($questionData);
+
+            // 3. Update Subjects
+            $newSubjects = $request->input('subjects', []);
             if ($request->filled('subjects')) {
                 $subjectIds = [];
-                foreach ($request->subjects as $subjectName) {
+                foreach ($newSubjects as $subjectName) {
                     $subject = \App\Models\Subject::firstOrCreate(['name' => $subjectName, 'slug' => \Str::slug($subjectName)]);
                     $subjectIds[] = $subject->id;
                 }
@@ -218,9 +232,11 @@ class QuestionController extends Controller
                 $question->subjects()->detach();
             }
 
+            // 4. Update Topics
+            $newTopics = $request->input('topics', []);
             if ($request->filled('topics')) {
                 $topicIds = [];
-                foreach ($request->topics as $topicName) {
+                foreach ($newTopics as $topicName) {
                     $topic = \App\Models\Topic::firstOrCreate(['name' => $topicName, 'slug' => \Str::slug($topicName)]);
                     $topicIds[] = $topic->id;
                 }
@@ -229,15 +245,65 @@ class QuestionController extends Controller
                 $question->topics()->detach();
             }
 
+            // 5. Update Alternatives
+            $newAlternatives = $request->input('alternatives', []);
             if ($request->filled('alternatives')) {
                 $question->alternatives()->delete();
-                foreach ($request->alternatives as $label => $content) {
+                foreach ($newAlternatives as $label => $content) {
                     $question->alternatives()->create([
                         'label' => $label,
                         'content' => $content,
                         'is_correct' => $label === $validated['correct_answer']
                     ]);
                 }
+            }
+
+            // 6. Detailed Logging
+            $changes = [];
+            
+            // Check attribute changes
+            foreach ($question->getChanges() as $field => $newValue) {
+                if ($field === 'updated_at') continue;
+                $changes[$field] = [
+                    'from' => $oldState['attributes'][$field] ?? null,
+                    'to'   => $newValue
+                ];
+            }
+
+            // Check Subject changes
+            if (array_diff($oldState['subjects'], $newSubjects) || array_diff($newSubjects, $oldState['subjects'])) {
+                $changes['subjects'] = [
+                    'from' => $oldState['subjects'],
+                    'to'   => $newSubjects
+                ];
+            }
+
+            // Check Topic changes
+            if (array_diff($oldState['topics'], $newTopics) || array_diff($newTopics, $oldState['topics'])) {
+                $changes['topics'] = [
+                    'from' => $oldState['topics'],
+                    'to'   => $newTopics
+                ];
+            }
+
+            // Check Alternative changes
+            if (array_diff_assoc($oldState['alternatives'], $newAlternatives) || array_diff_assoc($newAlternatives, $oldState['alternatives'])) {
+                $changes['alternatives'] = [
+                    'from' => $oldState['alternatives'],
+                    'to'   => $newAlternatives
+                ];
+            }
+
+            if (!empty($changes)) {
+                \App\Models\UserLog::create([
+                    'user_id' => $request->user()->id,
+                    'action' => 'admin_updated_question',
+                    'description' => json_encode([
+                        'question_id' => $question->id,
+                        'changes'     => $changes
+                    ]),
+                    'ip_address' => $request->ip(),
+                ]);
             }
 
             \DB::commit();
@@ -247,6 +313,7 @@ class QuestionController extends Controller
             return response()->json(['message' => 'Erro ao atualizar: ' . $e->getMessage()], 500);
         }
     }
+
 
     /**
      * Evaluate difficulty using AI.
@@ -445,4 +512,36 @@ class QuestionController extends Controller
             'question_id' => $question->id
         ]);
     }
+
+    /**
+     * Get subjects and topics ranked by question count.
+     */
+    public function classificationRanking(Request $request)
+    {
+        $type = $request->get('type'); // optional: 'enem' or 'concurso'
+
+        // Filter callback for question counts
+        $filter = function ($query) use ($type) {
+            if ($type) {
+                $query->where('type', $type);
+            }
+        };
+
+        $subjects = Subject::withCount(['questions' => $filter])
+            ->orderByDesc('questions_count')
+            ->get();
+
+        $topics = Topic::withCount(['questions' => $filter])
+            ->orderByDesc('questions_count')
+            ->get();
+
+        return response()->json([
+            'subjects' => $subjects,
+            'topics'   => $topics,
+            'filter'   => [
+                'type' => $type ?: 'all'
+            ]
+        ]);
+    }
 }
+

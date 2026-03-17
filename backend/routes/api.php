@@ -247,7 +247,9 @@ Route::prefix('v1')->group(function () {
 
             // Administrative CRUDs
             Route::get('questions/support-data', [AdminQuestionController::class, 'supportData']);
+            Route::get('questions/stats/classification-ranking', [AdminQuestionController::class, 'classificationRanking']);
             Route::get('questions/trashed', [AdminQuestionController::class, 'trashed']);
+
             Route::post('questions/{id}/restore', [AdminQuestionController::class, 'restore']);
             Route::delete('questions/{id}/force', [AdminQuestionController::class, 'forceDelete']);
 

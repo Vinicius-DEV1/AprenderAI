@@ -96,7 +96,9 @@ import PlatformMonitor from './pages/admin/PlatformMonitor';
 import SupportAdmin from './pages/admin/SupportAdmin';
 import BannersAdmin from './pages/admin/BannersAdmin';
 import SuggestionsAdmin from './pages/admin/SuggestionsAdmin';
+import ClassificationRanking from './pages/admin/ClassificationRanking';
 import Analytics from './components/Analytics';
+
 import Notifications from './pages/Notifications';
 
 function App() {
@@ -270,7 +272,9 @@ function App() {
                             <Route path="triage/history" element={<><MetaTags title="Admin: Histórico de Triagem" /><QuestionHistory /></>} />
 
                             <Route path="questions" element={<><MetaTags title="Admin: Banco de Questões" /><AdminQuestions /></>} />
+                            <Route path="questions/ranking" element={<><MetaTags title="Admin: Ranking de Matérias" /><ClassificationRanking /></>} />
                             <Route path="questions/create" element={<><MetaTags title="Admin: Nova Questão" /><AdminQuestionForm /></>} />
+
                             <Route path="questions/:id/edit" element={<><MetaTags title="Admin: Editar Questão" /><AdminQuestionForm /></>} />
 
                             <Route path="users" element={<><MetaTags title="Admin: Gestão de Usuários" /><AdminUsers /></>} />

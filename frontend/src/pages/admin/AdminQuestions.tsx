@@ -156,9 +156,15 @@ export default function AdminQuestions() {
                     <h1 className="text-3xl font-black text-gray-900 tracking-tight">Banco de Questões</h1>
                     <p className="text-gray-500 font-medium">Gestão centralizada de conteúdo e triagem de inteligência artificial.</p>
                 </div>
-                <Link to="/admin/questions/create" className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 transition shadow-lg shadow-indigo-100">
-                    <span>➕</span> Nova Questão
-                </Link>
+                <div className="flex items-center gap-3">
+                    <Link to="/admin/questions/ranking" className="px-6 py-3 bg-white border border-indigo-100 text-indigo-600 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-50 transition shadow-sm">
+                        <span>📈</span> Disciplinas/Assuntos
+                    </Link>
+                    <Link to="/admin/questions/create" className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 transition shadow-lg shadow-indigo-100">
+                        <span>➕</span> Nova Questão
+                    </Link>
+                </div>
+
             </div>
 
             {/* Mini Dashboard */}
