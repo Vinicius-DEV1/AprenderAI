@@ -264,6 +264,16 @@ class ProcessAsaasWebhookJob implements ShouldQueue
                             $method,
                             ['type' => 'webhook_reconciliation', 'amount' => $subscription->amount]
                         );
+
+                        // Notify admins that a PIX payment was confirmed
+                        if ($method === 'pix') {
+                            \App\Models\UserNotification::notifyAdmins(
+                                '💰 PIX Pago — ' . $user->name,
+                                'Plano ' . $plan->name . ' • R$ ' . number_format((float) $subscription->amount, 2, ',', '.') . ' confirmado',
+                                'success',
+                                '/admin/checkout'
+                            );
+                        }
                     }
 
                     // Return the list of subscriptions to cancel outside the transaction

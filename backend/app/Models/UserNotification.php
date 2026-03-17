@@ -57,4 +57,37 @@ class UserNotification extends Model
             $this->update(['read_at' => now()]);
         }
     }
+
+    /**
+     * Fire a notification to every admin user.
+     *
+     * @param string      $title   Short title shown in the bell dropdown
+     * @param string|null $body    Optional supporting detail text
+     * @param string      $type    info | success | warning | tip
+     * @param string|null $url     Optional deep-link (e.g. to admin/checkout)
+     */
+    public static function notifyAdmins(
+        string $title,
+        ?string $body = null,
+        string $type = 'info',
+        ?string $url = null,
+    ): void {
+        try {
+            $adminIds = User::where('role', 'admin')->pluck('id');
+            foreach ($adminIds as $adminId) {
+                self::create([
+                    'user_id'    => $adminId,
+                    'title'      => $title,
+                    'body'       => $body,
+                    'type'       => $type,
+                    'action_url' => $url,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[Notifications] notifyAdmins failed', [
+                'title' => $title,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
 }
