@@ -359,7 +359,7 @@ export default function ImportIndex() {
                                                                 Revisar
                                                             </Link>
                                                         )}
-                                                        {imp.status !== 'reverted' && imp.status !== 'processing' && (
+                                                        {imp.status !== 'reverted' && (
                                                             <button
                                                                 onClick={() => handleDeleteBatch(imp.id)}
                                                                 className="px-3 py-1 bg-red-50 text-red-600 text-xs rounded hover:bg-red-100 font-medium flex items-center gap-1 border border-red-200 transition-colors whitespace-nowrap"
