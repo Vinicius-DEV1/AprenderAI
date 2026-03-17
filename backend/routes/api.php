@@ -374,6 +374,7 @@ Route::prefix('v1')->group(function () {
             Route::prefix('import/review')->group(function () {
                 Route::get('/', [AdminImportReviewController::class, 'index']);
                 Route::get('/summary', [AdminImportReviewController::class, 'summary']);
+                Route::get('/stats', [AdminImportReviewController::class, 'stats']);
                 Route::get('/{id}', [AdminImportReviewController::class, 'show']);
                 Route::post('/{id}/approve', [AdminImportReviewController::class, 'approve']);
                 Route::post('/{id}/revert', [AdminImportReviewController::class, 'revert']);

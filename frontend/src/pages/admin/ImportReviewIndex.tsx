@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
 import { toast } from 'sonner';
 import SmartPagination from '../../components/admin/SmartPagination';
+import ImportReviewStats from '../../components/admin/ImportReviewStats';
 
 export default function ImportReviewIndex() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -18,6 +19,14 @@ export default function ImportReviewIndex() {
         queryKey: ['admin-import-review-summary'],
         queryFn: async () => {
             const res = await api.get('/api/v1/admin/import/review/summary');
+            return res.data;
+        }
+    });
+
+    const { data: trendStats } = useQuery({
+        queryKey: ['admin-import-review-stats'],
+        queryFn: async () => {
+            const res = await api.get('/api/v1/admin/import/review/stats');
             return res.data;
         }
     });
@@ -98,6 +107,10 @@ export default function ImportReviewIndex() {
                         )}
                     </div>
                 </div>
+
+                {trendStats && (
+                    <ImportReviewStats data={trendStats} />
+                )}
 
                 {/* Summary Cards */}
                 {summaryStats && (
