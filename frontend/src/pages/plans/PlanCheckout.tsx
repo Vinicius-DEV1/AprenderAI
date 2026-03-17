@@ -580,14 +580,16 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                                 </div>
 
                                 <button
-                                    type="submit" disabled={isLoading || isLoadingUpgrade}
+                                    type="submit" disabled={isLoading || isLoadingUpgrade || (user?.plan_id === plan.id && plan.price > 0)}
                                     className="mt-8 w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold text-base rounded-xl shadow-sm transition-all flex justify-center items-center gap-2 transform active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed"
                                 >
                                     {isLoading ? (
                                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                                     ) : (
                                         <>
-                                            {upgradeData?.is_upgrade
+                                            {user?.plan_id === plan.id && plan.price > 0 ? (
+                                                'Você já possui este plano ativo'
+                                            ) : upgradeData?.is_upgrade
                                                 ? method === 'credit_card'
                                                     ? `Confirmar Upgrade — ${installments}x de R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(upgradeData.upgrade_total / installments)}`
                                                     : `Confirmar Upgrade à vista — R$ ${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(upgradeData.upgrade_total)}`

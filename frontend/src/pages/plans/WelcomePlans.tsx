@@ -63,6 +63,13 @@ export default function WelcomePlans() {
             localStorage.removeItem('intended_plan');
             // Track purchase intention from welcome/onboarding flow
             trackIntention(matchedPlan.id, '/welcome-plans');
+
+            // BugFix: Se o plano for Gratuito (id 1 ou preço 0), apenas ignora a auto-seleção.
+            // Isso permite que o usuário veja a página de planos normalmente sem abrir o checkout.
+            if (matchedPlan.slug === 'free' || matchedPlan.price === 0) {
+                return;
+            }
+
             setSelectedPlanId(matchedPlan.id);
             // Move scroll to top to see checkout
             window.scrollTo({ top: 0, behavior: 'smooth' });
