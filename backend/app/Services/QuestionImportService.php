@@ -844,6 +844,7 @@ class QuestionImportService
             $path = $dir . DIRECTORY_SEPARATOR . $file;
             is_dir($path) ? $this->cleanupTmpDir($path) : unlink($path);
         }
+        rmdir($dir);
     }
 
     /**
