@@ -484,7 +484,7 @@ class QuestionImportService
 
         $questions = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-        $stats = ['total' => 0, 'pending' => 0, 'approved' => 0, 'skipped' => 0];
+        $stats = ['total' => 0, 'pending' => 0, 'approved' => 0, 'skipped' => 0, 'updated' => 0];
 
         // No modo completo, atualiza o total_questions no registro do import.
         // No modo chunk, o orquestrador já fez isso antes de despachar os chunks.
