@@ -69,16 +69,13 @@ echo ""
 # =============================================================================
 # PASSO 2: Scale para 2 containers (blue + green)
 # =============================================================================
-CURRENT_SCALE=$($COMPOSE ps --format json $APP_SERVICE 2>/dev/null | \
-    python3 -c "import sys,json; data=sys.stdin.read().strip(); print(len(json.loads(data)) if data.startswith('[') else (1 if data else 0))" 2>/dev/null || echo "1")
+# Captura IDs dos containers antigos antes de subir novos
+OLD_APP_CONTAINERS=$($COMPOSE ps -q $APP_SERVICE)
 
-log_info "[2/5] Subindo segundo container com nova imagem (scale: ${CURRENT_SCALE} → 2)..."
+log_info "[2/5] Subindo novo container com nova imagem (scale: 1 → 2)..."
 log_info "      O container atual continua servindo enquanto o novo inicializa."
 
-# CRÍTICO: Especificar $APP_SERVICE no final limita o escopo do 'up' APENAS
-# ao serviço app. Sem isso, o Docker reconcilia toda a stack — incluindo o
-# webserver que depende de service_healthy contra o container antigo (que
-# não tem healthcheck) — causando "dependency failed to start".
+# Sobe o segundo container. O Docker manterá o antigo rodando devido ao status atual.
 $COMPOSE up -d --no-recreate --scale $APP_SERVICE=2 $APP_SERVICE
 
 log_success "2 containers rodando. Nginx balanceará entre eles."
@@ -88,7 +85,6 @@ echo ""
 # PASSO 3: Aguardar novo container ficar saudável
 # =============================================================================
 log_info "[3/5] Aguardando novo container ficar saudável (máx ${TIMEOUT}s)..."
-log_info "      Verificando sentinel /tmp/app_ready + healthcheck Docker..."
 
 START=$(date +%s)
 while true; do
@@ -97,72 +93,38 @@ while true; do
 
     if [ $ELAPSED -ge $TIMEOUT ]; then
         log_error "Timeout após ${TIMEOUT}s! Novo container não ficou saudável."
-        
-        NEW_CONTAINER=$($COMPOSE ps -q $APP_SERVICE | tail -n 1)
-        if [ -n "$NEW_CONTAINER" ]; then
-            log_info "=== STATUS DO HEALTHCHECK ($NEW_CONTAINER) ==="
-            docker inspect --format='{{json .State.Health}}' "$NEW_CONTAINER" || true
-            echo ""
-            log_info "=== LOGS DO CONTAINER NOVO ==="
-            docker logs --tail=60 "$NEW_CONTAINER" || true
-            echo ""
-        fi
-
-        log_warning "Revertendo para 1 container (o antigo ainda está rodando)..."
-        $COMPOSE up -d --no-recreate --scale $APP_SERVICE=1 $APP_SERVICE 2>/dev/null || true
+        # Cleanup do container que falhou (o que não está na lista de antigos)
+        ALL_CONTAINERS=$($COMPOSE ps -q $APP_SERVICE)
+        for CID in $ALL_CONTAINERS; do
+            if [[ ! " $OLD_APP_CONTAINERS " =~ " $CID " ]]; then
+                log_info "Removendo container falho: $CID"
+                docker stop "$CID" >/dev/null 2>&1 || true
+                docker rm "$CID" >/dev/null 2>&1 || true
+            fi
+        done
+        $COMPOSE up -d --scale $APP_SERVICE=1 $APP_SERVICE 2>/dev/null || true
         exit 1
     fi
 
-    # Verifica se algum container está com health=healthy
-    HEALTHY_COUNT=$($COMPOSE ps --format json $APP_SERVICE 2>/dev/null | \
-        python3 -c "
-import sys, json
-data = sys.stdin.read().strip()
-if not data:
-    print(0); exit()
-try:
-    try:
-        items = json.loads(data)
-        if isinstance(items, dict): items = [items]
-    except json.JSONDecodeError:
-        items = [json.loads(line) for line in data.splitlines() if line.strip()]
-    healthy = 0
-    for i in items:
-        status = str(i.get('Status', '')).lower()
-        health = str(i.get('Health', '')).lower()
-        if health == 'healthy' or 'healthy' in status:
-            healthy += 1
-    print(healthy)
-except:
-    print(0)
-" 2>/dev/null || echo "0")
+    # Verifica se o NOVO container está saudável
+    ALL_CONTAINERS=$($COMPOSE ps -q $APP_SERVICE)
+    NEW_HEALTHY=0
+    for CID in $ALL_CONTAINERS; do
+        # Se NÃO é um dos antigos, verificamos a saúde
+        if [[ ! " $OLD_APP_CONTAINERS " =~ " $CID " ]]; then
+            HEALTH=$(docker inspect --format='{{.State.Health.Status}}' "$CID" 2>/dev/null || echo "unknown")
+            if [ "$HEALTH" == "healthy" ]; then
+                NEW_HEALTHY=$((NEW_HEALTHY + 1))
+            fi
+        fi
+    done
 
-    if [ "$HEALTHY_COUNT" -ge 1 ]; then
-        # Verifica se temos pelo MENOS 2 upstreams disponíveis (blue + green)
-        TOTAL_COUNT=$($COMPOSE ps --format json $APP_SERVICE 2>/dev/null | \
-            python3 -c "
-import sys, json
-data = sys.stdin.read().strip()
-if not data:
-    print(0); exit()
-try:
-    try:
-        items = json.loads(data)
-        if isinstance(items, dict): items = [items]
-    except json.JSONDecodeError:
-        items = [json.loads(line) for line in data.splitlines() if line.strip()]
-    print(len(items))
-except:
-    print(0)
-" 2>/dev/null || echo "0")
-
-    if [ "$HEALTHY_COUNT" -ge 2 ]; then
-        log_success "Novo container saudável após ${ELAPSED}s! (${HEALTHY_COUNT} healthy de ${TOTAL_COUNT})"
+    if [ "$NEW_HEALTHY" -ge 1 ]; then
+        log_success "Novo container saudável após ${ELAPSED}s!"
         break
     fi
-    fi
 
-    printf "\r${YELLOW}  ⏳ Aguardando... ${ELAPSED}s/${TIMEOUT}s (healthy: ${HEALTHY_COUNT})${NC}"
+    printf "\r${YELLOW}  ⏳ Aguardando novo container... ${ELAPSED}s/${TIMEOUT}s${NC}"
     sleep 2
 done
 echo ""
@@ -170,26 +132,30 @@ echo ""
 # =============================================================================
 # PASSO 4: Reiniciar workers e schedulers com a nova imagem
 # =============================================================================
-# Fazemos isto ENQUANTO temos 2 containers app rodando para garantir 
-# que o pico de CPU do restart dos workers (46+ containers) não comprometa a API.
 log_info "[4/5] Reiniciando workers, schedulers e serviços auxiliares..."
 $COMPOSE up -d --no-deps worker ai-worker scheduler concursos-sync
 
 echo ""
 
 # =============================================================================
-# PASSO 5: Remover container antigo (scale de volta para 1)
+# PASSO 5: Remover container antigo (swap real)
 # =============================================================================
-log_info "[5/5] Removendo container antigo (scale: 2 → 1)..."
-log_info "      Requests em andamento no container antigo serão finalizados gracefully."
+log_info "[5/5] Removendo container antigo para concluir o swap..."
 
 # Pequena espera para garantir que o nginx propagou o novo upstream
 sleep 3
 
-# Novamente: especificar $APP_SERVICE para não tocar em webserver/workers
+# PARAR os containers antigos explicitamente. 
+# Isso força o 'scale 1' a manter apenas o novo que sobrou rodando.
+for CID in $OLD_APP_CONTAINERS; do
+    log_info "      Finalizando container antigo: $CID"
+    docker stop "$CID" >/dev/null 2>&1 || true
+done
+
+# Escala de volta para 1 (isso removerá os containers parados)
 $COMPOSE up -d --scale $APP_SERVICE=1 $APP_SERVICE
 
-log_success "Container antigo removido. Apenas novo container ativo."
+log_success "Swap concluído. Apenas novo container ativo."
 
 # ----------------------------------------------------------------
 # PASSO FINAL: Reload Nginx (DNS Refresh)
