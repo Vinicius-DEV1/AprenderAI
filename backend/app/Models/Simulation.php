@@ -23,6 +23,8 @@ class Simulation extends Model
         'score',
         'scores_by_subject',
         'analysis_by_theme',
+        'last_activity_at',
+        'notifications_sent',
     ];
 
     protected $casts = [
@@ -32,6 +34,8 @@ class Simulation extends Model
         'score' => 'decimal:2',
         'scores_by_subject' => 'array',
         'analysis_by_theme' => 'array',
+        'notifications_sent' => 'array',
+        'last_activity_at' => 'datetime',
     ];
 
     public function user()
@@ -79,5 +83,20 @@ class Simulation extends Model
             'finished_at' => now(),
             'time_elapsed' => now()->diffInSeconds($this->started_at),
         ]);
+    }
+
+    public function getTimeRemaining(): int
+    {
+        if ($this->isFinished()) return 0;
+        
+        $limit = $this->configuration['time_limit'] ?? 10800; // default 3h
+        $elapsed = $this->started_at ? now()->diffInSeconds($this->started_at) : 0;
+        
+        return max(0, $limit - $elapsed);
+    }
+
+    public function isExpired(): bool
+    {
+        return $this->getTimeRemaining() <= 0;
     }
 }
