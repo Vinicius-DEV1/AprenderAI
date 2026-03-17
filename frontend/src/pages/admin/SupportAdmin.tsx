@@ -117,17 +117,41 @@ export default function SupportAdmin() {
                                     <p className="text-xs text-slate-500">{ticketData.user?.name} ({ticketData.user?.email})</p>
                                 </div>
                             </div>
-                            <select
-                                value={ticketData.status}
-                                onChange={e => statusMutation.mutate({ id: ticketData.id, status: e.target.value })}
-                                className="text-sm border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 bg-white dark:bg-slate-700"
-                            >
-                                <option value="new">Novo</option>
-                                <option value="waiting_admin">Aguardando Admin</option>
-                                <option value="waiting_user">Aguardando Usuário</option>
-                                <option value="resolved">Resolvido</option>
-                                <option value="closed">Fechado</option>
-                            </select>
+                            <div className="flex items-center gap-2">
+                                <select
+                                    value={ticketData.status}
+                                    onChange={e => statusMutation.mutate({ id: ticketData.id, status: e.target.value })}
+                                    className="text-sm border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                                >
+                                    <option value="new">🆕 Novo</option>
+                                    <option value="waiting_admin">⏳ Aguardando Admin</option>
+                                    <option value="waiting_user">🕒 Aguardando Usuário</option>
+                                    <option value="resolved">✅ Resolvido</option>
+                                    <option value="closed">🔒 Fechado</option>
+                                </select>
+                                
+                                {ticketData.status !== 'resolved' && ticketData.status !== 'closed' && (
+                                    <button
+                                        onClick={() => statusMutation.mutate({ id: ticketData.id, status: 'resolved' })}
+                                        className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 rounded-lg text-sm font-semibold transition-colors"
+                                        title="Marcar como resolvido"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                                        Resolver
+                                    </button>
+                                )}
+                                
+                                {ticketData.status !== 'closed' && (
+                                    <button
+                                        onClick={() => statusMutation.mutate({ id: ticketData.id, status: 'closed' })}
+                                        className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 rounded-lg text-sm font-semibold transition-colors"
+                                        title="Fechar ticket"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                        Fechar
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
                         {/* Messages */}
