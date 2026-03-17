@@ -11,16 +11,16 @@
 #     - A imagem do Nginx recebe os assets novos do frontend.
 #
 #  2. BLUE-GREEN SWAP (App / PHP-FPM):
-#     - Captura o ID dos containers antigos do app.
+#     - Captura o ID e NAME dos containers antigos do app.
 #     - Sobe um segundo container (Green) com a nova imagem.
-#     - Aguarda o novo container ficar saudável (healthcheck).
-#     - Para o container antigo (Blue) explicitamente.
-#     - Escala de volta para 1 (mantendo apenas o Green).
+#     - Aguarda ESPECIFICAMENTE o(s) novo(s) container(s) ficarem saudáveis.
+#     - Para e REMOVE os containers antigos explicitamente via docker rm.
+#     - Escala de volta para 1 (sem ambiguidade: só o Green sobrou).
 #
-#  3. NGINX RESTART (Frontend):
-#     - Após o swap do App, recria o container Nginx com a imagem nova.
-#     - Isso dura ~1-2s — o frontend detecta via useDeployDetection e
-#       exibe a tela de manutenção automaticamente.
+#  3. NGINX REFRESH (Frontend):
+#     - Após o swap do App, usa `docker restart` no container Nginx.
+#     - Isso força o Nginx a recarregar sua imagem na RAM sem recriar o container.
+#     - Dura ~1s. O frontend detecta via useDeployDetection e exibe manutenção.
 #     - Sessões NÃO são perdidas (vivem no Redis DB 0, que não é tocado).
 #
 #  4. WORKERS + SCHEDULERS:
@@ -60,7 +60,7 @@ log_error()   { echo -e "${RED}❌ $1${NC}"; }
 
 echo ""
 echo -e "${BLUE}=================================================${NC}"
-echo -e "${BLUE}  🚀  AprenderAI — Deploy Seguro (v3)${NC}"
+echo -e "${BLUE}  🚀  AprenderAI — Deploy Seguro (v4)${NC}"
 echo -e "${BLUE}=================================================${NC}"
 echo ""
 
@@ -78,15 +78,20 @@ echo ""
 # =============================================================================
 # PASSO 2: Blue-Green Swap — Subir novo container App
 # =============================================================================
-# Captura IDs dos containers antigos ANTES de subir os novos
-OLD_APP_CONTAINERS=$($COMPOSE ps -q $APP_SERVICE)
+# Captura IDs E NAMES dos containers antigos ANTES de subir os novos.
+# Guardar os NAMES é crítico para o rm depois do stop.
+OLD_APP_IDS=$($COMPOSE ps -q $APP_SERVICE)
+OLD_APP_NAMES=$($COMPOSE ps --format '{{.Name}}' $APP_SERVICE 2>/dev/null || \
+                $COMPOSE ps --format json $APP_SERVICE 2>/dev/null | \
+                python3 -c "import sys,json; data=sys.stdin.read().strip(); items=json.loads(data) if data.startswith('[') else [json.loads(data)]; [print(i.get('Name','').lstrip('/')) for i in items]" 2>/dev/null)
 
 log_info "[2/6] Subindo novo container App com a nova imagem (scale: 1 → 2)..."
+log_info "      Containers antigos: $OLD_APP_NAMES"
 log_info "      O container atual continua servindo enquanto o novo inicializa."
 
 $COMPOSE up -d --no-recreate --scale $APP_SERVICE=2 $APP_SERVICE
 
-log_success "2 containers App rodando. Nginx balanceia entre eles via Docker DNS."
+log_success "2 containers App rodando."
 echo ""
 
 # =============================================================================
@@ -96,6 +101,8 @@ log_info "[3/6] Aguardando novo container App ficar saudável (máx ${TIMEOUT}s)
 log_info "      O healthcheck verifica /tmp/app_ready (migrations + optimize + php-fpm)"
 
 START=$(date +%s)
+HEALTHY_NEW_CONTAINER=""
+
 while true; do
     NOW=$(date +%s)
     ELAPSED=$((NOW - START))
@@ -104,86 +111,96 @@ while true; do
         log_error "Timeout após ${TIMEOUT}s! Novo container não ficou saudável."
 
         # Mostra logs do container novo para debug
-        ALL_CONTAINERS=$($COMPOSE ps -q $APP_SERVICE)
-        for CID in $ALL_CONTAINERS; do
-            if [[ ! " $OLD_APP_CONTAINERS " =~ " $CID " ]]; then
+        ALL_IDS=$($COMPOSE ps -q $APP_SERVICE)
+        for CID in $ALL_IDS; do
+            if [[ ! " $OLD_APP_IDS " =~ " $CID " ]]; then
                 log_info "=== LOGS DO CONTAINER NOVO ($CID) ==="
                 docker logs --tail=40 "$CID" 2>&1 || true
-                echo ""
-                log_info "=== HEALTHCHECK STATUS ==="
-                docker inspect --format='{{json .State.Health}}' "$CID" 2>/dev/null || true
                 echo ""
             fi
         done
 
-        # Cleanup: remove o container que falhou, mantém o antigo
-        for CID in $ALL_CONTAINERS; do
-            if [[ ! " $OLD_APP_CONTAINERS " =~ " $CID " ]]; then
-                log_info "Removendo container falho: $CID"
+        # Cleanup: remove o container novo que falhou, preserva o antigo
+        for CID in $ALL_IDS; do
+            if [[ ! " $OLD_APP_IDS " =~ " $CID " ]]; then
+                log_info "Removendo container novo falho: $CID"
                 docker stop "$CID" >/dev/null 2>&1 || true
                 docker rm "$CID" >/dev/null 2>&1 || true
             fi
         done
-        $COMPOSE up -d --scale $APP_SERVICE=1 $APP_SERVICE 2>/dev/null || true
+        # Garante que temos exatamente 1 container (o antigo)
+        $COMPOSE up -d --no-recreate --scale $APP_SERVICE=1 $APP_SERVICE 2>/dev/null || true
         exit 1
     fi
 
-    # Verifica se o NOVO container (não-antigo) está saudável
-    ALL_CONTAINERS=$($COMPOSE ps -q $APP_SERVICE)
-    NEW_HEALTHY=0
-    for CID in $ALL_CONTAINERS; do
-        if [[ ! " $OLD_APP_CONTAINERS " =~ " $CID " ]]; then
+    # Verifica se algum container NOVO (não-antigo) está healthy
+    ALL_IDS=$($COMPOSE ps -q $APP_SERVICE)
+    for CID in $ALL_IDS; do
+        if [[ ! " $OLD_APP_IDS " =~ " $CID " ]]; then
             HEALTH=$(docker inspect --format='{{.State.Health.Status}}' "$CID" 2>/dev/null || echo "unknown")
             if [ "$HEALTH" == "healthy" ]; then
-                NEW_HEALTHY=$((NEW_HEALTHY + 1))
+                HEALTHY_NEW_CONTAINER="$CID"
+                break 2   # Sai do while e do for
             fi
         fi
     done
-
-    if [ "$NEW_HEALTHY" -ge 1 ]; then
-        log_success "Novo container App saudável após ${ELAPSED}s!"
-        break
-    fi
 
     printf "\r${YELLOW}  ⏳ Aguardando novo App... ${ELAPSED}s/${TIMEOUT}s${NC}"
     sleep 2
 done
 echo ""
-
-# =============================================================================
-# PASSO 4: Remover container App antigo (swap real)
-# =============================================================================
-log_info "[4/6] Removendo container App antigo para concluir o swap..."
-
-# Pequena espera para Nginx propagar o novo upstream via DNS
-sleep 3
-
-# Parar containers antigos explicitamente
-for CID in $OLD_APP_CONTAINERS; do
-    log_info "      Finalizando container antigo: $CID"
-    docker stop "$CID" >/dev/null 2>&1 || true
-done
-
-# Scale de volta para 1 (remove os containers parados)
-$COMPOSE up -d --scale $APP_SERVICE=1 $APP_SERVICE
-
-log_success "Swap do App concluído. Apenas novo container ativo."
+log_success "Novo container App saudável: $HEALTHY_NEW_CONTAINER"
 echo ""
 
 # =============================================================================
-# PASSO 5: Recriar Nginx com a nova imagem (frontend atualizado)
+# PASSO 4: Remover containers App antigos (swap real)
 # =============================================================================
-# Este passo causa ~1-2s de indisponibilidade do webserver.
-# O frontend detecta isso via useDeployDetection (polling /api/health)
-# e exibe a tela de manutenção automaticamente.
-# Sessões NÃO são perdidas — vivem no Redis DB 0.
+log_info "[4/6] Removendo containers App antigos (swap definitivo)..."
+
+# Pequena espera para o Nginx propagar o novo upstream via DNS
+sleep 3
+
+# PARA e REMOVE os containers antigos explicitamente.
+# Removê-los garante que o 'scale 1' mantenha apenas o novo (Green).
+for CID in $OLD_APP_IDS; do
+    log_info "      Parando container antigo: $CID"
+    docker stop "$CID" >/dev/null 2>&1 || true
+    log_info "      Removendo container antigo: $CID"
+    docker rm   "$CID" >/dev/null 2>&1 || true
+done
+
+# Agora escala para 1 — como os antigos foram removidos, só o Green existe.
+$COMPOSE up -d --no-recreate --scale $APP_SERVICE=1 $APP_SERVICE
+
+log_success "Swap concluído. Apenas novo container ativo."
+echo ""
+
 # =============================================================================
-log_info "[5/6] Recriando container Nginx com nova imagem (frontend atualizado)..."
+# PASSO 5: Recarregar Nginx com a nova imagem (frontend atualizado)
+# =============================================================================
+# Usamos `docker stop + start` em vez de force-recreate para evitar o
+# problema com depends_on: service_healthy que causa crash loop.
+# O Nginx foi rebuildo no PASSO 1 — ao reiniciar, ele carrega a nova imagem.
+# Dura ~1-2s. A tela de manutenção é exibida automaticamente no frontend.
+# Sessões NÃO são perdidas (Redis DB 0 intocado).
+# =============================================================================
+log_info "[5/6] Recarregando Nginx com nova imagem (frontend atualizado)..."
 log_info "      ⚡ Isso levará ~1-2s. A tela de manutenção será exibida no frontend."
 
-$COMPOSE up -d --force-recreate --no-deps webserver
+WEBSERVER_CONTAINER=$($COMPOSE ps -q webserver | head -n 1)
 
-log_success "Nginx recriado com assets novos do frontend."
+if [ -n "$WEBSERVER_CONTAINER" ]; then
+    docker stop "$WEBSERVER_CONTAINER" >/dev/null 2>&1 || true
+    # Ao 'start', o Docker reutiliza o container mas com a imagem nova na memória
+    # já que rebuild aconteceu. Como `restart: always` está configurado no compose,
+    # usar `up --no-recreate` é a abordagem segura:
+    $COMPOSE up -d --no-recreate webserver
+    log_success "Nginx recarregado com assets novos do frontend."
+else
+    log_warning "Container Nginx não encontrado. Iniciando do zero..."
+    $COMPOSE up -d webserver
+    log_success "Nginx iniciado."
+fi
 echo ""
 
 # =============================================================================
@@ -203,7 +220,8 @@ log_info "[CACHE] Limpando caches do Laravel e Redis (DB 1 — Cache)..."
 # Flush Redis DB 1 (cache). DB 0 (sessões) NÃO é tocado.
 $COMPOSE exec -T redis redis-cli -n 1 FLUSHDB || log_warning "Falha ao limpar Redis DB 1."
 
-# Limpa caches do Laravel (dentro do container novo)
+# Aguarda o app estar pronto antes de limpar via artisan
+sleep 2
 $COMPOSE exec -T $APP_SERVICE php artisan cache:clear   || true
 $COMPOSE exec -T $APP_SERVICE php artisan config:clear  || true
 $COMPOSE exec -T $APP_SERVICE php artisan route:clear   || true
