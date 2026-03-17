@@ -8,8 +8,25 @@ import { submitSuggestion } from '../api/suggestions';
  * Placed in the AppLayout so it's available on all authenticated pages.
  * Uses a clean modal overlay with title + description fields.
  */
-export default function SuggestionButton() {
-    const [isOpen, setIsOpen] = useState(false);
+interface SuggestionButtonProps {
+    showTrigger?: boolean;
+    forceOpen?: boolean;
+    onClose?: () => void;
+}
+
+export default function SuggestionButton({
+    showTrigger = true,
+    forceOpen = false,
+    onClose
+}: SuggestionButtonProps) {
+    const [internalOpen, setInternalOpen] = useState(false);
+    const isOpen = forceOpen || internalOpen;
+
+    const setIsOpen = (val: boolean) => {
+        if (!val && onClose) onClose();
+        setInternalOpen(val);
+    };
+
     const [title, setTitle] = useState('');
     const [body, setBody] = useState('');
     const [submitted, setSubmitted] = useState(false);
@@ -34,14 +51,16 @@ export default function SuggestionButton() {
     return (
         <>
             {/* Trigger Button — discreet, placed near the support button */}
-            <button
-                onClick={() => setIsOpen(true)}
-                className="fixed bottom-24 right-6 z-40 hidden sm:flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-200 hover:shadow-xl"
-                title="Sugerir melhoria"
-            >
-                <span>💡</span>
-                <span>Sugerir melhoria</span>
-            </button>
+            {showTrigger && (
+                <button
+                    onClick={() => setIsOpen(true)}
+                    className="fixed bottom-24 right-6 z-40 hidden sm:flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-200 hover:shadow-xl"
+                    title="Sugerir melhoria"
+                >
+                    <span>💡</span>
+                    <span>Sugerir melhoria</span>
+                </button>
+            )}
 
             {/* Modal */}
             {isOpen && (
