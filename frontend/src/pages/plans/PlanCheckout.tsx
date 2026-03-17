@@ -1,5 +1,5 @@
 import { toast } from 'sonner';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -46,6 +46,10 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
     const [isLoading, setIsLoading] = useState(false);
     const [checkoutResult, setCheckoutResult] = useState<any>(null);
 
+    // PIX countdown timer
+    const [pixSecondsLeft, setPixSecondsLeft] = useState<number>(30 * 60);
+    const pixIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
     const [upgradeData, setUpgradeData] = useState<any>(null);
     const [isLoadingUpgrade, setIsLoadingUpgrade] = useState(false);
 
@@ -86,6 +90,30 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
             fetchUpgrade();
         }
     }, [plan, user]);
+
+    // Countdown timer for PIX QR code
+    useEffect(() => {
+        if (!checkoutResult?.pix) return;
+        // Initialize from the server-provided expiry or fallback to 30min
+        const expiresAt = checkoutResult.pix.expires_at;
+        const initialSeconds = expiresAt
+            ? Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000))
+            : 30 * 60;
+        setPixSecondsLeft(initialSeconds);
+
+        pixIntervalRef.current = setInterval(() => {
+            setPixSecondsLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(pixIntervalRef.current!);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => {
+            if (pixIntervalRef.current) clearInterval(pixIntervalRef.current);
+        };
+    }, [checkoutResult]);
 
     useEffect(() => {
         let interval: ReturnType<typeof setInterval>;
@@ -197,40 +225,88 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
     };
 
     if (checkoutResult?.pix) {
+        const isExpired = pixSecondsLeft === 0;
+        const isUrgent = pixSecondsLeft < 300; // last 5 min
+        const totalSeconds = (() => {
+            const expiresAt = checkoutResult.pix.expires_at;
+            if (!expiresAt) return 30 * 60;
+            return Math.floor((new Date(expiresAt).getTime() - (Date.now() - (30 * 60 - pixSecondsLeft) * 1000)) / 1000);
+        })();
+        const progress = Math.max(0, (pixSecondsLeft / (30 * 60)) * 100);
+        const minutes = Math.floor(pixSecondsLeft / 60).toString().padStart(2, '0');
+        const seconds = (pixSecondsLeft % 60).toString().padStart(2, '0');
+
         return (
             <div className="py-8 max-w-lg mx-auto px-4">
-                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800">
-                    <div className="bg-green-600 p-6 text-center text-white rounded-t-2xl">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+                    {/* Header */}
+                    <div className={`p-6 text-center text-white transition-colors duration-700 ${isExpired ? 'bg-red-600' : isUrgent ? 'bg-amber-500' : 'bg-green-600'}`}>
                         <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                             </svg>
                         </div>
                         <h2 className="text-xl font-bold">Assinatura Quase Pronta!</h2>
-                        <p className="mt-1 opacity-90 text-sm">Pague via Pix para ativar instantaneamente.</p>
+                        <p className="mt-1 opacity-90 text-sm">
+                            {isExpired ? '⚠️ QR Code expirado. Gere uma nova assinatura.' : 'Pague via Pix para ativar instantaneamente.'}
+                        </p>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="relative h-1.5 bg-slate-100 dark:bg-slate-800">
+                        <div
+                            className={`h-full transition-all duration-1000 ease-linear ${isExpired ? 'bg-red-500' : isUrgent ? 'bg-amber-400' : 'bg-green-500'}`}
+                            style={{ width: isExpired ? '0%' : `${progress}%` }}
+                        />
                     </div>
 
                     <div className="p-6 text-center">
-                        <p className="text-slate-600 dark:text-slate-400 mb-4 text-sm">Escaneie o QR Code abaixo ou copie a chave Pix:</p>
-                        <div className="bg-white p-3 inline-block border-2 border-slate-100 dark:border-slate-800 rounded-xl mb-4">
-                            <img src={`data:image/png;base64,${checkoutResult.pix.image}`} alt="Pix QR Code" className="w-56 h-56 mx-auto" />
+                        {/* PIX Countdown */}
+                        <div className={`mb-4 py-2 px-4 rounded-xl text-center ${
+                            isExpired ? 'bg-red-50 dark:bg-red-900/20' :
+                            isUrgent ? 'bg-amber-50 dark:bg-amber-900/20' :
+                            'bg-slate-50 dark:bg-slate-800/50'
+                        }`}>
+                            <span className={`text-3xl font-black tabular-nums ${
+                                isExpired ? 'text-red-600 dark:text-red-400' :
+                                isUrgent ? 'text-amber-600 dark:text-amber-400' :
+                                'text-slate-700 dark:text-slate-200'
+                            }`}>{minutes}:{seconds}</span>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
+                                {isExpired ? 'QR Code Expirado' : 'Tempo restante'}
+                            </p>
                         </div>
 
-                        <div className="mb-6">
-                            <div className="text-[10px] text-slate-400 uppercase font-bold mb-1.5 flex items-center justify-center gap-1">
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                                Chave Pix (Copia e Cola)
-                            </div>
-                            <div className="flex gap-2 relative">
-                                <input readOnly value={checkoutResult.pix.payload} className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 py-2.5 px-3 rounded-lg text-xs font-mono w-full truncate pr-20 text-slate-600 dark:text-slate-300" />
-                                <button onClick={() => navigator.clipboard.writeText(checkoutResult.pix.payload).then(() => toast.success('Copiado!'))} className="absolute right-1 top-1 bottom-1 bg-blue-600 text-white px-3 rounded-md font-bold text-xs hover:bg-blue-700 transition">Copiar</button>
-                            </div>
-                        </div>
+                        {!isExpired ? (
+                            <>
+                                <p className="text-slate-600 dark:text-slate-400 mb-4 text-sm">Escaneie o QR Code abaixo ou copie a chave Pix:</p>
+                                <div className="bg-white p-3 inline-block border-2 border-slate-100 dark:border-slate-800 rounded-xl mb-4">
+                                    <img src={`data:image/png;base64,${checkoutResult.pix.image}`} alt="Pix QR Code" className="w-56 h-56 mx-auto" />
+                                </div>
 
-                        <div className="flex flex-col gap-3">
-                            <button onClick={() => window.location.reload()} className="bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 py-2.5 rounded-lg font-bold text-sm transition">Já paguei, verificar agora</button>
-                            <button onClick={() => navigate('/dashboard')} className="text-slate-500 hover:text-slate-700 text-xs font-medium">Voltar ao Dashboard</button>
-                        </div>
+                                <div className="mb-6">
+                                    <div className="text-[10px] text-slate-400 uppercase font-bold mb-1.5 flex items-center justify-center gap-1">
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                                        Chave Pix (Copia e Cola)
+                                    </div>
+                                    <div className="flex gap-2 relative">
+                                        <input readOnly value={checkoutResult.pix.payload} className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 py-2.5 px-3 rounded-lg text-xs font-mono w-full truncate pr-20 text-slate-600 dark:text-slate-300" />
+                                        <button onClick={() => navigator.clipboard.writeText(checkoutResult.pix.payload).then(() => toast.success('Copiado!'))} className="absolute right-1 top-1 bottom-1 bg-blue-600 text-white px-3 rounded-md font-bold text-xs hover:bg-blue-700 transition">Copiar</button>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col gap-3">
+                                    <button onClick={() => window.location.reload()} className="bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 py-2.5 rounded-lg font-bold text-sm transition">Já paguei, verificar agora</button>
+                                    <button onClick={() => navigate('/dashboard')} className="text-slate-500 hover:text-slate-700 text-xs font-medium">Voltar ao Dashboard</button>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="flex flex-col gap-3">
+                                <p className="text-sm text-slate-500 mb-2">O QR Code expirou. Gere uma nova assinatura para continuar.</p>
+                                <button onClick={() => { setCheckoutResult(null); }} className="bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm transition">Gerar novo PIX</button>
+                                <button onClick={() => navigate('/dashboard')} className="text-slate-500 hover:text-slate-700 text-xs font-medium">Voltar ao Dashboard</button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

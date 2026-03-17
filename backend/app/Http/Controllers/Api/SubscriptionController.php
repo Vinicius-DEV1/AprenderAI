@@ -478,6 +478,14 @@ class SubscriptionController extends Controller
                         $request
                     );
                     $this->tracking->convertIntention($user->id, $plan->id, $subscription->id);
+
+                    // Notify admins of credit card approval
+                    \App\Models\UserNotification::notifyAdmins(
+                        '\u2705 Pagamento Aprovado \u2014 ' . $user->name,
+                        'Plano ' . $plan->name . ' \u2022 Cart\u00e3o \u2022 R$ ' . number_format($plan->price, 2, ',', '.'),
+                        'success',
+                        '/admin/checkout'
+                    );
                 }
             }
 
@@ -517,6 +525,14 @@ class SubscriptionController extends Controller
                             $user->id, 'pix_generated', $plan->id, 'payment',
                             'pix', ['expires_at' => $pixExpiresAt->toISOString()], $request
                         );
+
+                        // Notify admins that user generated a PIX
+                        \App\Models\UserNotification::notifyAdmins(
+                            '\ud83d\udd16 PIX Gerado \u2014 ' . $user->name,
+                            'Plano ' . $plan->name . ' \u2022 Aguardando pagamento do PIX',
+                            'info',
+                            '/admin/checkout'
+                        );
                     }
                 }
             } else {
@@ -551,6 +567,14 @@ class SubscriptionController extends Controller
                 $request->payment_method ?? null,
                 ['error' => substr($e->getMessage(), 0, 200)],
                 $request
+            );
+
+            // Notify admins of payment failure
+            \App\Models\UserNotification::notifyAdmins(
+                '\u26a0\ufe0f Pagamento Recusado \u2014 ' . $user->name,
+                'Plano ' . $plan->name . ' \u2022 ' . substr($e->getMessage(), 0, 120),
+                'warning',
+                '/admin/checkout'
             );
 
             return response()->json(['message' => 'Erro ao processar pagamento: ' . $e->getMessage()], 500);
