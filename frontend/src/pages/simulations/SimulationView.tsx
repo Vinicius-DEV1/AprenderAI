@@ -48,6 +48,8 @@ export default function SimulationView() {
     const [viewMode, setViewMode] = useState<'questions' | 'essay'>('questions');
     const [essayContent, setEssayContent] = useState('');
     const [localAnswers, setLocalAnswers] = useState<Record<number, string>>({});
+    const [showFinishModal, setShowFinishModal] = useState(false);
+    const [isTimeExpired, setIsTimeExpired] = useState(false);
 
     const messages = [
         'Analisando seu desempenho histórico...',
@@ -106,10 +108,26 @@ export default function SimulationView() {
                 setTimeRemaining(prev => (prev !== null && prev > 0 ? prev - 1 : 0));
             }, 1000);
             return () => clearInterval(timer);
-        } else if (timeRemaining === 0) {
-            handleFinishSimulation();
+        } else if (timeRemaining === 0 && !isTimeExpired && simulation?.status === 'in_progress') {
+            setIsTimeExpired(true);
+            setShowFinishModal(true);
+            // We don't call finishMutation immediately here, we let the modal show up
         }
-    }, [isGenerating, timeRemaining]);
+    }, [isGenerating, timeRemaining, isTimeExpired, simulation?.status]);
+
+    // Heartbeat Effect
+    useEffect(() => {
+        if (!isGenerating && simulation?.status === 'in_progress' && !isTimeExpired) {
+            const sendHeartbeat = () => {
+                api.post(`/api/v1/simulations/${id}/heartbeat`).catch(() => {});
+            };
+
+            // Send immediately and then every 2 minutes
+            sendHeartbeat();
+            const heartbeat = setInterval(sendHeartbeat, 120000);
+            return () => clearInterval(heartbeat);
+        }
+    }, [isGenerating, simulation?.status, isTimeExpired, id]);
 
     // AI Messages Cycle
     useEffect(() => {
@@ -216,17 +234,16 @@ export default function SimulationView() {
     };
 
     const handleFinishSimulation = (skipEssaySubmit = false) => {
-        if (window.confirm('Tem certeza que deseja finalizar a prova? Esta ação não pode ser desfeita.')) {
-            // Auto-save essay before finishing if we are in essay mode and not already submitted
-            if (!skipEssaySubmit && viewMode === 'essay' && simulation?.essay && essayContent) {
-                const formData = new FormData();
-                formData.append('input_type', 'text');
-                formData.append('content', essayContent);
-                submitEssayMutation.mutate(formData);
-            }
-
-            finishMutation.mutate();
+        // Auto-save essay before finishing if we are in essay mode and not already submitted
+        if (!skipEssaySubmit && viewMode === 'essay' && simulation?.essay && essayContent) {
+            const formData = new FormData();
+            formData.append('input_type', 'text');
+            formData.append('content', essayContent);
+            submitEssayMutation.mutate(formData);
         }
+
+        finishMutation.mutate();
+        setShowFinishModal(false);
     };
 
     const toggleViewMode = () => {
@@ -464,7 +481,7 @@ export default function SimulationView() {
                     )}
 
                     {(viewMode === 'essay' || !simulation.essay) && (
-                        <button type="button" className="btn btn-danger w-full mt-2" onClick={() => handleFinishSimulation()}>
+                        <button type="button" className="btn btn-danger w-full mt-2" onClick={() => setShowFinishModal(true)}>
                             Finalizar Prova
                         </button>
                     )}
@@ -498,8 +515,8 @@ export default function SimulationView() {
                                     {(question.alternatives || []).map((alt: any) => (
                                         <div
                                             key={alt.id || alt.label}
-                                            className={`qb-alt ${localAnswers[question.id] === alt.label ? 'selected' : ''} ${struckLabels.includes(alt.label) ? 'opacity-40 grayscale' : ''}`}
-                                            onClick={() => !struckLabels.includes(alt.label) && handleAnswer(question.id, alt.label)}
+                                            className={`qb-alt ${localAnswers[question.id] === alt.label ? 'selected' : ''} ${struckLabels.includes(alt.label) || isTimeExpired ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+                                            onClick={() => !struckLabels.includes(alt.label) && !isTimeExpired && handleAnswer(question.id, alt.label)}
                                             onContextMenu={(e) => handleRightClickAlt(e, alt.label)}
                                         >
                                             <div className="qb-alt-letter" style={{ textDecoration: struckLabels.includes(alt.label) ? 'line-through' : 'none' }}>{alt.label}</div>
@@ -529,9 +546,10 @@ export default function SimulationView() {
                                             type="checkbox"
                                             id={`mark_${currentQuestion}`}
                                             checked={currentAnswerData.marked_for_review ? true : false}
+                                            disabled={isTimeExpired}
                                             onChange={() => handleToggleMark(question.id, currentAnswerData.marked_for_review)}
                                         />
-                                        <label htmlFor={`mark_${currentQuestion}`} className="cursor-pointer select-none text-sm text-gray-600 dark:text-gray-300">
+                                        <label htmlFor={`mark_${currentQuestion}`} className={`cursor-pointer select-none text-sm text-gray-600 dark:text-gray-300 ${isTimeExpired ? 'opacity-50' : ''}`}>
                                             Marcar para revisão
                                         </label>
                                     </div>
@@ -551,7 +569,7 @@ export default function SimulationView() {
                                                 📝 Ir para Redação
                                             </button>
                                         ) : (
-                                            <button type="button" className="btn btn-danger" onClick={() => handleFinishSimulation()}>
+                                            <button type="button" className="btn btn-danger" onClick={() => setShowFinishModal(true)}>
                                                 Finalizar Prova
                                             </button>
                                         )}
@@ -597,6 +615,49 @@ export default function SimulationView() {
                     )}
                 </main>
             </div>
+
+            {/* ── MODALS ── */}
+            {showFinishModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-800">
+                        <div className="flex items-center justify-center w-12 h-12 mb-4 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 mx-auto">
+                            {isTimeExpired ? (
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            ) : (
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            )}
+                        </div>
+                        <h3 className="text-xl font-bold text-center text-slate-800 dark:text-slate-100 mb-2">
+                            {isTimeExpired ? 'Tempo Esgotado!' : 'Finalizar Simulado?'}
+                        </h3>
+                        <p className="text-center text-slate-600 dark:text-slate-400 text-sm mb-6 leading-relaxed">
+                            {isTimeExpired 
+                                ? 'Seu tempo oficial de prova acabou. O simulado foi encerrado e suas respostas foram salvas.'
+                                : 'Tem certeza que deseja finalizar sua prova agora? Você não poderá alterar suas respostas depois.'}
+                        </p>
+                        <div className="flex flex-col gap-3">
+                            <button
+                                onClick={() => handleFinishSimulation()}
+                                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-blue-500/20"
+                            >
+                                {isTimeExpired ? 'Ver Meu Resultado' : 'Sim, Finalizar Agora'}
+                            </button>
+                            {!isTimeExpired && (
+                                <button
+                                    onClick={() => setShowFinishModal(false)}
+                                    className="w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-xl transition-colors"
+                                >
+                                    Continuar Fazendo a Prova
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

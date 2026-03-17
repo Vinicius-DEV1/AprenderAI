@@ -312,6 +312,19 @@ class SimulationController extends Controller
         return new SimulationResource($simulation);
     }
 
+    public function heartbeat(Request $request, Simulation $simulation)
+    {
+        if ($simulation->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        if ($simulation->status === 'in_progress') {
+            $simulation->update(['last_activity_at' => now()]);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
     public function submit(Request $request, Simulation $simulation)
     {
         if ($simulation->user_id !== $request->user()->id) {

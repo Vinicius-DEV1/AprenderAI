@@ -108,6 +108,7 @@ Route::prefix('v1')->group(function () {
         Route::get('simulations/{simulation}/status', [SimulationController::class, 'status']);
         Route::post('simulations/{simulation}/answer', [SimulationController::class, 'answer']);
         Route::post('simulations/{simulation}/finish', [SimulationController::class, 'finish']);
+        Route::post('simulations/{simulation}/heartbeat', [SimulationController::class, 'heartbeat']);
         Route::post('simulations/{simulation}/submit', [SimulationController::class, 'submit']);
         Route::prefix('simulations/{simulation}/questions/{question}')->group(function () {
             Route::get('chat', [SimulationController::class, 'chat'])->name('simulations.questions.chat.index');
