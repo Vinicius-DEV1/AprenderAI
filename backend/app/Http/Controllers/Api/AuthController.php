@@ -77,6 +77,11 @@ class AuthController extends Controller
             $this->planService->assignPlanToUser($user, $freePlan);
         }
 
+        // Criar registro de estatísticas inicial
+        \App\Models\UserStat::create([
+            'user_id' => $user->id,
+        ]);
+
         event(new Registered($user));
 
         Auth::login($user);

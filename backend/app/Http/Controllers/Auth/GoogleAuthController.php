@@ -55,6 +55,10 @@ class GoogleAuthController extends Controller
 
         $this->configureGoogle();
 
+        if (request()->has('plan')) {
+            session(['intended_plan' => request('plan')]);
+        }
+
         return Socialite::driver('google')->redirect();
     }
 
@@ -112,6 +116,11 @@ class GoogleAuthController extends Controller
             } catch (\Exception $e) {
                 logger()->error('Failed to assign free plan to new Google user: ' . $e->getMessage());
             }
+
+            // Criar registro de estatísticas inicial
+            \App\Models\UserStat::create([
+                'user_id' => $user->id,
+            ]);
         }
 
         // 4. Ensure user has a plan (defensive fix for accounts created without one)
@@ -141,7 +150,12 @@ class GoogleAuthController extends Controller
 
         // CRO: Redirect exclusively new users to onboarding
         if ($isNewUser) {
-            return redirect($frontendUrl . '/welcome');
+            $plan = session()->pull('intended_plan');
+            $redirectUrl = $frontendUrl . '/welcome';
+            if ($plan) {
+                $redirectUrl .= '?plan=' . urlencode($plan);
+            }
+            return redirect($redirectUrl);
         }
 
         return redirect($frontendUrl . '/dashboard');

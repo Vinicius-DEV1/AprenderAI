@@ -29,8 +29,8 @@ class UserResource extends JsonResource
             'subscription_end' => $this->plan_expires_at,
             'created_at' => $this->created_at,
             'stats' => [
-                'simulations_completed' => $this->stats->simulations_completed ?? 0,
-                'essays_submitted' => $this->stats->essays_submitted ?? 0,
+                'total_simulations' => $this->stats->total_simulations ?? 0,
+                'total_essays' => $this->stats->total_essays ?? 0,
                 'questions_answered' => $this->stats->questions_answered ?? 0,
             ],
             'quotas' => [

@@ -18,14 +18,26 @@ export default function WelcomePlans() {
     useEffect(() => {
         const urlPlan = searchParams.get('plan');
         const storagePlan = localStorage.getItem('intended_plan');
+        const targetPlanSlug = urlPlan || storagePlan;
 
-        if (urlPlan?.includes('annual') || storagePlan?.includes('annual')) {
+        if (targetPlanSlug?.includes('annual')) {
             setPeriodo('anual');
+        }
+
+        // Auto-select plan if passed via URL or storage
+        if (targetPlanSlug && plans && plans.length > 0) {
+            // Remove -annual suffix for matching if looking for basic/plus
+            const baseSlug = targetPlanSlug.replace('-annual', '').replace('-anual', '');
+            const interval = targetPlanSlug.includes('annual') || targetPlanSlug.includes('anual') ? 'yearly' : 'monthly';
+            
+            // Short delay to ensure plans are fully processed if necessary, 
+            // but since we checked plans.length > 0, we can try now.
+            handlePlanSelect(baseSlug, interval);
         }
 
         // Track that user reached the prices / plan selection page
         trackEvent('prices_viewed', undefined, 'prices', undefined, { source_page: '/welcome-plans' });
-    }, [searchParams]);
+    }, [searchParams, plans]); // Added plans to dependencies to retry when they load
 
     const handlePlanSelect = (slugKeyword: string, interval: 'monthly' | 'yearly') => {
         if (!plans || plans.length === 0) {
