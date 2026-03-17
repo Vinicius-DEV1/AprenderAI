@@ -525,6 +525,46 @@ class QuestionController extends Controller
             return $this->buildVectorSearchResponse($cachedFilters, $user, $request->prompt, 'l1_cache', []);
         }
 
+        // ── Step 2.5: Query Intent Extraction (Heuristic) ─────────────────────
+        // If the user searches for a pure subject/topic like "Inglês", vector search
+        // might falsely match math questions with high "textual interpretation" scores.
+        // This heuristic enforces a hard SQL filter for obvious subject matches.
+        $extractedSubjectId = null;
+        $extractedTopicId = null;
+
+        $cleanedPromptForIntent = trim(preg_replace('/[^A-Za-zÀ-ÖØ-öø-ÿ0-9\s]/u', '', strtolower($request->prompt)));
+        $intentWords = explode(' ', $cleanedPromptForIntent);
+
+        if (count($intentWords) <= 3) {
+            // Highly likely to be a direct category attempt if it's very short
+            $guessedSubject = \App\Models\Subject::where(function ($q) use ($intentWords) {
+                foreach ($intentWords as $word) {
+                    if (strlen($word) > 3) {
+                        $q->orWhere('name', 'like', "%{$word}%");
+                    }
+                }
+            })->first();
+
+            if ($guessedSubject) {
+                $extractedSubjectId = (string) $guessedSubject->id;
+                Log::info('[Xavier][Search] Intent Extractor: found Subject match.', ['subject' => $guessedSubject->name]);
+            } else {
+                // Try for a Topic if Subject wasn't found
+                $guessedTopic = \App\Models\Topic::where(function ($q) use ($intentWords) {
+                    foreach ($intentWords as $word) {
+                        if (strlen($word) > 4) {
+                            $q->orWhere('name', 'like', "%{$word}%")
+                              ->orWhere('slug', 'like', "%{$word}%");
+                        }
+                    }
+                })->first();
+                if ($guessedTopic) {
+                     $extractedTopicId = (string) $guessedTopic->id;
+                     Log::info('[Xavier][Search] Intent Extractor: found Topic match.', ['topic' => $guessedTopic->name]);
+                }
+            }
+        }
+
         // ── Step 3: Query Embedding ───────────────────────────────────────────
         $queryVector = $aiService->generateEmbedding($normalizedQuery, $user->id);
 
@@ -580,8 +620,8 @@ class QuestionController extends Controller
         ];
 
         $sqlFilters = array_filter([
-            'subject'    => $request->get('subject'),
-            'topic'      => $request->get('topic'),
+            'subject'    => $request->get('subject') ?: $extractedSubjectId,
+            'topic'      => $request->get('topic') ?: $extractedTopicId,
             'type'       => $request->get('type'),
             'difficulty' => $request->get('difficulty'),
             'keyword'    => $request->get('keyword'),
