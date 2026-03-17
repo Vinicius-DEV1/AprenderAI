@@ -28,8 +28,8 @@ export default function ImportIndex() {
         const checkActive = async () => {
             try {
                 const res = await api.get('/api/v1/admin/import/active-job');
-                if (res.data?.active) {
-                    setImportId(res.data.import_id);
+                if (res.data?.active_import) {
+                    setImportId(res.data.active_import.id);
                     setProgressMode(false);
                     setShowBanner(true);
                 }

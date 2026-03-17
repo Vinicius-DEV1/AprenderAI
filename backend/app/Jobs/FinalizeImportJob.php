@@ -105,7 +105,7 @@ class FinalizeImportJob implements ShouldQueue
 
         } elseif ($this->retryCount >= self::MAX_RETRIES) {
             // Atingiu o limite de reagendamentos: falha definitiva
-            Log::error("[FinalizeImportJob] Import #{$import->id} atingiu o limite de {self::MAX_RETRIES} verificações. Marcando como falho.");
+            Log::error("[FinalizeImportJob] Import #{$import->id} atingiu o limite de " . self::MAX_RETRIES . " verificações. Marcando como falho.");
 
             $import->update([
                 'status'        => 'failed',
@@ -122,6 +122,21 @@ class FinalizeImportJob implements ShouldQueue
             self::dispatch($this->import, $this->tmpDir, $this->zipPath, $this->retryCount + 1)
                 ->delay(now()->addSeconds(self::RETRY_DELAY_SECONDS));
         }
+    }
+
+    /**
+     * Tratador de falha do Job.
+     * Se o Laravel desistir de processar este job (ex: timeout ou erro fatal),
+     * marcamos o lote como falho para não ficar preso em "Processando".
+     */
+    public function failed(\Throwable $exception): void
+    {
+        $this->import->update([
+            'status' => 'failed',
+            'error_message' => "Erro crítico no finalizador: " . $exception->getMessage(),
+        ]);
+
+        Log::error("[FinalizeImportJob] Falha fatal no job de finalização do lote #{$this->import->id}: " . $exception->getMessage());
     }
 
     /**
