@@ -290,7 +290,7 @@ export default function SimulationList() {
                         <div key={simulation.id} className="simulation-row flex flex-col md:grid">
                             <div className="simulation-title">
                                 <h4>{String(simulation.type).charAt(0).toUpperCase() + String(simulation.type).slice(1)} - {simulation.questions_count ?? 0} questões</h4>
-                                <p>Criada em {simulation.created_at || simulation.formatted_date}</p>
+                                <p>Criada em {simulation.formatted_date || simulation.created_at}</p>
                             </div>
 
                             <div>
