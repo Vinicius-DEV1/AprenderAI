@@ -124,11 +124,12 @@ class SemanticDashboardController extends Controller
             ],
             'recent_searches' => $recentSearches,
             'config' => [
-                'vector_search_enabled'       => config('xavier.vector_search_enabled'),
-                'concept_detection_threshold' => config('xavier.embeddings.concept_detection_threshold'),
-                'qdrant_candidate_limit'      => config('xavier.search.qdrant_candidate_limit'),
-                'final_result_limit'          => config('xavier.search.final_result_limit'),
-                'rerank_weights'              => config('xavier.search.rerank_weights'),
+                'vector_search_enabled'       => \App\Models\Configuration::get('xavier_vector_search_enabled', config('xavier.vector_search_enabled')),
+                'concept_detection_threshold' => \App\Models\Configuration::get('xavier_concept_detection_threshold', config('xavier.embeddings.concept_detection_threshold')),
+                'search_threshold'           => \App\Models\Configuration::get('xavier_search_threshold', config('xavier.embeddings.search_threshold')),
+                'qdrant_candidate_limit'      => \App\Models\Configuration::get('xavier_qdrant_candidate_limit', config('xavier.search.qdrant_candidate_limit')),
+                'final_result_limit'          => \App\Models\Configuration::get('xavier_final_result_limit', config('xavier.search.final_result_limit')),
+                'rerank_weights'              => json_decode(\App\Models\Configuration::get('xavier_rerank_weights', json_encode(config('xavier.search.rerank_weights'))), true),
                 'pipeline_version'            => config('xavier.embeddings.pipeline_version'),
             ]
         ]);
@@ -136,49 +137,42 @@ class SemanticDashboardController extends Controller
 
     /**
      * Update runtime configurations for the semantic engine.
-     * Note: In a real environment, you might persist this to DB Settings or .env wrapper.
-     * For now, we simulate success (requires a Setting model for persistence if we want it permanently outside .env).
-     * Assuming App\Models\Setting is available from standard StackUp boilerplate.
+     * Persists settings to the database configurations table.
      */
     public function updateConfig(Request $request)
     {
         $validated = $request->validate([
             'vector_search_enabled'       => 'boolean',
             'concept_detection_threshold' => 'numeric|min:0|max:1',
+            'search_threshold'           => 'numeric|min:0|max:1',
             'qdrant_candidate_limit'      => 'integer|min:10|max:200',
-            'final_result_limit'          => 'integer|min:5|max:50',
+            'final_result_limit'          => 'integer|min:5|max:100',
         ]);
 
-        // Using standard update mechanisms depending on where we keep settings.
-        // If settings are pure .env, we can't save here securely without a file writer.
-        // We'll dispatch a command to update .env if needed, or simply throw a note that 
-        // to persist permanently, edit .env. 
-        // Let's implement a safe .env updater.
-        
-        $this->updateEnv('VECTOR_SEARCH_ENABLED', $request->boolean('vector_search_enabled') ? '1' : '0');
-        
-        if ($request->has('concept_detection_threshold')) {
-            $this->updateEnv('CONCEPT_DETECTION_THRESHOLD', $validated['concept_detection_threshold']);
+        if ($request->has('vector_search_enabled')) {
+            \App\Models\Configuration::set('xavier_vector_search_enabled', $request->boolean('vector_search_enabled') ? '1' : '0');
         }
 
+        if ($request->has('concept_detection_threshold')) {
+            \App\Models\Configuration::set('xavier_concept_detection_threshold', (string) $validated['concept_detection_threshold']);
+        }
+
+        if ($request->has('search_threshold')) {
+            \App\Models\Configuration::set('xavier_search_threshold', (string) $validated['search_threshold']);
+        }
+
+        if ($request->has('qdrant_candidate_limit')) {
+            \App\Models\Configuration::set('xavier_qdrant_candidate_limit', (string) $validated['qdrant_candidate_limit']);
+        }
+
+        if ($request->has('final_result_limit')) {
+            \App\Models\Configuration::set('xavier_final_result_limit', (string) $validated['final_result_limit']);
+        }
+
+        // Clear config cache to ensure changes take effect immediately
         Artisan::call('config:clear');
 
-        return response()->json(['message' => 'Configurações atualizadas com sucesso.']);
-    }
-
-    private function updateEnv($key, $value)
-    {
-        $path = base_path('.env');
-        if (file_exists($path)) {
-            $contents = file_get_contents($path);
-            $pattern = "/^{$key}=.*/m";
-            if (preg_match($pattern, $contents)) {
-                $contents = preg_replace($pattern, "{$key}={$value}", $contents);
-            } else {
-                $contents .= "\n{$key}={$value}";
-            }
-            file_put_contents($path, $contents);
-        }
+        return response()->json(['message' => 'Configurações atualizadas no banco de dados com sucesso.']);
     }
 
     /**
@@ -229,7 +223,7 @@ class SemanticDashboardController extends Controller
             'explanation' => $queryVector,
         ];
         
-        $limit = (int) config('xavier.search.qdrant_candidate_limit', 50);
+        $limit = (int) \App\Models\Configuration::get('xavier_qdrant_candidate_limit', config('xavier.search.qdrant_candidate_limit', 50));
         $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, [], $limit);
         $logs[] = "Candidates found in Qdrant: " . count($candidates);
 

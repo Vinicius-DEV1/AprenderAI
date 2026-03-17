@@ -495,7 +495,8 @@ class QuestionController extends Controller
         $cacheService = app(SemanticCacheService::class);
 
         // ─── LEGACY PATH (feature flag off) ──────────────────────────────────
-        $isEnabled = config('xavier.vector_search_enabled');
+        // Check if vector search is enabled (Database takes priority over .env)
+        $isEnabled = \App\Models\Configuration::get('xavier_vector_search_enabled', config('xavier.vector_search_enabled', false));
         if (is_string($isEnabled)) {
             $isEnabled = filter_var($isEnabled, FILTER_VALIDATE_BOOLEAN);
         }
@@ -587,7 +588,7 @@ class QuestionController extends Controller
         $searchPath = 'concept';
 
         try {
-            $conceptThreshold = (float) config('xavier.embeddings.concept_detection_threshold', 0.75);
+            $conceptThreshold = (float) \App\Models\Configuration::get('xavier_concept_detection_threshold', config('xavier.embeddings.concept_detection_threshold', 0.75));
             $conceptMatches = $qdrant->searchConcepts($queryVector, 5, $conceptThreshold);
             
             // Extract concept slugs from payload — Correctly mapping without using array as index key
@@ -627,12 +628,12 @@ class QuestionController extends Controller
             'keyword'    => $request->get('keyword'),
         ]);
 
-        $candidateLimit = (int) config('xavier.search.qdrant_candidate_limit', 50);
+        $candidateLimit = (int) \App\Models\Configuration::get('xavier_qdrant_candidate_limit', config('xavier.search.qdrant_candidate_limit', 50));
         $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, $sqlFilters, $candidateLimit);
         Log::info('[Xavier][Search] Step 7 done: hybrid search.', ['candidates' => count($candidates)]);
 
-        // ── Step 8: ReRank (top-50 → top-20) ─────────────────────────────────
-        $finalLimit  = (int) config('xavier.search.final_result_limit', 20);
+        // ── Step 8: ReRank (top-50 → top-limit) ─────────────────────────────────
+        $finalLimit  = (int) \App\Models\Configuration::get('xavier_final_result_limit', config('xavier.search.final_result_limit', 20));
         $rankedItems = $reranker->rerank($candidates, $finalLimit);
         $questionIds = array_column($rankedItems, 'question_id');
         Log::info('[Xavier][Search] Step 8 done: reranked.', ['top' => count($rankedItems)]);
