@@ -232,9 +232,12 @@ export default function AppLayout() {
                         )}
 
                         {!sidebarCollapsed && (
-                            <button onClick={toggleTheme} className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors" title={darkMode ? 'Modo Claro' : 'Modo Escuro'}>
-                                {darkMode ? '☀️' : '🌙'}
-                            </button>
+                            <div className="flex items-center gap-1">
+                                <NotificationBell />
+                                <button onClick={toggleTheme} className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors" title={darkMode ? 'Modo Claro' : 'Modo Escuro'}>
+                                    {darkMode ? '☀️' : '🌙'}
+                                </button>
+                            </div>
                         )}
 
                         {!sidebarCollapsed && (
