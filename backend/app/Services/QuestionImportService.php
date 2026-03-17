@@ -13,6 +13,7 @@ use App\Models\UserLog;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use ZipArchive;
@@ -843,6 +844,69 @@ class QuestionImportService
             $path = $dir . DIRECTORY_SEPARATOR . $file;
             is_dir($path) ? $this->cleanupTmpDir($path) : unlink($path);
         }
-        rmdir($dir);
+    }
+
+    /**
+     * Safely reverts an entire import batch, deleting all associated questions.
+     * Can be called manually by admin or automatically by a Job on failure.
+     *
+     * @param QuestionImport $import The import record to rollback.
+     * @param User|null $admin If provided, logs each deletion to user_logs.
+     * @param string|null $ip If provided, used for the log entry.
+     * @return void
+     */
+    public function rollback(QuestionImport $import, ?User $admin = null, ?string $ip = null): void
+    {
+        DB::transaction(function () use ($import, $admin, $ip) {
+            // Find all question IDs linked to this import
+            $questionIds = QuestionImportItem::where('import_id', $import->id)
+                ->pluck('question_id')
+                ->toArray();
+
+            if (!empty($questionIds)) {
+                $questions = Question::whereIn('id', $questionIds)->get();
+
+                foreach ($questions as $question) {
+                    // Cleanup orphan records in legacy tables
+                    foreach (['favorites', 'notebook_questions', 'question_reports', 'question_notes'] as $table) {
+                        if (Schema::hasTable($table)) {
+                            DB::table($table)->where('question_id', $question->id)->delete();
+                        }
+                    }
+
+                    // Optional Audit Logging
+                    if ($admin) {
+                        $impactData = [
+                            'admin_id' => $admin->id,
+                            'batch_rollback' => $import->id,
+                            'question_id' => $question->id,
+                            'statement_preview' => mb_strimwidth(strip_tags($question->statement), 0, 100, '...'),
+                        ];
+
+                        UserLog::create([
+                            'user_id' => $admin->id,
+                            'action' => 'admin_deleted_question_via_rollback',
+                            'description' => json_encode($impactData),
+                            'ip_address' => $ip ?? '127.0.0.1',
+                        ]);
+                    }
+
+                    $question->delete();
+                }
+            }
+
+            // Delete links
+            QuestionImportItem::where('import_id', $import->id)->delete();
+
+            // Mark as reverted and reset counts
+            $import->update([
+                'status' => 'reverted',
+                'pending_count' => 0,
+                'approved_count' => 0,
+                'skipped_count' => 0,
+                'updated_count' => 0,
+                'processed_questions' => 0,
+            ]);
+        });
     }
 }
