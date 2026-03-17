@@ -12,12 +12,6 @@ interface Notification {
     created_at: string;
 }
 
-/**
- * NotificationBell — bell icon with unread badge + dropdown list.
- *
- * Uses React Query to poll for new notifications every 60 seconds.
- * The bell badge shows the unread count.
- */
 export default function NotificationBell() {
     const [isOpen, setIsOpen] = useState(false);
     const panelRef = useRef<HTMLDivElement>(null);
@@ -25,14 +19,13 @@ export default function NotificationBell() {
 
     const { data } = useQuery({
         queryKey: ['user-notifications'],
-        queryFn: () => getNotifications().then(r => r.data),
-        refetchInterval: 60000, // Poll every 60s
+        queryFn: () => getNotifications().then((r: any) => r.data),
+        refetchInterval: 60000, 
     });
 
     const notifications: Notification[] = data?.notifications ?? [];
     const unreadCount: number = data?.unread_count ?? 0;
 
-    // Close on outside click
     useEffect(() => {
         const handler = (e: MouseEvent) => {
             if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
@@ -68,12 +61,10 @@ export default function NotificationBell() {
 
     return (
         <div className="relative" ref={panelRef}>
-            {/* Bell Button */}
             <button
                 onClick={() => setIsOpen(o => !o)}
                 className="relative p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 title="Notificações"
-                aria-label="Notificações"
             >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
@@ -86,71 +77,87 @@ export default function NotificationBell() {
                 )}
             </button>
 
-            {/* Dropdown Panel */}
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-                        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Notificações</h3>
-                        {unreadCount > 0 && (
-                            <button
-                                onClick={markAllRead}
-                                className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
-                            >
-                                Marcar tudo como lido
-                            </button>
-                        )}
+                <div className="absolute right-0 mt-2 w-[380px] sm:w-[450px] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Notificações</h3>
+                            {unreadCount > 0 && (
+                                <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 text-[10px] font-bold rounded-md">
+                                    {unreadCount} novas
+                                </span>
+                            )}
+                        </div>
+                        <div className="flex gap-3">
+                            {unreadCount > 0 && (
+                                <button
+                                    onClick={markAllRead}
+                                    className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold"
+                                >
+                                    Ler tudo
+                                </button>
+                            )}
+                            <a href="/notificacoes" className="text-[11px] text-slate-500 hover:text-blue-600 font-semibold">Ver todas</a>
+                        </div>
                     </div>
 
-                    {/* List */}
-                    <div className="max-h-80 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800">
+                    <div className="max-h-[450px] overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800">
                         {notifications.length === 0 ? (
-                            <div className="px-4 py-8 text-center text-sm text-slate-400">
-                                <div className="text-3xl mb-2">🔔</div>
-                                Nenhuma notificação ainda.
+                            <div className="px-4 py-12 text-center text-sm text-slate-400">
+                                <div className="text-4xl mb-3">🔔</div>
+                                <p className="font-medium">Nenhuma notificação por aqui.</p>
+                                <p className="text-xs text-slate-500 mt-1">Avisaremos você quando algo novo aparecer.</p>
                             </div>
-                        ) : notifications.map(n => (
+                        ) : notifications.slice(0, 10).map(n => (
                             <div
                                 key={n.id}
-                                className={`px-4 py-3 transition-colors ${!n.is_read ? 'bg-blue-50/60 dark:bg-blue-950/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                className={`px-4 py-3.5 transition-colors ${!n.is_read ? 'bg-blue-50/60 dark:bg-blue-950/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                             >
-                                <div className="flex items-start gap-3">
-                                    <span className="text-lg flex-shrink-0 mt-0.5">
+                                <div className="flex items-start gap-4">
+                                    <span className="text-xl flex-shrink-0 mt-0.5">
                                         {typeIcons[n.type]?.icon ?? 'ℹ️'}
                                     </span>
                                     <div className="flex-1 min-w-0">
-                                        <p className={`text-sm font-semibold truncate ${!n.is_read ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
+                                        <p className={`text-sm font-bold leading-tight ${!n.is_read ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
                                             {n.title}
                                         </p>
                                         {n.body && (
-                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-3 leading-relaxed">
                                                 {n.body}
                                             </p>
                                         )}
-                                        <div className="flex items-center gap-2 mt-1.5">
-                                            <span className="text-[10px] text-slate-400">{formatDate(n.created_at)}</span>
-                                            {n.action_url && (
-                                                <a href={n.action_url} className="text-[10px] text-blue-500 hover:underline font-medium">
-                                                    Ver →
+                                        <div className="flex items-center gap-3 mt-2">
+                                            <span className="text-[10px] font-medium text-slate-400">{formatDate(n.created_at)}</span>
+                                            {n.action_url ? (
+                                                <a href={n.action_url} className="text-[10px] bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded font-bold hover:bg-blue-200 transition-colors">
+                                                    ACESSAR →
                                                 </a>
-                                            )}
-                                            {!n.is_read && (
-                                                <button
-                                                    onClick={() => markRead(n.id)}
-                                                    className="text-[10px] text-slate-400 hover:text-blue-500 ml-auto"
-                                                >
-                                                    Marcar como lida
-                                                </button>
+                                            ) : (
+                                                <a href="/notificacoes" className="text-[10px] text-blue-500 hover:underline font-bold uppercase tracking-wider">
+                                                    Ver detalhes
+                                                </a>
                                             )}
                                         </div>
                                     </div>
                                     {!n.is_read && (
-                                        <div className="w-2 h-2 mt-1.5 rounded-full bg-blue-500 flex-shrink-0"></div>
+                                        <button 
+                                            onClick={() => markRead(n.id)}
+                                            className="w-2.5 h-2.5 mt-1.5 rounded-full bg-blue-500 flex-shrink-0" 
+                                            title="Marcar como lida"
+                                        />
                                     )}
                                 </div>
                             </div>
                         ))}
                     </div>
+                    {notifications.length > 10 && (
+                        <a 
+                            href="/notificacoes" 
+                            className="block w-full text-center py-3 text-xs font-bold text-blue-600 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 transition-colors"
+                        >
+                            VER TODAS AS NOTIFICAÇÕES
+                        </a>
+                    )}
                 </div>
             )}
         </div>

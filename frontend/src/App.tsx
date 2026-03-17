@@ -97,6 +97,7 @@ import SupportAdmin from './pages/admin/SupportAdmin';
 import BannersAdmin from './pages/admin/BannersAdmin';
 import SuggestionsAdmin from './pages/admin/SuggestionsAdmin';
 import Analytics from './components/Analytics';
+import Notifications from './pages/Notifications';
 
 function App() {
     // Unificar o estado de carregamento inicial para evitar transições bruscas e race conditions.
@@ -258,6 +259,7 @@ function App() {
 
                             {/* Profile */}
                             <Route path="/perfil" element={<><MetaTags title="Meu Perfil" /><Profile /></>} />
+                            <Route path="/notificacoes" element={<Notifications />} />
                         </Route>
 
                         {/* Admin Portal */}
