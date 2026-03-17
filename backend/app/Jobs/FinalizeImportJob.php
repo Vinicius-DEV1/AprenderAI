@@ -128,6 +128,7 @@ class FinalizeImportJob implements ShouldQueue
             // Limpa APENAS após falha definitiva
             $this->cleanup();
 
+        } else {
             // Chunks ainda em processamento: re-agenda com delay.
             // CRÍTICO: NÃO fazemos cleanup() aqui — o SQLite ainda é necessário pelos chunks!
             Log::info("[FinalizeImportJob] Aguardando chunks ({$processedProgress}/{$import->total_questions}). Re-agendando verificação #{$this->retryCount} em " . self::RETRY_DELAY_SECONDS . "s.");
