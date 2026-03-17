@@ -481,8 +481,8 @@ class SubscriptionController extends Controller
 
                     // Notify admins of credit card approval
                     \App\Models\UserNotification::notifyAdmins(
-                        '\u2705 Pagamento Aprovado \u2014 ' . $user->name,
-                        'Plano ' . $plan->name . ' \u2022 Cart\u00e3o \u2022 R$ ' . number_format($plan->price, 2, ',', '.'),
+                        '✅ Pagamento Aprovado — ' . $user->name,
+                        'Plano ' . $plan->name . ' • Cartão • R$ ' . number_format($plan->price, 2, ',', '.'),
                         'success',
                         '/admin/checkout'
                     );
@@ -528,8 +528,8 @@ class SubscriptionController extends Controller
 
                         // Notify admins that user generated a PIX
                         \App\Models\UserNotification::notifyAdmins(
-                            '\ud83d\udd16 PIX Gerado \u2014 ' . $user->name,
-                            'Plano ' . $plan->name . ' \u2022 Aguardando pagamento do PIX',
+                            '🔖 PIX Gerado — ' . $user->name,
+                            'Plano ' . $plan->name . ' • Aguardando pagamento do PIX',
                             'info',
                             '/admin/checkout'
                         );
@@ -571,8 +571,8 @@ class SubscriptionController extends Controller
 
             // Notify admins of payment failure
             \App\Models\UserNotification::notifyAdmins(
-                '\u26a0\ufe0f Pagamento Recusado \u2014 ' . $user->name,
-                'Plano ' . $plan->name . ' \u2022 ' . substr($e->getMessage(), 0, 120),
+                '⚠️ Pagamento Recusado — ' . $user->name,
+                'Plano ' . $plan->name . ' • ' . substr($e->getMessage(), 0, 120),
                 'warning',
                 '/admin/checkout'
             );

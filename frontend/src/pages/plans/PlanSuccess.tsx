@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { getUser } from '../../api/auth';
@@ -12,19 +12,53 @@ export default function PlanSuccess() {
     const queryParams = new URLSearchParams(location.search);
     const planName = queryParams.get('planName') || 'Premium';
 
+    // Polling state
+    const [isConfirming, setIsConfirming] = useState(true);
+
     useEffect(() => {
+        let attempts = 0;
+        const maxAttempts = 10; // 30 seconds max
+        let interval: ReturnType<typeof setInterval>;
+
         const refreshUser = async () => {
             try {
                 const response = await getUser();
-                if (response.data.user) {
-                    setUser(response.data.user);
+                const freshUser = response.data?.user;
+                if (freshUser) {
+                    setUser(freshUser);
+                    
+                    // Stop polling if plan name matches or if it's no longer the free plan (id 1)
+                    const isNameMatch = planName && freshUser.plan?.name 
+                        && freshUser.plan.name.toLowerCase() === planName.toLowerCase();
+                    
+                    const isPlanUpdated = freshUser.plan_id !== 1 || isNameMatch;
+                        
+                    if (isPlanUpdated || attempts >= maxAttempts) {
+                        setIsConfirming(false);
+                        if (interval) clearInterval(interval);
+                    }
                 }
             } catch (error) {
                 console.error("Failed to refresh user data after checkout");
             }
+            
+            attempts++;
+            if (attempts >= maxAttempts) {
+                setIsConfirming(false);
+                if (interval) clearInterval(interval);
+            }
         };
+
+        // Initial call
         refreshUser();
-    }, [setUser]);
+        
+        // Setup polling every 3 seconds
+        interval = setInterval(refreshUser, 3000);
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [setUser, planName]);
 
     return (
         <div className="min-h-[80vh] flex flex-col items-center justify-center p-4 py-16">
@@ -40,15 +74,24 @@ export default function PlanSuccess() {
                 </div>
 
                 <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">
-                    Pagamento Aprovado!
+                    {isConfirming ? 'Confirmando...' : 'Pagamento Aprovado!'}
                 </h1>
 
-                <p className="text-slate-600 dark:text-slate-400 text-lg mb-2">
-                    Parabéns{user?.name ? `, ${user.name.split(' ')[0]}` : ''}!
-                </p>
-                <p className="text-slate-600 dark:text-slate-400 text-lg mb-8">
-                    Agora você é <strong className="text-blue-600 dark:text-blue-400 font-bold">{planName}</strong> e já pode aproveitar todos os benefícios exclusivos da plataforma.
-                </p>
+                {isConfirming ? (
+                    <div className="flex flex-col items-center justify-center py-4 mb-4">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900 dark:border-white mb-4"></div>
+                        <p className="text-slate-500 text-sm">Aguardando a confirmação do pagamento pelo banco...</p>
+                    </div>
+                ) : (
+                    <>
+                        <p className="text-slate-600 dark:text-slate-400 text-lg mb-2">
+                            Parabéns{user?.name ? `, ${user.name.split(' ')[0]}` : ''}!
+                        </p>
+                        <p className="text-slate-600 dark:text-slate-400 text-lg mb-8">
+                            Agora você é <strong className="text-blue-600 dark:text-blue-400 font-bold">{planName}</strong> e já pode aproveitar todos os benefícios exclusivos da plataforma.
+                        </p>
+                    </>
+                )}
 
                 <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 mb-8 border border-slate-100 dark:border-slate-700/50">
                     <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3 flex items-center justify-center gap-2">
