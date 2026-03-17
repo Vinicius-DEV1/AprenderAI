@@ -14,6 +14,17 @@ export default function GuestRoute() {
     }
 
     if (isAuthenticated) {
+        const user = useAuthStore.getState().user;
+        
+        // If the user was created very recently (last 5 minutes), 
+        // they are likely in the registration flow and should see /welcome.
+        const isFreshRegistration = user?.created_at && 
+            (new Date().getTime() - new Date(user.created_at).getTime()) < 300_000;
+
+        if (isFreshRegistration) {
+            return <Navigate to={`/welcome${window.location.search}`} replace />;
+        }
+
         return <Navigate to="/dashboard" replace />;
     }
 

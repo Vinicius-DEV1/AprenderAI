@@ -32,6 +32,11 @@ export interface User {
         is_manual_grant?: boolean;
         [key: string]: any;
     }[];
+    stats?: {
+        total_simulations: number;
+        total_essays: number;
+        questions_answered: number;
+    };
 }
 
 export interface AuthState {
