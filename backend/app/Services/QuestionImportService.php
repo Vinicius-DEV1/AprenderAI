@@ -55,8 +55,14 @@ class QuestionImportService
      */
     public function processZip(UploadedFile $zipFile, User $uploader): QuestionImport
     {
-        // UUID único para evitar colisões entre importações simultâneas
-        $tmpDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'import_' . Str::uuid();
+        // Usa o disco 'public' compartilhado para que todos os workers tenham acesso
+        $importId = Str::uuid();
+        $tmpDir = Storage::disk('public')->path("imports_tmp/{$importId}");
+        
+        // Garante que o diretório base exista
+        if (!is_dir($tmpDir)) {
+            mkdir($tmpDir, 0777, true);
+        }
 
         // Registro de auditoria inicial
         $import = QuestionImport::create([
@@ -119,7 +125,12 @@ class QuestionImportService
      */
     public function processZipFromJob(QuestionImport $import, string $zipPath): void
     {
-        $tmpDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'import_' . Str::uuid();
+        $importId = Str::uuid();
+        $tmpDir = Storage::disk('public')->path("imports_tmp/{$importId}");
+        
+        if (!is_dir($tmpDir)) {
+            mkdir($tmpDir, 0777, true);
+        }
 
         $import->update(['status' => 'processing']);
 
@@ -181,8 +192,13 @@ class QuestionImportService
      */
     public function prepareForParallelProcessing(QuestionImport $import, string $absoluteZipPath): array
     {
-        // UUID único para este lote: garante que importações simultâneas não colidam
-        $tmpDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'import_' . Str::uuid();
+        // UUID único para este lote: garante que importações simultâneas não colidam. Usa volume compartilhado.
+        $importId = Str::uuid();
+        $tmpDir = Storage::disk('public')->path("imports_tmp/{$importId}");
+        
+        if (!is_dir($tmpDir)) {
+            mkdir($tmpDir, 0777, true);
+        }
 
         Log::info("[QuestionImportService] Extraindo ZIP para processamento paralelo", [
             'import_id' => $import->id,
