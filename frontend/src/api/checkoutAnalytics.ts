@@ -100,6 +100,16 @@ export interface CheckoutAbandonmentItem {
     created_at: string;
 }
 
+export interface PaginatedResponse<T> {
+    data: T[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number;
+    to: number;
+}
+
 // ─── API Functions ─────────────────────────────────────────────────────────
 
 export const getCheckoutOverview = (days = 30) =>
@@ -123,5 +133,5 @@ export const getCheckoutAbandonments = (days = 30) =>
 export const getCheckoutAlerts = () =>
     axios.get<{ alerts: CheckoutAlert[]; total: number }>('/api/v1/admin/checkout/alerts');
 
-export const getCheckoutTimeline = (limit = 50) =>
-    axios.get<{ events: TimelineEvent[] }>(`/api/v1/admin/checkout/timeline?limit=${limit}`);
+export const getCheckoutTimeline = (page = 1, limit = 20) =>
+    axios.get<PaginatedResponse<TimelineEvent>>(`/api/v1/admin/checkout/timeline?page=${page}&limit=${limit}`);
