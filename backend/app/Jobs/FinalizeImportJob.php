@@ -63,9 +63,13 @@ class FinalizeImportJob implements ShouldQueue
         $import = $this->import->fresh();
 
         // Se o import já foi finalizado (completed/failed/reverted) por outra causa, para aqui.
+        // ATENÇÃO: só faz cleanup se não for 'processing' — evitar deletar SQLite ainda necessário.
         if (!in_array($import->status, ['pending', 'processing'])) {
             Log::info("[FinalizeImportJob] Import #{$import->id} já está com status '{$import->status}'. Nada a fazer.");
-            $this->cleanup();
+            // Só limpa se estiver em estado final (não se for processing preso)
+            if (in_array($import->status, ['completed', 'failed', 'reverted'])) {
+                $this->cleanup();
+            }
             return;
         }
 
@@ -103,27 +107,29 @@ class FinalizeImportJob implements ShouldQueue
 
             Log::info("[FinalizeImportJob] Import #{$import->id} CONCLUÍDO. Total: {$processedCount}, Pendentes: {$pendingCount}, Aprovadas: {$approvedCount}.");
 
-            // Limpa arquivos temporários
+            // SÓ AQUI limpamos — após todos os chunks terem terminado
             $this->cleanup();
 
         } elseif ($this->retryCount >= self::MAX_RETRIES) {
             // Atingiu o limite de reagendamentos: falha definitiva
-            Log::error("[FinalizeImportJob] Import #{$import->id} atingiu o limite de " . self::MAX_RETRIES . " verificações. Marcando como falho e REVERTENDO.");
+            Log::error("[FinalizeImportJob] Import #{$import->id} atingiu o limite de " . self::MAX_RETRIES . " verificações. Marcando como falho.");
 
             $import->update([
-                'status'        => 'failed',
+                'status'              => 'failed',
                 'processed_questions' => $processedCount,
-                'error_message' => "Timeout: apenas {$processedCount} de {$import->total_questions} questões foram processadas após " . (self::MAX_RETRIES * self::RETRY_DELAY_SECONDS) . "s. O lote foi desfeito automaticamente.",
+                'error_message'       => "Timeout: apenas {$processedCount} de {$import->total_questions} questões foram processadas após " . (self::MAX_RETRIES * self::RETRY_DELAY_SECONDS) . "s.",
             ]);
 
             // Gatilho de reversão automática
             app(\App\Services\QuestionImportService::class)->rollback($import);
 
+            // Limpa APENAS após falha definitiva
             $this->cleanup();
 
         } else {
-            // Chunks ainda em processamento: re-agenda com delay
-            Log::info("[FinalizeImportJob] Aguardando chunks. Re-agendando verificação #{$this->retryCount} em " . self::RETRY_DELAY_SECONDS . "s.");
+            // Chunks ainda em processamento: re-agenda com delay.
+            // CRÍTICO: NÃO fazemos cleanup() aqui — o SQLite ainda é necessário pelos chunks!
+            Log::info("[FinalizeImportJob] Aguardando chunks ({$processedCount}/{$import->total_questions}). Re-agendando verificação #{$this->retryCount} em " . self::RETRY_DELAY_SECONDS . "s.");
 
             self::dispatch($this->import, $this->tmpDir, $this->zipPath, $this->retryCount + 1)
                 ->delay(now()->addSeconds(self::RETRY_DELAY_SECONDS));

@@ -222,12 +222,13 @@ class QuestionImportService
         // ocorrer antes que qualquer chunk comece (os chunks referenciam as imagens migradas).
         $imageMap = $this->migrateImages($tmpDir, $bancaSlug);
 
-        // Persiste o mapeamento de imagens no banco para que os chunks possam usá-lo.
-        // Usamos o campo error_message temporariamente como repositório do imageMap serializado.
-        // Isso evita a necessidade de uma nova coluna no banco.
-        $import->update([
-            'error_message' => json_encode(['_image_map' => $imageMap]),
-        ]);
+        // Persiste o mapeamento de imagens como arquivo JSON no diretório temporário.
+        // IMPORTANTE: Não usamos mais o campo error_message do banco pois ele pode ser
+        // sobrescrito por mensagens de erro dos próprios chunks, corrompendo o mapeamento.
+        $imageMapPath = $tmpDir . DIRECTORY_SEPARATOR . '_image_map.json';
+        file_put_contents($imageMapPath, json_encode($imageMap));
+
+        Log::info("[QuestionImportService] imageMap salvo em: {$imageMapPath} (" . count($imageMap) . " imagens)");
 
         // ETAPA 4: Conta o total de questões no SQLite (sem carregar tudo na memória)
         $sqlite = new \PDO("sqlite:{$dbPath}");
@@ -269,9 +270,23 @@ class QuestionImportService
      */
     public function processChunk(string $dbPath, QuestionImport $import, int $offset, int $limit): array
     {
-        // Recupera o imageMap salvo pelo orquestrador (serializado no campo error_message)
-        $importData = json_decode($import->error_message ?? '{}', true);
-        $imageMap   = $importData['_image_map'] ?? [];
+        // Recupera o imageMap do arquivo JSON no tmpDir.
+        // Este arquivo é criado pelo prepareForParallelProcessing e é mais robusto que
+        // salvar no campo error_message do banco (que pode ser sobrescrito por erros).
+        $tmpDir = dirname($dbPath);
+        $imageMapPath = $tmpDir . DIRECTORY_SEPARATOR . '_image_map.json';
+        $imageMap = [];
+        if (file_exists($imageMapPath)) {
+            $imageMap = json_decode(file_get_contents($imageMapPath), true) ?? [];
+        } else {
+            // Fallback: tenta ler do campo error_message (compatibilidade com imports antigos)
+            $importData = json_decode($import->error_message ?? '{}', true);
+            $imageMap   = $importData['_image_map'] ?? [];
+            Log::warning("[QuestionImportService] imageMap não encontrado como arquivo, usando fallback do banco.", [
+                'import_id' => $import->id,
+                'offset'    => $offset,
+            ]);
+        }
 
         // Conecta ao SQLite do lote
         $sqlite = new \PDO("sqlite:{$dbPath}");

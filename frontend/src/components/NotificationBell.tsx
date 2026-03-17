@@ -12,7 +12,12 @@ interface Notification {
     created_at: string;
 }
 
-export default function NotificationBell() {
+interface Props {
+    /** Se true, o dropdown abre para CIMA (útil quando o sino está no fundo da sidebar) */
+    openUpward?: boolean;
+}
+
+export default function NotificationBell({ openUpward = false }: Props) {
     const [isOpen, setIsOpen] = useState(false);
     const panelRef = useRef<HTMLDivElement>(null);
     const queryClient = useQueryClient();
@@ -20,7 +25,7 @@ export default function NotificationBell() {
     const { data } = useQuery({
         queryKey: ['user-notifications'],
         queryFn: () => getNotifications().then((r: any) => r.data),
-        refetchInterval: 60000, 
+        refetchInterval: 60000,
     });
 
     const notifications: Notification[] = data?.notifications ?? [];
@@ -46,11 +51,11 @@ export default function NotificationBell() {
         queryClient.invalidateQueries({ queryKey: ['user-notifications'] });
     };
 
-    const typeIcons: Record<string, { icon: string; color: string }> = {
-        info:    { icon: 'ℹ️', color: 'text-blue-500' },
-        success: { icon: '✅', color: 'text-green-500' },
-        warning: { icon: '⚠️', color: 'text-yellow-500' },
-        tip:     { icon: '💡', color: 'text-purple-500' },
+    const typeIcons: Record<string, { icon: string }> = {
+        info:    { icon: 'ℹ️' },
+        success: { icon: '✅' },
+        warning: { icon: '⚠️' },
+        tip:     { icon: '💡' },
     };
 
     const formatDate = (iso: string) => {
@@ -58,6 +63,11 @@ export default function NotificationBell() {
         return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) + ' ' +
                d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     };
+
+    // Posição do dropdown: para cima (bottom-full mb-2) ou para baixo (top-full mt-2)
+    const dropdownPositionClass = openUpward
+        ? 'bottom-full mb-2 right-0'
+        : 'top-full mt-2 right-0';
 
     return (
         <div className="relative" ref={panelRef}>
@@ -78,7 +88,7 @@ export default function NotificationBell() {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-[380px] sm:w-[450px] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+                <div className={`absolute ${dropdownPositionClass} w-[380px] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden`}>
                     <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
                         <div className="flex items-center gap-2">
                             <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Notificações</h3>
@@ -101,9 +111,9 @@ export default function NotificationBell() {
                         </div>
                     </div>
 
-                    <div className="max-h-[450px] overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800">
+                    <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800">
                         {notifications.length === 0 ? (
-                            <div className="px-4 py-12 text-center text-sm text-slate-400">
+                            <div className="px-4 py-10 text-center text-sm text-slate-400">
                                 <div className="text-4xl mb-3">🔔</div>
                                 <p className="font-medium">Nenhuma notificação por aqui.</p>
                                 <p className="text-xs text-slate-500 mt-1">Avisaremos você quando algo novo aparecer.</p>
@@ -113,7 +123,7 @@ export default function NotificationBell() {
                                 key={n.id}
                                 className={`px-4 py-3.5 transition-colors ${!n.is_read ? 'bg-blue-50/60 dark:bg-blue-950/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                             >
-                                <div className="flex items-start gap-4">
+                                <div className="flex items-start gap-3">
                                     <span className="text-xl flex-shrink-0 mt-0.5">
                                         {typeIcons[n.type]?.icon ?? 'ℹ️'}
                                     </span>
@@ -122,27 +132,27 @@ export default function NotificationBell() {
                                             {n.title}
                                         </p>
                                         {n.body && (
-                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-3 leading-relaxed">
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
                                                 {n.body}
                                             </p>
                                         )}
-                                        <div className="flex items-center gap-3 mt-2">
+                                        <div className="flex items-center gap-3 mt-1.5">
                                             <span className="text-[10px] font-medium text-slate-400">{formatDate(n.created_at)}</span>
                                             {n.action_url ? (
                                                 <a href={n.action_url} className="text-[10px] bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded font-bold hover:bg-blue-200 transition-colors">
                                                     ACESSAR →
                                                 </a>
                                             ) : (
-                                                <a href="/notificacoes" className="text-[10px] text-blue-500 hover:underline font-bold uppercase tracking-wider">
+                                                <a href="/notificacoes" className="text-[10px] text-blue-500 hover:underline font-bold">
                                                     Ver detalhes
                                                 </a>
                                             )}
                                         </div>
                                     </div>
                                     {!n.is_read && (
-                                        <button 
+                                        <button
                                             onClick={() => markRead(n.id)}
-                                            className="w-2.5 h-2.5 mt-1.5 rounded-full bg-blue-500 flex-shrink-0" 
+                                            className="w-2.5 h-2.5 mt-1 rounded-full bg-blue-500 flex-shrink-0 hover:bg-blue-700 transition-colors"
                                             title="Marcar como lida"
                                         />
                                     )}
@@ -151,8 +161,8 @@ export default function NotificationBell() {
                         ))}
                     </div>
                     {notifications.length > 10 && (
-                        <a 
-                            href="/notificacoes" 
+                        <a
+                            href="/notificacoes"
                             className="block w-full text-center py-3 text-xs font-bold text-blue-600 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 transition-colors"
                         >
                             VER TODAS AS NOTIFICAÇÕES
