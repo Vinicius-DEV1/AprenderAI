@@ -893,13 +893,20 @@ export default function Dashboard() {
 
                 <div className="card">
                     <div className="card-head">
-                        <h3>Provas Recentes</h3>
+                        <h3>Simulados Recentes</h3>
                     </div>
 
                     {recent_simulations && recent_simulations.length > 0 ? (
-                        <ul className="list">
+                        <div className="list">
                             {recent_simulations.map((simulation: any) => (
-                                <li key={simulation.id} className="item">
+                                <Link 
+                                    key={simulation.id} 
+                                    to={['finished', 'corrected'].includes(simulation.status) 
+                                        ? `/simulados/${simulation.id}/resultado` 
+                                        : `/simulados/${simulation.id}`}
+                                    className="item"
+                                    style={{ textDecoration: 'none', display: 'flex' }}
+                                >
                                     <div className="info">
                                         <h4>{String(simulation.type).charAt(0).toUpperCase() + String(simulation.type).slice(1)} - {simulation.questions_count || 'N/A'} questões</h4>
                                         <p>{simulation.formatted_date || simulation.created_at}</p>
@@ -910,9 +917,9 @@ export default function Dashboard() {
                                     ) : (
                                         <span className="pending">Pendente</span>
                                     )}
-                                </li>
+                                </Link>
                             ))}
-                        </ul>
+                        </div>
                     ) : (
                         <div style={{ textAlign: 'center', padding: '18px 10px', color: 'var(--muted2)', fontWeight: 600 }}>
                             Você ainda não realizou nenhuma prova.
