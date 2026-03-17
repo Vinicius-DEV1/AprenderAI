@@ -27,9 +27,15 @@ class SemanticCacheService
     }
 
     /**
-     * Busca um match similar usando Cosine Similarity no MySQL 8.0+.
-     * Assume que os items do vetor tem tamanho fixo (~768 dimensões)
-     * e os compara extraindo-os através das JSON functions nativas.
+     * Busca um match similar usando Cosine Similarity calculada em PHP.
+     *
+     * Carrega os vetores do cache (limitado a 5000 mais recentes dentro do TTL)
+     * e calcula o Dot Product de cada um contra o vetor da query.
+     * Como os embeddings do Gemini são normalizados L2, Dot Product ≡ Cosine Similarity.
+     *
+     * @param  array  $embeddingVector  Vetor da query do usuário (3072 dims)
+     * @param  float  $threshold        Score mínimo para considerar um match (padrão: 0.94)
+     * @return array|null  Filtros cacheados se houve match, null caso contrário
      */
     public function findSimilarMatch(array $embeddingVector, float $threshold = 0.94): ?array
     {
@@ -38,48 +44,16 @@ class SemanticCacheService
         }
 
         try {
-            // Converte o array PHP do embedding em formato JSON string p/ a Query
-            $vectorJson = json_encode($embeddingVector);
-
             /*
-             * Nota: Para MySQL >= 8.0 que nao possuem suporte vetorial puro (ex: pgvector),
-             * não é recomendado processar milhões de registros desta forma,
-             * mas para um cache de até ~50.000 buscas frequentes é perfeitamente performático (<50ms).
-             * A query aqui simula 'Cosine Similarity' através de um cálculo matemático bruto com variáveis json
-             * Como os embeddings retornados pelas APIs costumam vir normalizados (magnitude = 1),
-             * O Cosine Similarity é equivalente ao `Dot Product` (Produto Escalar).
+             * TTL de 48 horas para evitar resultados stale.
+             * Quando novas questões são indexadas, o cache não é invalidado explicitamente,
+             * então este TTL garante que buscas antigas sejam reprocessadas periodicamente
+             * para capturar novos conteúdos relevantes.
              */
+            $cacheTtlHours = 48;
 
-            // Limitamos a busca aos items validados nos ultimos N meses se for muito grande
-            $query = "
-                SELECT id, prompt_text, filters_result,
-                (
-                    SELECT SUM(
-                        JSON_EXTRACT('{$vectorJson}', CONCAT('$[', seq, ']')) *
-                        JSON_EXTRACT(ai_search_cache.embedding, CONCAT('$[', seq, ']'))
-                    )
-                    FROM (
-                        SELECT 0 as seq UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 -- ... E assim por diante ... 
-                        -- Para evitar query super-longa em raw MySQL,
-                        -- como o MySQL não tem LATERAL join nativo de unnesting array nativo prático p/ 700+ posições,
-                        -- usamos uma Stored Procedure auxiliar criada via Migration ou um fallback em memória 
-                        -- se a base não for otimizada.
-                    ) mock_table_for_sequence
-                ) as similarity_score
-                FROM ai_search_cache
-                -- Fallback implementavel em PHP abaixo
-            ";
-
-            /*  
-             * IMPLEMENTAÇÃO PHP (O(N) memory bound)
-             * Em vez da query gigante e super pesada p/ o Banco MySQL (ineficiente para 768 itens de DB puro), 
-             * já que estamos num domínio de 'Cache', é muito mais rápido e eficiente:
-             * 1. Trazer todos os vetores da tabela local (limitado a últimas buscas)
-             * 2. Calcular o Dot Product direto no Kernel de C do PHP.
-             */
-
-            // TODO SCALE: Se passar de certa quantidade, varremos apenas os Top 1000 +recentes.
             $caches = AiSearchCache::select('id', 'prompt_text', 'filters_result', 'embedding')
+                ->where('last_used_at', '>=', now()->subHours($cacheTtlHours))
                 ->orderBy('last_used_at', 'desc')
                 ->limit(5000)
                 ->get();
@@ -89,6 +63,8 @@ class SemanticCacheService
 
             foreach ($caches as $cache) {
                 $dbVector = $cache->embedding;
+
+                // Pula vetores com dimensão incompatível (ex: migração de modelo)
                 if (!is_array($dbVector) || count($dbVector) !== count($embeddingVector)) {
                     continue;
                 }
@@ -102,6 +78,7 @@ class SemanticCacheService
             }
 
             if ($bestMatch && $highestScore >= $threshold) {
+                // Atualiza last_used_at para manter a entrada viva enquanto for útil
                 $bestMatch->update(['last_used_at' => now()]);
                 Log::info('[SemanticCache] L2 Hit: Match por Similaridade Matemática.', [
                     'score' => round($highestScore, 4),
