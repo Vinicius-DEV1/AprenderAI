@@ -24,12 +24,15 @@ export const setDeployModeCallback = (cb: () => void) => {
 /** Reseta o modo deploy quando o servidor recupera (chamado pelo hook). */
 export const resetDeployMode = () => {
     _isDeployMode = false;
+    (window as any).__IS_DEPLOY_MODE__ = false;
 };
 
 /** Aciona o modo deploy de forma idempotente. */
 function activateDeployMode() {
     if (_isDeployMode) return;
     _isDeployMode = true;
+    // Expondo globalmente para blindagem do bootstrap (App.tsx)
+    (window as any).__IS_DEPLOY_MODE__ = true;
     _onDeployDetected?.();
 }
 
@@ -81,24 +84,24 @@ api.interceptors.response.use(
                     return Promise.reject(error);
                 }
 
-                // Se já estivermos em modo deploy, apenas rejeita silenciosamente.
+                // Se já estivermos em modo deploy, apenas rejeita e "congela"
                 if (_isDeployMode) {
-                    return Promise.reject(error);
+                    return new Promise(() => {});
                 }
 
                 // ESTRATÉGIA ANTI-LOGOUT FALSO:
                 // Antes de deslogar o usuário em um 401/419, verificamos se o servidor está saudável.
-                // Se o healthcheck falhar, assumimos que é um deploy e ativamos o overlay.
-                const checkHealthAndLogout = async () => {
+                // Criamos uma IIFE async para poder dar wait no healthcheck antes de decidir se rejeitamos.
+                return (async () => {
                     try {
                         const healthRes = await fetch('/api/health', { method: 'GET', cache: 'no-store' });
                         if (!healthRes.ok) {
                             activateDeployMode();
-                            return;
+                            return new Promise(() => {}); // Congela para evitar logout
                         }
                     } catch {
                         activateDeployMode();
-                        return;
+                        return new Promise(() => {}); // Congela para evitar logout
                     }
 
                     // Se chegou aqui, o servidor está saudável MAS retornou 401/419 real.
@@ -114,10 +117,9 @@ api.interceptors.response.use(
                         logout();
                         window.location.href = '/login';
                     }
-                };
-
-                checkHealthAndLogout();
-                return Promise.reject(error);
+                    
+                    return Promise.reject(error);
+                })();
             }
             // Handle 422 - Validation Errors
             else if (status === 422) {
@@ -154,6 +156,9 @@ api.interceptors.response.use(
                 if (!isLoginPage) {
                     // Ativa o overlay ao invés de exibir toast genérico de rede.
                     activateDeployMode();
+                    
+                    // Congela para evitar toasts em componentes
+                    return new Promise(() => {});
                 }
             }
         }

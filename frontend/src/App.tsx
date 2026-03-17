@@ -128,21 +128,34 @@ function App() {
     useEffect(() => {
         const checkAuthStatus = async () => {
             try {
-                // NOTE: We intentionally do NOT call getCsrfCookie() here.
-                // Calling it proactively can interfere with a freshly-established
-                // Laravel Socialite session (Google OAuth callback), causing a 401
-                // on the first load. The CSRF token is lazy-fetched on demand by
-                // the 419 retry interceptor in axios.ts when actually needed.
                 const response = await getUser();
                 if (response.data && response.data.user) {
                     setUser(response.data.user);
                 } else {
                     setUser(null);
                 }
-            } catch {
-                setUser(null);
+            } catch (err) {
+                // BUG FIX: Se der erro durante o bootstrap, verificamos se o axios ativou o modo deploy.
+                // O axios interceptor já terá feito o healthcheck. Se estivermos em deploy,
+                // verificamos o sentinel global ou mantemos o loading infinito p/ evitar redirect.
+                
+                // Se o axios ativou _isDeployMode, não fazemos nada (deixamos o spinner de boot).
+                // O useDeployDetection cuidará de remontar o app ou polling.
+                // @ts-ignore - acessando estado interno p/ blindagem extrema
+                const isDeploying = window.__IS_DEPLOY_MODE__ || false;
+                
+                if (!isDeploying) {
+                    setUser(null);
+                } else {
+                    // Mantém isLoading = true para "congelar" a tela de boot até o servidor voltar
+                    return; 
+                }
             } finally {
-                setAuthLoading(false);
+                // Se foi deploy, não setamos loading false, deixamos o app no "limbo" seguro
+                 // @ts-ignore
+                if (!window.__IS_DEPLOY_MODE__) {
+                    setAuthLoading(false);
+                }
             }
         };
 
