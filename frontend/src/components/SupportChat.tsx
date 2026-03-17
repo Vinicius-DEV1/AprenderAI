@@ -144,14 +144,7 @@ export default function SupportChat() {
                             <div className="w-2 h-2 rounded-full bg-green-400 shadow-sm"></div>
                             <span className="text-white font-semibold text-sm">Suporte</span>
                         </div>
-                        {view === 'list' && (
-                            <button
-                                onClick={() => setView('new')}
-                                className="text-white/80 hover:text-white text-xs font-medium bg-white/10 hover:bg-white/20 px-2 py-1 rounded-lg transition-colors"
-                            >
-                                + Nova conversa
-                            </button>
-                        )}
+                        {/* O botão 'Nova Conversa' foi movido para o interior da view list */}
                     </div>
 
                     {/* Body */}
@@ -170,6 +163,14 @@ export default function SupportChat() {
                                     >
                                         <span>💡</span>
                                         Tem uma sugestão de melhoria?
+                                    </button>
+
+                                    <button
+                                        onClick={() => setView('new')}
+                                        className="mt-2 w-full flex items-center justify-center gap-2 py-2 bg-blue-600 border border-transparent rounded-lg text-xs font-semibold text-white hover:bg-blue-700 transition-colors shadow-sm"
+                                    >
+                                        <span>💬</span>
+                                        Falar com Suporte
                                     </button>
                                 </div>
 

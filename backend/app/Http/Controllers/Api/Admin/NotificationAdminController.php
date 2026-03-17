@@ -52,18 +52,33 @@ class NotificationAdminController extends Controller
             'user_id'    => 'nullable|exists:users,id',
             'broadcast'  => 'nullable|boolean',
             'title'      => 'required|string|max:200',
-            'body'       => 'nullable|string|max:1000',
-            'type'       => 'nullable|in:info,success,warning,tip',
-            'action_url' => 'nullable|string|max:500',
+            'user_id'      => 'nullable|exists:users,id',
+            'broadcast'    => 'nullable|boolean',
+            'title'        => 'required|string|max:200',
+            'body'         => 'nullable|string|max:1000',
+            'type'         => 'nullable|in:info,success,warning,tip',
+            'action_url'   => 'nullable|string|max:500',
+            'target_group' => 'nullable|in:all,basic,plus,admin',
         ]);
 
         $isBroadcast = $validated['broadcast'] ?? false;
+        $targetGroup = $request->input('target_group', 'all');
         $type        = $validated['type'] ?? 'info';
-
-        if ($isBroadcast) {
+ 
+        if ($isBroadcast || $targetGroup !== 'all') {
+            $query = User::select('id');
+            
+            if ($targetGroup === 'basic') {
+                $query->whereHas('plan', fn($q) => $q->where('name', 'LIKE', '%Básico%')->orWhere('name', 'LIKE', '%basico%'));
+            } elseif ($targetGroup === 'plus') {
+                $query->whereHas('plan', fn($q) => $q->where('name', 'LIKE', '%Plus%'));
+            } elseif ($targetGroup === 'admin') {
+                $query->where('role', 'admin');
+            }
+ 
             // Chunked insert to avoid memory issues with large user bases
             $count = 0;
-            User::select('id')->chunk(500, function ($users) use ($validated, $type, &$count) {
+            $query->chunk(500, function ($users) use ($validated, $type, &$count) {
                 $now  = now();
                 $rows = $users->map(fn($u) => [
                     'user_id'    => $u->id,
@@ -77,7 +92,7 @@ class NotificationAdminController extends Controller
                 UserNotification::insert($rows);
                 $count += count($rows);
             });
-
+ 
             return response()->json(['success' => true, 'sent_to' => $count]);
         }
 
