@@ -40,7 +40,9 @@ class ReRankService
 
     public function __construct()
     {
-        $weights = config('xavier.search.rerank_weights', []);
+        $weightsJson = \App\Models\Configuration::get('xavier_rerank_weights');
+        $weights = $weightsJson ? json_decode($weightsJson, true) : config('xavier.search.rerank_weights', []);
+        
         $this->wVector     = (float) ($weights['vector']     ?? 0.60);
         $this->wPopularity = (float) ($weights['popularity'] ?? 0.15);
         $this->wQuality    = (float) ($weights['quality']    ?? 0.15);

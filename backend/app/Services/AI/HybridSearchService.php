@@ -44,7 +44,7 @@ class HybridSearchService
                 $queryVectors,
                 $qdrantFilter,
                 $limit,
-                config('xavier.embeddings.search_threshold', 0.40)
+                (float) \App\Models\Configuration::get('xavier_search_threshold', config('xavier.embeddings.search_threshold', 0.40))
             );
 
             if (!empty($results)) {
