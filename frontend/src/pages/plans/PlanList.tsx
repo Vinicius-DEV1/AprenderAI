@@ -163,7 +163,7 @@ export default function PlanList() {
 
     // Track prices_viewed on mount
     useEffect(() => {
-        trackEvent('prices_viewed', undefined, 'prices');
+        trackEvent('prices_viewed', undefined, 'prices', undefined, { source_page: '/planos' });
     }, []);
 
     const activeInstallment = history.find((sub: any) => sub.status === 'active' && sub.installment_count && new Date(sub.current_period_end).getTime() > Date.now());
