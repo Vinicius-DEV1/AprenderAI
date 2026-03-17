@@ -198,6 +198,17 @@ log_info "      Fazendo reload final no Nginx para limpar DNS..."
 $COMPOSE exec -T webserver nginx -s reload || log_warning "Falha ao recarregar Nginx."
 
 log_success "Todos os serviços atualizados."
+
+# ----------------------------------------------------------------
+# PASSO EXTRA: Limpeza agressiva de Cache
+# ----------------------------------------------------------------
+log_info "[EXTRA] Limpando caches e Redis (DB 1 - Cache)..."
+$COMPOSE exec -T redis redis-cli -n 1 FLUSHDB || log_warning "Falha ao limpar Redis DB 1."
+$COMPOSE exec -T $APP_SERVICE php artisan cache:clear || true
+$COMPOSE exec -T $APP_SERVICE php artisan view:clear || true
+$COMPOSE exec -T $APP_SERVICE php artisan route:clear || true
+
+log_success "Cache limpo com sucesso!"
 echo ""
 
 # =============================================================================

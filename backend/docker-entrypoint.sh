@@ -67,10 +67,12 @@ if [ "$1" = "php-fpm" ] || [ -z "$1" ]; then
         fi
         
         echo "⚡ Otimizando cache do Laravel..."
-        # Limpa caches antigos antes de otimizar para evitar TypeErrors (comum em roteamento)
+        # Limpa caches antigos antes de otimizar para evitar TypeErrors
         php artisan route:clear
         php artisan config:clear
         php artisan cache:clear
+        php artisan view:clear
+        php artisan clear-compiled
         php artisan optimize
     fi
 
