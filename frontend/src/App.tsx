@@ -5,7 +5,9 @@ import { useConfig } from './hooks/useConfig';
 import { useAuthStore } from './stores/authStore';
 import { getUser } from './api/auth';
 import { Toaster } from 'sonner';
-import { setBootstrapping } from './api/axios';
+import { setBootstrapping, setDeployModeCallback, resetDeployMode } from './api/axios';
+import { useDeployDetection } from './hooks/useDeployDetection';
+import DeployOverlay from './components/DeployOverlay';
 import GuestRoute from './components/GuestRoute';
 import { useErrorTracking } from './hooks/useErrorTracking';
 
@@ -106,6 +108,23 @@ function App() {
     // Instrument global frontend error tracking
     useErrorTracking();
 
+    // -----------------------------------------------------------------------
+    // DEPLOY DETECTION — Exibe overlay quando o backend está sendo atualizado.
+    // O hook faz poll em /api/health e re-esconde o overlay quando o servidor volta.
+    // Nunca desloga o usuário — apenas suspende a UI temporariamente.
+    // -----------------------------------------------------------------------
+    const { deployState, triggerDeploy } = useDeployDetection({
+        onRecovered: () => {
+            // Reseta a flag no axios para que erros futuros mostrem toasts normalmente
+            resetDeployMode();
+        },
+    });
+
+    // Registra o callback no axios logo na primeira renderização
+    useEffect(() => {
+        setDeployModeCallback(triggerDeploy);
+    }, [triggerDeploy]);
+
     useEffect(() => {
         const checkAuthStatus = async () => {
             try {
@@ -164,6 +183,8 @@ function App() {
 
     return (
         <HelmetProvider>
+            {/* DeployOverlay fica FORA do BrowserRouter para aparecer em qualquer rota */}
+            <DeployOverlay state={deployState} />
             <BrowserRouter>
                 <Analytics />
                 <Toaster position="top-right" richColors />

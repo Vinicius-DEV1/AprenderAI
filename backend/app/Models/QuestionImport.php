@@ -16,6 +16,7 @@ class QuestionImport extends Model
         'pending_count',
         'approved_count',
         'skipped_count',
+        'updated_count',
         'processed_questions',
         'status',
         'error_message',

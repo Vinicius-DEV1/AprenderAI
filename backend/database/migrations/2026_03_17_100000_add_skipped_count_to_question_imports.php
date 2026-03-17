@@ -9,6 +9,7 @@ return new class extends Migration {
     {
         Schema::table('question_imports', function (Blueprint $table) {
             $table->integer('skipped_count')->default(0)->after('approved_count');
+            $table->integer('updated_count')->default(0)->after('skipped_count');
         });
     }
 

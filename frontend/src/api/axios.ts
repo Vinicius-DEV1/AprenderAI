@@ -8,6 +8,31 @@ import { useAuthStore } from '../stores/authStore';
 let _isBootstrapping = true;
 export const setBootstrapping = (value: boolean) => { _isBootstrapping = value; };
 
+// -----------------------------------------------------------------------
+// DEPLOY MODE — Bloqueia toasts e logout forçado durante deploy/restart.
+// Ativado quando o interceptor detecta 5xx ou Network Error em série.
+// Desativado pelo useDeployDetection quando o servidor volta.
+// -----------------------------------------------------------------------
+let _isDeployMode = false;
+let _onDeployDetected: (() => void) | null = null;
+
+/** Registra o callback que aciona o DeployOverlay. Chamado em App.tsx. */
+export const setDeployModeCallback = (cb: () => void) => {
+    _onDeployDetected = cb;
+};
+
+/** Reseta o modo deploy quando o servidor recupera (chamado pelo hook). */
+export const resetDeployMode = () => {
+    _isDeployMode = false;
+};
+
+/** Aciona o modo deploy de forma idempotente. */
+function activateDeployMode() {
+    if (_isDeployMode) return;
+    _isDeployMode = true;
+    _onDeployDetected?.();
+}
+
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : '/'),
     withCredentials: true,
@@ -46,7 +71,6 @@ api.interceptors.response.use(
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        // Global Error Handling
         if (error.response) {
             const { status, data } = error.response;
 
@@ -54,6 +78,13 @@ api.interceptors.response.use(
             if (status === 401 || status === 419) {
                 // Durante o bootstrap (verificação inicial), não redireciona.
                 if (_isBootstrapping) {
+                    return Promise.reject(error);
+                }
+
+                // DEPLOY MODE: durante um deploy/restart, o backend pode retornar
+                // 401 temporariamente (sessão ainda existe no Redis).
+                // NÃO deslogamos o usuário — o overlay já está sendo exibido.
+                if (_isDeployMode) {
                     return Promise.reject(error);
                 }
 
@@ -82,20 +113,25 @@ api.interceptors.response.use(
             }
             // Handle 500+ - Server Errors
             else if (status >= 500) {
-                toast.error(data.message || 'Erro interno no servidor. Nossa equipe já foi notificada.');
+                // Durante um deploy, o backend pode retornar 503/502/500 temporariamente.
+                // Em vez de exibir um toast de erro, ativamos o overlay de deploy.
+                activateDeployMode();
+                // Suprime o toast — o DeployOverlay já informa o usuário visualmente.
             }
         } else if (!error.response) {
-            // Log para ajudar a debugar problemas silenciosos de rede ou CORS
+            // Network Error / servidor completamente offline
             console.error('API Connection Error:', {
                 message: error.message,
                 config: error.config?.url,
-                method: error.config?.method
+                method: error.config?.method,
             });
 
             if (error.message === 'Network Error') {
+                // Se não estivermos na página de login, interpreta como deploy em andamento.
                 const isLoginPage = window.location.pathname === '/login' || window.location.pathname === '/login/';
                 if (!isLoginPage) {
-                    toast.error('Falha na conexão de rede. Verifique sua internet.');
+                    // Ativa o overlay ao invés de exibir toast genérico de rede.
+                    activateDeployMode();
                 }
             }
         }

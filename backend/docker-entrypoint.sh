@@ -3,6 +3,10 @@ set -e
 
 echo "Aguardando inicialização do ambiente..."
 
+# Remove sentinel de boots anteriores para evitar falsos positivos
+# (caso o container tenha sido reiniciado sem rebuild)
+rm -f /tmp/app_ready
+
 # Ajusta permissões iniciais (Silencia erros se não for root)
 chown -R 1337:www-data storage bootstrap/cache 2>/dev/null || true
 chmod -R 775 storage bootstrap/cache 2>/dev/null || true
@@ -69,9 +73,20 @@ if [ "$1" = "php-fpm" ] || [ -z "$1" ]; then
         php artisan cache:clear
         php artisan optimize
     fi
+
     echo "✅ Pronto! Iniciando PHP-FPM..."
+    # ----------------------------------------------------------------
+    # SENTINEL FILE — Criado AQUI, imediatamente antes de exec php-fpm.
+    # O Docker healthcheck verifica este arquivo para confirmar que o
+    # container concluiu toda a inicialização (migrate + optimize).
+    # Só após este arquivo existir, o webserver/nginx recebe tráfego.
+    # ----------------------------------------------------------------
+    touch /tmp/app_ready
     exec php-fpm
 else
     echo "Executando comando customizado: $@"
+    # Workers e schedulers também criam o sentinel para que seus
+    # próprios healthchecks (se adicionados no futuro) funcionem.
+    touch /tmp/app_ready
     exec "$@"
 fi

@@ -41,6 +41,7 @@ use App\Http\Controllers\Api\CheckoutTrackingController;
 use App\Http\Controllers\Api\Admin\CheckoutAnalyticsController;
 use App\Http\Controllers\Api\PlatformTrackingController;
 use App\Http\Controllers\Api\Admin\AdminPlatformMonitorController;
+use App\Http\Controllers\Api\HealthController;
 
 // Engagement System
 use App\Http\Controllers\Api\SupportController;
@@ -59,6 +60,14 @@ use App\Http\Controllers\Api\Admin\SuggestionAdminController;
 | API Routes — Prefixo: /api/v1
 |--------------------------------------------------------------------------
 */
+
+// -----------------------------------------------------------------------
+// Rota pública de saúde — NÃO requer autenticação.
+// Usada por:
+//  1. Docker healthcheck (test: curl /api/health)
+//  2. Frontend deploy detection (useDeployDetection hook)
+// -----------------------------------------------------------------------
+Route::get('/health', [HealthController::class, 'check'])->name('api.health');
 
 Route::prefix('v1')->group(function () {
     // Webhooks
