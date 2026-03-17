@@ -81,18 +81,24 @@ api.interceptors.response.use(
                     return Promise.reject(error);
                 }
 
-                // DEPLOY MODE: durante um deploy/restart, o backend pode retornar
-                // 401 temporariamente (sessão ainda existe no Redis).
-                // NÃO deslogamos o usuário — o overlay já está sendo exibido.
+                // Se já estivermos em modo deploy, apenas rejeita silenciosamente.
                 if (_isDeployMode) {
                     return Promise.reject(error);
                 }
 
-                // Normaliza path para evitar loops (ex: /login/ com barra no final)
+                // Normaliza path para evitar loops
                 const currentPath = window.location.pathname.replace(/\/$/, '') || '/';
                 const publicPaths = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/privacidade', '/uso-justo', '/500', '/verify-email'];
 
                 if (!publicPaths.includes(currentPath)) {
+                    // ESTRATÉGIA ANTI-LOGOUT FALSO:
+                    // Se o erro for 419 (Page Expired) ou 401, mas o servidor estiver oscilando
+                    // (ex: workers reiniciando), damos uma chance ao Modo Deploy.
+                    if (status === 419) {
+                        activateDeployMode();
+                        return Promise.reject(error);
+                    }
+
                     const message = status === 419 ? 'Página expirada por inatividade. Recarregando...' : 'Sessão expirada. Faça login novamente.';
                     toast.error(message);
 
