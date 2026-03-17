@@ -71,6 +71,8 @@ class QdrantService
 
     /**
      * Creates the concepts collection with a single default vector.
+     * Uses $this->vectorSize (resolved once in constructor) for consistency
+     * with the questions collection — both must use the same embedding model dimensions.
      */
     public function ensureConceptsCollection(): bool
     {
@@ -79,10 +81,10 @@ class QdrantService
             $this->get("/collections/{$this->conceptsCollection}");
             return true;
         } catch (\Exception $e) {
-            // Need to create
+            // Collection doesn't exist yet — create with same vector size as questions
             $payload = [
                 'vectors' => [
-                    'size' => (int) config('xavier.qdrant.vector_size', 3072),
+                    'size' => $this->vectorSize,  // Consistent with ensureQuestionsCollection
                     'distance' => 'Cosine'
                 ]
             ];
