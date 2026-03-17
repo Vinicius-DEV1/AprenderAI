@@ -63,6 +63,10 @@ if [ "$1" = "php-fpm" ] || [ -z "$1" ]; then
         fi
         
         echo "⚡ Otimizando cache do Laravel..."
+        # Limpa caches antigos antes de otimizar para evitar TypeErrors (comum em roteamento)
+        php artisan route:clear
+        php artisan config:clear
+        php artisan cache:clear
         php artisan optimize
     fi
     echo "✅ Pronto! Iniciando PHP-FPM..."
