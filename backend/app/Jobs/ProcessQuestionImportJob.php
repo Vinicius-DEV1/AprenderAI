@@ -65,7 +65,9 @@ class ProcessQuestionImportJob implements ShouldQueue
         public QuestionImport $import,
         public string $zipPath
     ) {
-        $this->onQueue('import');
+        // O ORQUESTRADOR roda na fila 'default' (ou 'essays') 
+        // para não competir com os chunks que vão encher a fila 'import'.
+        $this->onQueue('default');
     }
 
     /**
