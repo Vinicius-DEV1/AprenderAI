@@ -185,6 +185,7 @@ class AdminQuestionImportController extends Controller
                     'status' => 'reverted',
                     'pending_count' => 0,
                     'approved_count' => 0,
+                    'skipped_count' => 0,
                     'processed_questions' => 0,
                 ]);
             });

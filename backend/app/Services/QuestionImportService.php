@@ -515,6 +515,7 @@ class QuestionImportService
                     ]);
 
                     // Hash é idêntico: ignora completamente (pula para a próxima)
+                    $import->increment('skipped_count');
                     $stats['skipped']++;
                     $stats['total']++;
                     return; // Continua para a próxima iteração do foreach (saindo do transaction closure)

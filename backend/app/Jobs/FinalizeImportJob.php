@@ -96,6 +96,7 @@ class FinalizeImportJob implements ShouldQueue
                 'processed_questions'  => $processedCount,
                 'pending_count'        => $pendingCount,
                 'approved_count'       => $approvedCount,
+                'skipped_count'        => $import->skipped_count, // Already updated atomically
             ]);
 
             Log::info("[FinalizeImportJob] Import #{$import->id} CONCLUÍDO. Total: {$processedCount}, Pendentes: {$pendingCount}, Aprovadas: {$approvedCount}.");
