@@ -174,7 +174,7 @@ export default function ImportIndex() {
     };
 
     return (
-        <div className="py-12">
+        <div className="py-6">
             <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
 
                 {/* Header */}
@@ -315,57 +315,64 @@ export default function ImportIndex() {
                             <table className="min-w-full text-sm">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lote</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Arquivo</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Admin</th>
-                                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Total</th>
-                                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Pendentes</th>
-                                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aprovadas</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
-                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Lote</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Arquivo</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Admin</th>
+                                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Total</th>
+                                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Ignoradas</th>
+                                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Pendentes</th>
+                                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Aprovadas</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
+                                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {imports.map((imp: any, idx: number) => {
                                         const statusInfo = getStatusInfo(imp.status);
                                         return (
-                                            <tr key={idx} className="hover:bg-gray-50">
-                                                <td className="px-4 py-3 font-medium text-gray-800">{imp.batch_name || '—'}</td>
-                                                <td className="px-4 py-3 text-gray-500 text-xs">{imp.original_filename || '—'}</td>
-                                                <td className="px-4 py-3 text-gray-600">{imp.uploader?.name || '—'}</td>
-                                                <td className="px-4 py-3 text-center font-semibold text-gray-700">{imp.total_questions || 0}</td>
-                                                <td className="px-4 py-3 text-center">
+                                            <tr key={idx} className="hover:bg-gray-50 border-b border-gray-50">
+                                                <td className="px-4 py-1.5 font-medium text-gray-800">{imp.batch_name || '—'}</td>
+                                                <td className="px-4 py-1.5 text-gray-500 text-xs truncate max-w-[150px]" title={imp.original_filename}>{imp.original_filename || '—'}</td>
+                                                <td className="px-4 py-1.5 text-gray-600 truncate max-w-[120px]">{imp.uploader?.name || '—'}</td>
+                                                <td className="px-4 py-1.5 text-center font-semibold text-gray-700">{imp.total_questions || 0}</td>
+                                                <td className="px-4 py-1.5 text-center">
+                                                    {(imp.skipped_count || 0) > 0 ? (
+                                                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">{imp.skipped_count}</span>
+                                                    ) : (
+                                                        <span className="text-gray-300">0</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-1.5 text-center">
                                                     {(imp.pending_count || 0) > 0 ? (
                                                         <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">{imp.pending_count}</span>
                                                     ) : (
-                                                        <span className="text-gray-400">0</span>
+                                                        <span className="text-gray-300">0</span>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-3 text-center">
+                                                <td className="px-4 py-1.5 text-center">
                                                     <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">{imp.approved_count || 0}</span>
                                                 </td>
-                                                <td className="px-4 py-3">
+                                                <td className="px-4 py-1.5">
                                                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.class}`}>{statusInfo.label}</span>
                                                 </td>
-                                                <td className="px-4 py-3 text-xs text-gray-500">{imp.created_at ? new Date(imp.created_at).toLocaleDateString() : 'N/A'}</td>
-                                                <td className="px-4 py-3 text-right">
+                                                <td className="px-4 py-1.5 text-xs text-gray-500">{imp.created_at ? new Date(imp.created_at).toLocaleDateString() : 'N/A'}</td>
+                                                <td className="px-4 py-1.5 text-right">
                                                     <div className="flex items-center gap-2 justify-end">
-                                                        <Link to={`/admin/import/${imp.id}/summary`} className="px-3 py-1 bg-indigo-50 text-indigo-600 border border-indigo-200 text-xs rounded hover:bg-indigo-100 font-medium whitespace-nowrap">
-                                                            Visualizar Importação
+                                                        <Link to={`/admin/import/${imp.id}/summary`} className="px-2 py-1 bg-indigo-50 text-indigo-600 border border-indigo-200 text-[10px] rounded hover:bg-indigo-100 font-medium whitespace-nowrap uppercase tracking-wider">
+                                                            Visualizar
                                                         </Link>
                                                         {imp.status !== 'reverted' && (imp.pending_count || 0) > 0 && (
-                                                            <Link to={`/admin/import/review?import_id=${imp.id}`} className="px-3 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600 font-medium">
+                                                            <Link to={`/admin/import/review?import_id=${imp.id}`} className="px-2 py-1 bg-yellow-500 text-white text-[10px] rounded hover:bg-yellow-600 font-medium uppercase tracking-wider">
                                                                 Revisar
                                                             </Link>
                                                         )}
                                                         {imp.status !== 'reverted' && (
                                                             <button
                                                                 onClick={() => handleDeleteBatch(imp.id)}
-                                                                className="px-3 py-1 bg-red-50 text-red-600 text-xs rounded hover:bg-red-100 font-medium flex items-center gap-1 border border-red-200 transition-colors whitespace-nowrap"
+                                                                className="px-2 py-1 bg-red-50 text-red-600 text-[10px] rounded hover:bg-red-100 font-medium flex items-center gap-1 border border-red-200 transition-colors whitespace-nowrap uppercase tracking-wider"
                                                                 title="Desfazer e excluir pacote completo"
                                                             >
-                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                                                 Desfazer
                                                             </button>
                                                         )}
