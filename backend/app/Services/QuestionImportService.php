@@ -507,6 +507,13 @@ class QuestionImportService
                 $existingQuestion = Question::where('external_id', $externalId)->first();
 
                 if ($existingQuestion && $existingQuestion->content_hash !== null && $existingQuestion->content_hash === $incomingHash) {
+                    // --- FIX: Registro de auditoria mesmo para questões puladas ---
+                    // Isso garante que as duplicatas contem para o progresso total no FinalizeImportJob.
+                    \App\Models\QuestionImportItem::firstOrCreate([
+                        'import_id'  => $import->id,
+                        'question_id' => $existingQuestion->id,
+                    ]);
+
                     // Hash é idêntico: ignora completamente (pula para a próxima)
                     $stats['skipped']++;
                     $stats['total']++;
