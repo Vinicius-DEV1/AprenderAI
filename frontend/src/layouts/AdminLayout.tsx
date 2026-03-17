@@ -14,6 +14,7 @@ export default function AdminLayout() {
     const ui = useUIStore();
     const queryClient = useQueryClient();
     const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const { user, isAuthenticated, isLoading } = useAuthStore();
 
@@ -63,12 +64,49 @@ export default function AdminLayout() {
     });
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 text-slate-800 font-sans antialiased h-full">
-            <div className="flex">
-                {/* Sidebar */}
-                <aside className="w-64 bg-white shadow-lg min-h-screen fixed lg:static z-50">
-                    <div className="p-6">
-                        <div className="flex items-center gap-3 mb-8">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 text-slate-800 font-sans antialiased flex flex-col lg:flex-row h-full">
+            {/* MOBILE HEADER */}
+            <header className="lg:hidden flex items-center justify-between h-16 px-4 bg-white shadow-sm border-b border-gray-100 z-40 sticky top-0">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setIsSidebarOpen(true)}
+                        className="p-2 -ml-2 text-gray-500 hover:text-indigo-600 transition-colors"
+                        aria-label="Abrir menu"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                            </svg>
+                        </div>
+                        <span className="font-bold text-gray-800 text-sm truncate max-w-[120px]">{config.appName || 'Admin'}</span>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <NotificationBell />
+                    <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">
+                        {user?.name?.substring(0, 1)?.toUpperCase() || 'A'}
+                    </div>
+                </div>
+            </header>
+
+            {/* Backdrop Mobile */}
+            {isSidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 lg:hidden"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
+            {/* Sidebar */}
+            <aside className={`w-64 bg-white shadow-lg fixed lg:sticky lg:top-0 h-screen z-[60] transform transition-transform duration-300 ease-in-out lg:translate-x-0 overflow-y-auto ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                <div className="p-6">
+                    <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
@@ -79,6 +117,15 @@ export default function AdminLayout() {
                                 <p className="text-xs text-gray-500">{config.appName || 'AprenderAI'}</p>
                             </div>
                         </div>
+                        <button
+                            onClick={() => setIsSidebarOpen(false)}
+                            className="lg:hidden p-2 text-gray-400 hover:text-gray-600"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
 
                         <nav className="space-y-6">
                             {/* SEÇÃO: OPERACIONAL */}
@@ -282,20 +329,16 @@ export default function AdminLayout() {
                 </aside>
 
                 {/* Main Content */}
-                <main className="flex-1 p-4 md:p-6 lg:ml-0">
-                    <div className="lg:hidden mb-4">
-                        <NavLink to="/dashboard" className="text-gray-500 flex items-center gap-2 text-sm font-medium">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                            Voltar ao App
-                        </NavLink>
-                    </div>
-                    <div className="flex justify-between items-start mb-8">
+                <main className="flex-1 p-4 md:p-6 min-w-0">
+                    <div className="flex justify-between items-start mb-6 lg:mb-8">
                         <header>
                             {/* Slot for Header/Title */}
                         </header>
 
-                        {/* Notifications Bell */}
-                        <NotificationBell />
+                        {/* Notifications Bell (Desktop only, as mobile header has it) */}
+                        <div className="hidden lg:block">
+                            <NotificationBell />
+                        </div>
                     </div>
 
                     {/* Success/Error Toast */}
@@ -312,9 +355,10 @@ export default function AdminLayout() {
                         </div>
                     )}
 
-                    <Outlet />
+                    <div className="max-w-7xl mx-auto">
+                        <Outlet />
+                    </div>
                 </main>
-            </div>
 
             {/* Global AI Batch Modal */}
             <AdminBatchModal

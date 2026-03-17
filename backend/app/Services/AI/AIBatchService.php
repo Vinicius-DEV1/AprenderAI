@@ -35,9 +35,11 @@ class AIBatchService
             $data = $result['data'] ?? [];
             $usage = $result['usage'] ?? ['input_tokens' => 0, 'output_tokens' => 0];
             $cost = $result['estimated_cost'] ?? 0;
+            $apiKeyName = $result['api_key_name'] ?? 'Unknown';
             $appliedData = $this->applyResults($questions, $data, $type, $reprocess, $batchId);
             $appliedData['usage'] = $usage;
             $appliedData['estimated_cost'] = $cost;
+            $appliedData['api_key_name'] = $apiKeyName;
 
             \Illuminate\Support\Facades\DB::flushQueryLog();
             if (gc_enabled())
@@ -153,7 +155,8 @@ class AIBatchService
         $prompt .= "     * `no_statement` — tem alternativas mas enunciado vazio ou ausente\n";
         $prompt .= "     * `wrong_answer` — gabarito inválido: nenhum correto, múltiplos corretos, ou gabarito inexistente nas alternativas\n";
         $prompt .= "     * `has_image` — questão contém imagem (requer revisão visual humana)\n";
-        $prompt .= "     * `missing_image` — enunciado referencia imagem (ex: 'observe a figura', 'analise o gráfico', 'conforme a imagem', 'veja o quadro') mas nenhuma imagem foi fornecida\n";
+        $prompt .= "     * `missing_image` — enunciado referencia imagem (ex: 'observe a figura', 'analise o gráfico', 'conforme a imagem', 'veja o quadro') mas nenhuma imagem foi fornecida.\n";
+        $prompt .= "     * `ERRO: IMAGEM NÃO CARREGADA/ALUCINAÇÃO DE TEXTO` — detectado padrão de descrição de imagem em colchetes ou parênteses (ex: [Imagem de...], [Figura...]) E a tag de mídia real `![image](...)` está ausente no enunciado, apesar do contexto sugerir análise visual.\n";
         $prompt .= "     * `missing_support_text` — contexto indica que deveria haver texto-base (questão de interpretação, filosofia, sociologia, etc.) mas não há\n";
         $prompt .= "   - `quality_score`: inteiro 0-100 representando qualidade pedagógica.\n";
         $prompt .= "     Fatores que reduzem o score: alternativas absurdas, enunciado ambíguo, distratores fracos, inconsistência de dificuldade, gabarito duvidoso.\n";

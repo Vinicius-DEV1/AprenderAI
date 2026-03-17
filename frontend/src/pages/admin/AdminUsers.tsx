@@ -30,13 +30,13 @@ export default function AdminUsers() {
     return (
         <div className="p-6 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500 bg-gray-50/30 min-h-screen">
             {/* Header */}
-            <div className="flex justify-between items-end">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">Gestão de Alunos</h1>
-                    <p className="text-gray-500 font-medium">Controle de acesso, permissões e auditoria de consumo de IA.</p>
+                    <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Gestão de Alunos</h1>
+                    <p className="text-sm md:text-base text-gray-500 font-medium text-balance">Controle de acesso, permissões e auditoria de consumo de IA.</p>
                 </div>
-                <div className="flex gap-4">
-                    <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100 flex flex-col items-end">
+                <div className="flex gap-4 w-full md:w-auto">
+                    <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100 flex flex-col items-end flex-1 md:flex-initial">
                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total de Alunos</span>
                         <span className="text-xl font-black text-indigo-600">{meta.total}</span>
                     </div>
@@ -44,8 +44,8 @@ export default function AdminUsers() {
             </div>
 
             {/* Premium Filters Bar */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-wrap gap-4 items-center">
-                <div className="flex-1 min-w-[300px] relative">
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-2 lg:flex gap-4 items-center">
+                <div className="lg:flex-1 relative order-1">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
                     <input
                         type="text"
@@ -56,7 +56,7 @@ export default function AdminUsers() {
                     />
                 </div>
                 <select
-                    className="px-4 py-3 bg-gray-50/50 rounded-xl text-sm font-bold border border-gray-100 focus:ring-2 focus:ring-indigo-500"
+                    className="w-full lg:w-auto px-4 py-3 bg-gray-50/50 rounded-xl text-sm font-bold border border-gray-100 focus:ring-2 focus:ring-indigo-500 order-2"
                     value={role}
                     onChange={e => setRole(e.target.value)}
                 >
@@ -66,7 +66,7 @@ export default function AdminUsers() {
                     <option value="editor">Editor</option>
                 </select>
                 <select
-                    className="px-4 py-3 bg-gray-50/50 rounded-xl text-sm font-bold border border-gray-100 focus:ring-2 focus:ring-indigo-500"
+                    className="w-full lg:w-auto px-4 py-3 bg-gray-50/50 rounded-xl text-sm font-bold border border-gray-100 focus:ring-2 focus:ring-indigo-500 order-3"
                     value={status}
                     onChange={e => setStatus(e.target.value)}
                 >
@@ -81,14 +81,14 @@ export default function AdminUsers() {
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead className="bg-gray-50 border-b border-gray-200">
-                            <tr>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Usuário</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Plano</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Uso IA</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Cadastro</th>
-                                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Ações</th>
-                            </tr>
+                        <tr>
+                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Usuário</th>
+                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                            <th className="hidden lg:table-cell px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Plano</th>
+                            <th className="hidden md:table-cell px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Uso IA</th>
+                            <th className="hidden xl:table-cell px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Cadastro</th>
+                            <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Ações</th>
+                        </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
                             <AnimatePresence mode="popLayout">
@@ -140,10 +140,10 @@ export default function AdminUsers() {
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap">
                                             <span className="text-sm text-gray-600">{u.plan?.name || 'Sem Plano'}</span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm text-gray-900 font-bold">
                                                 {u.ai_questions_count || 0} <span className="text-gray-400 text-xs font-normal">/ {u.plan?.max_ai_questions || '∞'}</span>
                                             </div>
@@ -157,7 +157,7 @@ export default function AdminUsers() {
                                                 })()}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td className="hidden xl:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {new Date(u.created_at).toLocaleDateString('pt-BR')}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

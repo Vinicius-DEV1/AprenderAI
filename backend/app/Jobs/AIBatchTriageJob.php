@@ -102,6 +102,11 @@ class AIBatchTriageJob implements ShouldQueue
 
             $result = $batchService->processBatch($questions, $this->type, $this->model, $this->batchId, $this->reprocess, $this->userId);
 
+            $batchStats = $result['stats'] ?? [];
+            if (isset($result['api_key_name'])) {
+                $batchStats['api_usage'] = [$result['api_key_name'] => 1];
+            }
+
             $this->updateProgress(
                 $result['applied'],
                 count($result['errors']),
@@ -110,7 +115,7 @@ class AIBatchTriageJob implements ShouldQueue
                 $result['usage']['input_tokens'] ?? 0,
                 $result['usage']['output_tokens'] ?? 0,
                 $result['estimated_cost'] ?? 0,
-                $result['stats'] ?? []
+                $batchStats
             );
 
             Log::info("[AIBATCH] Batch job finished", [
@@ -206,7 +211,16 @@ class AIBatchTriageJob implements ShouldQueue
 
             // Incrementa os stats
             foreach ($stats as $sKey => $val) {
-                $data['stats'][$sKey] = ($data['stats'][$sKey] ?? 0) + $val;
+                if ($sKey === 'api_usage' && is_array($val)) {
+                    if (!isset($data['stats'][$sKey]) || !is_array($data['stats'][$sKey])) {
+                        $data['stats'][$sKey] = [];
+                    }
+                    foreach ($val as $keyName => $count) {
+                        $data['stats'][$sKey][$keyName] = ($data['stats'][$sKey][$keyName] ?? 0) + $count;
+                    }
+                } else {
+                    $data['stats'][$sKey] = ($data['stats'][$sKey] ?? 0) + (is_numeric($val) ? $val : 0);
+                }
             }
 
             $data['processed'] += $applied;

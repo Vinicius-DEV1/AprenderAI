@@ -144,9 +144,9 @@ export default function AdminSubscriptions() {
                                     <thead className="bg-gray-50 text-gray-400 font-bold uppercase text-[10px] tracking-wider">
                                         <tr>
                                             <th className="px-6 py-4">Usuário</th>
-                                            <th className="px-6 py-4">Plano</th>
+                                            <th className="hidden sm:table-cell px-6 py-4">Plano</th>
                                             <th className="px-6 py-4">Status</th>
-                                            <th className="px-6 py-4">Data</th>
+                                            <th className="hidden lg:table-cell px-6 py-4">Data</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
@@ -156,7 +156,7 @@ export default function AdminSubscriptions() {
                                                     <div className="font-bold text-gray-800">{sub.user_name}</div>
                                                     <div className="text-xs text-gray-500">{sub.user_email}</div>
                                                 </td>
-                                                <td className="px-6 py-4">
+                                                <td className="hidden sm:table-cell px-6 py-4">
                                                     <div className="flex items-center gap-2">
                                                         <span className="font-bold text-gray-700 bg-gray-100 px-2 py-1 rounded">{sub.plan_name}</span>
                                                         {sub.is_sandbox && (
@@ -173,7 +173,7 @@ export default function AdminSubscriptions() {
                                                         {sub.status === 'active' ? 'Ativo' : sub.status}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 text-xs text-gray-500 font-mono">
+                                                <td className="hidden lg:table-cell px-6 py-4 text-xs text-gray-500 font-mono">
                                                     {new Date(sub.created_at).toLocaleString('pt-BR')}
                                                 </td>
                                             </tr>

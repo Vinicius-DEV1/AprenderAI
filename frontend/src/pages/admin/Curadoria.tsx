@@ -27,7 +27,7 @@ export default function Curadoria() {
                 </div>
 
                 {/* Overview Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                     {/* Card: Triagem IA */}
                     <div className="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-purple-500">
                         <div className="flex items-center justify-between mb-4">
