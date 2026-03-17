@@ -16,7 +16,7 @@ return new class extends Migration {
     public function down(): void
     {
         Schema::table('question_imports', function (Blueprint $table) {
-            $table->dropColumn('skipped_count');
+            $table->dropColumn(['skipped_count', 'updated_count']);
         });
     }
 };
