@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\FiltersAdmins;
+
 
 /**
  * Tracks every meaningful event in the checkout journey.
@@ -11,6 +13,9 @@ use Illuminate\Database\Eloquent\Model;
  */
 class CheckoutEvent extends Model
 {
+    use FiltersAdmins;
+
+
     protected $fillable = [
         'user_id',
         'session_id',

@@ -3,9 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\FiltersAdmins;
+
 
 class PlatformEvent extends Model
 {
+    use FiltersAdmins;
+
     protected $fillable = [
         'user_id',
         'session_token',

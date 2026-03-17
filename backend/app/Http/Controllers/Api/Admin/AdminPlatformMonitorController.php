@@ -46,35 +46,60 @@ class AdminPlatformMonitorController extends Controller
             $weekAgo = Carbon::today()->subDays(7);
 
             // Users who logged in today (from user_logs)
-            $usersToday = UserLog::where('action', 'login')
+            $usersToday = UserLog::withoutAdmins()->where('action', 'login')
                 ->whereDate('created_at', $today)
                 ->distinct('user_id')
                 ->count('user_id');
 
+
             // Users currently online (heartbeat within last 3 minutes)
-            $onlineNow = PlatformHeartbeat::where('pinged_at', '>=', $this->onlineThreshold())
+            $onlineNow = PlatformHeartbeat::withoutAdmins()->where('pinged_at', '>=', $this->onlineThreshold())
                 ->count();
 
+
             // Questions answered today
-            $questionsToday = UserQuestionAnswer::whereDate('created_at', $today)->count();
+            $questionsToday = UserQuestionAnswer::withoutAdmins()->whereDate('created_at', $today)->count();
+
 
             // Simulations created today
-            $simulationsToday = Simulation::whereDate('created_at', $today)->count();
+            $simulationsToday = Simulation::withoutAdmins()->whereDate('created_at', $today)->count();
+
 
             // Essays created today
-            $essaysToday = Essay::whereDate('created_at', $today)->count();
+            $essaysToday = Essay::withoutAdmins()->whereDate('created_at', $today)->count();
+
 
             // Average session duration this week (from platform_sessions)
-            $avgSessionSeconds = PlatformSession::whereNotNull('ended_at')
+            $avgSessionSeconds = PlatformSession::withoutAdmins()->whereNotNull('ended_at')
                 ->where('started_at', '>=', $weekAgo)
                 ->selectRaw('AVG(TIMESTAMPDIFF(SECOND, started_at, ended_at)) as avg_seconds')
                 ->value('avg_seconds');
 
+
             // Total users on platform
-            $totalUsers = User::count();
+            $totalUsers = User::withoutAdmins()->count();
+
 
             // Total sessions started today
-            $sessionsToday = PlatformSession::whereDate('started_at', $today)->count();
+            $sessionsToday = PlatformSession::withoutAdmins()->whereDate('started_at', $today)->count();
+
+            // Top Engaged Users this week (by total session duration)
+            $topEngagedUsers = PlatformSession::withoutAdmins()
+                ->where('started_at', '>=', $weekAgo)
+                ->whereNotNull('ended_at')
+                ->select('user_id', DB::raw('SUM(TIMESTAMPDIFF(SECOND, started_at, ended_at)) as total_seconds'))
+                ->groupBy('user_id')
+                ->with('user:id,name,email,avatar_url')
+                ->orderByDesc('total_seconds')
+                ->take(5)
+                ->get()
+                ->map(fn($row) => [
+                    'user_id'       => $row->user_id,
+                    'name'          => $row->user->name ?? 'Desconhecido',
+                    'email'         => $row->user->email ?? '',
+                    'avatar_url'    => $row->user->avatar_url ?? null,
+                    'total_minutes' => (int) round($row->total_seconds / 60),
+                ]);
 
             return response()->json([
                 'users_today'        => $usersToday,
@@ -85,6 +110,7 @@ class AdminPlatformMonitorController extends Controller
                 'avg_session_minutes'=> $avgSessionSeconds ? round($avgSessionSeconds / 60, 1) : 0,
                 'total_users'        => $totalUsers,
                 'sessions_today'     => $sessionsToday,
+                'top_engaged_users'  => $topEngagedUsers,
             ]);
         });
     }
@@ -101,10 +127,11 @@ class AdminPlatformMonitorController extends Controller
     {
         $threshold = $this->onlineThreshold();
 
-        $heartbeats = PlatformHeartbeat::where('pinged_at', '>=', $threshold)
+        $heartbeats = PlatformHeartbeat::withoutAdmins()->where('pinged_at', '>=', $threshold)
             ->with('user:id,name,email,avatar_url')
             ->orderByDesc('pinged_at')
             ->get();
+
 
         $result = $heartbeats->map(function ($hb) {
             // Find associated session
@@ -152,25 +179,27 @@ class AdminPlatformMonitorController extends Controller
         // Summary counts (cached briefly)
         $counts = Cache::remember("platform_logins_counts", 60, function () {
             return [
-                'today' => UserLog::where('action', 'login')
+                'today' => UserLog::withoutAdmins()->where('action', 'login')
                     ->whereDate('created_at', Carbon::today())
                     ->count(),
-                'week'  => UserLog::where('action', 'login')
+                'week'  => UserLog::withoutAdmins()->where('action', 'login')
                     ->where('created_at', '>=', Carbon::today()->subDays(7))
                     ->count(),
-                'month' => UserLog::where('action', 'login')
+                'month' => UserLog::withoutAdmins()->where('action', 'login')
                     ->where('created_at', '>=', Carbon::today()->subDays(30))
                     ->count(),
             ];
         });
 
+
         // Detail list for selected period
-        $logins = UserLog::with('user:id,name,email,avatar_url')
+        $logins = UserLog::withoutAdmins()->with('user:id,name,email,avatar_url')
             ->where('action', 'login')
             ->where('created_at', '>=', $start)
             ->orderByDesc('created_at')
             ->limit(200)
             ->get()
+
             ->map(function ($log) {
                 // Find associated session
                 $session = PlatformSession::where('user_id', $log->user_id)
@@ -223,24 +252,27 @@ class AdminPlatformMonitorController extends Controller
         // Summary counts
         $counts = Cache::remember("platform_questions_counts", 60, function () {
             return [
-                'today' => UserQuestionAnswer::whereDate('created_at', Carbon::today())->count(),
-                'week'  => UserQuestionAnswer::where('created_at', '>=', Carbon::today()->subDays(7))->count(),
-                'month' => UserQuestionAnswer::where('created_at', '>=', Carbon::today()->subDays(30))->count(),
+                'today' => UserQuestionAnswer::withoutAdmins()->whereDate('created_at', Carbon::today())->count(),
+                'week'  => UserQuestionAnswer::withoutAdmins()->where('created_at', '>=', Carbon::today()->subDays(7))->count(),
+                'month' => UserQuestionAnswer::withoutAdmins()->where('created_at', '>=', Carbon::today()->subDays(30))->count(),
             ];
         });
 
+
         // Aggregate stats for period
-        $aggregate = UserQuestionAnswer::where('created_at', '>=', $start)
+        $aggregate = UserQuestionAnswer::withoutAdmins()->where('created_at', '>=', $start)
             ->selectRaw('COUNT(*) as total, SUM(is_correct) as correct, SUM(IF(is_correct=0,1,0)) as wrong')
             ->first();
+
 
         $total   = (int) ($aggregate->total ?? 0);
         $correct = (int) ($aggregate->correct ?? 0);
         $wrong   = (int) ($aggregate->wrong ?? 0);
 
         // Per-user breakdown
-        $perUser = UserQuestionAnswer::where('created_at', '>=', $start)
+        $perUser = UserQuestionAnswer::withoutAdmins()->where('created_at', '>=', $start)
             ->select('user_id',
+
                 DB::raw('COUNT(*) as total'),
                 DB::raw('SUM(is_correct) as correct'),
                 DB::raw('SUM(IF(is_correct=0,1,0)) as wrong')
@@ -297,21 +329,23 @@ class AdminPlatformMonitorController extends Controller
 
         $counts = Cache::remember("platform_simulations_counts", 60, function () {
             return [
-                'today' => Simulation::whereDate('created_at', Carbon::today())->count(),
-                'week'  => Simulation::where('created_at', '>=', Carbon::today()->subDays(7))->count(),
-                'month' => Simulation::where('created_at', '>=', Carbon::today()->subDays(30))->count(),
+                'today' => Simulation::withoutAdmins()->whereDate('created_at', Carbon::today())->count(),
+                'week'  => Simulation::withoutAdmins()->where('created_at', '>=', Carbon::today()->subDays(7))->count(),
+                'month' => Simulation::withoutAdmins()->where('created_at', '>=', Carbon::today()->subDays(30))->count(),
             ];
         });
 
-        $created  = Simulation::where('created_at', '>=', $start)->count();
-        $started  = Simulation::where('created_at', '>=', $start)->whereNotNull('started_at')->count();
-        $finished = Simulation::where('created_at', '>=', $start)->whereNotNull('finished_at')->count();
 
-        $list = Simulation::where('created_at', '>=', $start)
+        $created  = Simulation::withoutAdmins()->where('created_at', '>=', $start)->count();
+        $started  = Simulation::withoutAdmins()->where('created_at', '>=', $start)->whereNotNull('started_at')->count();
+        $finished = Simulation::withoutAdmins()->where('created_at', '>=', $start)->whereNotNull('finished_at')->count();
+
+        $list = Simulation::withoutAdmins()->where('created_at', '>=', $start)
             ->with('user:id,name,email,avatar_url')
             ->orderByDesc('created_at')
             ->limit(100)
             ->get()
+
             ->map(function ($sim) {
                 return [
                     'id'         => $sim->id,
@@ -361,21 +395,23 @@ class AdminPlatformMonitorController extends Controller
 
         $counts = Cache::remember("platform_essays_counts", 60, function () {
             return [
-                'today' => Essay::whereDate('created_at', Carbon::today())->count(),
-                'week'  => Essay::where('created_at', '>=', Carbon::today()->subDays(7))->count(),
-                'month' => Essay::where('created_at', '>=', Carbon::today()->subDays(30))->count(),
+                'today' => Essay::withoutAdmins()->whereDate('created_at', Carbon::today())->count(),
+                'week'  => Essay::withoutAdmins()->where('created_at', '>=', Carbon::today()->subDays(7))->count(),
+                'month' => Essay::withoutAdmins()->where('created_at', '>=', Carbon::today()->subDays(30))->count(),
             ];
         });
 
-        $created   = Essay::where('created_at', '>=', $start)->count();
-        $submitted = Essay::where('created_at', '>=', $start)->whereNotNull('submitted_at')->count();
-        $evaluated = Essay::where('created_at', '>=', $start)->whereNotNull('evaluated_at')->count();
 
-        $list = Essay::where('created_at', '>=', $start)
+        $created   = Essay::withoutAdmins()->where('created_at', '>=', $start)->count();
+        $submitted = Essay::withoutAdmins()->where('created_at', '>=', $start)->whereNotNull('submitted_at')->count();
+        $evaluated = Essay::withoutAdmins()->where('created_at', '>=', $start)->whereNotNull('evaluated_at')->count();
+
+        $list = Essay::withoutAdmins()->where('created_at', '>=', $start)
             ->with('user:id,name,email,avatar_url')
             ->orderByDesc('created_at')
             ->limit(100)
             ->get()
+
             ->map(function ($essay) {
                 $timeSpent = null;
                 if ($essay->submitted_at && $essay->created_at) {
@@ -419,10 +455,11 @@ class AdminPlatformMonitorController extends Controller
      */
     public function activity()
     {
-        $events = PlatformEvent::with('user:id,name,email,avatar_url')
+        $events = PlatformEvent::withoutAdmins()->with('user:id,name,email,avatar_url')
             ->orderByDesc('created_at')
             ->limit(50)
             ->get()
+
             ->map(function ($e) {
                 return [
                     'id'           => $e->id,
@@ -440,12 +477,13 @@ class AdminPlatformMonitorController extends Controller
             });
 
         // Complement with recent logins not yet in platform_events
-        $recentLogins = UserLog::with('user:id,name,email,avatar_url')
+        $recentLogins = UserLog::withoutAdmins()->with('user:id,name,email,avatar_url')
             ->where('action', 'login')
             ->where('created_at', '>=', now()->subHours(24))
             ->orderByDesc('created_at')
             ->limit(20)
             ->get()
+
             ->map(function ($log) {
                 return [
                     'id'          => 'login_' . $log->id,
@@ -553,6 +591,20 @@ class AdminPlatformMonitorController extends Controller
             ->take(60)
             ->values();
 
+        // Page distribution (time spent per page)
+        $pageDistribution = PlatformEvent::withoutAdmins()
+            ->where('user_id', $id)
+            ->whereNotNull('duration_seconds')
+            ->select('page', DB::raw('SUM(duration_seconds) as total_seconds'))
+            ->groupBy('page')
+            ->orderByDesc('total_seconds')
+            ->get()
+            ->map(fn($row) => [
+                'page'          => $row->page ?? 'Geral/Outros',
+                'total_seconds' => (int) $row->total_seconds,
+                'total_minutes' => (int) round($row->total_seconds / 60),
+            ]);
+
         return response()->json([
             'user' => [
                 'id'         => $user->id,
@@ -578,7 +630,9 @@ class AdminPlatformMonitorController extends Controller
                 'total_time_minutes' => $totalSeconds ? (int) round($totalSeconds / 60) : 0,
                 'active_days_30'     => (int) ($activeDays ?? 0),
             ],
-            'timeline' => $fullTimeline,
+            'timeline'          => $fullTimeline,
+            'page_distribution' => $pageDistribution,
         ]);
+
     }
 }

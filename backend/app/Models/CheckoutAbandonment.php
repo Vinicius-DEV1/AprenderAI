@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\FiltersAdmins;
+
 
 /**
  * Tracks when users start but do not complete a checkout.
@@ -11,6 +13,9 @@ use Illuminate\Database\Eloquent\Model;
  */
 class CheckoutAbandonment extends Model
 {
+    use FiltersAdmins;
+
+
     protected $table = 'checkout_abandonment';
 
     protected $fillable = [

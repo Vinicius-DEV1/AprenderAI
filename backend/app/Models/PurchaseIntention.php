@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\FiltersAdmins;
+
 
 /**
  * Tracks each click on a plan subscription button and follows through to conversion.
@@ -10,6 +12,9 @@ use Illuminate\Database\Eloquent\Model;
  */
 class PurchaseIntention extends Model
 {
+    use FiltersAdmins;
+
+
     protected $fillable = [
         'user_id',
         'plan_id',
