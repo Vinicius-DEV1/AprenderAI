@@ -37,6 +37,7 @@ class Question extends Model
         'source_url',
         'extracted_at',
         'last_scraped_at',
+        'content_hash',
         'scraper_update_count',
     ];
 
