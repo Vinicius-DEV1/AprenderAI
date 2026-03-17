@@ -156,10 +156,10 @@ except:
     print(0)
 " 2>/dev/null || echo "0")
 
-        if [ "$TOTAL_COUNT" -ge 2 ]; then
-            log_success "Novo container saudável após ${ELAPSED}s! (${HEALTHY_COUNT} healthy de ${TOTAL_COUNT})"
-            break
-        fi
+    if [ "$HEALTHY_COUNT" -ge 2 ]; then
+        log_success "Novo container saudável após ${ELAPSED}s! (${HEALTHY_COUNT} healthy de ${TOTAL_COUNT})"
+        break
+    fi
     fi
 
     printf "\r${YELLOW}  ⏳ Aguardando... ${ELAPSED}s/${TIMEOUT}s (healthy: ${HEALTHY_COUNT})${NC}"
