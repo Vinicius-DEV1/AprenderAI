@@ -528,7 +528,7 @@ class QuestionImportService
                     $incomingHash = $qData['content_hash'] ?? null;
 
                     // 2. O "Smart Upsert"
-                    $existingQuestion = Question::where('external_id', $externalId)->first();
+                    $existingQuestion = Question::withTrashed()->where('external_id', $externalId)->first();
 
                     if ($existingQuestion && $existingQuestion->content_hash !== null && $existingQuestion->content_hash === $incomingHash) {
                         \App\Models\QuestionImportItem::firstOrCreate([
@@ -574,6 +574,12 @@ class QuestionImportService
                     ];
 
                     if ($existingQuestion) {
+                        // Se a questão estava na lixeira (ex: de um revert anterior), restauramos ela agora
+                        // para que ela volte a ser visível e possa ser atualizada.
+                        if ($existingQuestion->trashed()) {
+                            $existingQuestion->restore();
+                        }
+
                         $lastScraped = $existingQuestion->last_scraped_at;
                         if ($existingQuestion->updated_at && $lastScraped && $existingQuestion->updated_at->gt($lastScraped)) {
                             $stats['skipped']++;
