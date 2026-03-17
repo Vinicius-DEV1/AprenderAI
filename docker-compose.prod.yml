@@ -36,7 +36,7 @@ services:
       test: "test -f /tmp/app_ready || exit 1"
       interval: 5s
       timeout: 3s
-      retries: 30        # até 150s de espera total
+      retries: 80        # até 400s de espera total
       start_period: 20s  # aguarda o processo PHP iniciar antes do primeiro teste
     deploy:
       resources:

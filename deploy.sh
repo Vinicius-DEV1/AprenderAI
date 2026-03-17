@@ -37,7 +37,7 @@ set -euo pipefail
 COMPOSE_FILE="docker-compose.prod.yml"
 COMPOSE="docker compose -f $COMPOSE_FILE"
 APP_SERVICE="app"
-TIMEOUT=180  # segundos máximos aguardando healthcheck
+TIMEOUT=400  # Aumentado para 400s (para cobrir migrations longas)
 
 # Cores para output
 RED='\033[0;31m'
@@ -121,8 +121,11 @@ data = sys.stdin.read().strip()
 if not data:
     print(0); exit()
 try:
-    items = json.loads(data)
-    if isinstance(items, dict): items = [items]
+    try:
+        items = json.loads(data)
+        if isinstance(items, dict): items = [items]
+    except json.JSONDecodeError:
+        items = [json.loads(line) for line in data.splitlines() if line.strip()]
     healthy = 0
     for i in items:
         status = str(i.get('Status', '')).lower()
@@ -143,8 +146,11 @@ data = sys.stdin.read().strip()
 if not data:
     print(0); exit()
 try:
-    items = json.loads(data)
-    if isinstance(items, dict): items = [items]
+    try:
+        items = json.loads(data)
+        if isinstance(items, dict): items = [items]
+    except json.JSONDecodeError:
+        items = [json.loads(line) for line in data.splitlines() if line.strip()]
     print(len(items))
 except:
     print(0)
