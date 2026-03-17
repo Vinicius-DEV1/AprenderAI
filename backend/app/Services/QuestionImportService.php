@@ -685,10 +685,8 @@ class QuestionImportService
                 }
             });
 
-            // Atualização fragmentada para Feedback Visual da Barra de Progresso
-            if ($stats['total'] % 50 === 0) {
-                $import->update(['processed_questions' => $stats['total']]);
-            }
+            // Omitido: atualização fragmentada removida para evitar race conditions em modo paralelo.
+            // O progresso agora é atualizado atomicamente ao final de cada chunk no processChunk().
         }
 
         return $stats;
