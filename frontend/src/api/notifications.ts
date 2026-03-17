@@ -12,3 +12,13 @@ export const adminSendNotification = (data: {
     type?: 'info' | 'success' | 'warning' | 'tip';
     action_url?: string;
 }) => api.post('/api/v1/admin/notifications/send', data);
+
+// User endpoints
+export const getNotifications = () =>
+    api.get('/api/v1/notifications');
+
+export const markNotificationRead = (id: number) =>
+    api.post(`/api/v1/notifications/${id}/read`);
+
+export const markAllNotificationsRead = () =>
+    api.post('/api/v1/notifications/read-all');
