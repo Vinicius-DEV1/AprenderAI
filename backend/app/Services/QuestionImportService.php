@@ -493,212 +493,167 @@ class QuestionImportService
         }
 
         foreach ($questions as $qData) {
-            DB::transaction(function () use ($qData, $imageMap, $import, $uploader, &$stats) {
-                // 1. A Nova Chave Única (Fim da Duplicação)
-                // Usando organization + year + institution + role + number
-                $uniqueString = trim($qData['organization'] ?? '') . '|' .
-                    trim($qData['year'] ?? '') . '|' .
-                    trim($qData['institution'] ?? '') . '|' .
-                    trim($qData['role'] ?? '') . '|' .
-                    trim($qData['number'] ?? '');
+            $externalId = 'n/a';
+            try {
+                DB::transaction(function () use ($qData, $imageMap, $import, $uploader, &$stats, &$externalId) {
+                    // 1. A Nova Chave Única (Fim da Duplicação)
+                    $uniqueString = trim($qData['organization'] ?? '') . '|' .
+                        trim($qData['year'] ?? '') . '|' .
+                        trim($qData['institution'] ?? '') . '|' .
+                        trim($qData['role'] ?? '') . '|' .
+                        trim($qData['number'] ?? '');
 
-                $externalId = md5($uniqueString);
-                $incomingHash = $qData['content_hash'] ?? null;
+                    $externalId = md5($uniqueString);
+                    $incomingHash = $qData['content_hash'] ?? null;
 
-                // 2. O "Smart Upsert" (Otimização de Banco)
-                $existingQuestion = Question::where('external_id', $externalId)->first();
+                    // 2. O "Smart Upsert"
+                    $existingQuestion = Question::where('external_id', $externalId)->first();
 
-                if ($existingQuestion && $existingQuestion->content_hash !== null && $existingQuestion->content_hash === $incomingHash) {
-                    // --- FIX: Registro de auditoria mesmo para questões puladas ---
-                    // Isso garante que as duplicatas contem para o progresso total no FinalizeImportJob.
-                    \App\Models\QuestionImportItem::firstOrCreate([
-                        'import_id'  => $import->id,
-                        'question_id' => $existingQuestion->id,
-                    ]);
-
-                    // Hash é idêntico: ignora completamente (pula para a próxima)
-                    $import->increment('skipped_count');
-                    $stats['skipped']++;
-                    $stats['total']++;
-                    return; // Continua para a próxima iteração do foreach (saindo do transaction closure)
-                }
-
-                // Parse da Resposta Discursiva (Pode ser string ou JSON)
-                $discursiveAnswer = null;
-                if (!empty($qData['discursive_answer'])) {
-                    $parsedAnswer = json_decode($qData['discursive_answer'], true);
-                    $discursiveAnswer = (json_last_error() === JSON_ERROR_NONE)
-                        ? $parsedAnswer
-                        : $qData['discursive_answer'];
-                }
-
-                $tipoQuestao = $qData['tipo_questao'] ?? 'Objetiva';
-                $hasImages = !empty($qData['image_path']);
-                $status = $qData['review_status'] ?? 'pending';
-
-                if ($hasImages && $status !== 'approved') {
-                    $status = 'review';
-                }
-
-                $extractedAt = !empty($qData['extracted_at']) ? \Carbon\Carbon::parse($qData['extracted_at']) : null;
-
-                $payload = [
-                    'type' => 'concurso',
-                    'institution' => $qData['institution'] ?? null,
-                    'organization' => $qData['organization'] ?? null,
-                    'role' => $qData['role'] ?? null,
-                    'year' => $qData['year'] ?? null,
-                    'number' => $qData['number'] ?? null,
-                    // 3. O Update Completo
-                    'statement' => $qData['statement'] ?? '',
-                    'difficulty' => 'medium',
-                    'review_status' => $status,
-                    'tipo_questao' => $tipoQuestao,
-                    'arquivo_origem' => $qData['arquivo_origem'] ?? null,
-                    'discursive_answer' => $discursiveAnswer,
-                    'pdf_page' => $qData['pdf_page'] ?? null,
-                    'origin' => $qData['origin'] ?? null,
-                    'source_url' => $qData['source_url'] ?? null,
-                    'extracted_at' => $qData['extracted_at'] ?? null,
-                    'content_hash' => $incomingHash,
-                ];
-
-                if ($existingQuestion) {
-                    $lastScraped = $existingQuestion->last_scraped_at;
-                    
-                    // Proteção de Edição Manual: se o humano alterou via sistema ($updated_at > $last_scraped_at)
-                    if ($existingQuestion->updated_at && $lastScraped && $existingQuestion->updated_at->gt($lastScraped)) {
+                    if ($existingQuestion && $existingQuestion->content_hash !== null && $existingQuestion->content_hash === $incomingHash) {
+                        \App\Models\QuestionImportItem::firstOrCreate([
+                            'import_id'  => $import->id,
+                            'question_id' => $existingQuestion->id,
+                        ]);
                         $stats['skipped']++;
                         $stats['total']++;
-                        return; // Edição manual intocável. Ignore.
+                        return;
                     }
 
-                    // Se não tiver data de extração no zip (o que é raro mas possível) pula pra hash
-                    if ($extractedAt) {
-                        // Se a data de extração vinda do ZIP for MENOR ou IGUAL ao que já tínhamos salvo no banco, IGNORE.
-                        if ($lastScraped && $extractedAt->lte($lastScraped)) {
+                    $discursiveAnswer = null;
+                    if (!empty($qData['discursive_answer'])) {
+                        $parsedAnswer = json_decode($qData['discursive_answer'], true);
+                        $discursiveAnswer = (json_last_error() === JSON_ERROR_NONE) ? $parsedAnswer : $qData['discursive_answer'];
+                    }
+
+                    $tipoQuestao = $qData['tipo_questao'] ?? 'Objetiva';
+                    $hasImages = !empty($qData['image_path']);
+                    $status = $qData['review_status'] ?? 'pending';
+
+                    if ($hasImages && $status !== 'approved') $status = 'review';
+                    $extractedAt = !empty($qData['extracted_at']) ? \Carbon\Carbon::parse($qData['extracted_at']) : null;
+
+                    $payload = [
+                        'type' => 'concurso',
+                        'institution' => $qData['institution'] ?? null,
+                        'organization' => $qData['organization'] ?? null,
+                        'role' => $qData['role'] ?? null,
+                        'year' => $qData['year'] ?? null,
+                        'number' => $qData['number'] ?? null,
+                        'statement' => $qData['statement'] ?? '',
+                        'difficulty' => 'medium',
+                        'review_status' => $status,
+                        'tipo_questao' => $tipoQuestao,
+                        'arquivo_origem' => $qData['arquivo_origem'] ?? null,
+                        'discursive_answer' => $discursiveAnswer,
+                        'pdf_page' => $qData['pdf_page'] ?? null,
+                        'origin' => $qData['origin'] ?? null,
+                        'source_url' => $qData['source_url'] ?? null,
+                        'extracted_at' => $qData['extracted_at'] ?? null,
+                        'content_hash' => $incomingHash,
+                    ];
+
+                    if ($existingQuestion) {
+                        $lastScraped = $existingQuestion->last_scraped_at;
+                        if ($existingQuestion->updated_at && $lastScraped && $existingQuestion->updated_at->gt($lastScraped)) {
                             $stats['skipped']++;
                             $stats['total']++;
-                            return; 
+                            return;
                         }
-                    }
-
-                    // Se passou das travas acima, significa que ou o scraper extraiu de novo (data maior) ou nós forçamos
-                    $payload['updated_at'] = now();
-                    $payload['last_scraped_at'] = $extractedAt ?? now();
-                    $payload['scraper_update_count'] = $existingQuestion->scraper_update_count + 1;
-
-                    // Update existente
-                    $existingQuestion->update($payload);
-                    $import->increment('updated_count'); // Increment updated_count
-                    $question = $existingQuestion;
-
-                    // Tratamento de Imagens: excluir antigas
-                    foreach ($question->images as $img) {
-                        if (!empty($img->path)) {
-                            Storage::disk(self::IMPORT_STORAGE_DISK)->delete($img->path);
+                        if ($extractedAt && $lastScraped && $extractedAt->lte($lastScraped)) {
+                            $stats['skipped']++;
+                            $stats['total']++;
+                            return;
                         }
-                    }
-                    $question->images()->delete();
-                } else {
-                    // Cria nova
-                    $payload['external_id'] = $externalId;
-                    $payload['updated_at'] = $qData['updated_at'] ?? now();
-                    $payload['last_scraped_at'] = $extractedAt ?? now();
-                    $payload['scraper_update_count'] = 0;
-                    $question = Question::create($payload);
-                }
 
-                // Insere instâncias de imagem iterativamente para a relação 1:N
-                if ($hasImages) {
-                    $imagePaths = explode(',', $qData['image_path']);
-                    foreach ($imagePaths as $imgPath) {
-                        $imgPath = trim($imgPath);
-                        if (isset($imageMap[$imgPath])) {
-                            $question->images()->create([
-                                'path' => $imageMap[$imgPath],
-                            ]);
+                        $payload['updated_at'] = now();
+                        $payload['last_scraped_at'] = $extractedAt ?? now();
+                        $payload['scraper_update_count'] = $existingQuestion->scraper_update_count + 1;
+
+                        $existingQuestion->update($payload);
+                        $stats['updated']++;
+                        $question = $existingQuestion;
+
+                        foreach ($question->images as $img) {
+                            if (!empty($img->path)) Storage::disk(self::IMPORT_STORAGE_DISK)->delete($img->path);
                         }
+                        $question->images()->delete();
+                    } else {
+                        $payload['external_id'] = $externalId;
+                        $payload['updated_at'] = $qData['updated_at'] ?? now();
+                        $payload['last_scraped_at'] = $extractedAt ?? now();
+                        $payload['scraper_update_count'] = 0;
+                        $question = Question::create($payload);
                     }
-                }
 
-                // Registro de auditoria vinculando item ao lote
-                QuestionImportItem::firstOrCreate([
-                    'import_id' => $import->id,
-                    'question_id' => $question->id,
-                ]);
-
-                // Processamento de Matérias (Subjects M:N)
-                if (!empty($qData['materias'])) {
-                    $subjectNames = array_map('trim', explode(',', $qData['materias']));
-                    $subjectIds = [];
-                    foreach ($subjectNames as $name) {
-                        $normalizedName = mb_strtoupper($name, 'UTF-8');
-                        $subject = Subject::firstOrCreate(
-                            ['name' => $normalizedName],
-                            ['slug' => Str::slug($normalizedName)]
-                        );
-                        $subjectIds[] = $subject->id;
-                    }
-                    $question->subjects()->syncWithoutDetaching($subjectIds);
-                }
-
-                // Processamento de Assuntos (Topics M:N)
-                if (!empty($qData['assuntos'])) {
-                    $topicNames = array_map('trim', explode(',', $qData['assuntos']));
-                    $topicIds = [];
-                    foreach ($topicNames as $name) {
-                        $normalizedName = mb_strtoupper($name, 'UTF-8');
-                        $topic = \App\Models\Topic::firstOrCreate(
-                            ['name' => $normalizedName],
-                            ['slug' => Str::slug($normalizedName)]
-                        );
-                        $topicIds[] = $topic->id;
-                    }
-                    $question->topics()->syncWithoutDetaching($topicIds);
-                }
-
-                // Processamento de alternativas (JSON -> Tabela Relacional)
-                if (!empty($qData['alternatives'])) {
-                    $alternatives = json_decode($qData['alternatives'], true);
-                    if (is_array($alternatives)) {
-                        $tipoQuestao = $qData['tipo_questao'] ?? 'Objetiva';
-
-                        foreach ($alternatives as $label => $content) {
-                            $isCorrect = false;
-
-                            // Na objetiva, verificamos o correct_answer real
-                            if ($tipoQuestao === 'Objetiva') {
-                                $isCorrect = (strtoupper($label) === strtoupper($qData['correct_answer'] ?? ''));
+                    if ($hasImages) {
+                        $imagePaths = explode(',', $qData['image_path']);
+                        foreach ($imagePaths as $imgPath) {
+                            $imgPath = trim($imgPath);
+                            if (isset($imageMap[$imgPath])) {
+                                $question->images()->create(['path' => $imageMap[$imgPath]]);
                             }
-                            // Nas discursivas, is_correct é sempre false pois as "alternatives" são os subitens
-
-                            QuestionAlternative::updateOrCreate(
-                                [
-                                    'question_id' => $question->id,
-                                    'label' => strtoupper($label),
-                                ],
-                                [
-                                    'content' => $content,
-                                    'is_correct' => $isCorrect,
-                                ]
-                            );
                         }
                     }
-                }
 
-                $stats['total']++;
-                $status = $qData['review_status'] ?? 'pending';
-                if ($status === 'pending' || $status === 'review') {
-                    $stats['pending']++;
-                } else {
-                    $stats['approved']++;
-                }
-            });
+                    QuestionImportItem::firstOrCreate([
+                        'import_id' => $import->id,
+                        'question_id' => $question->id,
+                    ]);
 
-            // Omitido: atualização fragmentada removida para evitar race conditions em modo paralelo.
-            // O progresso agora é atualizado atomicamente ao final de cada chunk no processChunk().
+                    if (!empty($qData['materias'])) {
+                        $subjectNames = array_map('trim', explode(',', $qData['materias']));
+                        $subjectIds = [];
+                        foreach ($subjectNames as $name) {
+                            $normalizedName = mb_strtoupper($name, 'UTF-8');
+                            $subject = Subject::firstOrCreate(['name' => $normalizedName], ['slug' => Str::slug($normalizedName)]);
+                            $subjectIds[] = $subject->id;
+                        }
+                        $question->subjects()->syncWithoutDetaching($subjectIds);
+                    }
+
+                    if (!empty($qData['assuntos'])) {
+                        $topicNames = array_map('trim', explode(',', $qData['assuntos']));
+                        $topicIds = [];
+                        foreach ($topicNames as $name) {
+                            $normalizedName = mb_strtoupper($name, 'UTF-8');
+                            $topic = \App\Models\Topic::firstOrCreate(['name' => $normalizedName], ['slug' => Str::slug($normalizedName)]);
+                            $topicIds[] = $topic->id;
+                        }
+                        $question->topics()->syncWithoutDetaching($topicIds);
+                    }
+
+                    if (!empty($qData['alternatives'])) {
+                        $alternatives = json_decode($qData['alternatives'], true);
+                        if (is_array($alternatives)) {
+                            foreach ($alternatives as $label => $content) {
+                                $isCorrect = ($tipoQuestao === 'Objetiva') ? (strtoupper($label) === strtoupper($qData['correct_answer'] ?? '')) : false;
+                                QuestionAlternative::updateOrCreate(
+                                    ['question_id' => $question->id, 'label' => strtoupper($label)],
+                                    ['content' => $content, 'is_correct' => $isCorrect]
+                                );
+                            }
+                        }
+                    }
+
+                    $stats['total']++;
+                    $status = $qData['review_status'] ?? 'pending';
+                    if ($status === 'pending' || $status === 'review') {
+                        $stats['pending']++;
+                    } else {
+                        $stats['approved']++;
+                    }
+                });
+            } catch (\Throwable $questionError) {
+                Log::error("[QuestionImportService] Erro na questão do lote #{$import->id}: " . $questionError->getMessage(), [
+                    'q_id' => $qData['id'] ?? 'unknown',
+                    'external_id' => $externalId
+                ]);
+            }
         }
+
+        // Incrementos ATÔMICOS ao final do lote para evitar lock contention (Gargalo de I/O)
+        if ($stats['skipped'] > 0) $import->increment('skipped_count', $stats['skipped']);
+        if ($stats['updated'] > 0) $import->increment('updated_count', $stats['updated']);
 
         return $stats;
     }

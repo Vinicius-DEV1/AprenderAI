@@ -89,7 +89,7 @@ services:
       - /proc:/host_proc:ro
     env_file: ./backend/.env
     # Prioriza explicitamente a fila 'default' (Simulados/Chats), 'essays' (Redações) e depois a 'import'.
-    command: php artisan queue:work --queue=default,essays,import --sleep=3 --tries=3 --max-time=3600
+    command: php artisan queue:work --queue=default,essays --sleep=3 --tries=3 --max-time=3600
     deploy:
       replicas: 40
       resources:
@@ -121,7 +121,7 @@ services:
       - /proc:/host_proc:ro
     env_file: ./backend/.env
     # Filas para processamento do Xavier (embeddings: tempo real, ai-batches: processamento em lote)
-    command: php artisan queue:work --queue=embeddings,ai-batches --sleep=3 --tries=3 --timeout=700 --max-time=3600
+    command: php artisan queue:work --queue=import,embeddings,ai-batches --sleep=3 --tries=3 --timeout=700 --max-time=3600
     deploy:
       replicas: 4  # Aumentado de 2 para 4 — cada replica usa uma chave diferente via round-robin
       resources:
