@@ -343,65 +343,63 @@ class CheckoutAnalyticsController extends Controller
     public function abandonments(Request $request): \Illuminate\Http\JsonResponse
     {
         $days = (int) $request->get('days', 30);
+        $limit = (int) $request->get('limit', 20);
         $since = now()->subDays($days);
 
-        $items = CheckoutAbandonment::with(['user', 'plan'])
+        $paginated = CheckoutAbandonment::with(['user', 'plan'])
             ->where('created_at', '>=', $since)
             ->orderByDesc('created_at')
-            ->take(50)
-            ->get()
-            ->map(function ($a) use ($since) {
-                // Determine Identity
-                $userName = 'Visitante Anônimo';
-                $userEmail = '-';
-                $userAvatar = null;
-                $userId = null;
+            ->paginate($limit);
 
-                if ($a->user) {
-                    $userId = $a->user->id;
-                    $userName = $a->user->name;
-                    $userEmail = $a->user->email;
-                    $userAvatar = $a->user->avatar ?? null;
-                } else {
-                    $userName = "Visitante (IP: " . ($a->ip ?? 'Desconhecido') . ")";
-                }
-                
-                // Fetch recent errors for this user/IP to show "Attempts" history
-                $errorQuery = CheckoutError::where('created_at', '>=', $since);
-                if ($userId) {
-                    $errorQuery->where('user_id', $userId);
-                } else if ($a->session_id) {
-                     // We don't have session_id on abandonment right now, so we skip exact anonymous trace
-                     // But we can fallback to IP for visitors if we add it in the future.
-                } else {
-                     $errorQuery->whereRaw('1 = 0'); // empty
-                }
+        $paginated->getCollection()->transform(function ($a) use ($since) {
+            // Determine Identity
+            $userName = 'Visitante Anônimo';
+            $userEmail = '-';
+            $userAvatar = null;
+            $userId = null;
 
-                $errors = [];
-                if ($userId) {
-                    $errors = $errorQuery->select('error_type', DB::raw('count(*) as count'))
-                                     ->groupBy('error_type')
-                                     ->get()
-                                     ->toArray();
-                }
+            if ($a->user) {
+                $userId = $a->user->id;
+                $userName = $a->user->name;
+                $userEmail = $a->user->email;
+                $userAvatar = $a->user->avatar ?? null;
+            } else {
+                $userName = "Visitante (IP: " . ($a->ip ?? 'Desconhecido') . ")";
+            }
+            
+            // Fetch recent errors for this user/IP to show "Attempts" history
+            $errorQuery = CheckoutError::where('created_at', '>=', $since);
+            if ($userId) {
+                $errorQuery->where('user_id', $userId);
+            } else {
+                 $errorQuery->whereRaw('1 = 0'); // empty
+            }
 
-                return [
-                    'id'               => $a->id,
-                    'user_id'          => $userId,
-                    'user_name'        => $userName,
-                    'user_email'       => $userEmail,
-                    'user_avatar'      => $userAvatar,
-                    'plan_name'        => $a->plan?->name ?? 'N/A',
-                    'last_step'        => $a->last_step_reached,
-                    'time_spent_mins'  => $a->time_spent_seconds ? round($a->time_spent_seconds / 60, 1) : null,
-                    'payment_method'   => $a->payment_method_selected,
-                    'had_coupon'       => $a->had_coupon,
-                    'error_history'    => $errors,
-                    'created_at'       => $a->created_at->toDateTimeString(),
-                ];
-            });
+            $errors = [];
+            if ($userId) {
+                $errors = $errorQuery->select('error_type', DB::raw('count(*) as count'))
+                                 ->groupBy('error_type')
+                                 ->get()
+                                 ->toArray();
+            }
 
-        return response()->json(['abandonments' => $items]);
+            return [
+                'id'               => $a->id,
+                'user_id'          => $userId,
+                'user_name'        => $userName,
+                'user_email'       => $userEmail,
+                'user_avatar'      => $userAvatar,
+                'plan_name'        => $a->plan?->name ?? 'N/A',
+                'last_step'        => $a->last_step_reached,
+                'time_spent_mins'  => $a->time_spent_seconds ? round($a->time_spent_seconds / 60, 1) : null,
+                'payment_method'   => $a->payment_method_selected,
+                'had_coupon'       => $a->had_coupon,
+                'error_history'    => $errors,
+                'created_at'       => $a->created_at->toDateTimeString(),
+            ];
+        });
+
+        return response()->json($paginated);
     }
 
     /**

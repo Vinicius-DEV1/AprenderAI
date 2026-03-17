@@ -28,7 +28,6 @@ import {
     Target,
     Zap,
     History as HistoryIcon,
-    ShoppingCart,
     MapPin,
     Monitor,
     Gift
@@ -67,7 +66,8 @@ export default function CheckoutAnalytics() {
     const [overview, setOverview] = useState<CheckoutOverview | null>(null);
     const [funnel, setFunnel] = useState<FunnelStep[]>([]);
     const [ranking, setRanking] = useState<PlanRanking[]>([]);
-    const [abandonments, setAbandonments] = useState<CheckoutAbandonmentItem[]>([]);
+    const [abandonments, setAbandonments] = useState<PaginatedResponse<CheckoutAbandonmentItem> | null>(null);
+    const [abandonmentsPage, setAbandonmentsPage] = useState(1);
     const [alerts, setAlerts] = useState<CheckoutAlert[]>([]);
     const [timeline, setTimeline] = useState<PaginatedResponse<TimelineEvent> | null>(null);
     const [timelinePage, setTimelinePage] = useState(1);
@@ -86,15 +86,15 @@ export default function CheckoutAnalytics() {
                 getCheckoutOverview(days),
                 getCheckoutFunnel(days),
                 getCheckoutPlansRanking(days),
-                getCheckoutAbandonments(days),
+                getCheckoutAbandonments(days, abandonmentsPage, 20),
                 getCheckoutAlerts(),
-                getCheckoutTimeline(timelinePage, 10)
+                getCheckoutTimeline(timelinePage, 20)
             ]);
 
             setOverview(overviewRes.data);
             setFunnel(funnelRes.data.funnel);
             setRanking(rankingRes.data.ranking);
-            setAbandonments(abandonmentsRes.data.abandonments || []);
+            setAbandonments(abandonmentsRes.data);
             setAlerts(alertsRes.data.alerts || []);
             setTimeline(timelineRes.data);
             
@@ -108,7 +108,7 @@ export default function CheckoutAnalytics() {
 
     useEffect(() => {
         loadDashboard();
-    }, [days, timelinePage]);
+    }, [days, timelinePage, abandonmentsPage]);
 
     // Live Timeline Pulling (every 30s) - only for page 1
     useEffect(() => {
@@ -116,7 +116,7 @@ export default function CheckoutAnalytics() {
 
         const interval = setInterval(async () => {
             try {
-                const res = await getCheckoutTimeline(1, 10);
+                const res = await getCheckoutTimeline(1, 20);
                 setTimeline(res.data);
             } catch (e) {
                 // Fail silently for refresh
@@ -383,73 +383,80 @@ export default function CheckoutAnalytics() {
                     </div>
                 </div>
 
-                <div className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                        {timeline && timeline.data.length > 0 ? timeline.data.map((evt) => {
-                            const isSuccess = evt.event_type === 'payment_success';
-                            const isFailure = evt.event_type === 'payment_failed';
-                            
-                            return (
-                                <div 
-                                    key={evt.id} 
-                                    className={`p-4 rounded-2xl border transition-all hover:scale-[1.02] ${
-                                        isSuccess 
-                                            ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800/50' 
-                                            : isFailure 
-                                                ? 'bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-800/50'
-                                                : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 shadow-sm'
-                                    }`}
-                                >
-                                    <div className="flex flex-col h-full">
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 border-2 ${
-                                                isSuccess ? 'border-emerald-200' : isFailure ? 'border-red-200' : 'border-slate-100 dark:border-slate-600'
-                                            }`}>
-                                                {evt.user_avatar ? <img src={evt.user_avatar} className="w-full h-full object-cover" /> : <Users size={16} className={isSuccess ? 'text-emerald-600' : isFailure ? 'text-red-600' : 'text-slate-400'} />}
+                <div className="p-6 overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50/50 dark:bg-slate-800/30 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100 dark:border-slate-800">
+                                <th className="px-6 py-4">Usuário</th>
+                                <th className="px-6 py-4">Evento</th>
+                                <th className="px-6 py-4">Plano</th>
+                                <th className="px-6 py-4 text-center">Método</th>
+                                <th className="px-6 py-4 text-right">Horário</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {timeline && timeline.data.length > 0 ? timeline.data.map((evt) => {
+                                const isSuccess = evt.event_type === 'payment_success';
+                                const isFailure = evt.event_type === 'payment_failed';
+                                
+                                return (
+                                    <tr 
+                                        key={evt.id} 
+                                        className={`transition-colors group ${
+                                            isSuccess 
+                                                ? 'bg-emerald-50/40 dark:bg-emerald-900/10 hover:bg-emerald-100/40 dark:hover:bg-emerald-900/20' 
+                                                : isFailure 
+                                                    ? 'bg-red-50/40 dark:bg-red-900/10 hover:bg-red-100/40 dark:hover:bg-red-900/20'
+                                                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                                        }`}
+                                    >
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 border ${
+                                                    isSuccess ? 'border-emerald-200' : isFailure ? 'border-red-200' : 'border-slate-100 dark:border-slate-700'
+                                                }`}>
+                                                    {evt.user_avatar ? <img src={evt.user_avatar} className="w-full h-full object-cover" /> : <Users size={14} className="text-slate-400" />}
+                                                </div>
+                                                <div className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[150px]">{evt.user_name}</div>
                                             </div>
-                                            <div className="min-w-0">
-                                                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{evt.user_name}</div>
-                                                <div className="text-[10px] text-slate-500 font-mono">{evt.time_ago}</div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex-1 space-y-2">
-                                            <div className={`inline-block px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
                                                 isSuccess 
-                                                    ? 'bg-emerald-500 text-white' 
+                                                    ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/20' 
                                                     : isFailure 
-                                                        ? 'bg-red-500 text-white'
+                                                        ? 'bg-red-500 text-white shadow-sm shadow-red-500/20'
                                                         : 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400'
                                             }`}>
                                                 {evt.event_type.replace('_', ' ')}
-                                            </div>
-                                            
-                                            <div className="text-[11px] font-bold text-slate-700 dark:text-slate-300 leading-tight">
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
                                                 {evt.plan_name}
                                             </div>
-                                            
-                                            {evt.payment_method && (
-                                                <div className="text-[10px] text-slate-500 flex items-center gap-1 uppercase font-bold">
-                                                    <CreditCard size={10} /> {evt.payment_method}
-                                                </div>
-                                            )}
-                                            
-                                            {evt.metadata?.error_message && (
-                                                <div className="mt-2 text-[9px] font-mono p-1.5 bg-red-100/50 dark:bg-red-900/30 rounded border border-red-200/50 text-red-700 dark:text-red-400 break-words leading-tight">
-                                                    {evt.metadata.error_message}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        }) : (
-                            <div className="col-span-full py-20 flex flex-col items-center justify-center text-slate-400 text-sm italic">
-                                <Clock size={32} className="mb-2 opacity-20" />
-                                Aguardando eventos...
-                            </div>
-                        )}
-                    </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            {evt.payment_method ? (
+                                                <span className="text-[10px] font-black uppercase text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
+                                                    {evt.payment_method}
+                                                </span>
+                                            ) : <span className="text-slate-300">-</span>}
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="text-[10px] font-bold text-slate-500">{evt.time_ago}</div>
+                                        </td>
+                                    </tr>
+                                );
+                            }) : (
+                                <tr className="h-40">
+                                    <td colSpan={5} className="text-center text-slate-400 text-sm italic">
+                                        Aguardando eventos...
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -563,9 +570,34 @@ export default function CheckoutAnalytics() {
                             </h3>
                             <p className="text-sm text-slate-500 mt-1">Identificamos o usuário mesmo antes da compra ser finalizada.</p>
                         </div>
-                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                           <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse"></span>
-                           <span className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Tempo Real</span>
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-950/20 px-3 py-1.5 rounded-xl border border-orange-100 dark:border-orange-900/30">
+                               <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse"></span>
+                               <span className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-widest">Tempo Real</span>
+                            </div>
+
+                            {/* Pagination Controls */}
+                            {abandonments && abandonments.last_page > 1 && (
+                                <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                                    <button 
+                                        onClick={() => setAbandonmentsPage(prev => Math.max(1, prev - 1))}
+                                        disabled={abandonments.current_page === 1}
+                                        className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                    >
+                                        <ChevronRight size={18} className="rotate-180" />
+                                    </button>
+                                    <span className="text-xs font-bold text-slate-500 px-2 min-w-[80px] text-center">
+                                        {abandonments.current_page} / {abandonments.last_page}
+                                    </span>
+                                    <button 
+                                        onClick={() => setAbandonmentsPage(prev => Math.min(abandonments.last_page, prev + 1))}
+                                        disabled={abandonments.current_page === abandonments.last_page}
+                                        className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                    >
+                                        <ChevronRight size={18} />
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                     
@@ -581,12 +613,12 @@ export default function CheckoutAnalytics() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                {abandonments.map((ab) => (
+                                {abandonments && abandonments.data.length > 0 ? abandonments.data.map((ab) => (
                                     <tr key={ab.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors group">
                                         <td className="px-8 py-5">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-md shadow-indigo-500/20 overflow-hidden">
-                                                    {ab.user_avatar ? <img src={ab.user_avatar} className="w-full h-full object-cover" /> : ab.user_name[0]}
+                                                    {ab.user_avatar ? <img src={ab.user_avatar} className="w-full h-full object-cover" /> : (ab.user_name ? ab.user_name[0] : '?')}
                                                 </div>
                                                 <div>
                                                     <div className="font-bold text-slate-900 dark:text-white capitalize">{ab.user_name}</div>
@@ -612,7 +644,7 @@ export default function CheckoutAnalytics() {
                                         </td>
                                         <td className="px-6 py-5">
                                             <div className="flex flex-wrap justify-center gap-1">
-                                                {ab.error_history.length > 0 ? ab.error_history.map((err, i) => (
+                                                {ab.error_history && ab.error_history.length > 0 ? ab.error_history.map((err, i) => (
                                                     <span key={i} className="px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-[10px] font-bold border border-red-100 dark:border-red-500/20" title={`${err.count} ocorrências`}>
                                                         {err.error_type} {err.count > 1 && `(x${err.count})`}
                                                     </span>
@@ -630,15 +662,15 @@ export default function CheckoutAnalytics() {
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                )) : (
+                                    <tr>
+                                        <td colSpan={5} className="py-20 text-center text-slate-400 italic">
+                                            Nenhum abandono registrado no período.
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
-                        {abandonments.length === 0 && (
-                            <div className="py-20 text-center flex flex-col items-center opacity-30">
-                                <ShoppingCart size={48} className="mb-4" />
-                                <p className="font-bold uppercase tracking-widest text-sm">Nenhum abandono registrado no período</p>
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>
