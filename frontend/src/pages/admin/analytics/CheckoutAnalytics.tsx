@@ -11,7 +11,8 @@ import {
     PlanRanking,
     CheckoutAlert,
     CheckoutAbandonmentItem,
-    TimelineEvent
+    TimelineEvent,
+    PaginatedResponse
 } from '../../../api/checkoutAnalytics';
 import { toast } from 'sonner';
 import { 
@@ -68,7 +69,8 @@ export default function CheckoutAnalytics() {
     const [ranking, setRanking] = useState<PlanRanking[]>([]);
     const [abandonments, setAbandonments] = useState<CheckoutAbandonmentItem[]>([]);
     const [alerts, setAlerts] = useState<CheckoutAlert[]>([]);
-    const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
+    const [timeline, setTimeline] = useState<PaginatedResponse<TimelineEvent> | null>(null);
+    const [timelinePage, setTimelinePage] = useState(1);
 
     const loadDashboard = async () => {
         setLoading(true);
@@ -86,7 +88,7 @@ export default function CheckoutAnalytics() {
                 getCheckoutPlansRanking(days),
                 getCheckoutAbandonments(days),
                 getCheckoutAlerts(),
-                getCheckoutTimeline(20)
+                getCheckoutTimeline(timelinePage, 10)
             ]);
 
             setOverview(overviewRes.data);
@@ -94,7 +96,7 @@ export default function CheckoutAnalytics() {
             setRanking(rankingRes.data.ranking);
             setAbandonments(abandonmentsRes.data.abandonments || []);
             setAlerts(alertsRes.data.alerts || []);
-            setTimeline(timelineRes.data.events || []);
+            setTimeline(timelineRes.data);
             
         } catch (err) {
             console.error('Failed to load checkout analytics', err);
@@ -106,20 +108,22 @@ export default function CheckoutAnalytics() {
 
     useEffect(() => {
         loadDashboard();
-    }, [days]);
+    }, [days, timelinePage]);
 
-    // Live Timeline Pulling (every 30s)
+    // Live Timeline Pulling (every 30s) - only for page 1
     useEffect(() => {
+        if (timelinePage !== 1) return;
+
         const interval = setInterval(async () => {
             try {
-                const res = await getCheckoutTimeline(20);
-                setTimeline(res.data.events);
+                const res = await getCheckoutTimeline(1, 10);
+                setTimeline(res.data);
             } catch (e) {
                 // Fail silently for refresh
             }
         }, 30000);
         return () => clearInterval(interval);
-    }, []);
+    }, [timelinePage]);
 
     if (loading && !overview) {
         return (
@@ -288,7 +292,7 @@ export default function CheckoutAnalytics() {
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
                 
                 {/* Visual conversion funnel */}
-                <div className="xl:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-sm">
+                <div className="xl:col-span-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-sm">
                     <div className="flex justify-between items-center mb-10">
                         <div>
                             <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
@@ -337,33 +341,111 @@ export default function CheckoutAnalytics() {
                     </div>
                 </div>
 
-                {/* Timeline / Live Feed (V3) */}
-                <div className="xl:col-span-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm overflow-hidden flex flex-col h-[500px]">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
-                            <Zap size={16} className="text-indigo-500" /> Atividade Live
-                        </h3>
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></div>
-                    </div>
+            </div>
 
-                    <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
-                        {timeline.length > 0 ? timeline.map((evt) => (
-                            <div key={evt.id} className="p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm transition-all hover:scale-[1.02]">
-                                <div className="flex items-start gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center overflow-hidden flex-shrink-0">
-                                        {evt.user_avatar ? <img src={evt.user_avatar} className="w-full h-full object-cover" /> : <Users size={14} className="text-indigo-600" />}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{evt.user_name}</div>
-                                        <div className="text-[10px] text-slate-500 mt-0.5">
-                                            {evt.event_type.replace('_', ' ').toUpperCase()} • {evt.plan_name}
+            {/* Timeline / Live Feed (V3) - Full Width Card */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden flex flex-col">
+                <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                            <Zap size={20} className="text-indigo-500 fill-indigo-500/20" /> Atividade Live
+                        </h3>
+                        <p className="text-sm text-slate-500 mt-1">Fluxo em tempo real de eventos no checkout para debug e acompanhamento.</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-100 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                           <span className="text-xs font-bold uppercase tracking-widest">Tempo Real</span>
+                        </div>
+                        
+                        {/* Pagination Controls */}
+                        {timeline && timeline.last_page > 1 && (
+                            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                                <button 
+                                    onClick={() => setTimelinePage(prev => Math.max(1, prev - 1))}
+                                    disabled={timeline.current_page === 1}
+                                    className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                >
+                                    <ChevronRight size={18} className="rotate-180" />
+                                </button>
+                                <span className="text-xs font-bold text-slate-500 px-2 min-w-[80px] text-center">
+                                    {timeline.current_page} / {timeline.last_page}
+                                </span>
+                                <button 
+                                    onClick={() => setTimelinePage(prev => Math.min(timeline.last_page, prev + 1))}
+                                    disabled={timeline.current_page === timeline.last_page}
+                                    className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                >
+                                    <ChevronRight size={18} />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                        {timeline && timeline.data.length > 0 ? timeline.data.map((evt) => {
+                            const isSuccess = evt.event_type === 'payment_success';
+                            const isFailure = evt.event_type === 'payment_failed';
+                            
+                            return (
+                                <div 
+                                    key={evt.id} 
+                                    className={`p-4 rounded-2xl border transition-all hover:scale-[1.02] ${
+                                        isSuccess 
+                                            ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800/50' 
+                                            : isFailure 
+                                                ? 'bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-800/50'
+                                                : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 shadow-sm'
+                                    }`}
+                                >
+                                    <div className="flex flex-col h-full">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 border-2 ${
+                                                isSuccess ? 'border-emerald-200' : isFailure ? 'border-red-200' : 'border-slate-100 dark:border-slate-600'
+                                            }`}>
+                                                {evt.user_avatar ? <img src={evt.user_avatar} className="w-full h-full object-cover" /> : <Users size={16} className={isSuccess ? 'text-emerald-600' : isFailure ? 'text-red-600' : 'text-slate-400'} />}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{evt.user_name}</div>
+                                                <div className="text-[10px] text-slate-500 font-mono">{evt.time_ago}</div>
+                                            </div>
                                         </div>
-                                        <div className="text-[8px] font-black text-indigo-500 uppercase mt-1">{evt.time_ago}</div>
+                                        
+                                        <div className="flex-1 space-y-2">
+                                            <div className={`inline-block px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                                                isSuccess 
+                                                    ? 'bg-emerald-500 text-white' 
+                                                    : isFailure 
+                                                        ? 'bg-red-500 text-white'
+                                                        : 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400'
+                                            }`}>
+                                                {evt.event_type.replace('_', ' ')}
+                                            </div>
+                                            
+                                            <div className="text-[11px] font-bold text-slate-700 dark:text-slate-300 leading-tight">
+                                                {evt.plan_name}
+                                            </div>
+                                            
+                                            {evt.payment_method && (
+                                                <div className="text-[10px] text-slate-500 flex items-center gap-1 uppercase font-bold">
+                                                    <CreditCard size={10} /> {evt.payment_method}
+                                                </div>
+                                            )}
+                                            
+                                            {evt.metadata?.error_message && (
+                                                <div className="mt-2 text-[9px] font-mono p-1.5 bg-red-100/50 dark:bg-red-900/30 rounded border border-red-200/50 text-red-700 dark:text-red-400 break-words leading-tight">
+                                                    {evt.metadata.error_message}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )) : (
-                            <div className="h-full flex items-center justify-center text-slate-400 text-xs italic">
+                            );
+                        }) : (
+                            <div className="col-span-full py-20 flex flex-col items-center justify-center text-slate-400 text-sm italic">
+                                <Clock size={32} className="mb-2 opacity-20" />
                                 Aguardando eventos...
                             </div>
                         )}

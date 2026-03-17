@@ -470,28 +470,28 @@ class CheckoutAnalyticsController extends Controller
      */
     public function timeline(Request $request): \Illuminate\Http\JsonResponse
     {
-        $limit = (int) $request->get('limit', 50);
+        $limit = (int) $request->get('limit', 20);
 
         $events = CheckoutEvent::with(['user', 'plan'])
             ->orderByDesc('created_at')
-            ->take($limit)
-            ->get()
-            ->map(fn($e) => [
-                'id'             => $e->id,
-                'event_type'     => $e->event_type,
-                'user_name'      => $e->user?->name ?? 'Visitante Anônimo',
-                'user_avatar'    => $e->user?->avatar ?? null,
-                'plan_name'      => $e->plan?->name ?? (
-                    ($e->event_type === 'prices_viewed' && isset($e->metadata['source_page'])) 
-                        ? 'Página: ' . $e->metadata['source_page'] 
-                        : 'N/A'
-                ),
-                'payment_method' => $e->payment_method,
-                'metadata'       => $e->metadata,
-                'created_at'     => $e->created_at->toDateTimeString(),
-                'time_ago'       => $e->created_at->diffForHumans(),
-            ]);
+            ->paginate($limit);
 
-        return response()->json(['events' => $events]);
+        $events->getCollection()->transform(fn($e) => [
+            'id'             => $e->id,
+            'event_type'     => $e->event_type,
+            'user_name'      => $e->user?->name ?? 'Visitante Anônimo',
+            'user_avatar'    => $e->user?->avatar ?? null,
+            'plan_name'      => $e->plan?->name ?? (
+                ($e->event_type === 'prices_viewed' && isset($e->metadata['source_page'])) 
+                    ? 'Página: ' . $e->metadata['source_page'] 
+                    : 'N/A'
+            ),
+            'payment_method' => $e->payment_method,
+            'metadata'       => $e->metadata,
+            'created_at'     => $e->created_at->toDateTimeString(),
+            'time_ago'       => $e->created_at->diffForHumans(),
+        ]);
+
+        return response()->json($events);
     }
 }
