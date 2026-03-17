@@ -260,4 +260,43 @@ class AdminImportReviewController extends Controller
 
         return response()->json($logs);
     }
+
+    /**
+     * Get compact statistics for the review dashboard.
+     */
+    public function stats()
+    {
+        $days = 14;
+        $startDate = now()->subDays($days)->startOfDay();
+
+        // 1. Get daily totals for the line chart
+        $dailyStats = QuestionImportItem::whereNotNull('approved_at')
+            ->where('approved_at', '>=', $startDate)
+            ->selectRaw('DATE(approved_at) as date, COUNT(*) as count')
+            ->groupBy('date')
+            ->orderBy('date', 'asc')
+            ->get();
+
+        // 2. Get breakdown by admin for the last 14 days
+        $adminStats = QuestionImportItem::with(['approver:id,name'])
+            ->whereNotNull('approved_at')
+            ->where('approved_at', '>=', $startDate)
+            ->get()
+            ->groupBy(function($item) {
+                return $item->approved_at->format('Y-m-d');
+            })
+            ->map(function($group) {
+                return $group->groupBy('approved_by')->map(function($userGroup) {
+                    return [
+                        'admin_name' => $userGroup->first()->approver->name ?? 'Sistema',
+                        'count' => $userGroup->count()
+                    ];
+                })->values();
+            });
+
+        return response()->json([
+            'daily_stats' => $dailyStats,
+            'admin_breakdown' => $adminStats
+        ]);
+    }
 }
