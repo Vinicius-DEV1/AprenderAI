@@ -191,8 +191,66 @@ class EmbeddingTextBuilder
     }
 
     /**
-     * Normalizes a user search query for embedding.
-     * Removes excessive whitespace and lowercases.
+     * Builds query text aligned with the STATEMENT vector format.
+     *
+     * Na indexação, o statement vector é gerado a partir de texto estruturado:
+     *   "subject: X\ntopic: Y\nquestion:\n{enunciado}\nexplanation:\n{explicação}..."
+     *
+     * Para maximizar a similaridade de cosseno, a query de busca deve usar o
+     * mesmo formato estruturado. O prefixo "question:" alinha o embedding da
+     * query ao mesmo espaço semântico que os documentos indexados.
+     *
+     * @param string $userQuery  Query natural do usuário
+     * @return string  Texto formatado para gerar o embedding de busca do statement
+     */
+    public function buildStatementQuery(string $userQuery): string
+    {
+        $query = $this->cleanText($userQuery);
+        return "question:\n" . $query;
+    }
+
+    /**
+     * Builds query text aligned with the CONCEPT vector format.
+     *
+     * Na indexação, o concept vector é gerado a partir de:
+     *   "subject: X\ntopic: Y\nconcepts:\n{conceito1, conceito2, conceito3}"
+     *
+     * A query para busca conceitual deve usar o mesmo prefixo "concepts:"
+     * para que o embedding capture a intenção de buscar por conceitos.
+     *
+     * @param string $userQuery  Query natural do usuário
+     * @return string  Texto formatado para gerar o embedding de busca de conceitos
+     */
+    public function buildConceptQuery(string $userQuery): string
+    {
+        $query = $this->cleanText($userQuery);
+        return "concepts:\n" . $query;
+    }
+
+    /**
+     * Builds query text aligned with the EXPLANATION vector format.
+     *
+     * Na indexação, o explanation vector é gerado a partir de:
+     *   "subject: X\nexplanation:\n{explicação}\ncorrect answer content:\n{resposta}"
+     *
+     * A query para busca por explicação deve usar o mesmo prefixo "explanation:"
+     * para alinhar ao espaço semântico das explicações indexadas.
+     *
+     * @param string $userQuery  Query natural do usuário
+     * @return string  Texto formatado para gerar o embedding de busca de explicações
+     */
+    public function buildExplanationQuery(string $userQuery): string
+    {
+        $query = $this->cleanText($userQuery);
+        return "explanation:\n" . $query;
+    }
+
+    /**
+     * Normalizes a user search query for embedding (generic version).
+     * Used for cache lookups and concept detection where format alignment is not needed.
+     *
+     * @param string $userQuery  Query natural do usuário
+     * @return string  Query normalizada (lowercase, whitespace limpo)
      */
     public function buildForQuery(string $userQuery): string
     {
@@ -203,6 +261,8 @@ class EmbeddingTextBuilder
 
     /**
      * Strips HTML tags and normalizes whitespace from text.
+     * Usado por todos os builders para garantir que o texto embedado
+     * esteja limpo de HTML, entidades e espaços excessivos.
      */
     private function cleanText(string $text): string
     {
