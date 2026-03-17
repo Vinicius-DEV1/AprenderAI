@@ -566,15 +566,19 @@ class QuestionController extends Controller
             }
         }
 
-        // ── Step 3: Query Embedding ───────────────────────────────────────────
-        $queryVector = $aiService->generateEmbedding($normalizedQuery, $user->id);
+        // ── Step 3: Generic Query Embedding (for cache + concept detection) ────
+        // Este embedding genérico é usado para:
+        //   - L2 Semantic Cache (busca por similaridade em queries anteriores)
+        //   - Concept Detection (busca de conceitos no Qdrant)
+        // Usa RETRIEVAL_QUERY para otimizar o vetor como busca, não como documento.
+        $queryVector = $aiService->generateEmbedding($normalizedQuery, $user->id, 'RETRIEVAL_QUERY');
 
         if (!$queryVector) {
             Log::warning('[Xavier][Search] Step 3 FAILED: embedding null. Falling back to legacy.');
             return $this->legacyAiSearch($request, $user, $cacheService);
         }
 
-        Log::info('[Xavier][Search] Step 3 done: embedding generated.');
+        Log::info('[Xavier][Search] Step 3 done: generic query embedding generated.');
 
         // ── Step 4: L2 Semantic Cache ─────────────────────────────────────────
         $l2CachedFilters = $cacheService->findSimilarMatch($queryVector, 0.88);
@@ -591,7 +595,7 @@ class QuestionController extends Controller
             $conceptThreshold = (float) \App\Models\Configuration::get('xavier_concept_detection_threshold', config('xavier.embeddings.concept_detection_threshold', 0.75));
             $conceptMatches = $qdrant->searchConcepts($queryVector, 5, $conceptThreshold);
             
-            // Extract concept slugs from payload — Correctly mapping without using array as index key
+            // Extrai os slugs dos conceitos detectados a partir do payload do Qdrant
             $detectedConcepts = array_filter(array_map(
                 fn($match) => $match['payload']['concept_slug'] ?? null,
                 $conceptMatches
@@ -603,7 +607,7 @@ class QuestionController extends Controller
             Log::warning('[Xavier][Search] Step 5 FAILED: concept detection error.', ['err' => $e->getMessage()]);
         }
 
-        // ── Step 5b: Log if zero concepts detected (no longer force fallback) ──
+        // ── Step 5b: Log if zero concepts detected ──────────────────────────────
         if (empty($detectedConcepts)) {
             Log::info('[Xavier][Search] Step 5b: no concepts found, proceeding with pure vector search.');
             $searchPath = 'vector_only';
@@ -613,13 +617,40 @@ class QuestionController extends Controller
         $expandedConceptIds = $expansion->expand($detectedConcepts, depth: 1);
         Log::info('[Xavier][Search] Step 6 done: query expansion.', ['expanded' => $expandedConceptIds]);
 
-        // ── Step 7: Hybrid Search (Qdrant + SQL fallback) ─────────────────────
+        // ── Step 6.5: Generate 3 Format-Aligned Query Embeddings ──────────────
+        // CORREÇÃO CRÍTICA: Cada named vector no Qdrant foi indexado com um formato
+        // de texto diferente (statement usa "question:\n...", concept usa "concepts:\n...",
+        // explanation usa "explanation:\n..."). Para maximizar a similaridade de cosseno,
+        // geramos 3 embeddings distintos para a query, cada um alinhado ao formato
+        // do named vector correspondente.
+        //
+        // Todos usam taskType='RETRIEVAL_QUERY' (Gemini otimiza internamente o vetor
+        // para busca em vez de indexação).
+        //
+        // Custo: 3 chamadas de API de embedding por busca (vs 1 anterior).
+        // Benefício: alinhamento de formato + taskType = aumento significativo na precisão.
+        $statementQueryText   = $textBuilder->buildStatementQuery($request->prompt);
+        $conceptQueryText     = $textBuilder->buildConceptQuery($request->prompt);
+        $explanationQueryText = $textBuilder->buildExplanationQuery($request->prompt);
+
+        $statementVector   = $aiService->generateEmbedding($statementQueryText,   $user->id, 'RETRIEVAL_QUERY');
+        $conceptVectorQ    = $aiService->generateEmbedding($conceptQueryText,     $user->id, 'RETRIEVAL_QUERY');
+        $explanationVector = $aiService->generateEmbedding($explanationQueryText, $user->id, 'RETRIEVAL_QUERY');
+
+        // Fallback: se algum dos 3 embeddings falhar, usa o genérico para esse slot
         $queryVectors = [
-            'statement'   => $queryVector,
-            'concept'     => $queryVector,
-            'explanation' => $queryVector,
+            'statement'   => $statementVector   ?? $queryVector,
+            'concept'     => $conceptVectorQ    ?? $queryVector,
+            'explanation' => $explanationVector  ?? $queryVector,
         ];
 
+        Log::info('[Xavier][Search] Step 6.5 done: 3 format-aligned query embeddings generated.', [
+            'statement_ok'   => $statementVector !== null,
+            'concept_ok'     => $conceptVectorQ !== null,
+            'explanation_ok' => $explanationVector !== null,
+        ]);
+
+        // ── Step 7: Hybrid Search (Qdrant + SQL fallback) ─────────────────────
         $sqlFilters = array_filter([
             'subject'    => $request->get('subject') ?: $extractedSubjectId,
             'topic'      => $request->get('topic') ?: $extractedTopicId,
@@ -646,7 +677,7 @@ class QuestionController extends Controller
             'filters'  => ['vector_search' => true, 'question_ids' => $questionIds],
         ]);
 
-        // Log each result in search_interaction_logs (position tracking)
+        // Log cada resultado em search_interaction_logs (rastreamento de posição)
         foreach (array_slice($rankedItems, 0, 20) as $idx => $item) {
             SearchInteractionLog::create([
                 'ai_search_id'        => $searchRequest->id,
@@ -659,7 +690,8 @@ class QuestionController extends Controller
             ]);
         }
 
-        // Store in L2 semantic cache for future similar queries
+        // Armazena no L2 semantic cache para queries futuras similares
+        // Usa o vetor genérico (não o format-aligned) para comparação de cache
         $cacheService->storeInCache(
             $normalizedQuery,
             $queryVector,

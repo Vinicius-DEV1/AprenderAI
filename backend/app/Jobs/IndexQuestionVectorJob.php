@@ -83,11 +83,15 @@ class IndexQuestionVectorJob implements ShouldQueue
         // Ensure Qdrant collection exists
         $qdrant->ensureQuestionsCollection();
 
-        // Generate 3 embeddings
+        // Gerar 3 embeddings — um para cada named vector no Qdrant.
+        // Cada um é formatado de forma diferente pelo EmbeddingTextBuilder para capturar
+        // facetas semânticas distintas (enunciado completo, conceitos, explicação).
+        // Usa taskType='RETRIEVAL_DOCUMENT' para que o Gemini otimize os vetores
+        // para serem encontrados (não para encontrar documentos).
         $userId = null; // System job, no user attribution
-        $statementVector   = $aiService->generateEmbedding($statementText,   $userId);
-        $conceptVector     = $aiService->generateEmbedding($conceptText,     $userId);
-        $explanationVector = $aiService->generateEmbedding($explanationText, $userId);
+        $statementVector   = $aiService->generateEmbedding($statementText,   $userId, 'RETRIEVAL_DOCUMENT');
+        $conceptVector     = $aiService->generateEmbedding($conceptText,     $userId, 'RETRIEVAL_DOCUMENT');
+        $explanationVector = $aiService->generateEmbedding($explanationText, $userId, 'RETRIEVAL_DOCUMENT');
 
         if (!$statementVector || !$conceptVector || !$explanationVector) {
             Log::error("[Xavier][IndexQuestion] Embedding generation failed for question #{$this->questionId}.");
