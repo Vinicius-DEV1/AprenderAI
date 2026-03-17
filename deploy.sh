@@ -97,10 +97,19 @@ while true; do
 
     if [ $ELAPSED -ge $TIMEOUT ]; then
         log_error "Timeout após ${TIMEOUT}s! Novo container não ficou saudável."
+        
+        NEW_CONTAINER=$($COMPOSE ps -q $APP_SERVICE | tail -n 1)
+        if [ -n "$NEW_CONTAINER" ]; then
+            log_info "=== STATUS DO HEALTHCHECK ($NEW_CONTAINER) ==="
+            docker inspect --format='{{json .State.Health}}' "$NEW_CONTAINER" || true
+            echo ""
+            log_info "=== LOGS DO CONTAINER NOVO ==="
+            docker logs --tail=60 "$NEW_CONTAINER" || true
+            echo ""
+        fi
+
         log_warning "Revertendo para 1 container (o antigo ainda está rodando)..."
         $COMPOSE up -d --no-recreate --scale $APP_SERVICE=1 $APP_SERVICE 2>/dev/null || true
-        log_error "Deploy FALHOU. Logs do app:"
-        $COMPOSE logs --tail=80 $APP_SERVICE
         exit 1
     fi
 
@@ -111,8 +120,18 @@ import sys, json
 data = sys.stdin.read().strip()
 if not data:
     print(0); exit()
-items = json.loads(data) if data.startswith('[') else [json.loads(data)]
-print(sum(1 for i in items if i.get('Health','') == 'healthy'))
+try:
+    items = json.loads(data)
+    if isinstance(items, dict): items = [items]
+    healthy = 0
+    for i in items:
+        status = str(i.get('Status', '')).lower()
+        health = str(i.get('Health', '')).lower()
+        if health == 'healthy' or 'healthy' in status:
+            healthy += 1
+    print(healthy)
+except:
+    print(0)
 " 2>/dev/null || echo "0")
 
     if [ "$HEALTHY_COUNT" -ge 1 ]; then
@@ -123,8 +142,12 @@ import sys, json
 data = sys.stdin.read().strip()
 if not data:
     print(0); exit()
-items = json.loads(data) if data.startswith('[') else [json.loads(data)]
-print(len(items))
+try:
+    items = json.loads(data)
+    if isinstance(items, dict): items = [items]
+    print(len(items))
+except:
+    print(0)
 " 2>/dev/null || echo "0")
 
         if [ "$TOTAL_COUNT" -ge 2 ]; then
