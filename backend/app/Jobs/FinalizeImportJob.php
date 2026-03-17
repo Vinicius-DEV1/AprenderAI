@@ -100,14 +100,14 @@ class FinalizeImportJob implements ShouldQueue
 
             $import->update([
                 'status'               => 'completed',
-                'processed_questions'  => $processedCount,
+                'processed_questions'  => $processedProgress,
                 'pending_count'        => $pendingCount,
                 'approved_count'       => $approvedCount,
                 'skipped_count'        => $import->skipped_count, 
                 'updated_count'        => $import->updated_count,
             ]);
 
-            Log::info("[FinalizeImportJob] Import #{$import->id} CONCLUÍDO. Total: {$processedCount}, Pendentes: {$pendingCount}, Aprovadas: {$approvedCount}.");
+            Log::info("[FinalizeImportJob] Import #{$import->id} CONCLUÍDO. Total: {$processedProgress}, Pendentes: {$pendingCount}, Aprovadas: {$approvedCount}.");
 
             // SÓ AQUI limpamos — após todos os chunks terem terminado
             $this->cleanup();
@@ -128,10 +128,9 @@ class FinalizeImportJob implements ShouldQueue
             // Limpa APENAS após falha definitiva
             $this->cleanup();
 
-        } else {
             // Chunks ainda em processamento: re-agenda com delay.
             // CRÍTICO: NÃO fazemos cleanup() aqui — o SQLite ainda é necessário pelos chunks!
-            Log::info("[FinalizeImportJob] Aguardando chunks ({$processedCount}/{$import->total_questions}). Re-agendando verificação #{$this->retryCount} em " . self::RETRY_DELAY_SECONDS . "s.");
+            Log::info("[FinalizeImportJob] Aguardando chunks ({$processedProgress}/{$import->total_questions}). Re-agendando verificação #{$this->retryCount} em " . self::RETRY_DELAY_SECONDS . "s.");
 
             self::dispatch($this->import, $this->tmpDir, $this->zipPath, $this->retryCount + 1)
                 ->delay(now()->addSeconds(self::RETRY_DELAY_SECONDS));

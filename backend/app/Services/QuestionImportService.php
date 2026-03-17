@@ -664,6 +664,19 @@ class QuestionImportService
                         $stats['approved']++;
                     }
                 });
+            } catch (\Illuminate\Database\QueryException $qe) {
+                // Tratamento de Race Condition: Entrada Duplicada (Erro 23000)
+                // Isso acontece no processamento paralelo se dois workers tentarem criar 
+                // a mesma questão, matéria ou assunto no mesmo milissegundo.
+                if ($qe->getCode() === '23000' || str_contains($qe->getMessage(), 'Duplicate entry')) {
+                    $stats['skipped']++;
+                    $stats['total']++;
+                    Log::warning("[QuestionImportService] Race condition detectada (Skip seguro): " . $qe->getMessage(), [
+                        'external_id' => $externalId
+                    ]);
+                } else {
+                    Log::error("[QuestionImportService] Erro de banco no lote #{$import->id}: " . $qe->getMessage());
+                }
             } catch (\Throwable $questionError) {
                 Log::error("[QuestionImportService] Erro na questão do lote #{$import->id}: " . $questionError->getMessage(), [
                     'q_id' => $qData['id'] ?? 'unknown',
