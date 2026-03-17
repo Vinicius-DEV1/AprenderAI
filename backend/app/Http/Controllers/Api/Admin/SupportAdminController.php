@@ -142,7 +142,31 @@ class SupportAdminController extends Controller
             'status' => 'required|in:new,waiting_admin,waiting_user,resolved,closed',
         ]);
 
-        $ticket->update(['status' => $validated['status']]);
+        $oldStatus = $ticket->status;
+        $newStatus = $validated['status'];
+
+        $ticket->update(['status' => $newStatus]);
+
+        // Add automated message if status changed to resolved or closed
+        if ($oldStatus !== $newStatus) {
+            if ($newStatus === 'resolved') {
+                SupportMessage::create([
+                    'ticket_id'   => $ticket->id,
+                    'sender_type' => 'admin',
+                    'sender_id'   => $request->user()->id,
+                    'body'        => '✅ Este ticket foi marcado como resolvido pelo suporte.',
+                    'is_read'     => false,
+                ]);
+            } elseif ($newStatus === 'closed') {
+                SupportMessage::create([
+                    'ticket_id'   => $ticket->id,
+                    'sender_type' => 'admin',
+                    'sender_id'   => $request->user()->id,
+                    'body'        => '🔒 Este ticket foi encerrado.',
+                    'is_read'     => false,
+                ]);
+            }
+        }
 
         return response()->json([
             'success'      => true,

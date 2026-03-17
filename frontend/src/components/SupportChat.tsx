@@ -116,10 +116,15 @@ export default function SupportChat() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                            d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                    </svg>
+                    <div className="relative">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        {ticketsData?.some((t: any) => t.unread_count > 0) && (
+                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
+                        )}
+                    </div>
                 )}
             </button>
 
@@ -194,9 +199,16 @@ export default function SupportChat() {
                                                     <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
                                                         {t.subject}
                                                     </span>
-                                                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ml-2 flex-shrink-0 ${statusColors[t.status] || 'bg-slate-100 text-slate-500'}`}>
-                                                        {t.status_label}
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0 ${statusColors[t.status] || 'bg-slate-100 text-slate-500'}`}>
+                                                            {t.status_label}
+                                                        </span>
+                                                        {t.unread_count > 0 && (
+                                                            <span className="px-1.5 py-0.5 bg-red-500 text-white text-[9px] font-black rounded-full min-w-[16px] text-center">
+                                                                {t.unread_count}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 {t.latest_message && (
                                                     <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
@@ -243,6 +255,18 @@ export default function SupportChat() {
                                     </div>
                                 ))}
                                 <div ref={messagesEndRef} />
+                                {ticketData?.status === 'resolved' && (
+                                    <div className="mx-4 mb-2 p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-center">
+                                        <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-widest mb-1">✅ Ticket Resolvido</p>
+                                        <p className="text-[10px] text-emerald-600">Sua dúvida foi respondida. Se precisar de algo mais, basta enviar uma nova mensagem para reabrir.</p>
+                                    </div>
+                                )}
+                                {ticketData?.status === 'closed' && (
+                                    <div className="mx-4 mb-2 p-3 bg-slate-100 border border-slate-200 rounded-xl text-center">
+                                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1">🔒 Ticket Encerrado</p>
+                                        <p className="text-[10px] text-slate-400">Este atendimento foi finalizado e não aceita novas mensagens.</p>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -280,14 +304,15 @@ export default function SupportChat() {
                                     value={messageText}
                                     onChange={e => setMessageText(e.target.value)}
                                     onKeyDown={handleKeyDown}
-                                    placeholder="Digite sua mensagem..."
+                                    disabled={isSending || ticketData?.status === 'closed'}
+                                    placeholder={ticketData?.status === 'closed' ? "Conversa encerrada." : "Digite sua mensagem..."}
                                     rows={1}
-                                    className="flex-1 resize-none text-sm border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none max-h-24 overflow-y-auto"
+                                    className={`flex-1 resize-none text-sm border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none max-h-24 overflow-y-auto ${ticketData?.status === 'closed' ? 'opacity-50 cursor-not-allowed bg-slate-50' : ''}`}
                                     style={{ minHeight: '36px' }}
                                 />
                                 <button
                                     onClick={handleSend}
-                                    disabled={isSending || (!messageText.trim() && !attachment)}
+                                    disabled={isSending || (!messageText.trim() && !attachment) || ticketData?.status === 'closed'}
                                     className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                 >
                                     {isSending ? (

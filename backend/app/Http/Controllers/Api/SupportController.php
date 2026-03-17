@@ -26,11 +26,17 @@ class SupportController extends Controller
             ->orderByDesc('last_message_at')
             ->get()
             ->map(function ($ticket) {
+                $unreadCount = $ticket->messages()
+                    ->where('sender_type', 'admin')
+                    ->where('is_read', false)
+                    ->count();
+
                 return [
                     'id'             => $ticket->id,
                     'subject'        => $ticket->subject,
                     'status'         => $ticket->status,
                     'status_label'   => $ticket->statusLabel(),
+                    'unread_count'   => $unreadCount,
                     'last_message_at' => $ticket->last_message_at?->toISOString(),
                     'latest_message' => $ticket->latestMessage ? [
                         'body'        => $ticket->latestMessage->body,
