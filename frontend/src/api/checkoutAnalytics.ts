@@ -127,8 +127,8 @@ export const getCheckoutErrors = (days = 30) =>
 export const getCheckoutUserTimeline = (userId: number | string) =>
     axios.get(`/api/v1/admin/checkout/user-timeline/${userId}`);
 
-export const getCheckoutAbandonments = (days = 30) =>
-    axios.get<{ abandonments: CheckoutAbandonmentItem[] }>(`/api/v1/admin/checkout/abandonments?days=${days}`);
+export const getCheckoutAbandonments = (days = 30, page = 1, limit = 20) =>
+    axios.get<PaginatedResponse<CheckoutAbandonmentItem>>(`/api/v1/admin/checkout/abandonments?days=${days}&page=${page}&limit=${limit}`);
 
 export const getCheckoutAlerts = () =>
     axios.get<{ alerts: CheckoutAlert[]; total: number }>('/api/v1/admin/checkout/alerts');
