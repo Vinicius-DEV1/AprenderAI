@@ -28,7 +28,7 @@ class AdminPlatformMonitorController extends Controller
 {
     private function onlineThreshold(): Carbon
     {
-        return now()->subMinutes(3);
+        return now()->subMinutes(5);
     }
 
     // =========================================================================

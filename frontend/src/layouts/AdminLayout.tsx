@@ -6,14 +6,13 @@ import { useUIStore } from '../stores/uiStore';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axios';
 import AdminBatchModal from '../pages/admin/components/AdminBatchModal';
+import NotificationBell from '../components/NotificationBell';
 
 export default function AdminLayout() {
     const config = useConfigStore();
     const location = useLocation();
     const ui = useUIStore();
     const queryClient = useQueryClient();
-
-    const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     const { user, isAuthenticated, isLoading } = useAuthStore();
@@ -34,10 +33,6 @@ export default function AdminLayout() {
         return <Navigate to="/dashboard" replace />;
     }
 
-    // Close notifications on location change or click outside
-    useEffect(() => {
-        setNotificationsOpen(false);
-    }, [location]);
 
     // Handle toast timeout
     useEffect(() => {
@@ -300,36 +295,7 @@ export default function AdminLayout() {
                         </header>
 
                         {/* Notifications Bell */}
-                        <div className="relative">
-                            <button
-                                onClick={() => setNotificationsOpen(!notificationsOpen)}
-                                className="relative p-2 text-gray-400 hover:text-gray-500 transition-colors focus:outline-none bg-white rounded-full shadow-sm border border-gray-100"
-                            >
-                                <span className="sr-only">Ver notificações</span>
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                                </svg>
-                            </button>
-
-                            {notificationsOpen && (
-                                <>
-                                    <div className="fixed inset-0 z-40" onClick={() => setNotificationsOpen(false)}></div>
-                                    <div className="origin-top-right absolute right-0 mt-2 w-80 rounded-xl shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50 overflow-hidden">
-                                        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                                            <p className="text-sm font-semibold text-gray-800">Notificações</p>
-                                        </div>
-                                        <div className="max-h-80 overflow-y-auto">
-                                            <div className="px-4 py-6 text-center text-sm text-gray-500">
-                                                Nenhuma notificação nova.
-                                            </div>
-                                        </div>
-                                        <div className="px-4 py-2 border-t border-gray-100 bg-gray-50 text-center">
-                                            <NavLink to="/admin/analytics/alerts" className="text-xs font-medium text-blue-600 hover:text-blue-800">Ver todo o histórico</NavLink>
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-                        </div>
+                        <NotificationBell />
                     </div>
 
                     {/* Success/Error Toast */}

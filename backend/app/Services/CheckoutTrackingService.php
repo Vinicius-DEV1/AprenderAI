@@ -63,7 +63,7 @@ class CheckoutTrackingService
         ?Request $request = null
     ): ?PurchaseIntention {
         try {
-            return PurchaseIntention::create([
+            $intention = PurchaseIntention::create([
                 'user_id'     => $userId,
                 'plan_id'     => $planId,
                 'plan_amount'  => $planAmount,
@@ -74,6 +74,20 @@ class CheckoutTrackingService
                 'ip'          => $request?->ip(),
                 'status'      => PurchaseIntention::STATUS_PENDING,
             ]);
+
+            // Notify admins of new checkout intention
+            if ($intention) {
+                $user = \App\Models\User::find($userId);
+                $plan = \App\Models\Plan::find($planId);
+                \App\Models\UserNotification::notifyAdmins(
+                    '🛒 Intenção de Compra — ' . ($user?->name ?? 'Usuário'),
+                    'Plano ' . ($plan?->name ?? 'N/A') . ' • R$ ' . number_format($planAmount, 2, ',', '.'),
+                    'info',
+                    '/admin/analytics/checkout'
+                );
+            }
+
+            return $intention;
         } catch (\Throwable $e) {
             Log::warning('[CheckoutTracking] Failed to record intention', [
                 'user_id' => $userId,
@@ -173,6 +187,15 @@ class CheckoutTrackingService
                 'browser'          => $request?->userAgent() ? substr($request->userAgent(), 0, 100) : null,
                 'ip'               => $request?->ip(),
             ]);
+
+            // Notify admins of checkout errors
+            $user = \App\Models\User::find($userId);
+            \App\Models\UserNotification::notifyAdmins(
+                '⚠️ Erro no Checkout — ' . ($user?->name ?? 'Usuário'),
+                substr($errorMessage, 0, 120),
+                'warning',
+                '/admin/analytics/checkout'
+            );
         } catch (\Throwable $e) {
             Log::warning('[CheckoutTracking] Failed to track error', [
                 'error_type' => $errorType,
