@@ -686,7 +686,11 @@ class QuestionController extends Controller
             'user_id'  => $user->id,
             'prompt'   => $request->prompt,
             'status'   => 'completed',
-            'filters'  => ['vector_search' => true, 'question_ids' => $questionIds],
+            'filters'  => [
+                'vector_search' => true, 
+                'question_ids' => $questionIds,
+                'score_details' => array_column($rankedItems, null, 'question_id')
+            ],
         ]);
 
         // Log cada resultado em search_interaction_logs (rastreamento de posição)
@@ -703,11 +707,14 @@ class QuestionController extends Controller
         }
 
         // Armazena no L2 semantic cache para queries futuras similares
-        // Usa o vetor genérico (não o format-aligned) para comparação de cache
         $cacheService->storeInCache(
             $normalizedQuery,
             $queryVector,
-            ['vector_search' => true, 'question_ids' => $questionIds],
+            [
+                'vector_search' => true, 
+                'question_ids' => $questionIds,
+                'score_details' => array_column($rankedItems, null, 'question_id')
+            ],
             $expandedConceptIds
         );
 
@@ -802,6 +809,7 @@ class QuestionController extends Controller
                 'search_mode'  => 'vector',
                 'search_path'  => $searchPath,
                 'question_ids' => $cachedFilters['question_ids'],
+                'score_details' => $cachedFilters['score_details'] ?? [],
                 'total'        => count($cachedFilters['question_ids']),
                 'concepts'     => $conceptIds,
             ], 200);
@@ -829,6 +837,7 @@ class QuestionController extends Controller
         return response()->json([
             'status' => $aiSearchRequest->status,
             'filters' => $aiSearchRequest->filters,
+            'score_details' => $aiSearchRequest->filters['score_details'] ?? [],
             'suggestion_tip' => $aiSearchRequest->filters['suggestion_tip'] ?? null,
             'suggestions' => $aiSearchRequest->filters['suggestions'] ?? [],
             'error' => $aiSearchRequest->error

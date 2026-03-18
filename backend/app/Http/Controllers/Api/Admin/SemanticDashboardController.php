@@ -292,6 +292,7 @@ class SemanticDashboardController extends Controller
         $detectedConcepts = [];
         $extractedSubjects = [];
         $extractedTopics = [];
+        $extractedType = null;
 
         foreach ($conceptMatches as $match) {
             $payload = $match['payload'] ?? [];
@@ -306,6 +307,14 @@ class SemanticDashboardController extends Controller
                 $extractedTopics[] = $payload['topic_id'];
                 $logs[] = "INTENT DETECTED: Topic #{$payload['topic_id']} ({$payload['name']})";
             }
+        }
+
+        // ── Step 3.5: Detecção de Tipo (ENEM/Concurso) via Keywords ───────────
+        $lowerPrompt = mb_strtolower($request->prompt);
+        if (str_contains($lowerPrompt, 'concurso')) {
+            $extractedType = 'concurso';
+        } elseif (str_contains($lowerPrompt, 'enem')) {
+            $extractedType = 'enem';
         }
 
         $detectedConcepts = array_values(array_unique($detectedConcepts));
