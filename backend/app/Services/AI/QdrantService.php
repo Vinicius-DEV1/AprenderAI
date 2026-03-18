@@ -57,9 +57,9 @@ class QdrantService
 
         $payload = [
             'vectors' => [
-                'statement'   => ['size' => $this->vectorSize, 'distance' => 'Cosine'],
-                'concept'     => ['size' => $this->vectorSize, 'distance' => 'Cosine'],
-                'explanation' => ['size' => $this->vectorSize, 'distance' => 'Cosine'],
+                'statement'   => ['size' => 3072, 'distance' => 'Cosine'],
+                'concept'     => ['size' => 3072, 'distance' => 'Cosine'],
+                'explanation' => ['size' => 3072, 'distance' => 'Cosine'],
             ],
             'hnsw_config' => ['m' => 16, 'ef_construct' => 100],
         ];
@@ -69,29 +69,25 @@ class QdrantService
         return (bool) ($result['result'] ?? false);
     }
 
-    /**
-     * Creates the concepts collection with a single default vector.
-     * Uses $this->vectorSize (resolved once in constructor) for consistency
-     * with the questions collection — both must use the same embedding model dimensions.
-     */
     public function ensureConceptsCollection(): bool
     {
         // Check if exists
-        try {
-            $this->get("/collections/{$this->conceptsCollection}");
-            return true;
-        } catch (\Exception $e) {
-            // Collection doesn't exist yet — create with same vector size as questions
-            $payload = [
-                'vectors' => [
-                    'size' => $this->vectorSize,  // Consistent with ensureQuestionsCollection
-                    'distance' => 'Cosine'
-                ]
-            ];
-            $result = $this->put("/collections/{$this->conceptsCollection}", $payload);
-            Log::info('[Qdrant] Concepts collection created.', ['result' => $result]);
-            return (bool) ($result['result'] ?? false);
+        $response = $this->get("/collections/{$this->conceptsCollection}");
+        if ($response && isset($response['result'])) {
+            return true; // Already exists
         }
+
+        // Collection doesn't exist yet — create with 3072 dimensions (Gemini)
+        $payload = [
+            'vectors' => [
+                'size'     => 3072,
+                'distance' => 'Cosine'
+            ]
+        ];
+        
+        $result = $this->put("/collections/{$this->conceptsCollection}", $payload);
+        Log::info('[Qdrant] Concepts collection created.', ['result' => $result]);
+        return (bool) ($result['result'] ?? false);
     }
 
     /**
