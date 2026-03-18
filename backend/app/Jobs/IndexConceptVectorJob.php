@@ -62,13 +62,16 @@ class IndexConceptVectorJob implements ShouldQueue
         // Gerar embedding do conceito com texto enriquecido (nome, aliases, relacionados).
         // Usa taskType='RETRIEVAL_DOCUMENT' para que o Gemini otimize o vetor
         // para ser encontrado por queries de busca (RETRIEVAL_QUERY).
+        Log::info("[Xavier][IndexConcept] Generating vector for concept '{$this->conceptId}'...");
         $text   = $textBuilder->buildForConcept($concept, $relatedNames);
         $vector = $aiService->generateEmbedding($text, null, 'RETRIEVAL_DOCUMENT');
 
         if (!$vector) {
-            Log::error("[Xavier][IndexConcept] Embedding failed for concept '{$this->conceptId}'.");
+            Log::error("[Xavier][IndexConcept] Embedding FAILED for concept '{$this->conceptId}'.");
             return;
         }
+
+        Log::debug("[Xavier][IndexConcept] #{$this->conceptId} vector generated successfully.");
 
         $qdrant->ensureConceptsCollection();
 
@@ -77,7 +80,7 @@ class IndexConceptVectorJob implements ShouldQueue
             'subject_id'       => $concept->subject_id,
             'topic_id'         => $concept->topic_id,
             'aliases'          => $concept->aliases ?? [],
-            'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v3_structured'),
+            'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v5_multivector_rrf'),
         ];
 
         $success = $qdrant->upsertConcept($this->conceptId, $vector, $payload);
