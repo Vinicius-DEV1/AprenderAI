@@ -131,7 +131,7 @@ class SemanticDashboardController extends Controller
         $qdrant->ensureQuestionsCollection();
         $qdrant->ensureConceptsCollection();
         
-        $currentPipeline = config('xavier.embeddings.pipeline_version', 'v5_multivector_rrf');
+        $currentPipeline = config('xavier.embeddings.pipeline_version', 'v6_intent_unification');
         $questionsVersionCheck = $qdrant->checkIndexVersion(config('xavier.qdrant.collections.questions'), $currentPipeline);
         $conceptsVersionCheck  = $qdrant->checkIndexVersion(config('xavier.qdrant.collections.concepts'), $currentPipeline);
 

@@ -84,7 +84,7 @@ class IndexConceptVectorJob implements ShouldQueue
             'subject_id'       => $concept->subject_id,
             'topic_id'         => $concept->topic_id,
             'aliases'          => $concept->aliases ?? [],
-            'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v5_multivector_rrf'),
+            'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v6_intent_unification'),
         ];
 
         $success = $qdrant->upsertConcept($this->conceptId, $vector, $payload);
