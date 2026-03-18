@@ -8,6 +8,7 @@ use App\Models\Question;
 use App\Models\QuestionInteraction;
 use App\Models\SearchInteractionLog;
 
+use App\Jobs\GenerateQueryEmbeddingJob;
 use App\Jobs\RespondToStandaloneChatJob;
 use App\Http\Resources\QuestionResource;
 use App\Services\AI\AIService;
@@ -626,116 +627,77 @@ class QuestionController extends Controller
         $expandedConceptIds = !empty($detectedConcepts) ? $expansion->expand($detectedConcepts, depth: 1) : [];
         Log::info('[Xavier][Search] Step 6 done: query expansion.', ['expanded' => $expandedConceptIds]);
 
-        // ── Step 6.5: Generate 3 Format-Aligned Query Embeddings ──────────────
-        // ... (existing code for query embeddings) ...
+        // ── Step 6.5: Despacha os 3 Embeddings Format-Aligned em PARALELO (Job Workers) ──
+        //
+        // ANTES: 3 chamadas HTTP sequenciais ao Gemini (~500ms × 3 = ~1.5s)
+        //   $statementVector   = $aiService->generateEmbedding($statementQueryText, ...);
+        //   $conceptVectorQ    = $aiService->generateEmbedding($conceptQueryText, ...);
+        //   $explanationVector = $aiService->generateEmbedding($explanationQueryText, ...);
+        //
+        // AGORA: 3 jobs independentes disparados simultaneamente.
+        //   - Cada job é processado por um worker diferente do pool 'search_embeddings'.
+        //   - Os workers são os mesmos 40 'default', mas com search_embeddings na frente
+        //     da lista de filas, garantindo prioridade máxima e zero custo de infra.
+        //   - O GenerateQueryEmbeddingJob usa CAPABILITY_QUERY_EMBEDDING (isolada de
+        //     CAPABILITY_EMBEDDING usada pela indexação batch) — sem contenção de chaves.
+        //   - Um contador atômico Redis garante que o RunVectorSearchJob só é disparado
+        //     quando os 3 slots terminam (é atômico — sem race-condition).
+
         $statementQueryText   = $textBuilder->buildStatementQuery($request->prompt);
         $conceptQueryText     = $textBuilder->buildConceptQuery($request->prompt);
         $explanationQueryText = $textBuilder->buildExplanationQuery($request->prompt);
 
-        $statementVector   = $aiService->generateEmbedding($statementQueryText,   $user->id, 'RETRIEVAL_QUERY');
-        $conceptVectorQ    = $aiService->generateEmbedding($conceptQueryText,     $user->id, 'RETRIEVAL_QUERY');
-        $explanationVector = $aiService->generateEmbedding($explanationQueryText, $user->id, 'RETRIEVAL_QUERY');
+        // Cria o registro de busca com status 'generating' — será atualizado para
+        // 'completed' pelo RunVectorSearchJob ao finalizar a busca no Qdrant.
+        $searchRequest = AiSearchRequest::create([
+            'user_id' => $user->id,
+            'prompt'  => $request->prompt,
+            'status'  => 'generating',
+        ]);
 
-        // Fallback: se algum dos 3 embeddings falhar, usa o genérico para esse slot
-        $queryVectors = [
-            'statement'   => $statementVector   ?? $queryVector,
-            'concept'     => $conceptVectorQ    ?? $queryVector,
-            'explanation' => $explanationVector  ?? $queryVector,
+        // Contexto serializado para o RunVectorSearchJob — contém tudo necessário
+        // para executar o Qdrant + ReRank sem precisar re-queryar o banco de dados.
+        // Armazenado em Redis pelo GenerateQueryEmbeddingJob ao concluir.
+        $searchContext = [
+            'prompt'              => $request->prompt,
+            'normalized_query'    => $normalizedQuery,
+            'query_vector'        => $queryVector,          // Vetor genérico = fallback de slots null
+            'expanded_concept_ids'=> $expandedConceptIds,
+            'detected_concepts'   => $detectedConcepts,
+            'sql_filters'         => array_merge(
+                ['keyword' => $request->prompt],
+                $extractedType ? ['type' => $extractedType] : []
+            ),
+            'intent_filters'      => array_filter([
+                'subject_id' => $extractedSubjects ?: null,
+                'topic_id'   => $extractedTopics   ?: null,
+                'type'       => $extractedType ? [$extractedType] : null,
+            ]),
+            'search_path'         => $searchPath,
+            'candidate_limit'     => (int) \App\Models\Configuration::get('xavier_qdrant_candidate_limit', config('xavier.search.qdrant_candidate_limit', 50)),
+            'final_limit'         => (int) \App\Models\Configuration::get('xavier_final_result_limit', config('xavier.search.final_result_limit', 100)),
         ];
 
-        Log::info('[Xavier][Search] Step 6.5 done: 3 format-aligned query embeddings generated.', [
-            'statement_ok'   => $statementVector !== null,
-            'concept_ok'     => $conceptVectorQ !== null,
-            'explanation_ok' => $explanationVector !== null,
+        // Despacha os 3 jobs — cada um processa um slot de embedding independentemente
+        GenerateQueryEmbeddingJob::dispatch($searchRequest->id, 'statement',   $statementQueryText,   $user->id, $searchContext);
+        GenerateQueryEmbeddingJob::dispatch($searchRequest->id, 'concept',     $conceptQueryText,     $user->id, $searchContext);
+        GenerateQueryEmbeddingJob::dispatch($searchRequest->id, 'explanation', $explanationQueryText, $user->id, $searchContext);
+
+        Log::info('[Xavier][Search] Step 6.5 done: 3 embedding jobs dispatched in parallel.', [
+            'search_request_id' => $searchRequest->id,
+            'slots'             => ['statement', 'concept', 'explanation'],
         ]);
 
-        // ── Step 7: Hybrid Search (Qdrant + SQL fallback) ─────────────────────
-        // Ignora filtros da UI para manter a Busca Global idêntica ao Debug Admin
-        $sqlFilters = ['keyword' => $request->prompt];
-
-        // Se uma das duas vertentes estruturais foi explicitamente requisitada no prompt
-        // aplicamos um Hard Filter no Qdrant, vetando qualquer coisa do tipo oposto.
-        if ($extractedType) {
-            $sqlFilters['type'] = $extractedType;
-        }
-
-        $candidateLimit = (int) \App\Models\Configuration::get('xavier_qdrant_candidate_limit', config('xavier.search.qdrant_candidate_limit', 50));
-        $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, $sqlFilters, $candidateLimit);
-        Log::info('[Xavier][Search] Step 7 done: hybrid search.', ['candidates' => count($candidates)]);
-
-        // ── Step 8: ReRank (top-limit → final_limit) ──────────────────────────
-        $finalLimit  = (int) \App\Models\Configuration::get('xavier_final_result_limit', config('xavier.search.final_result_limit', 100));
-        
-        $intentFilters = [];
-        if (!empty($extractedSubjects)) {
-            $intentFilters['subject_id'] = $extractedSubjects;
-        }
-        if (!empty($extractedTopics)) {
-            $intentFilters['topic_id'] = $extractedTopics;
-        }
-        if ($extractedType) {
-            $intentFilters['type'] = [$extractedType]; 
-        }
-
-        $rankedItems = $reranker->rerank($candidates, $finalLimit, $intentFilters);
-        $questionIds = array_column($rankedItems, 'question_id');
-        Log::info('[Xavier][Search] Step 8 done: reranked.', ['top' => count($rankedItems)]);
-
-        // ── Step 9: Logging + Learning Loop ──────────────────────────────────
-        $searchRequest = AiSearchRequest::create([
-            'user_id'  => $user->id,
-            'prompt'   => $request->prompt,
-            'status'   => 'completed',
-            'filters'  => [
-                'vector_search' => true, 
-                'question_ids' => $questionIds,
-                'score_details' => array_column($rankedItems, null, 'question_id')
-            ],
-        ]);
-
-        // Log cada resultado em search_interaction_logs (rastreamento de posição)
-        foreach ($rankedItems as $idx => $item) {
-            SearchInteractionLog::create([
-                'ai_search_id'        => $searchRequest->id,
-                'user_id'             => $user->id,
-                'question_id'         => $item['question_id'],
-                'rank_position'       => $idx + 1,
-                'was_clicked'         => false,
-                'expanded_concept_ids' => $expandedConceptIds,
-                'search_path'         => $searchPath,
-            ]);
-        }
-
-        // Armazena no L2 semantic cache para queries futuras similares
-        $cacheService->storeInCache(
-            $normalizedQuery,
-            $queryVector,
-            [
-                'vector_search' => true, 
-                'question_ids' => $questionIds,
-                'score_details' => array_column($rankedItems, null, 'question_id')
-            ],
-            $expandedConceptIds
-        );
-
-        Log::info('[Xavier][Search] Step 9 done: logged and cached.', [
-            'request_id' => $searchRequest->id,
-            'total' => count($questionIds),
-        ]);
-
+        // Retorna imediatamente — frontend aguarda via polling leve no endpoint de status
         return response()->json([
-            'status'        => 'completed',
-            'search_mode'   => 'vector',
-            'search_path'   => $searchPath,
-            'question_ids'  => $questionIds,
-            'total'         => count($questionIds),
-            'concepts'      => $detectedConcepts,
-            'request_id'    => $searchRequest->id,
-            'score_details' => array_column($rankedItems, null, 'question_id')
-        ], 200);
+            'status'     => 'generating',
+            'request_id' => $searchRequest->id,
+        ], 202);
     }
 
+
     /**
+
      * Legacy AI search path (SQL + LLM, existing behavior).
      * Used when VECTOR_SEARCH_ENABLED=false or when vector pipeline cannot proceed.
      * Mantido para backwards-compatibility — usa cache semântico L1/L2 antes
@@ -835,6 +797,21 @@ class QuestionController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
+        // if status is completed, we format the response to include all fields
+        if ($aiSearchRequest->status === 'completed') {
+            $filters = $aiSearchRequest->filters ?? [];
+            return response()->json([
+                'status'        => 'completed',
+                'search_mode'   => 'vector',
+                'search_path'   => $filters['search_path']   ?? 'vector_only',
+                'question_ids'  => $filters['question_ids']  ?? [],
+                'score_details' => $filters['score_details'] ?? [],
+                'concepts'      => $filters['concepts']      ?? [],
+                'total'         => count($filters['question_ids'] ?? []),
+                'request_id'    => $aiSearchRequest->id,
+            ], 200);
+        }
+
         return response()->json([
             'status' => $aiSearchRequest->status,
             'filters' => $aiSearchRequest->filters,
@@ -873,3 +850,4 @@ class QuestionController extends Controller
         ]);
     }
 }
+
