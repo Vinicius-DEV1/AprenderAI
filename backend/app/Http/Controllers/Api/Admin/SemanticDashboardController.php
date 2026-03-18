@@ -299,8 +299,12 @@ class SemanticDashboardController extends Controller
         // ── Step 6: Hybrid Search ─────────────────────────────────────────────
         $hybridSearch = app(\App\Services\AI\HybridSearchService::class);
         $limit = (int) \App\Models\Configuration::get('xavier_qdrant_candidate_limit', config('xavier.search.qdrant_candidate_limit', 50));
-        $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, [], $limit);
-        $logs[] = "Candidates found in Qdrant: " . count($candidates);
+        
+        // Ensure SQL fallback actually filters by the text if Qdrant is empty
+        $sqlFilters = ['keyword' => $request->prompt];
+        
+        $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, $sqlFilters, $limit);
+        $logs[] = "Candidates found in Qdrant (or SQL Fallback): " . count($candidates);
 
         // ── Step 7: ReRank ────────────────────────────────────────────────────
         $reranker = app(\App\Services\AI\ReRankService::class);
