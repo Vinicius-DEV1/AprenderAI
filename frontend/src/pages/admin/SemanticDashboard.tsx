@@ -277,10 +277,18 @@ const SemanticDashboard = () => {
                         onClick={handleClearCache}
                         disabled={clearingCache}
                         className="btn btn-secondary text-red-600 border-red-200 hover:bg-red-50 flex items-center gap-2"
-                        title="Limpar Cache de Busca"
+                        title="Limpar Cache de Busca (Não apaga vetores)"
                     >
                         {clearingCache ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                         Limpar Cache
+                    </button>
+                    <button 
+                        onClick={() => setIsResetModalOpen(true)}
+                        className="btn btn-secondary text-rose-700 bg-rose-100 border-rose-200 hover:bg-rose-200 flex items-center gap-2"
+                        title="Reset Completo (APAGA TUDO E RE-INDEXA)"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                        Reset Completo
                     </button>
                     <button 
                         onClick={() => setIsIndexModalOpen(true)}
