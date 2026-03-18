@@ -177,6 +177,19 @@ class SemanticDashboardController extends Controller
 
     /**
      * Run a test search using the Xavier internal pipeline to debug scores and vectors.
+     *
+     * IMPORTANTE: Este método espelha EXATAMENTE o pipeline real do
+     * QuestionController::aiSearch para que os resultados do Debug Console
+     * sejam idênticos aos que o usuário final veria.
+     *
+     * Pipeline:
+     *   1. Normaliza a query via EmbeddingTextBuilder::buildForQuery
+     *   2. Gera embedding genérico (para concept detection)
+     *   3. Detecta conceitos no Qdrant via embedding genérico
+     *   4. Expande conceitos via Knowledge Graph
+     *   5. Gera 3 embeddings format-aligned (statement/concept/explanation)
+     *   6. Busca híbrida no Qdrant com os 3 vetores distintos
+     *   7. Re-ranking composto (vector + popularidade + qualidade + recência)
      */
     public function testSearch(Request $request, SemanticCacheService $cacheService)
     {
@@ -188,53 +201,73 @@ class SemanticDashboardController extends Controller
 
         $logs[] = "Starting Test Search for: '{$request->prompt}'";
 
-        // Step 1: Normalization
+        // ── Step 1: Normalização ──────────────────────────────────────────────
         $textBuilder = app(\App\Services\AI\EmbeddingTextBuilder::class);
         $normalizedQuery = $textBuilder->buildForQuery($request->prompt);
         $logs[] = "Normalized: {$normalizedQuery}";
 
-        // Step 2: Embedding
+        // ── Step 2: Embedding genérico (para concept detection e cache comparison) ──
         $aiService = app(AIService::class);
-        $queryVector = $aiService->generateEmbedding($normalizedQuery, $user->id);
-        
+        $queryVector = $aiService->generateEmbedding($normalizedQuery, $user->id, 'RETRIEVAL_QUERY');
+
         if (!$queryVector) {
             return response()->json(['error' => 'Failed to generate embedding.', 'logs' => $logs], 500);
         }
-        $logs[] = "Embedding Generated (Length: " . count($queryVector) . ")";
+        $logs[] = "Generic Embedding Generated (Length: " . count($queryVector) . ", taskType: RETRIEVAL_QUERY)";
 
-        // Step 3: Concepts
+        // ── Step 3: Concept Detection ─────────────────────────────────────────
         $qdrant = app(QdrantService::class);
-        $conceptThreshold = (float) config('xavier.embeddings.concept_detection_threshold', 0.45);
+        $conceptThreshold = (float) \App\Models\Configuration::get(
+            'xavier_concept_detection_threshold',
+            config('xavier.embeddings.concept_detection_threshold', 0.75)
+        );
         $conceptMatches = $qdrant->searchConcepts($queryVector, 5, $conceptThreshold);
         $detectedConcepts = array_filter(array_map(fn($m) => $m['payload']['concept_slug'] ?? null, $conceptMatches));
         $detectedConcepts = array_values($detectedConcepts);
-        $logs[] = "Concepts Detected: " . implode(', ', $detectedConcepts ?: ['None']);
+        $logs[] = "Concepts Detected (threshold={$conceptThreshold}): " . implode(', ', $detectedConcepts ?: ['None']);
 
-        // Step 4: Expansion
+        // ── Step 4: Query Expansion via Knowledge Graph ───────────────────────
         $expansion = app(\App\Services\AI\QueryExpansionService::class);
         $expandedConceptIds = $expansion->expand($detectedConcepts, 1);
         $logs[] = "Expanded Concepts IDs: " . implode(', ', $expandedConceptIds ?: ['None']);
 
-        // Step 5: Hybrid Search
-        $hybridSearch = app(\App\Services\AI\HybridSearchService::class);
+        // ── Step 5: Gerar 3 embeddings format-aligned ─────────────────────────
+        // Cada named vector no Qdrant foi indexado com formato diferente.
+        // Para maximizar a similaridade de cosseno, geramos um embedding
+        // alinhado para cada named vector.
+        $statementQueryText   = $textBuilder->buildStatementQuery($request->prompt);
+        $conceptQueryText     = $textBuilder->buildConceptQuery($request->prompt);
+        $explanationQueryText = $textBuilder->buildExplanationQuery($request->prompt);
+
+        $statementVector   = $aiService->generateEmbedding($statementQueryText,   $user->id, 'RETRIEVAL_QUERY');
+        $conceptVectorQ    = $aiService->generateEmbedding($conceptQueryText,     $user->id, 'RETRIEVAL_QUERY');
+        $explanationVector = $aiService->generateEmbedding($explanationQueryText, $user->id, 'RETRIEVAL_QUERY');
+
+        // Fallback: se algum dos 3 falhar, usa o genérico
         $queryVectors = [
-            'statement'   => $queryVector,
-            'concept'     => $queryVector,
-            'explanation' => $queryVector,
+            'statement'   => $statementVector   ?? $queryVector,
+            'concept'     => $conceptVectorQ    ?? $queryVector,
+            'explanation' => $explanationVector  ?? $queryVector,
         ];
-        
+
+        $logs[] = "Format-aligned embeddings: statement=" . ($statementVector ? 'OK' : 'FALLBACK')
+                . ", concept=" . ($conceptVectorQ ? 'OK' : 'FALLBACK')
+                . ", explanation=" . ($explanationVector ? 'OK' : 'FALLBACK');
+
+        // ── Step 6: Hybrid Search ─────────────────────────────────────────────
+        $hybridSearch = app(\App\Services\AI\HybridSearchService::class);
         $limit = (int) \App\Models\Configuration::get('xavier_qdrant_candidate_limit', config('xavier.search.qdrant_candidate_limit', 50));
         $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, [], $limit);
         $logs[] = "Candidates found in Qdrant: " . count($candidates);
 
-        // Step 6: ReRank
+        // ── Step 7: ReRank ────────────────────────────────────────────────────
         $reranker = app(\App\Services\AI\ReRankService::class);
         $rankedItems = $reranker->rerank($candidates, 20);
 
         $latency = round((microtime(true) - $startTime) * 1000, 2);
-        $logs[] = "Pipeline completed in {$latency}ms";
+        $logs[] = "Pipeline completed in {$latency}ms (4 embeddings total)";
 
-        // Format detailed results for frontend
+        // ── Format detailed results ───────────────────────────────────────────
         $detailedResults = [];
         $qIds = array_column($rankedItems, 'question_id');
         $questions = Question::with(['alternatives', 'subjects', 'topics'])
@@ -262,11 +295,11 @@ class SemanticDashboardController extends Controller
             ];
         }
 
-        // Run SQL Fallback for comparison
+        // ── SQL Fallback comparison ───────────────────────────────────────────
         $sqlStartTime = microtime(true);
         $legacyCache = $cacheService->findExactMatch(trim(strtolower($request->prompt)));
         if (!$legacyCache) {
-            $legacyCache = $cacheService->findSimilarMatch($queryVector, 0.88); // 0.88 is the default
+            $legacyCache = $cacheService->findSimilarMatch($queryVector, 0.88);
         }
         $sqlLatency = round((microtime(true) - $sqlStartTime) * 1000, 2);
 
@@ -283,7 +316,8 @@ class SemanticDashboardController extends Controller
     }
 
     /**
-     * Dispatch the Batch Indexer command via API
+     * Dispatch the Batch Indexer command via API (Questions).
+     * Enfileira o comando xavier:index-all para vetorizar questões publicadas.
      */
     public function reindexAll(Request $request)
     {
@@ -306,6 +340,39 @@ class SemanticDashboardController extends Controller
 
         return response()->json([
             'message' => 'Job xavier:index-all enfileirado com sucesso.' . ($request->has('limit') ? " Limite: {$validated['limit']} questões." : "")
+        ]);
+    }
+
+    /**
+     * Dispatch the Concept Indexer command via API.
+     * Enfileira o comando xavier:index-concepts para vetorizar conceitos
+     * na coleção concepts_vectors do Qdrant.
+     *
+     * Essencial quando:
+     *   - Os IDs dos pontos mudaram (ex: migração CRC32 → SHA-256)
+     *   - Novos conceitos foram extraídos pelo ConceptExtractionJob
+     *   - O formato de embedding mudou e precisa re-indexar
+     */
+    public function reindexConcepts(Request $request)
+    {
+        $validated = $request->validate([
+            'limit' => 'nullable|integer|min:1|max:5000',
+            'force' => 'nullable|boolean'
+        ]);
+
+        $params = [];
+        if ($request->has('limit')) {
+            $params['--limit'] = (int) $validated['limit'];
+        }
+
+        if ($request->boolean('force')) {
+            $params['--force'] = true;
+        }
+
+        Artisan::queue('xavier:index-concepts', $params);
+
+        return response()->json([
+            'message' => 'Job xavier:index-concepts enfileirado com sucesso.' . ($request->has('limit') ? " Limite: {$validated['limit']} conceitos." : "")
         ]);
     }
 

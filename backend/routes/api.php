@@ -395,6 +395,7 @@ Route::prefix('v1')->group(function () {
                 Route::post('/config', [SemanticDashboardController::class, 'updateConfig']);
                 Route::post('/test-search', [SemanticDashboardController::class, 'testSearch']);
                 Route::post('/reindex', [SemanticDashboardController::class, 'reindexAll']);
+                Route::post('/reindex-concepts', [SemanticDashboardController::class, 'reindexConcepts']);
                 Route::post('/clear-cache', [SemanticDashboardController::class, 'clearCache']);
             });
 

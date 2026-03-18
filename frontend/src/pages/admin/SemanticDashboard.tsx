@@ -3,7 +3,7 @@ import api from '../../api/axios';
 import { toast } from 'sonner';
 import { 
     Database, Activity, Search, RefreshCw, Settings, Save, Server, 
-    Box, FileJson, CheckCircle2, AlertCircle, PlayCircle, ChevronDown, Clock
+    Box, FileJson, CheckCircle2, AlertCircle, PlayCircle, ChevronDown, Clock, Lightbulb
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -73,6 +73,7 @@ const SemanticDashboard = () => {
     const [configLoading, setConfigLoading] = useState(false);
     const [testLoading, setTestLoading] = useState(false);
     const [reindexing, setReindexing] = useState(false);
+    const [reindexingConcepts, setReindexingConcepts] = useState(false);
     const [clearingCache, setClearingCache] = useState(false);
     
     // Config form
@@ -81,10 +82,15 @@ const SemanticDashboard = () => {
         concept_detection_threshold: 0.45,
     });
 
-    // Index Modal
+    // Index Modal (Questions)
     const [isIndexModalOpen, setIsIndexModalOpen] = useState(false);
     const [indexBatchLimit, setIndexBatchLimit] = useState(50);
     const [indexForce, setIndexForce] = useState(false);
+
+    // Concept Index Modal
+    const [isConceptModalOpen, setIsConceptModalOpen] = useState(false);
+    const [conceptBatchLimit, setConceptBatchLimit] = useState(100);
+    const [conceptForce, setConceptForce] = useState(false);
 
     // Test search
     const [searchPrompt, setSearchPrompt] = useState('');
@@ -157,13 +163,30 @@ const SemanticDashboard = () => {
                 limit: indexBatchLimit,
                 force: indexForce 
             });
-            toast.success(res.data.message || 'Indexação iniciada!');
+            toast.success(res.data.message || 'Indexação de questões iniciada!');
             setIsIndexModalOpen(false);
             loadStats();
         } catch (error) {
-            toast.error('Erro ao disparar indexação.');
+            toast.error('Erro ao disparar indexação de questões.');
         } finally {
             setReindexing(false);
+        }
+    };
+
+    const handleReindexConcepts = async () => {
+        try {
+            setReindexingConcepts(true);
+            const res = await api.post('/api/v1/admin/semantic/reindex-concepts', {
+                limit: conceptBatchLimit,
+                force: conceptForce
+            });
+            toast.success(res.data.message || 'Indexação de conceitos iniciada!');
+            setIsConceptModalOpen(false);
+            loadStats();
+        } catch (error) {
+            toast.error('Erro ao disparar indexação de conceitos.');
+        } finally {
+            setReindexingConcepts(false);
         }
     };
 
@@ -225,12 +248,20 @@ const SemanticDashboard = () => {
                         {reindexing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Server className="w-4 h-4" />}
                         Indexar Questões
                     </button>
+                    <button 
+                        onClick={() => setIsConceptModalOpen(true)}
+                        disabled={reindexingConcepts}
+                        className="btn btn-primary bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2"
+                    >
+                        {reindexingConcepts ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Lightbulb className="w-4 h-4" />}
+                        Indexar Conceitos
+                    </button>
                 </div>
             </div>
 
             {/* OVERVIEW STATS */}
             {stats && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                     <StatCard 
                         title="Status Qdrant" 
                         value={stats.qdrant.status.toUpperCase()} 
@@ -251,6 +282,13 @@ const SemanticDashboard = () => {
                         subtitle={`L1: ${stats.performance.l1_cache_hits} | L2: ${stats.performance.l2_cache_hits}`}
                         icon={Activity}
                         colorClass="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+                    />
+                    <StatCard 
+                        title="Conceitos Vetorizados" 
+                        value={`${stats.overview.mysql_indexed_concepts} / ${stats.overview.mysql_total_concepts}`} 
+                        subtitle={`Qdrant: ${stats.qdrant.concepts_points} pontos`}
+                        icon={Lightbulb}
+                        colorClass="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
                     />
                     <StatCard 
                         title="Status de Fila (Embeddings)" 
@@ -658,6 +696,98 @@ const SemanticDashboard = () => {
                                     className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:shadow-none"
                                 >
                                     {reindexing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
+                                    Iniciar Batch
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* CONCEPT INDEX MODAL */}
+            {isConceptModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-6">
+                            <div className="flex justify-between items-start mb-4">
+                                <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                    <Lightbulb className="w-6 h-6 text-purple-500" />
+                                    Indexar Conceitos
+                                </h3>
+                                <button onClick={() => setIsConceptModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                    <RefreshCw className="w-5 h-5" style={{ transform: 'rotate(45deg)' }} />
+                                </button>
+                            </div>
+                            
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                                Vetorize conceitos no Qdrant para a Detecção de Intenção (Intent Detection) da busca semântica.
+                            </p>
+
+                            <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-xl p-4 mb-6">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-xs font-medium text-purple-700 dark:text-purple-400 uppercase tracking-wider">
+                                        {conceptForce ? 'Total de Conceitos para Re-indexar' : 'Pendentes de Indexação'}
+                                    </span>
+                                    <span className={clsx("text-lg font-bold", conceptForce ? "text-purple-600 dark:text-purple-400" : "text-purple-800 dark:text-purple-200")}>
+                                        {stats ? (
+                                            conceptForce 
+                                                ? stats.overview.mysql_total_concepts 
+                                                : stats.overview.mysql_total_concepts - stats.overview.mysql_indexed_concepts
+                                        ) : '...'}
+                                    </span>
+                                </div>
+                                <p className="text-[10px] text-purple-600 dark:text-purple-500">
+                                    {conceptForce 
+                                        ? "Modo FORÇAR ativado: todos os conceitos serão re-vetorizados com o novo formato (SHA-256 IDs + taskType)."
+                                        : "Conceitos que ainda não possuem timestamp qdrant_indexed_at."}
+                                </p>
+                            </div>
+
+                            <div className="space-y-2 mb-8">
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                    Quantos conceitos indexar nesta leva?
+                                </label>
+                                <input 
+                                    type="number" 
+                                    min="1" max="5000"
+                                    value={conceptBatchLimit}
+                                    onChange={(e) => setConceptBatchLimit(parseInt(e.target.value) || 0)}
+                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 focus:ring-2 focus:ring-purple-500 outline-none text-slate-800 dark:text-white"
+                                />
+                            </div>
+
+                            <div className="mb-6">
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <div className="relative">
+                                        <input 
+                                            type="checkbox" 
+                                            className="sr-only" 
+                                            checked={conceptForce}
+                                            onChange={(e) => setConceptForce(e.target.checked)}
+                                        />
+                                        <div className={clsx("block w-10 h-6 rounded-full transition-colors", conceptForce ? "bg-purple-500" : "bg-slate-300 dark:bg-slate-600")}></div>
+                                        <div className={clsx("dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform", conceptForce && "transform translate-x-4")}></div>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Forçar Re-indexação</span>
+                                        <p className="text-[10px] text-slate-500">Re-indexa com novos IDs SHA-256 e formato de embedding atualizado.</p>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button 
+                                    onClick={() => setIsConceptModalOpen(false)}
+                                    className="flex-1 px-4 py-2.5 rounded-xl font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button 
+                                    onClick={handleReindexConcepts}
+                                    disabled={reindexingConcepts || conceptBatchLimit <= 0}
+                                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 transition-all disabled:opacity-50 disabled:shadow-none"
+                                >
+                                    {reindexingConcepts ? <RefreshCw className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
                                     Iniciar Batch
                                 </button>
                             </div>
