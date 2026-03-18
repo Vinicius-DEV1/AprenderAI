@@ -122,7 +122,7 @@ class SemanticDashboardController extends Controller
             ->get();
 
         // 8. Checar versão do Índice do Qdrant
-        $currentPipeline = config('xavier.embeddings.pipeline_version', 'v4_payload_boost');
+        $currentPipeline = config('xavier.embeddings.pipeline_version', 'v5_multivector_rrf');
         $questionsVersionCheck = $qdrant->checkIndexVersion(config('xavier.qdrant.collections.questions'), $currentPipeline);
         $conceptsVersionCheck  = $qdrant->checkIndexVersion(config('xavier.qdrant.collections.concepts'), $currentPipeline);
 
