@@ -7,7 +7,7 @@ use App\Models\AiSearchRequest;
 use App\Models\Question;
 use App\Models\QuestionInteraction;
 use App\Models\SearchInteractionLog;
-use App\Jobs\InterpretSearchPromptJob;
+
 use App\Jobs\RespondToStandaloneChatJob;
 use App\Http\Resources\QuestionResource;
 use App\Services\AI\AIService;

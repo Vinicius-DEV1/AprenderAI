@@ -1560,75 +1560,7 @@ EOT;
         Cache::put('api_key_blacklist', $bannedIds, now()->addMinutes(60));
     }
 
-    public function interpretSearchPrompt(string $userPrompt, array $filterOptions, ?int $userId = null): ?array
-    {
-        if (!$this->hasActiveKey(ApiKey::CAPABILITY_SEARCH)) {
-            return null;
-        }
 
-        try {
-            return $this->executeWithFailover(ApiKey::CAPABILITY_SEARCH, function ($apiKey) use ($userPrompt, $filterOptions, $userId) {
-                $provider = $apiKey->provider;
-                $aiName = \App\Models\Setting::where('key', 'ai_name')->value('value') ?? 'Xavier';
-
-                // LÓGICA DE MAPEAMENTO (Tema vs Assunto):
-                // O Xavier deve mapear a coluna 'topic' do JSON resultante para:
-                // - 'theme' (no banco) se o tipo for 'enem'
-                // - 'topic' (no banco) se o tipo for 'concurso'
-                $prompt = $this->promptService->get('ai_search_interpreter', [
-                    'user_prompt' => $userPrompt,
-                    'filter_options' => json_encode($filterOptions)
-                ], "Você é o {$aiName}, um Agente de Busca de alta precisão. Sua missão é converter a frase do usuário em um JSON de filtros ESTRITAMENTE baseados nas opções fornecidas.
-
-### REGRAS DE OURO (NÃO NEGOCIÁVEIS):
-1. **USO OBRIGATÓRIO DE IDS**: Para os campos 'subject' e 'topic', você DEVE retornar o ID (número ou string curta) encontrado no JSON de opções válidas. NUNCA retorne o nome amigável (ex: retornar '12' em vez de 'Geografia').
-2. **PROIBIDO FILTROS FANTASMAS**: Se o usuário não mencionou o ANO, o campo 'year' DEVE ser string vazia (\"\"). Se ele não mencionou a dificuldade, 'difficulty' DEVE ser \"\". NUNCA invente '2024' ou qualquer outro valor por conta própria.
-3. **ECONOMIA DE KEYWORDS**: O campo 'keyword' deve conter APENAS termos que não foram capturados como matéria ou assunto. Se já mapeou o assunto, deixe 'keyword' vazio (\"\").
-4. **VALORES TÉCNICOS**:
-   - Tipo DEVE ser: \"enem\", \"concurso\" ou vazio (\"\") se o usuário não especificar.
-   - Dificuldade DEVE ser: \"easy\", \"medium\" ou \"hard\".
-   - Status DEVE ser: \"unanswered\" ou \"answered\".
-
-### EXEMPLO DE SUCESSO:
-**Input do Usuário:** \"questões de geografia\"
-**Opções Válidas:** {\"subjects\":[{\"id\":45, \"name\":\"Geografia\"}], ...}
-**Output Correto:**
-{
-  \"type\": \"\",
-  \"subject\": \"45\",
-  \"topic\": \"\",
-  \"difficulty\": \"\",
-  \"year\": \"\",
-  \"keyword\": \"\",
-  \"suggestion_tip\": \"Encontrei questões de Geografia para você.\",
-  \"suggestions\": []
-}
-
-### DADOS PARA PROCESSAR AGORA:
-Busca do aluno: '{user_prompt}'
-Opções válidas (JSON): {filter_options}
-
-RETORNE APENAS O JSON:");
-
-                $result = $this->callAI($provider, $apiKey, $prompt, $userId, ApiKey::CAPABILITY_SEARCH);
-                $apiKey->incrementUsage();
-
-                $content = $result['content'];
-
-                // VALIDAÇÃO: Se o sanitizer retornou um array que só contém 'text', 
-                // significa que o prompt não retornou um JSON válido de filtros.
-                // Para a busca assistida, isso deve ser tratado como falha de interpretação.
-                if (isset($content['text']) && count($content) === 1) {
-                    throw new \Exception('AI Search Interpretation failed: AI returned text instead of filters JSON.');
-                }
-
-                return $content;
-            });
-        } catch (\Exception $e) {
-            Log::error('AI Search Interpretation failed: ' . $e->getMessage());
-            return null;
-        }
-    }
 
     protected function validateOpenAIKey(string $key): array
     {

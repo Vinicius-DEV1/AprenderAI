@@ -148,72 +148,39 @@ class ApiKey extends Model
             $query->where('provider', $provider);
         }
 
-        // --- Tenta buscar com a arquitetura nova M:N (ApiKeyCapability) ---
+        // --- Arquitetura Exclusiva M:N (api_key_capabilities) ---
+        // Aqui realizamos a busca das chaves rigorosamente pela tabela pivot ApiKeyCapability.
+        // Todo o código de suporte ao legado (coluna 'capabilities' JSON da api_keys) foi removido
+        // para dar lugar a um sistema robusto e confiável de vinculação de módulos.
         $keys = (clone $query)
-            ->where(function ($q) use ($capability) {
-                $q->whereHas('capabilitiesList', function ($sq) use ($capability) {
-                    $sq->where('capability', $capability);
-                });
-
-                // Fallback: Se for 'general', aceita chaves que NÃO tem capacidades definidas (Retrocompatibilidade)
-                if ($capability === self::CAPABILITY_GENERAL) {
-                    $q->orWhereDoesntHave('capabilitiesList')
-                        ->where(function ($sq) {
-                            $sq->whereNull('capabilities')
-                                ->orWhere('capabilities', '[]')
-                                ->orWhere('capabilities', '');
-                        });
-                }
+            ->whereHas('capabilitiesList', function ($sq) use ($capability) {
+                // Filtramos a consulta principal para trazer apenas as chaves cujo vínculo
+                // específico com a `$capability` requisitada exista.
+                $sq->where('capability', $capability);
             })
             ->with([
+                // Carregamos a relação para obtermos a prioridade definida pelo administrador
                 'capabilitiesList' => function ($q) use ($capability) {
                     $q->where('capability', $capability);
                 }
             ])
             ->get()
             ->sortBy(function ($key) {
-                // Ordena pela prioridade menor = mais importante
+                // Chaves de menor número em 'priority' têm precedência maior no consumo
                 return $key->capabilitiesList->first()->priority ?? 999;
             })
             ->values();
 
-        // --- Fallback para arquitetura legada (coluna JSON) ---
-        if ($keys->isEmpty()) {
-            $legacyKeys = collect();
-
-            // 1. Prioridade Máxima: Chave exata para a Capability requerida
-            $key1 = (clone $query)
-                ->where(function ($q) use ($capability) {
-                    $q->whereJsonContains('capabilities', $capability);
-                    if ($capability === self::CAPABILITY_GENERAL) {
-                        $q->orWhereNull('capabilities')
-                            ->orWhere('capabilities', '[]')
-                            ->orWhere('capabilities', '');
-                    }
-                })
-                ->orderBy('is_primary', 'desc')
-                ->orderBy('last_used_at', 'asc')
-                ->first();
-
-            if ($key1) $legacyKeys->push($key1);
-
-            // 2. Fallback Inteligente: Tenta uma chave de Uso Geral ('general')
-            if (!$key1 && $capability !== self::CAPABILITY_GENERAL) {
-                $key2 = (clone $query)
-                    ->where(function ($q) {
-                        $q->whereJsonContains('capabilities', self::CAPABILITY_GENERAL)
-                            ->orWhereNull('capabilities')
-                            ->orWhere('capabilities', '[]')
-                            ->orWhere('capabilities', '');
-                    })
-                    ->orderBy('is_primary', 'desc')
-                    ->orderBy('last_used_at', 'asc')
-                    ->first();
-
-                if ($key2) $legacyKeys->push($key2);
+        // --- Fallback Inteligente Recursivo ---
+        // Se a capability demandada (ex: 'triage') não obteve NENHUM match na triagem rigorosa M:N acima,
+        // acionamos o sistema central com a diretriz de nos devolver chaves expressamente marcadas 
+        // para 'general' (Uso Geral / Fallback). Dessa forma, impedimos o vazamento de chaves
+        // (como uma chave dedicada à Questões cobrir as requisições de outras áreas).
+        if ($keys->isEmpty() && $capability !== self::CAPABILITY_GENERAL) {
+            $generalKeys = self::getKeysForCapability(self::CAPABILITY_GENERAL, $provider);
+            if ($generalKeys->isNotEmpty()) {
+                $keys = $generalKeys;
             }
-
-            $keys = $legacyKeys;
         }
 
         // -------------------------------------------------------------------

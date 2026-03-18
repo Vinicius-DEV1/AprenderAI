@@ -362,10 +362,11 @@ export default function QuestionBank() {
                     : `⚡ Inteligência Instantânea: Busca recuperada do Cache.`);
                 setShowToast(true);
                 setTimeout(() => setShowToast(false), 4000);
-            } else if (res.data.status === 'queued') {
-                // BACKEND FILA SLOW RESPONSE
-                pollSearch(res.data.request_id);
             } else {
+                // LOGICA NOVA: O antigo status 'queued' que enviava a busca para uma fila lenta do LLM
+                // foi totalmente removido. Agora, se a busca vetorial falhar, o backend faz 
+                // um fallback síncrono ultrarrápido (busca textual) e retorna 'completed' imediatamente.
+                // Se cair neste bloco, significa que houve um erro real ou cota excedida.
                 setAiLoading(false);
                 setAiMessage(res.data.message || `O ${aiName} não conseguiu interpretar essa busca.`);
                 if (res.data.code === 'quota_exceeded') setIsQuotaExceeded(true);
@@ -378,58 +379,7 @@ export default function QuestionBank() {
         }
     };
 
-    const pollSearch = (requestId: string) => {
-        let attempts = 0;
-        const poller = setInterval(async () => {
-            attempts++;
-            try {
-                const res = await api.get(`/api/v1/questions/ai-search/${requestId}/status`);
-                if (res.data.status === 'completed') {
-                    console.log('DEBUG: Filtros recebidos do Xavier:', res.data.filters);
-                    clearInterval(poller);
-                    setAiLoading(false);
-                    if (res.data.suggestion_tip) setAiSuggestion(res.data.suggestion_tip);
-                    if (res.data.suggestions) setAiSuggestions(res.data.suggestions);
-                    if (res.data.score_details) setAiScoreDetails(res.data.score_details);
 
-                    // RADICAL REPLACEMENT: When AI responds, we replace all filters to avoid ghosts
-                    const baseFilters = {
-                        type: '', subject: '', topic: '', keyword: '', year: '', id: '',
-                        difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false,
-                        notebook_id: '', favorites_only: false, question_ids: res.data.question_ids || []
-                    };
-                    const filtersToApply = res.data.filters || {};
-                    const finalFilters = { ...baseFilters, ...filtersToApply };
-                    setFilters(finalFilters as FilterOptions);
-
-                    // Auto-show advanced filters if AI sets them
-                    if (finalFilters.year || finalFilters.difficulty || finalFilters.organization) {
-                        setMoreFilters(true);
-                    }
-                    setPage(1);
-                    if (!res.data.suggestions || res.data.suggestions.length === 0) {
-                        setTriggerScroll(true);
-                    }
-                    setToastMessage(res.data.search_mode === 'vector'
-                        ? `🧠 Xavier Semantic: ${res.data.total} questões encontradas por significado.`
-                        : `✅ Busca realizada com sucesso! ${aiName} encontrou o que você precisava.`);
-                    setShowToast(true);
-                    setTimeout(() => setShowToast(false), 4000);
-                } else if (res.data.status === 'failed') {
-                    clearInterval(poller);
-                    setAiLoading(false);
-                    setIsAiError(true);
-                    const randomFail = FAILURE_MESSAGES[Math.floor(Math.random() * FAILURE_MESSAGES.length)];
-                    setAiMessage(res.data.error || randomFail);
-                }
-            } catch { /* polling error, just retry */ }
-            if (attempts >= 100) {
-                clearInterval(poller);
-                setAiLoading(false);
-                setAiMessage('A busca demorou demais. Tente novamente.');
-            }
-        }, 800);
-    };
 
     const closeBubble = () => {
         setAiMessage(null);

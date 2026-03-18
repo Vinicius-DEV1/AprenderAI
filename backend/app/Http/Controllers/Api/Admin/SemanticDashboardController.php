@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use App\Jobs\InterpretSearchPromptJob;
+
 
 class SemanticDashboardController extends Controller
 {
