@@ -694,9 +694,9 @@ EOT;
                     'taskType' => $taskType,
                 ];
 
-                // Controle Tático de Rate Limit: 10s fixos entre requisições de Embeddings para evitar 429
-                \Illuminate\Support\Facades\Log::info("[AIBATCH] Worker de Embeddings pausando por 10s antes da requisição para evitar Rate Limit.");
-                usleep((10 * 1000000));
+                // Controle Tático de Rate Limit: 2s fixos entre requisições de Embeddings para evitar 429
+                \Illuminate\Support\Facades\Log::info("[AIBATCH] Worker de Embeddings pausando por 2s antes da requisição para evitar Rate Limit.");
+                usleep((2 * 1000000));
 
                 $response = Http::timeout(10)->post($url, $payload);
                 $executionTime = microtime(true) - $startTime;
