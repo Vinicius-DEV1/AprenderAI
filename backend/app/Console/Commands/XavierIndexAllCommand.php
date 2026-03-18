@@ -29,7 +29,7 @@ class XavierIndexAllCommand extends Command
                             {--force   : Re-index even if the question already has vectors}
                             {--fresh   : Delete and recreate the Qdrant collection before indexing}';
 
-    protected $description = 'Batch-index all approved questions into Qdrant (Xavier Semantic Search)';
+    protected $description = 'Batch-index all approved QUESTIONS into Qdrant (Xavier Semantic Search)';
 
     public function handle(QdrantService $qdrant): int
     {
