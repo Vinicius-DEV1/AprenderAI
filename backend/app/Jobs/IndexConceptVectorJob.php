@@ -44,9 +44,12 @@ class IndexConceptVectorJob implements ShouldQueue
         $concept = Concept::with(['subject', 'topic'])->find($this->conceptId);
 
         if (!$concept) {
-            Log::warning("[Xavier][IndexConcept] Concept '{$this->conceptId}' not found.");
-            return;
+            $msg = "[Xavier][IndexConcept] Concept '{$this->conceptId}' NOT FOUND in MySQL database.";
+            Log::error($msg);
+            throw new \RuntimeException($msg);
         }
+        
+        Log::info("[Xavier][IndexConcept] Found concept #{$concept->id} ({$concept->name}). Starting indexing...");
 
         // Gather related concept names for richer embedding context
         $relatedNames = ConceptRelation::where('concept_id', $this->conceptId)
