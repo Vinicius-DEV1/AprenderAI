@@ -3,7 +3,8 @@ import api from '../../api/axios';
 import { toast } from 'sonner';
 import { 
     Database, Activity, Search, RefreshCw, Settings, Save, Server, 
-    Box, FileJson, CheckCircle2, AlertCircle, PlayCircle, ChevronDown, Clock, Lightbulb
+    Box, FileJson, CheckCircle2, AlertCircle, PlayCircle, ChevronDown, Clock, Lightbulb,
+    Trash2, BarChart3, TrendingUp, Zap
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -35,6 +36,12 @@ interface DashboardStats {
             payload: string;
             error_preview: string;
         }>;
+    };
+    analytics: {
+        total_ai_requests: number;
+        success_rate: number;
+        top_prompts: Array<{ prompt: string; total: number }>;
+        chart_data: Array<{ date: string; count: number; success: number; failed: number }>;
     };
     recent_searches?: Array<{
         id: number;
@@ -75,6 +82,9 @@ const SemanticDashboard = () => {
     const [reindexing, setReindexing] = useState(false);
     const [reindexingConcepts, setReindexingConcepts] = useState(false);
     const [clearingCache, setClearingCache] = useState(false);
+    const [resetting, setResetting] = useState(false);
+    const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+    const [resetConfirmText, setResetConfirmText] = useState('');
     
     // Config form
     const [configState, setConfigState] = useState({
@@ -207,6 +217,22 @@ const SemanticDashboard = () => {
         }
     };
 
+    const handleResetEmbeddings = async () => {
+        if (resetConfirmText !== 'RESET') return;
+        try {
+            setResetting(true);
+            const res = await api.post('/api/v1/admin/semantic/reset-embeddings', { confirm: 'RESET' });
+            toast.success(res.data.message);
+            setIsResetModalOpen(false);
+            setResetConfirmText('');
+            loadStats();
+        } catch (error) {
+            toast.error('Erro ao executar reset completo.');
+        } finally {
+            setResetting(false);
+        }
+    };
+
     if (loading && !stats) {
         return <div className="p-8 flex justify-center"><RefreshCw className="w-8 h-8 animate-spin text-indigo-500" /></div>;
     }
@@ -300,14 +326,94 @@ const SemanticDashboard = () => {
                 </div>
             )}
 
+            {/* ANALYTICS ROW  — absorvido do antigo Xavier Insights */}
+            {stats && stats.analytics && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Success Rate Card */}
+                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+                        <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4 text-emerald-500" />
+                            Taxa de Sucesso
+                        </h3>
+                        <div className="flex items-end gap-3">
+                            <span className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">
+                                {stats.analytics.success_rate}%
+                            </span>
+                            <span className="text-xs text-slate-400 mb-1">
+                                de {stats.analytics.total_ai_requests} buscas
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Top Searched Terms */}
+                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+                        <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
+                            <Zap className="w-4 h-4 text-amber-500" />
+                            Top 5 Termos Buscados
+                        </h3>
+                        <div className="space-y-2">
+                            {stats.analytics.top_prompts.length > 0 ? stats.analytics.top_prompts.map((item, idx) => (
+                                <div key={idx} className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <span className="text-xs font-bold text-slate-400 w-4 shrink-0">#{idx + 1}</span>
+                                        <span className="text-sm text-slate-700 dark:text-slate-300 truncate" title={item.prompt}>
+                                            {item.prompt}
+                                        </span>
+                                    </div>
+                                    <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded shrink-0">
+                                        {item.total}x
+                                    </span>
+                                </div>
+                            )) : (
+                                <p className="text-xs text-slate-400">Nenhuma busca registrada.</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* 7-Day Chart */}
+                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+                        <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
+                            <BarChart3 className="w-4 h-4 text-indigo-500" />
+                            Volume de Buscas (7 dias)
+                        </h3>
+                        {stats.analytics.chart_data.length > 0 ? (
+                            <div className="flex items-end gap-1 h-24">
+                                {stats.analytics.chart_data.map((day, idx) => {
+                                    const maxCount = Math.max(...stats.analytics.chart_data.map(d => d.count), 1);
+                                    const heightPct = (day.count / maxCount) * 100;
+                                    return (
+                                        <div key={idx} className="flex-1 flex flex-col items-center gap-1" title={`${day.date}: ${day.count} buscas (${day.success} ok, ${day.failed} falhas)`}>
+                                            <div className="w-full flex flex-col justify-end" style={{ height: '80px' }}>
+                                                <div 
+                                                    className="w-full rounded-t bg-gradient-to-t from-indigo-600 to-indigo-400 dark:from-indigo-500 dark:to-indigo-300 transition-all hover:opacity-80"
+                                                    style={{ height: `${Math.max(heightPct, 4)}%` }}
+                                                />
+                                            </div>
+                                            <span className="text-[9px] text-slate-400 font-mono">
+                                                {day.date.slice(-2)}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-slate-400 text-center py-6">Sem dados nos últimos 7 dias.</p>
+                        )}
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* SETTINGS PANEL */}
                 <div className="lg:col-span-1 space-y-6">
                     <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
-                        <h2 className="text-lg font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                        <h2 className="text-lg font-semibold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
                             <Settings className="w-5 h-5 text-slate-400" />
-                            Configurações Ativas
+                            Configurações em Tempo Real
                         </h2>
+                        <p className="text-xs text-slate-500 mb-6">
+                            As alterações aqui são salvas diretamente no banco de dados e entram em vigor imediatamente na próxima busca.
+                        </p>
                         
                         <div className="space-y-5">
                             <div>
@@ -789,6 +895,70 @@ const SemanticDashboard = () => {
                                 >
                                     {reindexingConcepts ? <RefreshCw className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
                                     Iniciar Batch
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* RESET EMBEDDINGS MODAL */}
+            {isResetModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-red-200 dark:border-red-900/50 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="bg-red-600 p-6 text-white">
+                            <h3 className="text-xl font-bold flex items-center gap-2">
+                                <Trash2 className="w-6 h-6" />
+                                Reset Completo da Busca
+                            </h3>
+                            <p className="text-red-100 text-sm mt-2">
+                                Esta é uma ação destrutiva irreversível.
+                            </p>
+                        </div>
+                        
+                        <div className="p-6">
+                            <div className="space-y-4 mb-6">
+                                <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg text-sm border border-red-100 dark:border-red-800">
+                                    <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                                    <ul className="list-disc pl-4 space-y-1">
+                                        <li>Apagará TODAS as coleções do Qdrant.</li>
+                                        <li>Limpará as tabelas question_vectors e ai_search_cache no MySQL.</li>
+                                        <li>Zerar o status de indexação de todos os conceitos.</li>
+                                        <li><strong>Você terá que rodar "Indexar Questões" e "Indexar Conceitos" novamente do zero.</strong></li>
+                                    </ul>
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                        Para confirmar, digite <strong>RESET</strong> no campo abaixo:
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Digite RESET"
+                                        value={resetConfirmText}
+                                        onChange={(e) => setResetConfirmText(e.target.value)}
+                                        className="w-full rounded-lg border-red-300 dark:border-red-700/50 bg-white dark:bg-slate-900 px-4 py-2 focus:ring-2 focus:ring-red-500 outline-none text-red-600 dark:text-red-400 font-bold uppercase"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button 
+                                    onClick={() => {
+                                        setIsResetModalOpen(false);
+                                        setResetConfirmText('');
+                                    }}
+                                    className="flex-1 px-4 py-2.5 rounded-xl font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button 
+                                    onClick={handleResetEmbeddings}
+                                    disabled={resetting || resetConfirmText !== 'RESET'}
+                                    className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 transition-all disabled:opacity-50 disabled:shadow-none"
+                                >
+                                    {resetting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                    Executar Reset
                                 </button>
                             </div>
                         </div>
