@@ -107,11 +107,9 @@ services:
     networks:
       - production-network
 
-  # AI Dedicated Queue Worker (Para embeddings e triagem em lote)
-  # ESCALA: 4 réplicas para maximizar o throughput de AI.
-  # Cada worker, graças ao round-robin do Redis (ApiKey::getKeysForCapability),
-  # inicia com uma chave de API diferente — evitando rate-limit simultâneo.
-  ai-worker:
+  # AI Triage Worker (Para processamento de lotes e classificações LLM)
+  # ESCALA: 1 réplica (Sequential processing for stability)
+  ai-triage-worker:
     image: aprender-ai-app
     restart: always
     working_dir: /var/www
@@ -120,10 +118,39 @@ services:
       - ./qdrant-data:/var/www/qdrant-backup:ro
       - /proc:/host_proc:ro
     env_file: ./backend/.env
-    # Filas para processamento do Xavier (embeddings: tempo real, ai-batches: processamento em lote)
-    command: php artisan queue:work --queue=import,embeddings,ai-batches --sleep=3 --tries=3 --timeout=700 --max-time=3600
+    # Queue 'ai_triage' handle batches and 'import' handles ZIP extractions
+    command: php artisan queue:work --queue=ai_triage,import --sleep=3 --tries=3 --timeout=700 --max-time=3600
     deploy:
-      replicas: 4  # Aumentado de 2 para 4 — cada replica usa uma chave diferente via round-robin
+      replicas: 1
+      resources:
+        limits:
+          memory: 1G
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      qdrant:
+        condition: service_started
+    networks:
+      - production-network
+
+  # AI Embeddings Worker (Para indexação e geração de vetores)
+  # ESCALA: 3 réplicas
+  ai-embeddings-worker:
+    image: aprender-ai-app
+    restart: always
+    working_dir: /var/www
+    volumes:
+      - ./backend/storage/app/public:/var/www/storage/app/public
+      - ./qdrant-data:/var/www/qdrant-backup:ro
+      - /proc:/host_proc:ro
+    env_file: ./backend/.env
+    command: php artisan queue:work --queue=embeddings --sleep=10 --tries=3 --timeout=120 --max-time=3600
+    deploy:
+      replicas: 3
       resources:
         limits:
           memory: 1G

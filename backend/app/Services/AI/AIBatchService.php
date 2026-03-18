@@ -400,19 +400,35 @@ class AIBatchService
                 if (!$topicId && !empty($topicName)) {
                     $topicName = (string) $topicName;
                     $normalizedTopicName = strtolower(trim($topicName));
+                    $slug = \Illuminate\Support\Str::slug($topicName);
 
                     $existingTopic = Topic::whereRaw('LOWER(name) = ?', [$normalizedTopicName])
                         ->orWhere('name', 'like', '%' . trim($topicName) . '%')
+                        ->orWhere('slug', $slug)
                         ->first();
 
                     if ($existingTopic) {
                         $topicId = $existingTopic->id;
                     } else {
-                        $topic = Topic::firstOrCreate(
-                            ['name' => mb_convert_case(trim($topicName), MB_CASE_TITLE, "UTF-8")],
-                            ['slug' => \Illuminate\Support\Str::slug($topicName)]
-                        );
-                        $topicId = $topic->id;
+                        // Prevent slug race conditions in parallel workers by doing a try-catch for Integrity Constraint
+                        try {
+                            $topic = Topic::firstOrCreate(
+                                ['slug' => $slug],
+                                ['name' => mb_convert_case(trim($topicName), MB_CASE_TITLE, "UTF-8")]
+                            );
+                            $topicId = $topic->id;
+                        } catch (\Illuminate\Database\QueryException $e) {
+                            if ($e->getCode() == 23000) { // Integrity constraint violation (Duplicate entry)
+                                $existing = Topic::where('slug', $slug)->first();
+                                if ($existing) {
+                                    $topicId = $existing->id;
+                                } else {
+                                    $topicId = null; // Failsafe
+                                }
+                            } else {
+                                throw $e;
+                            }
+                        }
                     }
                 }
 
