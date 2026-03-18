@@ -553,7 +553,7 @@ const SemanticDashboard = () => {
                                 className="w-full btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center gap-2 py-2"
                             >
                                 {configLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                Salvar no .env
+                                Salvar no Banco (Runtime)
                             </button>
                         </div>
                     </div>
@@ -640,7 +640,14 @@ const SemanticDashboard = () => {
                                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-100 dark:border-slate-700">
                                         <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Motor Xavier (Vectorial)</h4>
                                         <p className="text-xs text-slate-500 mb-1">Latência Total: <span className="font-mono text-emerald-600">{searchResults.latency_ms}ms</span></p>
-                                        <p className="text-xs text-slate-500 mb-2">Qdrant Retornou: <span className="font-mono text-slate-700 dark:text-white">{searchResults.results?.length} candidatos</span></p>
+                                        <div className="flex justify-between items-center text-xs text-slate-500 mb-1">
+                                            <span>Qdrant Retornou:</span>
+                                            <span className="font-mono text-slate-700 dark:text-white">{searchResults.results?.length} candidatos</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-xs text-slate-500">
+                                            <span>Tolerância Ativa:</span>
+                                            <span className="font-mono font-bold text-indigo-500">{stats?.config?.concept_detection_threshold || 'v5'}</span>
+                                        </div>
                                     </div>
                                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-100 dark:border-slate-700">
                                         <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Motor Antigo (SQL Fallback)</h4>
