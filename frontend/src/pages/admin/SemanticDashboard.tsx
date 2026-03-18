@@ -791,6 +791,9 @@ const SemanticDashboard = () => {
                             
                             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
                                 Dispare jobs de vetorização controlada para economizar nos custos de API.
+                                <span className="block mt-1 text-[11px] font-mono text-indigo-500 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20 w-fit px-1.5 py-0.5 rounded">
+                                    Pipeline Ativo: {stats?.config.pipeline_version || 'v5_multivector_rrf'}
+                                </span>
                             </p>
 
                             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl p-4 mb-6">
@@ -886,6 +889,9 @@ const SemanticDashboard = () => {
                             
                             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
                                 Vetorize conceitos no Qdrant para a Detecção de Intenção (Intent Detection) da busca semântica.
+                                <span className="block mt-1 text-[11px] font-mono text-purple-500 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-900/20 w-fit px-1.5 py-0.5 rounded">
+                                    Pipeline Ativo: {stats?.config.pipeline_version || 'v5_multivector_rrf'}
+                                </span>
                             </p>
 
                             <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-xl p-4 mb-6">
