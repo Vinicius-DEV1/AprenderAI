@@ -412,7 +412,7 @@ class SemanticDashboardController extends Controller
     public function reindexAll(Request $request)
     {
         $validated = $request->validate([
-            'limit' => 'nullable|integer|min:1|max:5000',
+            'limit' => 'nullable|integer|min:1|max:100000',
             'force' => 'nullable|boolean'
         ]);
 
@@ -446,7 +446,7 @@ class SemanticDashboardController extends Controller
     public function reindexConcepts(Request $request)
     {
         $validated = $request->validate([
-            'limit' => 'nullable|integer|min:1|max:5000',
+            'limit' => 'nullable|integer|min:1|max:100000',
             'force' => 'nullable|boolean'
         ]);
 

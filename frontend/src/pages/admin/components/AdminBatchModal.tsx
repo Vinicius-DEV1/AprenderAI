@@ -19,7 +19,7 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
     const [quantity, setQuantity] = useState(10);
     const [type, setType] = useState('complete');
     const [chunkSize, setChunkSize] = useState(5);
-    const [delaySeconds, setDelaySeconds] = useState(15);
+    const [delaySeconds, setDelaySeconds] = useState(5);
     const [reprocess, setReprocess] = useState(false);
     const [previewQuestions, setPreviewQuestions] = useState<any[]>([]);
 
@@ -748,7 +748,7 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                     <div className="sm:col-span-2 space-y-2 mt-2">
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                             <span>⏱️ Intervalo entre Blocos (segundos)</span>
-                                            <span className="normal-case font-bold text-[9px] text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">Seguro p/ Gemini Free: 15s+</span>
+                                            <span className="normal-case font-bold text-[9px] text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">Seguro p/ Gemini Free: 5s+</span>
                                         </label>
                                         <div className="flex items-center gap-4 bg-gray-50/50 p-3 rounded-2xl border border-gray-100">
                                             <input
