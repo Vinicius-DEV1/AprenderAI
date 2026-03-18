@@ -321,6 +321,64 @@ export default function QuestionBank() {
         setTimeout(() => setShowToast(false), 4000);
     };
 
+    const applySearchResults = (data: any) => {
+        setAiLoading(false);
+        if (data.suggestion_tip) setAiSuggestion(data.suggestion_tip);
+        if (data.suggestions) setAiSuggestions(data.suggestions);
+        if (data.score_details) setAiScoreDetails(data.score_details);
+
+        const baseFilters = {
+            type: '', subject: '', topic: '', keyword: '', year: '', id: '',
+            difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false,
+            notebook_id: '', favorites_only: false, question_ids: data.question_ids || []
+        };
+        const filtersToApply = data.filters || {};
+        const finalFilters = { ...baseFilters, ...filtersToApply };
+        setFilters(finalFilters as FilterOptions);
+
+        if (finalFilters.year || finalFilters.difficulty || finalFilters.organization || finalFilters.institution || finalFilters.role) {
+            setMoreFilters(true);
+        }
+        setPage(1);
+        if (!data.suggestions || data.suggestions.length === 0) {
+            setTriggerScroll(true);
+        }
+        
+        const isVector = data.search_mode === 'vector' || data.search_path === 'vector_only';
+        setToastMessage(isVector 
+            ? `🧠 Xavier Semantic: ${data.total} questões encontradas por significado.`
+            : `⚡ Inteligência Instantânea: Busca recuperada do Cache.`);
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 4000);
+    };
+
+    const pollSearchStatus = async (requestId: number, retryCount = 0) => {
+        if (retryCount >= 16) { // 8 segundos de timeout (16 x 500ms)
+            setAiLoading(false);
+            setAiMessage(`O ${aiName} demorou um pouco mais que o normal para gerar os embeddings. Tente novamente em alguns segundos.`);
+            return;
+        }
+
+        try {
+            const res = await api.get(`/api/v1/questions/ai-search/${requestId}/status`);
+            
+            if (res.data.status === 'completed') {
+                applySearchResults(res.data);
+            } else if (res.data.status === 'generating') {
+                // Continua no polling leve
+                setTimeout(() => pollSearchStatus(requestId, retryCount + 1), 500);
+            } else {
+                setAiLoading(false);
+                setAiMessage(res.data.error || `Houve um erro no processamento do ${aiName}.`);
+            }
+        } catch (err) {
+            console.error("Erro no polling da busca:", err);
+            setAiLoading(false);
+            setIsAiError(true);
+            setAiMessage("Erro de comunicação com o servidor ao verificar status da busca.");
+        }
+    };
+
     const submitSearch = async () => {
         if (!prompt.trim() || aiLoading) return;
         setAiLoading(true);
@@ -335,43 +393,18 @@ export default function QuestionBank() {
             const res = await api.post('/api/v1/questions/ai-search', { prompt });
 
             if (res.data.status === 'completed') {
-                // INSTANT CACHE HIT!
-                setAiLoading(false);
-                if (res.data.suggestion_tip) setAiSuggestion(res.data.suggestion_tip);
-                if (res.data.suggestions) setAiSuggestions(res.data.suggestions);
-                if (res.data.score_details) setAiScoreDetails(res.data.score_details);
-
-                const baseFilters = {
-                    type: '', subject: '', topic: '', keyword: '', year: '', id: '',
-                    difficulty: '', status: '', organization: '', institution: '', role: '', include_discursive: false,
-                    notebook_id: '', favorites_only: false, question_ids: res.data.question_ids || []
-                };
-                const filtersToApply = res.data.filters || {};
-                const finalFilters = { ...baseFilters, ...filtersToApply };
-                setFilters(finalFilters as FilterOptions);
-
-                if (finalFilters.year || finalFilters.difficulty || finalFilters.organization || finalFilters.institution || finalFilters.role) {
-                    setMoreFilters(true);
-                }
-                setPage(1);
-                if (!res.data.suggestions || res.data.suggestions.length === 0) {
-                    setTriggerScroll(true);
-                }
-                setToastMessage(res.data.search_mode === 'vector' 
-                    ? `🧠 Xavier Semantic: ${res.data.total} questões encontradas por significado.`
-                    : `⚡ Inteligência Instantânea: Busca recuperada do Cache.`);
-                setShowToast(true);
-                setTimeout(() => setShowToast(false), 4000);
+                // HIT INSTANTÂNEO (Model L1/L2 Cache)
+                applySearchResults(res.data);
+            } else if (res.data.status === 'generating') {
+                // PARALELIZAÇÃO ASSÍNCRONA: Inicia polling leve (embeddings sendo gerados em jobs)
+                pollSearchStatus(res.data.request_id);
             } else {
-                // LOGICA NOVA: O antigo status 'queued' que enviava a busca para uma fila lenta do LLM
-                // foi totalmente removido. Agora, se a busca vetorial falhar, o backend faz 
-                // um fallback síncrono ultrarrápido (busca textual) e retorna 'completed' imediatamente.
-                // Se cair neste bloco, significa que houve um erro real ou cota excedida.
                 setAiLoading(false);
                 setAiMessage(res.data.message || `O ${aiName} não conseguiu interpretar essa busca.`);
                 if (res.data.code === 'quota_exceeded') setIsQuotaExceeded(true);
             }
-        } catch {
+        } catch (err) {
+            console.error("Erro ao iniciar busca AI:", err);
             setAiLoading(false);
             setIsAiError(true);
             const randomFail = FAILURE_MESSAGES[Math.floor(Math.random() * FAILURE_MESSAGES.length)];
