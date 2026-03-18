@@ -105,12 +105,12 @@ const SemanticDashboard = () => {
 
     // Index Modal (Questions)
     const [isIndexModalOpen, setIsIndexModalOpen] = useState(false);
-    const [indexBatchLimit, setIndexBatchLimit] = useState(50);
+    const [indexBatchLimit, setIndexBatchLimit] = useState(500);
     const [indexForce, setIndexForce] = useState(false);
 
     // Concept Index Modal
     const [isConceptModalOpen, setIsConceptModalOpen] = useState(false);
-    const [conceptBatchLimit, setConceptBatchLimit] = useState(100);
+    const [conceptBatchLimit, setConceptBatchLimit] = useState(1000);
     const [conceptForce, setConceptForce] = useState(false);
 
     // Test search
@@ -989,14 +989,26 @@ const SemanticDashboard = () => {
                                 </label>
                                 <input 
                                     type="number" 
-                                    min="1" max="5000"
+                                    min="1" max="100000"
                                     value={indexBatchLimit}
                                     onChange={(e) => setIndexBatchLimit(parseInt(e.target.value) || 0)}
                                     className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white"
                                 />
-                                <p className="text-[10px] text-slate-400">
-                                    Custo estimado: aprox. ${(indexBatchLimit * 0.0001).toFixed(4)} USD (estimativa baseada em texto médio).
-                                </p>
+                                <div className="flex justify-between items-center">
+                                    <p className="text-[10px] text-slate-400">
+                                        Custo estimado: aprox. ${(indexBatchLimit * 0.0001).toFixed(4)} USD (estimativa baseada em texto médio).
+                                    </p>
+                                    <button 
+                                        type="button"
+                                        onClick={() => {
+                                            const pending = stats ? (indexForce ? stats.overview.mysql_published_questions : stats.overview.mysql_published_questions - stats.overview.mysql_indexed_questions) : 0;
+                                            setIndexBatchLimit(pending);
+                                        }}
+                                        className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 underline"
+                                    >
+                                        Indexar Tudo Pendente
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="mb-6">
@@ -1099,11 +1111,28 @@ const SemanticDashboard = () => {
                                 </label>
                                 <input 
                                     type="number" 
-                                    min="1" max="5000"
+                                    min="1" max="100000"
                                     value={conceptBatchLimit}
                                     onChange={(e) => setConceptBatchLimit(parseInt(e.target.value) || 0)}
                                     className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 focus:ring-2 focus:ring-purple-500 outline-none text-slate-800 dark:text-white"
                                 />
+                                <div className="flex justify-end">
+                                    <button 
+                                        type="button"
+                                        onClick={() => {
+                                            const pending = stats ? (conceptForce 
+                                                ? stats.overview.mysql_total_subjects + stats.overview.mysql_total_topics + stats.overview.mysql_total_concepts 
+                                                : (stats.overview.mysql_total_subjects - stats.overview.mysql_indexed_subjects) + 
+                                                  (stats.overview.mysql_total_topics - stats.overview.mysql_indexed_topics) + 
+                                                  (stats.overview.mysql_total_concepts - stats.overview.mysql_indexed_concepts)
+                                            ) : 0;
+                                            setConceptBatchLimit(pending);
+                                        }}
+                                        className="text-[10px] font-bold text-purple-600 hover:text-purple-700 underline"
+                                    >
+                                        Indexar Tudo Pendente (Global)
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="mb-6">

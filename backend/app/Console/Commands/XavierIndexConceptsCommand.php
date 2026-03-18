@@ -69,7 +69,7 @@ class XavierIndexConceptsCommand extends Command
 
         if ($count === 0) return;
 
-        $this->withProgressBar($query->limit($limit ?? 10000)->cursor(), function ($entity) use ($isSync, $type) {
+        $this->withProgressBar($query->limit($limit)->cursor(), function ($entity) use ($isSync, $type) {
             if ($isSync) {
                 \App\Jobs\IndexSemanticEntityJob::dispatchSync((string)$entity->id, $type);
             } else {
