@@ -72,6 +72,13 @@ export default function QuestionForm() {
             const discAns = question.discursive_answer;
             setDiscursiveAnswer(typeof discAns === 'object' && discAns !== null ? JSON.stringify(discAns, null, 2) : (discAns || ''));
 
+            if (question.alternatives && question.alternatives.length > 0) {
+                const correctAlt = question.alternatives.find((a: any) => a.is_correct);
+                if (correctAlt) {
+                    setCorrectAnswer(correctAlt.label);
+                }
+            }
+
             if (question.format === 'multiple_choice' && question.alternatives) {
                 const alts = question.alternatives;
                 const getAlt = (letter: string) => {
@@ -90,7 +97,7 @@ export default function QuestionForm() {
                 setAltD(getAlt('D'));
                 setAltE(getAlt('E'));
             } else if (question.format === 'true_false') {
-                if (!['C', 'E'].includes(question.correct_answer)) {
+                if (!question.alternatives?.some((a: any) => a.is_correct)) {
                     setCorrectAnswer('C');
                 }
             }
@@ -106,7 +113,11 @@ export default function QuestionForm() {
         },
         onSuccess: () => {
             toast.success(`Questão ${isEditing ? 'atualizada' : 'criada'} com sucesso!`);
-            navigate('/admin/questions');
+            if (isEditing) {
+                navigate(-1);
+            } else {
+                navigate('/admin/questions');
+            }
         },
         onError: (error: any) => {
             if (error.response?.status === 422) {
@@ -150,7 +161,7 @@ export default function QuestionForm() {
         }
 
         let finalTopics = [...topics];
-        if (type === 'concurso' && topicInput.trim() && !finalTopics.includes(topicInput.trim().toLowerCase())) {
+        if (topicInput.trim() && !finalTopics.includes(topicInput.trim().toLowerCase())) {
             finalTopics.push(topicInput.trim().toLowerCase());
         }
 
@@ -168,9 +179,7 @@ export default function QuestionForm() {
             tipo_questao: tipoQuestao
         };
 
-        if (type === 'concurso') {
-            payload.topics = finalTopics;
-        }
+        payload.topics = finalTopics;
 
         if (format === 'multiple_choice') {
             payload.alternatives = {
@@ -586,7 +595,7 @@ export default function QuestionForm() {
                         <div className="flex items-center justify-end mt-8 border-t pt-4">
                             <button
                                 type="button"
-                                onClick={() => navigate('/admin/questions')}
+                                onClick={() => isEditing ? navigate(-1) : navigate('/admin/questions')}
                                 className="text-gray-600 underline mr-4 hover:text-gray-900">
                                 Cancelar
                             </button>
