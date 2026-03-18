@@ -147,6 +147,15 @@ class SemanticDashboardController extends Controller
                     'concepts'  => $conceptsVersionCheck,
                 ]
             ],
+            'top_concepts' => \App\Models\Concept::whereNotNull('qdrant_indexed_at')
+                ->withCount('questions')
+                ->orderByDesc('questions_count')
+                ->limit(40)
+                ->get(['id', 'name', 'qdrant_indexed_at'])
+                ->map(fn($c) => [
+                    'name'  => $c->name,
+                    'count' => $c->questions_count
+                ]),
             'performance' => [
                 'total_searches'      => $totalLogSearches,
                 'l1_cache_hits'       => $l1CacheHits,
