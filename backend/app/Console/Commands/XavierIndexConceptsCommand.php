@@ -2,8 +2,9 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\IndexConceptVectorJob;
 use App\Models\Concept;
+use App\Models\Subject;
+use App\Models\Topic;
 use App\Services\AI\QdrantService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -11,96 +12,71 @@ use Illuminate\Support\Facades\Log;
 /**
  * XavierIndexConceptsCommand
  *
- * Artisan command to batch-index all concepts into Qdrant.
- * Dispatches IndexConceptVectorJob for each concept.
- *
- * Usage:
- *   php artisan xavier:index-concepts            # async (dispatches to embeddings queue)
- *   php artisan xavier:index-concepts --sync     # processes synchronously
- *   php artisan xavier:index-concepts --force    # re-index even if already indexed
+ * Comando Artisan para indexação em lote de todas as entidades semânticas (Fase 3).
+ * Este comando é o ponto de entrada para alimentar a "Inteligência de Intenção" do Xavier.
+ * Ele percorre Disciplinas (Subjects), Assuntos (Topics) e Conceitos (Concepts)
+ * e dispara jobs de vetorização para o Qdrant.
  */
 class XavierIndexConceptsCommand extends Command
 {
     protected $signature = 'xavier:index-concepts
-                            {--sync    : Process synchronously instead of queuing}
-                            {--limit=  : Max number of concepts to index}
-                            {--force   : Re-index even if the concept already has a qdrant_indexed_at timestamp}';
+                            {--sync    : Processa sincronamente em vez de enfileirar}
+                            {--limit=  : Máximo de entidades por tipo}
+                            {--force   : Re-indexa mesmo entidades já marcadas como indexadas}';
 
-    protected $description = 'Batch-index all concepts into Qdrant (Xavier Semantic Search Intent Detection)';
+    protected $description = 'Indexa Disciplinas, Tópicos e Conceitos no Qdrant para Detecção de Intenção';
 
     public function handle(QdrantService $qdrant): int
     {
-        $this->info('🚀 Xavier Semantic Search — Concept Indexer');
+        $this->info('🚀 Xavier Semantic Search — Entity Indexer');
         $this->newLine();
 
-        $this->info('📦 Ensuring Qdrant concepts collection exists...');
+        $this->info('📦 Garantindo que a coleção de conceitos existe no Qdrant...');
         $qdrant->ensureConceptsCollection();
-        $this->info('  ✓ Collection ready.');
+        $this->info('  ✓ Coleção pronta.');
         $this->newLine();
 
         $isSync = (bool) $this->option('sync');
-        $mode = $isSync ? 'synchronous' : 'async (queue: embeddings)';
+        $mode = $isSync ? 'síncrono (bloqueante)' : 'assíncrono (fila: embeddings)';
+        $limit = $this->option('limit') ? (int) $this->option('limit') : null;
 
-        $this->info("📋 Mode: {$mode}");
+        $this->info("📋 Modo: {$mode}");
         $this->newLine();
 
-        // Query concepts based on --force option
-        $query = Concept::query()
+        // 1. Indexas as Disciplinas como "Âncoras" primárias de busca
+        $this->indexEntityType(Subject::class, 'subject', $isSync, $limit);
+
+        // 2. Indexa os Tópicos (Assuntos)
+        $this->indexEntityType(Topic::class, 'topic', $isSync, $limit);
+
+        // 3. Indexa os Conceitos Atômicos (para expansão e recall granular)
+        $this->indexEntityType(Concept::class, 'concept', $isSync, $limit);
+
+        $this->newLine();
+        $this->info('✅ Todos os jobs de indexação foram disparados com sucesso.');
+        return 0;
+    }
+
+    private function indexEntityType(string $modelClass, string $type, bool $isSync, ?int $limit): void
+    {
+        $query = $modelClass::query()
             ->when(!$this->option('force'), function ($query) {
                 return $query->whereNull('qdrant_indexed_at');
             });
 
-        $total = $query->count();
+        $count = $query->count();
+        $this->info("🔢 Found {$count} {$type}s to index.");
 
-        if ($total === 0) {
-            $this->warn('No pending concepts found. Nothing to index.');
-            return 0;
-        }
+        if ($count === 0) return;
 
-        $this->info("🔢 Found {$total} concepts to index" . ($this->option('force') ? ' (FORCE MODE)' : '') . ".");
-        $this->newLine();
-
-        $indexed = 0;
-        $failed = 0;
-
-        $this->withProgressBar(
-            $query->when($this->option('limit'), function ($query, $limit) {
-                return $query->limit((int) $limit);
-            })->cursor(),
-            function ($concept) use ($isSync, &$indexed, &$failed) {
-                try {
-                    if ($isSync) {
-                        IndexConceptVectorJob::dispatchSync($concept->id);
-                    } else {
-                        IndexConceptVectorJob::dispatch($concept->id);
-                    }
-                    $indexed++;
-                } catch (\Exception $e) {
-                    $failed++;
-                    Log::error("[Xavier:index-concepts] Failed for concept '{$concept->id}': " . $e->getMessage());
-                }
+        $this->withProgressBar($query->limit($limit ?? 10000)->cursor(), function ($entity) use ($isSync, $type) {
+            if ($isSync) {
+                \App\Jobs\IndexSemanticEntityJob::dispatchSync((string)$entity->id, $type);
+            } else {
+                \App\Jobs\IndexSemanticEntityJob::dispatch((string)$entity->id, $type);
             }
-        );
+        });
 
-        $this->newLine(2);
-        $this->table(
-            ['Metric', 'Count'],
-            [
-                ['✅ Dispatched/Indexed', $indexed],
-                ['❌ Failed',            $failed],
-                ['📊 Total',             $total],
-            ]
-        );
-
-        if ($isSync) {
-            $this->newLine();
-            $this->info('✅ Synchronous indexing complete.');
-        } else {
-            $this->newLine();
-            $this->info('✅ Jobs dispatched to [embeddings] queue.');
-            $this->line('   Run: php artisan queue:work --queue=embeddings');
-        }
-
-        return 0;
+        $this->newLine();
     }
 }

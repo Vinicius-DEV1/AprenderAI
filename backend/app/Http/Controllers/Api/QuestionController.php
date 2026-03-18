@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 namespace App\Http\Controllers\Api;
 
@@ -553,48 +553,69 @@ class QuestionController extends Controller
             return $this->buildVectorSearchResponse($l2CachedFilters, $user, $request->prompt, 'l2_cache', []);
         }
 
-        // ── Step 5: Concept Detection via Qdrant ──────────────────────────────
+        // ── Step 5: Busca de Intenção e Conceitos via Qdrant ───────────────────────
+        // Este é o coração da unificação semântica (Fase 3).
+        // Em vez de apenas buscar conceitos, buscamos qualquer entidade semântica:
+        // - Concepts: Termos técnicos para expansão (grafo de conhecimento).
+        // - Subjects: Disciplinas principais (ex: Inglês, Matemática).
+        // - Topics: Assuntos específicos (ex: Verbos, Geometria).
         $detectedConcepts = [];
+        $extractedSubjectId = null;
+        $extractedTopicId = null;
         $searchPath = 'concept';
 
         try {
+            // Obtém o threshold de detecção de conceito do banco de dados (default 0.75)
             $conceptThreshold = (float) \App\Models\Configuration::get('xavier_concept_detection_threshold', config('xavier.embeddings.concept_detection_threshold', 0.75));
+            
+            // Busca na coleção 'concepts_vectors' as 5 entidades mais similares à query do usuário
             $conceptMatches = $qdrant->searchConcepts($queryVector, 5, $conceptThreshold);
             
-            // Extrai os slugs dos conceitos detectados a partir do payload do Qdrant
-            $detectedConcepts = array_filter(array_map(
-                fn($match) => $match['payload']['concept_slug'] ?? null,
-                $conceptMatches
-            ));
+            foreach ($conceptMatches as $match) {
+                $payload = $match['payload'] ?? [];
+                $type = $payload['entity_type'] ?? 'concept';
+                
+                // Distribui os resultados conforme o tipo de entidade detectada
+                if ($type === 'concept' && isset($payload['concept_slug'])) {
+                    // Conceitos alimentam a expansão por Grafo (KG)
+                    $detectedConcepts[] = $payload['concept_slug'];
+                } elseif ($type === 'subject' && isset($payload['subject_id'])) {
+                    // INTENÇÃO DE DISCIPLINA DETECTADA: Se o usuário pesquisou "Inglês", 
+                    // o Qdrant retornará o Subject "Inglês" com alta similaridade.
+                    // Isso nos permite ancorar a busca apenas nas questões dessa disciplina.
+                    $extractedSubjectId = $payload['subject_id'];
+                    Log::info("[Xavier][Search] Intent detected: Subject #{$extractedSubjectId} ({$payload['name']})");
+                } elseif ($type === 'topic' && isset($payload['topic_id'])) {
+                    // INTENÇÃO DE TÓPICO DETECTADA: Similar à disciplina, mas para assuntos.
+                    $extractedTopicId = $payload['topic_id'];
+                    Log::info("[Xavier][Search] Intent detected: Topic #{$extractedTopicId} ({$payload['name']})");
+                }
+            }
             
             $detectedConcepts = array_values(array_unique($detectedConcepts));
-            Log::info('[Xavier][Search] Step 5 done: concept detection.', ['concepts' => $detectedConcepts]);
+            Log::info('[Xavier][Search] Step 5 done: intent detection.', [
+                'concepts' => $detectedConcepts,
+                'subject_id' => $extractedSubjectId,
+                'topic_id' => $extractedTopicId
+            ]);
         } catch (\Exception $e) {
             Log::warning('[Xavier][Search] Step 5 FAILED: concept detection error.', ['err' => $e->getMessage()]);
         }
 
-        // ── Step 5b: Log if zero concepts detected ──────────────────────────────
-        if (empty($detectedConcepts)) {
-            Log::info('[Xavier][Search] Step 5b: no concepts found, proceeding with pure vector search.');
+        // ── Step 5b: Fallback se nenhuma intenção ou conceito for encontrado ──
+        if (empty($detectedConcepts) && !$extractedSubjectId && !$extractedTopicId) {
+            Log::info('[Xavier][Search] Step 5b: no intents found, proceeding with pure vector search.');
             $searchPath = 'vector_only';
         }
 
-        // ── Step 6: Query Expansion via Knowledge Graph ───────────────────────
-        $expandedConceptIds = $expansion->expand($detectedConcepts, depth: 1);
+        // ── Step 6: Expansão de Query via Grafo de Conhecimento ─────────────────
+        // Se detectamos conceitos (ex: "fotossíntese"), expandimos para termos
+        // relacionados (ex: "clorofila") para aumentar o recall da busca vetorial lateral.
+        $expandedConceptIds = !empty($detectedConcepts) ? $expansion->expand($detectedConcepts, depth: 1) : [];
         Log::info('[Xavier][Search] Step 6 done: query expansion.', ['expanded' => $expandedConceptIds]);
 
         // ── Step 6.5: Generate 3 Format-Aligned Query Embeddings ──────────────
-        // CORREÇÃO CRÍTICA: Cada named vector no Qdrant foi indexado com um formato
-        // de texto diferente (statement usa "question:\n...", concept usa "concepts:\n...",
-        // explanation usa "explanation:\n..."). Para maximizar a similaridade de cosseno,
-        // geramos 3 embeddings distintos para a query, cada um alinhado ao formato
-        // do named vector correspondente.
-        //
-        // Todos usam taskType='RETRIEVAL_QUERY' (Gemini otimiza internamente o vetor
-        // para busca em vez de indexação).
-        //
-        // Custo: 3 chamadas de API de embedding por busca (vs 1 anterior).
-        // Benefício: alinhamento de formato + taskType = aumento significativo na precisão.
+        // ... (existing code for query embeddings) ...
         $statementQueryText   = $textBuilder->buildStatementQuery($request->prompt);
         $conceptQueryText     = $textBuilder->buildConceptQuery($request->prompt);
         $explanationQueryText = $textBuilder->buildExplanationQuery($request->prompt);

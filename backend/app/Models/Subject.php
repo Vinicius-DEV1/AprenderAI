@@ -11,7 +11,7 @@ class Subject extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'slug', 'type'];
+    protected $fillable = ['name', 'slug', 'type', 'qdrant_indexed_at'];
 
     protected function name(): Attribute
     {

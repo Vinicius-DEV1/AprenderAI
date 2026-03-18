@@ -23,6 +23,7 @@ class Topic extends Model
     protected $fillable = [
         'name',
         'slug',
+        'qdrant_indexed_at',
     ];
 
     protected function name(): Attribute
