@@ -674,8 +674,14 @@ EOT;
     public function generateEmbedding(string $text, ?int $userId = null, string $taskType = 'RETRIEVAL_DOCUMENT'): ?array
     {
         try {
-            // Utilizamos o provider 'gemini' forçado, com CAPABILITY_EMBEDDING
-            return $this->executeWithFailover(ApiKey::CAPABILITY_EMBEDDING, function ($apiKeyModel) use ($text, $userId, $taskType) {
+            // Escolhe a capability baseada no uso:
+            // RETRIEVAL_QUERY (Busca em tempo real) -> CAPABILITY_QUERY_EMBEDDING
+            // RETRIEVAL_DOCUMENT (Indexação em lote) -> CAPABILITY_EMBEDDING
+            $capability = ($taskType === 'RETRIEVAL_QUERY') 
+                ? ApiKey::CAPABILITY_QUERY_EMBEDDING 
+                : ApiKey::CAPABILITY_EMBEDDING;
+
+            return $this->executeWithFailover($capability, function ($apiKeyModel) use ($text, $userId, $taskType) {
                 $startTime = microtime(true);
                 $apiKey = $apiKeyModel->decrypted_key;
                 
