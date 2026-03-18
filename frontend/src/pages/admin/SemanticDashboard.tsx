@@ -631,7 +631,22 @@ const SemanticDashboard = () => {
                                     ))}
                                 </div>
 
-                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mt-4 border-b border-slate-200 dark:border-slate-700 pb-2">
+                                {searchResults.results?.some((r: any) => r.source === 'sql_fallback') && (
+                                    <div className="mt-4 bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-500 p-4 rounded-r-lg">
+                                        <div className="flex">
+                                            <div className="flex-shrink-0">
+                                                <AlertCircle className="h-5 w-5 text-orange-500 dark:text-orange-400" />
+                                            </div>
+                                            <div className="ml-3">
+                                                <p className="text-sm text-orange-800 dark:text-orange-300">
+                                                    <strong>Aviso Explicito: Plano B Ativado!</strong> Nenhum vetor foi encontrado no Qdrant com nota suficiente (ou a coleção está vazia). O sistema recorreu ao motor <strong>SQL Fallback</strong> buscando apenas palavras-chave textuais no MySQL. A nota Vetorial (VEC) destes resultados será sempre 0.000.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mt-6 border-b border-slate-200 dark:border-slate-700 pb-2">
                                     Resultados Ranqueados ({searchResults.results?.length})
                                 </h4>
                                 <div className="overflow-y-auto pr-2 max-h-[500px] space-y-4">
