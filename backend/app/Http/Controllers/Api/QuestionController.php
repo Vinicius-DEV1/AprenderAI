@@ -653,6 +653,12 @@ class QuestionController extends Controller
         // Ignora filtros da UI para manter a Busca Global idêntica ao Debug Admin
         $sqlFilters = ['keyword' => $request->prompt];
 
+        // Se uma das duas vertentes estruturais foi explicitamente requisitada no prompt
+        // aplicamos um Hard Filter no Qdrant, vetando qualquer coisa do tipo oposto.
+        if ($extractedType) {
+            $sqlFilters['type'] = $extractedType;
+        }
+
         $candidateLimit = (int) \App\Models\Configuration::get('xavier_qdrant_candidate_limit', config('xavier.search.qdrant_candidate_limit', 50));
         $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, $sqlFilters, $candidateLimit);
         Log::info('[Xavier][Search] Step 7 done: hybrid search.', ['candidates' => count($candidates)]);
