@@ -682,9 +682,41 @@ const SemanticDashboard = () => {
                                                 </div>
                                             </summary>
                                             
-                                            <div className="p-4 pt-0 border-t border-slate-100 dark:border-slate-700/50 space-y-4">
-                                                <div className="prose prose-sm dark:prose-invert max-w-none">
-                                                    <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Enunciado</h5>
+                                            <div className="p-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 space-y-4">
+                                                
+                                                {res.score_details && Object.keys(res.score_details).length > 0 && (
+                                                    <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
+                                                        <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 border-b border-slate-200 dark:border-slate-700 pb-1 flex justify-between">
+                                                            <span>📊 Composição da Nota Final (Weights)</span>
+                                                            <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">FINAL: {res.final_score.toFixed(4)}</span>
+                                                        </h5>
+                                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+                                                            <div className="flex flex-col bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700/50">
+                                                                <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Semântica VEC</span>
+                                                                <span className="text-sm font-mono text-indigo-600 dark:text-indigo-400 font-bold">+{res.score_details.vector.weighted.toFixed(4)}</span>
+                                                                <span className="text-[9px] text-slate-400 mt-0.5">Raw: {res.score_details.vector.raw.toFixed(4)}</span>
+                                                            </div>
+                                                            <div className="flex flex-col bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700/50">
+                                                                <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Popularidade</span>
+                                                                <span className="text-sm font-mono text-sky-600 dark:text-sky-400 font-bold">+{res.score_details.popularity.weighted.toFixed(4)}</span>
+                                                                <span className="text-[9px] text-slate-400 mt-0.5">Raw: {res.score_details.popularity.raw.toFixed(4)}</span>
+                                                            </div>
+                                                            <div className="flex flex-col bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700/50">
+                                                                <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Qualidade Ped.</span>
+                                                                <span className="text-sm font-mono text-amber-600 dark:text-amber-400 font-bold">+{res.score_details.quality.weighted.toFixed(4)}</span>
+                                                                <span className="text-[9px] text-slate-400 mt-0.5">Raw: {res.score_details.quality.raw.toFixed(4)}</span>
+                                                            </div>
+                                                            <div className="flex flex-col bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700/50">
+                                                                <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Recência Ano</span>
+                                                                <span className="text-sm font-mono text-emerald-600 dark:text-emerald-400 font-bold">+{res.score_details.recency.weighted.toFixed(4)}</span>
+                                                                <span className="text-[9px] text-slate-400 mt-0.5">Raw: {res.score_details.recency.raw.toFixed(4)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                <div className="prose prose-sm dark:prose-invert max-w-none mt-2">
+                                                    <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Enunciado / Contexto</h5>
                                                     <div className="text-sm text-slate-800 dark:text-slate-200" dangerouslySetInnerHTML={{ __html: res.statement }} />
                                                 </div>
 

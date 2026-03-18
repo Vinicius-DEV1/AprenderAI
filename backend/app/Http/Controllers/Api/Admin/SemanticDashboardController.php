@@ -338,6 +338,7 @@ class SemanticDashboardController extends Controller
                 'qdrant_score'  => $item['vector_score'] ?? 0,
                 'final_score'   => $item['composite_score'] ?? 0,
                 'source'        => $item['source'] ?? 'unknown',
+                'score_details' => $item['details'] ?? [],
             ];
         }
 
