@@ -44,6 +44,11 @@ interface AiLog {
     estimated_cost: number;
     module: string;
     created_at: string;
+    apiKey?: {
+        vault?: {
+            nickname: string;
+        }
+    };
 }
 
 interface AiRanking {
@@ -83,7 +88,6 @@ interface AnalyticsModule {
 function ApiAnalyticsDash({
     daily,
     modules,
-    providers,
     vaultKeys,
     availableCapabilities,
     aiLogs,
@@ -94,7 +98,6 @@ function ApiAnalyticsDash({
 }: {
     daily: AnalyticsDaily[],
     modules: AnalyticsModule[],
-    providers: string[],
     vaultKeys: VaultKey[],
     availableCapabilities: Record<string, string>,
     aiLogs: AiLog[],
@@ -578,6 +581,7 @@ export default function AdminApiKeys() {
         essays: { icon: '📝', description: 'Corrige e pontua redações enviadas pelos alunos.' },
         study_plans: { icon: '📅', description: 'Cria cronogramas dinâmicos baseados no desempenho real.' },
         embedding: { icon: '🧬', description: 'Gera vetores semânticos para indexação e busca vetorial.' },
+        query_embedding: { icon: '🧠', description: 'Gera embeddings paralelos para busca semântica em tempo real.' },
         general: { icon: '🔄', description: 'Uso de propósito geral quando sem capaiblity específica.' }
     };
 
@@ -614,7 +618,6 @@ export default function AdminApiKeys() {
             <ApiAnalyticsDash
                 daily={data.analytics_daily || []}
                 modules={data.analytics_modules || []}
-                providers={Array.from(new Set((data.analytics_daily || []).map((d: any) => d.provider)))}
                 vaultKeys={vaultKeys}
                 availableCapabilities={availableCapabilities}
                 aiLogs={aiLogs}

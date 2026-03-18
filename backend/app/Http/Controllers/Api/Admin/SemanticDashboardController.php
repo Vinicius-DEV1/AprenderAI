@@ -65,13 +65,18 @@ class SemanticDashboardController extends Controller
         $l1CacheHits = 0; // Efemero/Redis
         $l2CacheHits = $totalCacheEntries; // Aproximado para o dashboard
 
-        // 4. Jobs Stats (Embeddings Queue)
-        $pendingJobs = DB::table('jobs')->where('queue', config('xavier.embeddings.queue', 'embeddings'))->count();
-        $failedJobs = DB::table('failed_jobs')->where('queue', config('xavier.embeddings.queue', 'embeddings'))->count();
+        // 4. Jobs Stats (Embeddings Queues)
+        $embeddingQueues = [
+            config('xavier.embeddings.queue', 'embeddings'),
+            config('xavier.search_embeddings.queue', 'search_embeddings')
+        ];
+        
+        $pendingJobs = DB::table('jobs')->whereIn('queue', $embeddingQueues)->count();
+        $failedJobs = DB::table('failed_jobs')->whereIn('queue', $embeddingQueues)->count();
 
         // 5. Detailed Failed Jobs
         $failedJobsDetails = DB::table('failed_jobs')
-            ->where('queue', config('xavier.embeddings.queue', 'embeddings'))
+            ->whereIn('queue', $embeddingQueues)
             ->orderBy('failed_at', 'desc')
             ->limit(5)
             ->get()

@@ -155,6 +155,19 @@ class RunVectorSearchJob implements ShouldQueue
             );
         }
 
+        // ── Step 10: Cleanup Redis ─────────────────────────────────────────
+        // Embora as chaves tenham TTL (5 min), limpamos agora para liberar RAM.
+        try {
+            \Illuminate\Support\Facades\Redis::del([
+                "xavier:qembed_ctx:{$this->searchRequestId}",
+                "xavier:qembed:{$this->searchRequestId}:statement",
+                "xavier:qembed:{$this->searchRequestId}:concept",
+                "xavier:qembed:{$this->searchRequestId}:explanation",
+            ]);
+        } catch (\Exception $e) {
+            Log::warning("[Xavier][RunVectorSearch] Falha ao limpar chaves Redis: " . $e->getMessage());
+        }
+
         Log::info("[Xavier][RunVectorSearch] Busca #{$this->searchRequestId} concluída com " . count($questionIds) . " questões.");
     }
 

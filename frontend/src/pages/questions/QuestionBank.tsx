@@ -365,6 +365,12 @@ export default function QuestionBank() {
             if (res.data.status === 'completed') {
                 applySearchResults(res.data);
             } else if (res.data.status === 'generating') {
+                // Atualiza a mensagem a cada ~2 segundos (4 retries)
+                if ((retryCount + 1) % 4 === 0) {
+                    const nextMsg = FUN_MESSAGES[Math.floor(Math.random() * FUN_MESSAGES.length)];
+                    setAiStatusText(nextMsg);
+                }
+                
                 // Continua no polling leve
                 setTimeout(() => pollSearchStatus(requestId, retryCount + 1), 500);
             } else {
