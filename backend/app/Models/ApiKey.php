@@ -18,7 +18,8 @@ class ApiKey extends Model
     public const CAPABILITY_STUDY_PLANS = 'study_plans';
     public const CAPABILITY_CHAT_TUTOR = 'chat_tutor';
     public const CAPABILITY_GENERAL = 'general';
-    public const CAPABILITY_EMBEDDING = 'embedding';
+    public const CAPABILITY_EMBEDDING = 'embedding';          // Vetores de indexação (batch — IndexQuestionVectorJob)
+    public const CAPABILITY_QUERY_EMBEDDING = 'query_embedding'; // Vetores de busca (search — GenerateQueryEmbeddingJob)
 
     protected $fillable = [
         'vault_id',
@@ -53,8 +54,9 @@ class ApiKey extends Model
             self::CAPABILITY_TRIAGE => 'Triagem e Moderação',
             self::CAPABILITY_SEARCH => 'Busca Inteligente (Xavier)',
             self::CAPABILITY_STUDY_PLANS => 'Geração de Plano de Estudos',
-            self::CAPABILITY_EMBEDDING => 'Gerador de Vetores (Embeddings)',
-            self::CAPABILITY_GENERAL => 'Uso Geral / Fallback',
+            self::CAPABILITY_EMBEDDING       => 'Gerador de Vetores (Indexação Batch)',
+            self::CAPABILITY_QUERY_EMBEDDING  => 'Embedding de Busca (Xavier Search — Query)',
+            self::CAPABILITY_GENERAL          => 'Uso Geral / Fallback',
         ];
     }
 
