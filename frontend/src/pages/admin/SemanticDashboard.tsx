@@ -57,6 +57,7 @@ interface DashboardStats {
         similarity_threshold: number;
     }>;
     top_concepts?: Array<{ name: string; count: number }>;
+    top_subjects?: Array<{ name: string; count: number }>;
     config: {
         vector_search_enabled: boolean | string;
         concept_detection_threshold: number;
@@ -388,7 +389,7 @@ const SemanticDashboard = () => {
 
             {/* ANALYTICS ROW  — absorvido do antigo Xavier Insights */}
             {stats && stats.analytics && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {/* Success Rate Card */}
                     <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
                         <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
@@ -409,23 +410,45 @@ const SemanticDashboard = () => {
                     <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
                         <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
                             <Zap className="w-4 h-4 text-amber-500" />
-                            Top 5 Termos Buscados
+                            Top 5 Buscas
                         </h3>
                         <div className="space-y-2">
-                            {stats.analytics.top_prompts.length > 0 ? stats.analytics.top_prompts.map((item, idx) => (
+                            {stats.analytics.top_prompts && stats.analytics.top_prompts.length > 0 ? stats.analytics.top_prompts.map((item, idx) => (
                                 <div key={idx} className="flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-2 min-w-0">
-                                        <span className="text-xs font-bold text-slate-400 w-4 shrink-0">#{idx + 1}</span>
-                                        <span className="text-sm text-slate-700 dark:text-slate-300 truncate" title={item.prompt}>
+                                        <span className="text-[10px] font-bold text-slate-400 w-4 shrink-0">#{idx + 1}</span>
+                                        <span className="text-xs text-slate-700 dark:text-slate-300 truncate" title={item.prompt}>
                                             {item.prompt}
                                         </span>
                                     </div>
-                                    <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded shrink-0">
+                                    <span className="text-[10px] font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded shrink-0">
                                         {item.total}x
                                     </span>
                                 </div>
                             )) : (
-                                <p className="text-xs text-slate-400">Nenhuma busca registrada.</p>
+                                <p className="text-xs text-slate-400">Nenhuma busca.</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Top Disciplines */}
+                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+                        <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
+                            <Database className="w-4 h-4 text-indigo-500" />
+                            Top Disciplinas
+                        </h3>
+                        <div className="space-y-2">
+                            {stats.top_subjects && stats.top_subjects.length > 0 ? stats.top_subjects.map((item, idx) => (
+                                <div key={idx} className="flex items-center justify-between gap-2">
+                                    <span className="text-xs text-slate-700 dark:text-slate-300 truncate" title={item.name}>
+                                        {item.name}
+                                    </span>
+                                    <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded shrink-0">
+                                        {item.count}
+                                    </span>
+                                </div>
+                            )) : (
+                                <p className="text-xs text-slate-400">Vazio.</p>
                             )}
                         </div>
                     </div>
@@ -434,30 +457,25 @@ const SemanticDashboard = () => {
                     <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
                         <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
                             <BarChart3 className="w-4 h-4 text-indigo-500" />
-                            Volume de Buscas (7 dias)
+                            Buscas (7d)
                         </h3>
-                        {stats.analytics.chart_data.length > 0 ? (
-                            <div className="flex items-end gap-1 h-24">
+                        {stats.analytics.chart_data && stats.analytics.chart_data.length > 0 ? (
+                            <div className="flex items-end gap-1 h-16">
                                 {stats.analytics.chart_data.map((day, idx) => {
                                     const maxCount = Math.max(...stats.analytics.chart_data.map(d => d.count), 1);
                                     const heightPct = (day.count / maxCount) * 100;
                                     return (
-                                        <div key={idx} className="flex-1 flex flex-col items-center gap-1" title={`${day.date}: ${day.count} buscas (${day.success} ok, ${day.failed} falhas)`}>
-                                            <div className="w-full flex flex-col justify-end" style={{ height: '80px' }}>
-                                                <div 
-                                                    className="w-full rounded-t bg-gradient-to-t from-indigo-600 to-indigo-400 dark:from-indigo-500 dark:to-indigo-300 transition-all hover:opacity-80"
-                                                    style={{ height: `${Math.max(heightPct, 4)}%` }}
-                                                />
-                                            </div>
-                                            <span className="text-[9px] text-slate-400 font-mono">
-                                                {day.date.slice(-2)}
-                                            </span>
+                                        <div key={idx} className="flex-1 flex flex-col justify-end h-full" title={`${day.date}: ${day.count}`}>
+                                            <div 
+                                                className="w-full rounded-t bg-indigo-500 transition-all"
+                                                style={{ height: `${Math.max(heightPct, 5)}%` }}
+                                            />
                                         </div>
                                     );
                                 })}
                             </div>
                         ) : (
-                            <p className="text-xs text-slate-400 text-center py-6">Sem dados nos últimos 7 dias.</p>
+                            <p className="text-xs text-slate-400 py-4">Sem dados.</p>
                         )}
                     </div>
                 </div>
@@ -484,7 +502,7 @@ const SemanticDashboard = () => {
                                         : "bg-white text-slate-500 border-slate-100 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700"
                                 )}>
                                     {concept.count}
-                                {concept.count > 10 && <Zap className="w-2.5 h-2.5 inline ml-1 align-middle" />}
+                                    {concept.count > 10 && <Zap className="w-2.5 h-2.5 inline ml-1 align-middle" />}
                                 </span>
                             </div>
                         ))}
