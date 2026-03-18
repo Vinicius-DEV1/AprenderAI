@@ -71,8 +71,8 @@ class XavierIndexConceptsCommand extends Command
                 try {
                     if ($isSync) {
                         IndexConceptVectorJob::dispatchSync($concept->id);
-                        // Small delay to avoid 429 Too Many Requests on Free Tier APIs
-                        sleep(1);
+                        // Delay de 4s para respeitar limite (15 RPM) do Gemini gratuito
+                        sleep(4);
                     } else {
                         IndexConceptVectorJob::dispatch($concept->id);
                     }
