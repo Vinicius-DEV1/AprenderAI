@@ -140,7 +140,8 @@ class ApiKeyController extends Controller
             'capabilities_grid' => (object) collect($capabilitiesGrid)->map(function ($keys) {
                 return $keys->map(function ($key) {
                     $key->is_active = (bool) $key->is_active;
-                    $key->capabilities = $key->capabilities ?? [];
+                    // Legacy: 'capabilities' JSON logic removed.
+                    // The system now uses exclusively the 'capabilitiesList' M:N relation.
                     if ($key->vault) {
                         $key->vault->is_valid = (bool) $key->vault->is_valid;
                     }

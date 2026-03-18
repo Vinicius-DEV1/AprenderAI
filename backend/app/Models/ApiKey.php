@@ -30,7 +30,6 @@ class ApiKey extends Model
         'last_used_at',
         'requests_count',
         'preferred_model',
-        'capabilities',
         'status',
         'last_health_check_at',
         'last_error_message',
@@ -42,7 +41,6 @@ class ApiKey extends Model
         'is_primary' => 'boolean',
         'last_used_at' => 'datetime',
         'last_error_at' => 'datetime',
-        'capabilities' => 'array',
     ];
 
     public static function getAvailableCapabilities(): array
