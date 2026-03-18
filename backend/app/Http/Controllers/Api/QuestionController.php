@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers\Api;
 
@@ -519,22 +519,19 @@ class QuestionController extends Controller
         $normalizedQuery = $textBuilder->buildForQuery($request->prompt);
         Log::info('[Xavier][Search] Step 1 done: normalized query.', ['q' => $normalizedQuery]);
 
-        // ── Step 2: L1 Cache (exact hash) ──────────────────────────�        // ── Step 2.5: Query Intent Extraction (Heuristic) ─────────────────────
-        // Removido: A heurística antiga estava forçando fallbacks SQL incorretos
-        // para termos como "inglês" ou "matemática", derrubando a busca semântica
-        // vetorial e limitando artificialmente os resultados para apenas 1 questão.
-        $extractedSubjectId = null;
-        $extractedTopicId = null;', 'like', "%{$word}%");
-                        }
-                    }
-                })->first();
-                if ($guessedTopic) {
-                     $extractedTopicId = (string) $guessedTopic->id;
-                     Log::info('[Xavier][Search] Intent Extractor: found Topic match.', ['topic' => $guessedTopic->name]);
-                }
-            }
+        // â”€â”€ Step 2: L1 Cache (exact hash) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        $cachedFilters = $cacheService->findExactMatch($normalizedQuery);
+        if ($cachedFilters) {
+            Log::info("[Xavier][Search] Step 2 HIT: L1 cache.");
+            return $this->buildVectorSearchResponse($cachedFilters, $user, $request->prompt, "l1_cache", []);
         }
 
+        // â”€â”€ Step 2.5: Query Intent Extraction (Heuristic) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Removido: A heurÃ­stica antiga forÃ§ava filtros SQL estritos (subject_id)
+        // para termos como "inglÃªs" ou "matemÃ¡tica", matando a busca semÃ¢ntica
+        // e limitando os resultados artificialmente. Agora confiamos 100% nos vetores.
+        $extractedSubjectId = null;
+        $extractedTopicId = null;
         // ── Step 3: Generic Query Embedding (for cache + concept detection) ────
         // Este embedding genérico é usado para:
         //   - L2 Semantic Cache (busca por similaridade em queries anteriores)
