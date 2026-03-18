@@ -608,6 +608,16 @@ class QuestionController extends Controller
             $searchPath = 'vector_only';
         }
 
+        // ── Step 5c: Detecção de Tipo (ENEM/Concurso) via Keywords ─────────────
+        // Se o usuário digitar "questões de concurso", ativamos o filtro de tipo.
+        $extractedType = null;
+        $lowerPrompt = mb_strtolower($request->prompt);
+        if (str_contains($lowerPrompt, 'concurso')) {
+            $extractedType = 'concurso';
+        } elseif (str_contains($lowerPrompt, 'enem')) {
+            $extractedType = 'enem';
+        }
+
         // ── Step 6: Expansão de Query via Grafo de Conhecimento ─────────────────
         // Se detectamos conceitos (ex: "fotossíntese"), expandimos para termos
         // relacionados (ex: "clorofila") para aumentar o recall da busca vetorial lateral.
@@ -641,7 +651,7 @@ class QuestionController extends Controller
         $sqlFilters = array_filter([
             'subject'    => $request->get('subject') ?: $extractedSubjectId,
             'topic'      => $request->get('topic') ?: $extractedTopicId,
-            'type'       => $request->get('type'),
+            'type'       => $request->get('type') ?: $extractedType,
             'difficulty' => $request->get('difficulty'),
             'keyword'    => $request->get('keyword'),
         ]);
