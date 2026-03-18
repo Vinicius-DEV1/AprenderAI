@@ -89,7 +89,7 @@ services:
       - /proc:/host_proc:ro
     env_file: ./backend/.env
     # Prioriza explicitamente a fila 'default' (Simulados/Chats), 'essays' (Redações) e depois a 'import'.
-    command: php artisan queue:work --queue=default,essays --sleep=3 --tries=3 --max-time=3600
+    command: php artisan queue:work --queue=search_embeddings,default,essays --sleep=3 --tries=3 --max-time=3600
     deploy:
       replicas: 40
       resources:
