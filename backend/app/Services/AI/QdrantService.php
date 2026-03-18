@@ -94,6 +94,20 @@ class QdrantService
         }
     }
 
+    /**
+     * Deletes a Qdrant collection entirely.
+     * Used by the "Reset Completo" feature to start fresh.
+     *
+     * @param string $collectionName  Name of the collection to delete.
+     * @return bool  True if deletion succeeded or collection didn't exist.
+     */
+    public function deleteCollection(string $collectionName): bool
+    {
+        $result = $this->delete("/collections/{$collectionName}");
+        Log::info("[Qdrant] Collection '{$collectionName}' deleted.", ['result' => $result]);
+        return (bool) ($result['result'] ?? true);
+    }
+
     // ─── Questions ───────────────────────────────────────────────────────────
 
     /**

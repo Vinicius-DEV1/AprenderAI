@@ -12,8 +12,10 @@ use App\Models\Concept;
 use App\Models\QuestionVector;
 use App\Models\SearchInteractionLog;
 use App\Models\AiSearchCache;
+use App\Models\AiSearchRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Jobs\InterpretSearchPromptJob;
 
@@ -94,9 +96,30 @@ class SemanticDashboardController extends Controller
                 ];
             });
 
-        // 4. Jobs Stats (Embeddings Queue)
-        $pendingJobs = DB::table('jobs')->where('queue', config('xavier.embeddings.queue', 'embeddings'))->count();
-        $failedJobs = DB::table('failed_jobs')->where('queue', config('xavier.embeddings.queue', 'embeddings'))->count();
+        // 7. Analytics (absorvidos da antiga Xavier Insights page)
+        // Taxa de sucesso das buscas + termos mais buscados + gráfico 7 dias
+        $totalAiRequests   = AiSearchRequest::count();
+        $successAiRequests = AiSearchRequest::where('status', 'completed')->count();
+        $successRate       = $totalAiRequests > 0
+            ? round(($successAiRequests / $totalAiRequests) * 100, 1)
+            : 0;
+
+        $topPrompts = AiSearchRequest::select('prompt', DB::raw('count(*) as total'))
+            ->groupBy('prompt')
+            ->orderByDesc('total')
+            ->limit(5)
+            ->get();
+
+        $chartData = AiSearchRequest::select(
+            DB::raw('DATE(created_at) as date'),
+            DB::raw('count(*) as count'),
+            DB::raw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as success"),
+            DB::raw("SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed")
+        )
+            ->where('created_at', '>=', now()->subDays(7))
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
 
         return response()->json([
             'overview' => [
@@ -121,6 +144,12 @@ class SemanticDashboardController extends Controller
                 'pending' => $pendingJobs,
                 'failed'  => $failedJobs,
                 'recent_failures' => $failedJobsDetails,
+            ],
+            'analytics' => [
+                'total_ai_requests' => $totalAiRequests,
+                'success_rate'      => $successRate,
+                'top_prompts'       => $topPrompts,
+                'chart_data'        => $chartData,
             ],
             'recent_searches' => $recentSearches,
             'config' => [
@@ -391,6 +420,70 @@ class SemanticDashboardController extends Controller
             return response()->json(['message' => 'Cache de busca semântica limpo com sucesso. Todas as próximas buscas serão processadas do zero pelo Xavier.']);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Falha ao limpar cache: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Reset Completo — Wipe ALL embedding data and Qdrant collections.
+     *
+     * ⚠️ AÇÃO DESTRUTIVA. Esta operação:
+     *   1. Deleta as coleções questions_vectors e concepts_vectors do Qdrant
+     *   2. Recria ambas as coleções (vazias)
+     *   3. Trunca a tabela question_vectors MySQL
+     *   4. Trunca a tabela ai_search_cache (cache L2)
+     *   5. Reseta qdrant_indexed_at em todos os conceitos
+     *   6. Limpa o cache da aplicação
+     *
+     * Após esta operação: É NECESSÁRIO rodar Indexar Questões + Indexar Conceitos
+     * para reconstruir os vetores do zero.
+     *
+     * Requer parâmetro `confirm=RESET` no body como segurança extra.
+     */
+    public function resetEmbeddings(Request $request, QdrantService $qdrant)
+    {
+        // Segurança: exige confirmação explícita
+        $request->validate([
+            'confirm' => 'required|string|in:RESET',
+        ]);
+
+        try {
+            Log::warning('[Xavier][Reset] Full embedding reset initiated by admin.');
+
+            // 1. Deletar coleções do Qdrant
+            $questionsCol = config('xavier.qdrant.collections.questions', 'questions_vectors');
+            $conceptsCol  = config('xavier.qdrant.collections.concepts', 'concepts_vectors');
+
+            $qdrant->deleteCollection($questionsCol);
+            $qdrant->deleteCollection($conceptsCol);
+            Log::info('[Xavier][Reset] Qdrant collections deleted.');
+
+            // 2. Recriar coleções vazias com a estrutura correta
+            $qdrant->ensureQuestionsCollection();
+            $qdrant->ensureConceptsCollection();
+            Log::info('[Xavier][Reset] Qdrant collections recreated (empty).');
+
+            // 3. Truncar tabela de vetores MySQL
+            DB::table('question_vectors')->truncate();
+            Log::info('[Xavier][Reset] question_vectors table truncated.');
+
+            // 4. Truncar cache L2
+            DB::table('ai_search_cache')->truncate();
+            Log::info('[Xavier][Reset] ai_search_cache table truncated.');
+
+            // 5. Resetar timestamps de indexação dos conceitos
+            Concept::query()->update(['qdrant_indexed_at' => null]);
+            Log::info('[Xavier][Reset] Concept qdrant_indexed_at timestamps cleared.');
+
+            // 6. Limpar cache da aplicação
+            Artisan::call('cache:clear');
+
+            return response()->json([
+                'message' => 'Reset completo executado com sucesso. Coleções Qdrant recriadas vazias. '
+                           . 'Execute "Indexar Questões" + "Indexar Conceitos" para reconstruir os vetores.'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('[Xavier][Reset] Failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Falha no reset: ' . $e->getMessage()], 500);
         }
     }
 }
