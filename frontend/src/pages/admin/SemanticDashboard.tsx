@@ -305,11 +305,10 @@ const SemanticDashboard = () => {
                     </button>
                     <button 
                         onClick={() => setIsConceptModalOpen(true)}
-                        disabled={reindexingConcepts}
-                        className="btn btn-primary bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2"
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-lg shadow-purple-500/25 transition-all active:scale-95"
                     >
                         {reindexingConcepts ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Lightbulb className="w-4 h-4" />}
-                        Indexar Conceitos
+                        Indexar Intenções
                     </button>
                 </div>
             </div>
@@ -1021,7 +1020,7 @@ const SemanticDashboard = () => {
                             <div className="flex justify-between items-start mb-4">
                                 <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
                                     <Lightbulb className="w-6 h-6 text-purple-500" />
-                                    Indexar Conceitos
+                                    Indexar Entidades Semânticas
                                 </h3>
                                 <button onClick={() => setIsConceptModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                                     <RefreshCw className="w-5 h-5" style={{ transform: 'rotate(45deg)' }} />
@@ -1029,30 +1028,42 @@ const SemanticDashboard = () => {
                             </div>
                             
                             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                                Vetorize conceitos no Qdrant para a Detecção de Intenção (Intent Detection) da busca semântica.
+                                Vetorize Disciplinas (Subjects), Tópicos e Conceitos no Qdrant para a Detecção de Intenção da busca semântica.
                                 <span className="block mt-1 text-[11px] font-mono text-purple-500 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-900/20 w-fit px-1.5 py-0.5 rounded">
                                     Pipeline Ativo: {stats?.config.pipeline_version || 'v5_multivector_rrf'}
                                 </span>
                             </p>
 
-                            <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-xl p-4 mb-6">
-                                <div className="flex justify-between items-center mb-1">
-                                    <span className="text-xs font-medium text-purple-700 dark:text-purple-400 uppercase tracking-wider">
-                                        {conceptForce ? 'Total de Conceitos para Re-indexar' : 'Pendentes de Indexação'}
-                                    </span>
-                                    <span className={clsx("text-lg font-bold", conceptForce ? "text-purple-600 dark:text-purple-400" : "text-purple-800 dark:text-purple-200")}>
-                                        {stats ? (
-                                            conceptForce 
-                                                ? stats.overview.mysql_total_concepts 
-                                                : stats.overview.mysql_total_concepts - stats.overview.mysql_indexed_concepts
-                                        ) : '...'}
-                                    </span>
+                            <div className="grid grid-cols-1 gap-3 mb-6">
+                                {/* Subjects Stat */}
+                                <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-xl p-3">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] font-medium text-purple-700 dark:text-purple-400 uppercase tracking-wider">Disciplinas Pendentes</span>
+                                        <span className="text-sm font-bold text-purple-800 dark:text-purple-200">
+                                            {stats ? (conceptForce ? stats.overview.mysql_total_subjects : stats.overview.mysql_total_subjects - stats.overview.mysql_indexed_subjects) : '...'}
+                                        </span>
+                                    </div>
                                 </div>
-                                <p className="text-[10px] text-purple-600 dark:text-purple-500">
-                                    {conceptForce 
-                                        ? "Modo FORÇAR ativado: todos os conceitos serão re-vetorizados com o novo formato (SHA-256 IDs + taskType)."
-                                        : "Conceitos que ainda não possuem timestamp qdrant_indexed_at."}
-                                </p>
+
+                                {/* Topics Stat */}
+                                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-3">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] font-medium text-blue-700 dark:text-blue-400 uppercase tracking-wider">Tópicos Pendentes</span>
+                                        <span className="text-sm font-bold text-blue-800 dark:text-blue-200">
+                                            {stats ? (conceptForce ? stats.overview.mysql_total_topics : stats.overview.mysql_total_topics - stats.overview.mysql_indexed_topics) : '...'}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Concepts Stat */}
+                                <div className="bg-slate-50 dark:bg-slate-900/20 border border-slate-100 dark:border-slate-800 rounded-xl p-3">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] font-medium text-slate-700 dark:text-slate-400 uppercase tracking-wider">Conceitos Pendentes</span>
+                                        <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                                            {stats ? (conceptForce ? stats.overview.mysql_total_concepts : stats.overview.mysql_total_concepts - stats.overview.mysql_indexed_concepts) : '...'}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="space-y-2 mb-8">
