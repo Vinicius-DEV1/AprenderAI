@@ -154,6 +154,26 @@ class EmbeddingTextBuilder
     }
 
     /**
+     * Constrói o texto rico para os vetores de DISCIPLINAS (Subjects).
+     * Usado na coleção concepts_vectors para permitir Detecção de Intenção.
+     * O prefixo "discipline:" ajuda o embedding a diferenciar uma disciplina de um conceito genérico.
+     */
+    public function buildForSubject(\App\Models\Subject $subject): string
+    {
+        return "discipline: {$subject->name}";
+    }
+
+    /**
+     * Constrói o texto rico para os vetores de TÓPICOS (Assuntos).
+     * Similar ao subject, permite que o Xavier detecte quando o usuário está
+     * buscando especificamente por um assunto (ex: "Verbos", "Logaritmos").
+     */
+    public function buildForTopic(\App\Models\Topic $topic): string
+    {
+        return "topic: {$topic->name}";
+    }
+
+    /**
      * Builds the embedding text for a Concept node.
      * Includes all aliases and related concept names for rich representation.
      */

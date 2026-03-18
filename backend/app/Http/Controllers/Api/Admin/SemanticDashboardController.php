@@ -34,6 +34,12 @@ class SemanticDashboardController extends Controller
         $totalVectors = QuestionVector::count();
         $totalConcepts = Concept::count();
         $indexedConcepts = Concept::whereNotNull('qdrant_indexed_at')->count();
+        
+        $totalSubjects = \App\Models\Subject::count();
+        $indexedSubjects = \App\Models\Subject::whereNotNull('qdrant_indexed_at')->count();
+        
+        $totalTopics = \App\Models\Topic::count();
+        $indexedTopics = \App\Models\Topic::whereNotNull('qdrant_indexed_at')->count();
 
         // 2. Qdrant Data (Collections Info)
         $qdrantQuestions = 0;
@@ -136,6 +142,10 @@ class SemanticDashboardController extends Controller
                 'mysql_total_vectors'       => $totalVectors,
                 'mysql_total_concepts'      => $totalConcepts,
                 'mysql_indexed_concepts'    => $indexedConcepts,
+                'mysql_total_subjects'      => $totalSubjects,
+                'mysql_indexed_subjects'    => $indexedSubjects,
+                'mysql_total_topics'        => $totalTopics,
+                'mysql_indexed_topics'      => $indexedTopics,
             ],
             'qdrant' => [
                 'status'           => $qdrantStatus,
@@ -147,15 +157,20 @@ class SemanticDashboardController extends Controller
                     'concepts'  => $conceptsVersionCheck,
                 ]
             ],
-            'top_concepts' => \App\Models\Concept::whereNotNull('qdrant_indexed_at')
+            'top_concepts' => Concept::whereNotNull('qdrant_indexed_at')
                 ->withCount('questions')
                 ->orderByDesc('questions_count')
-                ->limit(40)
-                ->get(['id', 'name', 'qdrant_indexed_at'])
-                ->map(fn($c) => [
-                    'name'  => $c->name,
-                    'count' => $c->questions_count
-                ]),
+                ->limit(30)
+                ->get(['id', 'name'])
+                ->map(fn($c) => ['name' => $c->name, 'count' => $c->questions_count, 'type' => 'concept'])
+                ->concat(
+                    \App\Models\Subject::whereNotNull('qdrant_indexed_at')
+                        ->withCount('questions')
+                        ->orderByDesc('questions_count')
+                        ->limit(10)
+                        ->get(['id', 'name'])
+                        ->map(fn($s) => ['name' => $s->name, 'count' => $s->questions_count, 'type' => 'subject'])
+                ),
             'performance' => [
                 'total_searches'      => $totalLogSearches,
                 'l1_cache_hits'       => $l1CacheHits,
@@ -273,13 +288,32 @@ class SemanticDashboardController extends Controller
             config('xavier.embeddings.concept_detection_threshold', 0.75)
         );
         $conceptMatches = $qdrant->searchConcepts($queryVector, 5, $conceptThreshold);
-        $detectedConcepts = array_filter(array_map(fn($m) => $m['payload']['concept_slug'] ?? null, $conceptMatches));
-        $detectedConcepts = array_values($detectedConcepts);
-        $logs[] = "Concepts Detected (threshold={$conceptThreshold}): " . implode(', ', $detectedConcepts ?: ['None']);
+        
+        $detectedConcepts = [];
+        $extractedSubjectId = null;
+        $extractedTopicId = null;
+
+        foreach ($conceptMatches as $match) {
+            $payload = $match['payload'] ?? [];
+            $type = $payload['entity_type'] ?? 'concept';
+            
+            if ($type === 'concept' && isset($payload['concept_slug'])) {
+                $detectedConcepts[] = $payload['concept_slug'];
+            } elseif ($type === 'subject' && isset($payload['subject_id'])) {
+                $extractedSubjectId = $payload['subject_id'];
+                $logs[] = "INTENT DETECTED: Subject #{$extractedSubjectId} ({$payload['name']})";
+            } elseif ($type === 'topic' && isset($payload['topic_id'])) {
+                $extractedTopicId = $payload['topic_id'];
+                $logs[] = "INTENT DETECTED: Topic #{$extractedTopicId} ({$payload['name']})";
+            }
+        }
+
+        $detectedConcepts = array_values(array_unique($detectedConcepts));
+        $logs[] = "Concepts Detected: " . implode(', ', $detectedConcepts ?: ['None']);
 
         // ── Step 4: Query Expansion via Knowledge Graph ───────────────────────
         $expansion = app(\App\Services\AI\QueryExpansionService::class);
-        $expandedConceptIds = $expansion->expand($detectedConcepts, 1);
+        $expandedConceptIds = !empty($detectedConcepts) ? $expansion->expand($detectedConcepts, 1) : [];
         $logs[] = "Expanded Concepts IDs: " . implode(', ', $expandedConceptIds ?: ['None']);
 
         // ── Step 5: Gerar 3 embeddings format-aligned ─────────────────────────
@@ -497,9 +531,11 @@ class SemanticDashboardController extends Controller
             DB::table('ai_search_cache')->truncate();
             Log::info('[Xavier][Reset] ai_search_cache table truncated.');
 
-            // 5. Resetar timestamps de indexação dos conceitos
+            // 5. Resetar timestamps de indexação
             Concept::query()->update(['qdrant_indexed_at' => null]);
-            Log::info('[Xavier][Reset] Concept qdrant_indexed_at timestamps cleared.');
+            \App\Models\Subject::query()->update(['qdrant_indexed_at' => null]);
+            \App\Models\Topic::query()->update(['qdrant_indexed_at' => null]);
+            Log::info('[Xavier][Reset] Entity indexing timestamps cleared.');
 
             // 6. Limpar cache da aplicação
             Artisan::call('cache:clear');

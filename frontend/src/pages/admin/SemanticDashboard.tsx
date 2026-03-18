@@ -15,6 +15,10 @@ interface DashboardStats {
         mysql_total_vectors: number;
         mysql_total_concepts: number;
         mysql_indexed_concepts: number;
+        mysql_total_subjects: number;
+        mysql_indexed_subjects: number;
+        mysql_total_topics: number;
+        mysql_indexed_topics: number;
     };
     qdrant: {
         status: string;
@@ -56,7 +60,7 @@ interface DashboardStats {
         created_at: string;
         similarity_threshold: number;
     }>;
-    top_concepts?: Array<{ name: string; count: number }>;
+    top_concepts?: Array<{ name: string; count: number; type?: 'concept' | 'subject' | 'topic' }>;
     config: {
         vector_search_enabled: boolean | string;
         concept_detection_threshold: number;
@@ -457,38 +461,91 @@ const SemanticDashboard = () => {
                                 })}
                             </div>
                         ) : (
-                            <p className="text-xs text-slate-400 text-center py-6">Sem dados nos últimos 7 dias.</p>
+                            <div className="h-24 flex items-center justify-center text-xs text-slate-400 italic">Sem dados nos últimos 7 dias</div>
                         )}
                     </div>
                 </div>
             )}
 
-            {stats && stats.top_concepts && stats.top_concepts.length > 0 && (
-                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm mb-6">
-                    <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-4 flex items-center gap-2">
-                        <Hash className="w-4 h-4 text-indigo-500" />
-                        Nuvem de Conceitos Indexados (Populares no Qdrant)
-                    </h3>
+            {stats && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <StatCard 
+                        title="Taxa de Sucesso (IA)"
+                        value={`${stats.analytics.success_rate}%`}
+                        subtitle={`${stats.analytics.total_ai_requests} buscas totais`}
+                        icon={TrendingUp}
+                        colorClass="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
+                    />
+
+                    <StatCard 
+                        title="Cache Semântico"
+                        value={stats.performance.total_cache_entries}
+                        subtitle={`${stats.performance.l2_cache_hits} hits acumulados`}
+                        icon={Zap}
+                        colorClass="bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400"
+                    />
+
+                    <StatCard 
+                        title="Disciplinas Indexadas"
+                        value={`${stats.overview.mysql_indexed_subjects} / ${stats.overview.mysql_total_subjects}`}
+                        subtitle="Vetorizadas para intenção"
+                        icon={Database}
+                        colorClass="bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400"
+                    />
+
+                    <StatCard 
+                        title="Tópicos Indexados"
+                        value={`${stats.overview.mysql_indexed_topics} / ${stats.overview.mysql_total_topics}`}
+                        subtitle="Aumento de precisão"
+                        icon={Hash}
+                        colorClass="bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
+                    />
+                </div>
+            )}
+
+            {/* CONCEPT CLOUD ROW */}
+            {stats && stats.top_concepts && (
+                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-2">
+                            <Box className="w-5 h-5 text-indigo-500" />
+                            <h2 className="text-lg font-bold text-slate-800 dark:text-white">Nuvem de Conceitos & Disciplinas (Qdrant)</h2>
+                        </div>
+                        <div className="flex gap-4 text-xs font-medium">
+                            <span className="flex items-center gap-1.5 text-slate-500"><div className="w-2.5 h-2.5 rounded-full bg-slate-100 dark:bg-slate-700"></div> Conceitos</span>
+                            <span className="flex items-center gap-1.5 text-purple-600"><div className="w-2.5 h-2.5 rounded-full bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-700"></div> Disciplinas</span>
+                        </div>
+                    </div>
+                    
                     <div className="flex flex-wrap gap-2">
-                        {stats.top_concepts.map((concept: any, idx: number) => (
+                        {stats.top_concepts.map((concept, i) => (
                             <div 
-                                key={idx} 
-                                className="px-3 py-1 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2 shadow-sm"
-                                title={`${concept.count} questões vinculadas`}
+                                key={i}
+                                className={clsx(
+                                    "px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 transition-all hover:scale-105 border",
+                                    concept.type === 'subject' 
+                                        ? "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700" 
+                                        : "bg-slate-50 text-slate-700 border-slate-100 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600"
+                                )}
+                                title={concept.type === 'subject' ? 'Disciplina (Subject)' : 'Conceito'}
                             >
-                                <span>{concept.name}</span>
+                                {concept.name}
                                 <span className={clsx(
-                                    "text-[9px] px-1.5 rounded border font-mono font-bold",
+                                    "text-[10px] px-1.5 rounded font-bold",
                                     concept.count > 10 
-                                        ? "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800" 
-                                        : "bg-white text-slate-500 border-slate-100 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700"
+                                        ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-400" 
+                                        : "bg-black/5 dark:bg-white/10 text-slate-500 dark:text-slate-400"
                                 )}>
                                     {concept.count}
-                                {concept.count > 10 && <Zap className="w-2.5 h-2.5 inline ml-1 align-middle" />}
+                                    {concept.count > 10 && <Zap className="w-2.5 h-2.5 inline ml-0.5" />}
                                 </span>
                             </div>
                         ))}
                     </div>
+                    <p className="mt-4 text-xs text-slate-400 italic flex items-center gap-1.5">
+                        <Lightbulb className="w-3.5 h-3.5" />
+                        Termos em <span className="text-purple-600 dark:text-purple-400 font-bold">roxo</span> são Disciplinas (Subjects). Quando detectados, forçam filtros de alta precisão na busca.
+                    </p>
                 </div>
             )}
 
