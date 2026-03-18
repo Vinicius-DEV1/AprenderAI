@@ -160,7 +160,8 @@ class IndexQuestionVectorJob implements ShouldQueue
             'review_status' => $question->review_status,
             'concepts'      => $question->concepts->pluck('id')->toArray(),
             // Popularity signal for ReRankService
-            'answer_count'  => $question->userAnswers()->count(),
+            'answer_count'     => $question->userAnswers()->count(),
+            'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v3_structured'),
         ];
     }
 }

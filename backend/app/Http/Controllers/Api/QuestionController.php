@@ -519,43 +519,12 @@ class QuestionController extends Controller
         $normalizedQuery = $textBuilder->buildForQuery($request->prompt);
         Log::info('[Xavier][Search] Step 1 done: normalized query.', ['q' => $normalizedQuery]);
 
-        // ── Step 2: L1 Cache (exact hash) ────────────────────────────────────
-        $cachedFilters = $cacheService->findExactMatch($normalizedQuery);
-        if ($cachedFilters) {
-            Log::info('[Xavier][Search] Step 2 HIT: L1 cache.');
-            return $this->buildVectorSearchResponse($cachedFilters, $user, $request->prompt, 'l1_cache', []);
-        }
-
-        // ── Step 2.5: Query Intent Extraction (Heuristic) ─────────────────────
-        // If the user searches for a pure subject/topic like "Inglês", vector search
-        // might falsely match math questions with high "textual interpretation" scores.
-        // This heuristic enforces a hard SQL filter for obvious subject matches.
+        // ── Step 2: L1 Cache (exact hash) ──────────────────────────�        // ── Step 2.5: Query Intent Extraction (Heuristic) ─────────────────────
+        // Removido: A heurística antiga estava forçando fallbacks SQL incorretos
+        // para termos como "inglês" ou "matemática", derrubando a busca semântica
+        // vetorial e limitando artificialmente os resultados para apenas 1 questão.
         $extractedSubjectId = null;
-        $extractedTopicId = null;
-
-        $cleanedPromptForIntent = trim(preg_replace('/[^A-Za-zÀ-ÖØ-öø-ÿ0-9\s]/u', '', strtolower($request->prompt)));
-        $intentWords = explode(' ', $cleanedPromptForIntent);
-
-        if (count($intentWords) <= 3) {
-            // Highly likely to be a direct category attempt if it's very short
-            $guessedSubject = \App\Models\Subject::where(function ($q) use ($intentWords) {
-                foreach ($intentWords as $word) {
-                    if (strlen($word) > 3) {
-                        $q->orWhere('name', 'like', "%{$word}%");
-                    }
-                }
-            })->first();
-
-            if ($guessedSubject) {
-                $extractedSubjectId = (string) $guessedSubject->id;
-                Log::info('[Xavier][Search] Intent Extractor: found Subject match.', ['subject' => $guessedSubject->name]);
-            } else {
-                // Try for a Topic if Subject wasn't found
-                $guessedTopic = \App\Models\Topic::where(function ($q) use ($intentWords) {
-                    foreach ($intentWords as $word) {
-                        if (strlen($word) > 4) {
-                            $q->orWhere('name', 'like', "%{$word}%")
-                              ->orWhere('slug', 'like', "%{$word}%");
+        $extractedTopicId = null;', 'like', "%{$word}%");
                         }
                     }
                 })->first();
