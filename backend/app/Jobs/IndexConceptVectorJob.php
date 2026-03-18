@@ -67,8 +67,9 @@ class IndexConceptVectorJob implements ShouldQueue
         $vector = $aiService->generateEmbedding($text, null, 'RETRIEVAL_DOCUMENT');
 
         if (!$vector) {
-            Log::error("[Xavier][IndexConcept] Embedding FAILED for concept '{$this->conceptId}'.");
-            return;
+            $msg = "[Xavier][IndexConcept] Embedding FAILED for concept '{$this->conceptId}'. Check Gemini API/Quota.";
+            Log::error($msg);
+            throw new \RuntimeException($msg);
         }
 
         Log::debug("[Xavier][IndexConcept] #{$this->conceptId} vector generated successfully.");
@@ -89,7 +90,9 @@ class IndexConceptVectorJob implements ShouldQueue
             $concept->update(['qdrant_indexed_at' => now()]);
             Log::info("[Xavier][IndexConcept] Concept '{$this->conceptId}' indexed successfully.");
         } else {
-            Log::error("[Xavier][IndexConcept] Qdrant upsert failed for concept '{$this->conceptId}'.");
+            $msg = "[Xavier][IndexConcept] Qdrant upsert failed for concept '{$this->conceptId}'. Check Qdrant connectivity/logs.";
+            Log::error($msg);
+            throw new \RuntimeException($msg);
         }
     }
 }
