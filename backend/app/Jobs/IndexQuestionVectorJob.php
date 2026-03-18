@@ -168,7 +168,7 @@ class IndexQuestionVectorJob implements ShouldQueue
             'concepts'      => $question->concepts->pluck('id')->toArray(),
             // Popularity signal for ReRankService
             'answer_count'     => $question->userAnswers()->count(),
-            'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v5_multivector_rrf'),
+            'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v6_intent_unification'),
         ];
     }
 }

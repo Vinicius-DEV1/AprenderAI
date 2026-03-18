@@ -84,7 +84,7 @@ class IndexSemanticEntityJob implements ShouldQueue
         $payload = [
             'name'             => $model->name,
             'entity_type'      => $this->entityType,
-            'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v5_multivector_rrf'),
+            'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v6_intent_unification'),
         ];
 
         // Metadados específicos para permitir o hard filter no MySQL/Vector Search

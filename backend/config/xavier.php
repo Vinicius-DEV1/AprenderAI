@@ -41,7 +41,7 @@ return [
         'batch_queue' => env('AI_BATCH_QUEUE', 'embeddings'),
 
         // Pipeline version tag written to question_vectors.pipeline_version
-        'pipeline_version' => 'v5_multivector_rrf',
+        'pipeline_version' => 'v6_intent_unification',
 
         // Minimum cosine similarity score to accept a concept match
         'concept_detection_threshold' => env('CONCEPT_DETECTION_THRESHOLD', 0.45),
