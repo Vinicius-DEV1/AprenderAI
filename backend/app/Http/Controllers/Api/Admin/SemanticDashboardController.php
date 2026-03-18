@@ -345,6 +345,9 @@ class SemanticDashboardController extends Controller
         
         // Ensure SQL fallback actually filters by the text if Qdrant is empty
         $sqlFilters = ['keyword' => $request->prompt];
+        if ($extractedType) {
+            $sqlFilters['type'] = $extractedType;
+        }
         
         $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, $sqlFilters, $limit);
         $logs[] = "Candidates found in Qdrant (or SQL Fallback): " . count($candidates);
