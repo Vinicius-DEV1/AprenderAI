@@ -783,23 +783,23 @@ export default function QuestionBank() {
                                     <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                                         <div className="bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
                                             <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-widest">SEMÂNTICA VEC</span>
-                                            <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">+{aiScoreDetails[q.id].vector?.weighted?.toFixed(4)}</span>
+                                            <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">+{aiScoreDetails[q.id].details?.vector?.weighted?.toFixed(4)}</span>
                                         </div>
                                         <div className="bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
                                             <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-widest">POPULARIDADE</span>
-                                            <span className="font-mono text-sky-600 dark:text-sky-400 font-bold">+{aiScoreDetails[q.id].popularity?.weighted?.toFixed(4)}</span>
+                                            <span className="font-mono text-sky-600 dark:text-sky-400 font-bold">+{aiScoreDetails[q.id].details?.popularity?.weighted?.toFixed(4)}</span>
                                         </div>
                                         <div className="bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
                                             <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-widest">QUALIDADE PED.</span>
-                                            <span className="font-mono text-amber-600 dark:text-amber-400 font-bold">+{aiScoreDetails[q.id].quality?.weighted?.toFixed(4)}</span>
+                                            <span className="font-mono text-amber-600 dark:text-amber-400 font-bold">+{aiScoreDetails[q.id].details?.quality?.weighted?.toFixed(4)}</span>
                                         </div>
                                         <div className="bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
                                             <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-widest">RECÊNCIA ANO</span>
-                                            <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">+{aiScoreDetails[q.id].recency?.weighted?.toFixed(4)}</span>
+                                            <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">+{aiScoreDetails[q.id].details?.recency?.weighted?.toFixed(4)}</span>
                                         </div>
                                         <div className="bg-indigo-50 dark:bg-indigo-900/20 p-2 rounded border border-indigo-100 dark:border-indigo-800">
                                             <span className="text-[9px] text-indigo-500 dark:text-indigo-400 block uppercase font-bold tracking-widest">INTENT BOOSTER</span>
-                                            <span className="font-mono text-purple-600 dark:text-purple-400 font-bold">+{aiScoreDetails[q.id].intent?.weighted?.toFixed(4)}</span>
+                                            <span className="font-mono text-purple-600 dark:text-purple-400 font-bold">+{aiScoreDetails[q.id].details?.intent?.weighted?.toFixed(4)}</span>
                                         </div>
                                     </div>
                                 </div>
