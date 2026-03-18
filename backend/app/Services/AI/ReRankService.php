@@ -96,6 +96,12 @@ class ReRankService
                 'vector_score'    => round($vectorScore,     4),
                 'composite_score' => round($composite,       4),
                 'source'          => $candidate['source'] ?? 'qdrant',
+                'details'         => [
+                    'vector'     => ['raw' => round($vectorScore, 4),     'weighted' => round($vectorScore * $this->wVector, 4)],
+                    'popularity' => ['raw' => round($popularityScore, 4), 'weighted' => round($popularityScore * $this->wPopularity, 4)],
+                    'quality'    => ['raw' => round($qualityScore, 4),    'weighted' => round($qualityScore * $this->wQuality, 4)],
+                    'recency'    => ['raw' => round($recencyScore, 4),    'weighted' => round($recencyScore * $this->wRecency, 4)],
+                ]
             ];
         }
 
