@@ -156,14 +156,6 @@ class SemanticDashboardController extends Controller
                     'name'  => $c->name,
                     'count' => $c->questions_count
                 ]),
-            'top_subjects' => \App\Models\Subject::withCount('questions')
-                ->orderByDesc('questions_count')
-                ->limit(10)
-                ->get(['id', 'name'])
-                ->map(fn($s) => [
-                    'name'  => $s->name,
-                    'count' => $s->questions_count
-                ]),
             'performance' => [
                 'total_searches'      => $totalLogSearches,
                 'l1_cache_hits'       => $l1CacheHits,
