@@ -92,6 +92,7 @@ const SemanticDashboard = () => {
     const [reindexing, setReindexing] = useState(false);
     const [reindexingConcepts, setReindexingConcepts] = useState(false);
     const [clearingCache, setClearingCache] = useState(false);
+    const [clearingQueue, setClearingQueue] = useState(false);
     const [resetting, setResetting] = useState(false);
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [resetConfirmText, setResetConfirmText] = useState('');
@@ -227,6 +228,23 @@ const SemanticDashboard = () => {
         }
     };
 
+    const handleClearQueue = async () => {
+        if (!confirm('Isso removerá TODOS os jobs pendentes da fila de embeddings. Use se a fila estiver travada ou com muitos erros. Deseja continuar?')) {
+            return;
+        }
+
+        try {
+            setClearingQueue(true);
+            const res = await api.post('/api/v1/admin/semantic/clear-queue');
+            toast.success(res.data.message);
+            loadStats();
+        } catch (error) {
+            toast.error('Erro ao limpar a fila de jobs.');
+        } finally {
+            setClearingQueue(false);
+        }
+    };
+
     const handleResetEmbeddings = async () => {
         if (resetConfirmText !== 'RESET') return;
         try {
@@ -281,11 +299,20 @@ const SemanticDashboard = () => {
                     <button 
                         onClick={handleClearCache}
                         disabled={clearingCache}
-                        className="btn btn-secondary text-red-600 border-red-200 hover:bg-red-50 flex items-center gap-2"
+                        className="btn btn-secondary text-amber-600 border-amber-200 hover:bg-amber-50 flex items-center gap-2"
                         title="Limpar Cache de Busca (Não apaga vetores)"
                     >
                         {clearingCache ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                         Limpar Cache
+                    </button>
+                    <button 
+                        onClick={handleClearQueue}
+                        disabled={clearingQueue}
+                        className="btn btn-secondary text-red-600 border-red-200 hover:bg-red-50 flex items-center gap-2"
+                        title="Limpar Fila de Jobs (Embeddings)"
+                    >
+                        {clearingQueue ? <Trash2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        Limpar Fila
                     </button>
                     <button 
                         onClick={() => setIsResetModalOpen(true)}
