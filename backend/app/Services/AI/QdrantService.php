@@ -156,7 +156,7 @@ class QdrantService
         array $queryVectors,
         array $filters = [],
         int   $limit = 50,
-        float $scoreThreshold = 0.30
+        float $scoreThreshold = 0.45
     ): array {
         $prefetch = [];
  
@@ -283,7 +283,7 @@ class QdrantService
      *
      * @return array [{id, score, payload}] — payload includes 'concept_slug'
      */
-    public function searchConcepts(array $queryVector, int $limit = 5, float $threshold = 0.75): array
+    public function searchConcepts(array $queryVector, int $limit = 5, float $threshold = 0.45): array
     {
         $body = [
             'vector'          => $queryVector,
