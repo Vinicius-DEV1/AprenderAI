@@ -51,57 +51,6 @@ class QuestionController extends Controller
             $query->where('tipo_questao', 'Objetiva');
         }
 
-        // Type filter (enem, concurso, etc)
-        $query->filterByType($request->type);
-
-        // Relational filters
-        $query->filterBySubject($request->subject); // Handles subject ID
-        $query->filterByTopic($request->topic);     // Handles topic ID
-
-        // Favorites filter
-        if ($userId && $request->boolean('favorites_only')) {
-            $query->whereHas('favorites', fn($q) => $q->where('user_id', $userId));
-        }
-
-        // Notes filter
-        if ($userId && $request->boolean('has_notes')) {
-            $query->whereHas('notes', fn($q) => $q->where('user_id', $userId));
-        }
-
-        if ($userId && $request->boolean('exclude_favorites')) {
-            $query->whereDoesntHave('favorites', fn($q) => $q->where('user_id', $userId));
-        }
-
-        // Notebooks filter (array or single ID)
-        if ($userId && $request->filled('notebook_id')) {
-            $notebookIds = (array) $request->notebook_id;
-            $query->whereHas('notebooks', fn($q) => $q->whereIn('notebooks.id', $notebookIds)->where('user_id', $userId));
-        }
-        if ($userId && $request->filled('exclude_notebook_id')) {
-            $excludeNotebookIds = (array) $request->exclude_notebook_id;
-            $query->whereDoesntHave('notebooks', fn($q) => $q->whereIn('notebooks.id', $excludeNotebookIds)->where('user_id', $userId));
-        }
-
-        // Attribute filters
-        if ($request->filled('id')) {
-            $query->where('id', $request->id);
-        }
-        if ($request->filled('difficulty')) {
-            $query->where('difficulty', $request->difficulty);
-        }
-        if ($request->filled('year')) {
-            $query->where('year', $request->year);
-        }
-        if ($request->filled('organization')) {
-            $query->where('organization', 'like', '%' . $request->organization . '%');
-        }
-        if ($request->filled('institution')) {
-            $query->where('institution', 'like', '%' . $request->institution . '%');
-        }
-        if ($request->filled('role')) {
-            $query->where('role', 'like', '%' . $request->role . '%');
-        }
-
         // Filter by specific IDs (Semantic Results)
         if ($request->filled('question_ids')) {
             $ids = is_array($request->question_ids) ? $request->question_ids : explode(',', $request->question_ids);
@@ -110,18 +59,71 @@ class QuestionController extends Controller
             // Maintain order of IDs if they come from semantic search (ReRank order)
             $orderString = implode(',', $ids);
             $query->orderByRaw("FIELD(id, {$orderString})");
-        }
+        } else {
+            // --- Normal UI Filters (Ignored during AI Search) ---
+            
+            // Type filter (enem, concurso, etc)
+            $query->filterByType($request->type);
 
-        // Keyword/Search filter
-        if ($request->filled('keyword')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('statement', 'like', '%' . $request->keyword . '%')
-                    ->orWhere('explanation', 'like', '%' . $request->keyword . '%');
-            });
-        }
+            // Relational filters
+            $query->filterBySubject($request->subject); // Handles subject ID
+            $query->filterByTopic($request->topic);     // Handles topic ID
 
-        // Sort by newest by default
-        $query->orderBy('created_at', 'desc');
+            // Favorites filter
+            if ($userId && $request->boolean('favorites_only')) {
+                $query->whereHas('favorites', fn($q) => $q->where('user_id', $userId));
+            }
+
+            // Notes filter
+            if ($userId && $request->boolean('has_notes')) {
+                $query->whereHas('notes', fn($q) => $q->where('user_id', $userId));
+            }
+
+            if ($userId && $request->boolean('exclude_favorites')) {
+                $query->whereDoesntHave('favorites', fn($q) => $q->where('user_id', $userId));
+            }
+
+            // Notebooks filter (array or single ID)
+            if ($userId && $request->filled('notebook_id')) {
+                $notebookIds = (array) $request->notebook_id;
+                $query->whereHas('notebooks', fn($q) => $q->whereIn('notebooks.id', $notebookIds)->where('user_id', $userId));
+            }
+            if ($userId && $request->filled('exclude_notebook_id')) {
+                $excludeNotebookIds = (array) $request->exclude_notebook_id;
+                $query->whereDoesntHave('notebooks', fn($q) => $q->whereIn('notebooks.id', $excludeNotebookIds)->where('user_id', $userId));
+            }
+
+            // Attribute filters
+            if ($request->filled('id')) {
+                $query->where('id', $request->id);
+            }
+            if ($request->filled('difficulty')) {
+                $query->where('difficulty', $request->difficulty);
+            }
+            if ($request->filled('year')) {
+                $query->where('year', $request->year);
+            }
+            if ($request->filled('organization')) {
+                $query->where('organization', 'like', '%' . $request->organization . '%');
+            }
+            if ($request->filled('institution')) {
+                $query->where('institution', 'like', '%' . $request->institution . '%');
+            }
+            if ($request->filled('role')) {
+                $query->where('role', 'like', '%' . $request->role . '%');
+            }
+
+            // Keyword/Search filter
+            if ($request->filled('keyword')) {
+                $query->where(function ($q) use ($request) {
+                    $q->where('statement', 'like', '%' . $request->keyword . '%')
+                        ->orWhere('explanation', 'like', '%' . $request->keyword . '%');
+                });
+            }
+
+            // Sort by newest by default
+            $query->orderBy('created_at', 'desc');
+        }
 
         $questions = $query->paginate($request->get('per_page', 15));
 
@@ -648,13 +650,8 @@ class QuestionController extends Controller
         ]);
 
         // ── Step 7: Hybrid Search (Qdrant + SQL fallback) ─────────────────────
-        $sqlFilters = array_filter([
-            'subject'    => $request->get('subject') ?: $extractedSubjectId,
-            'topic'      => $request->get('topic') ?: $extractedTopicId,
-            'type'       => $request->get('type') ?: $extractedType,
-            'difficulty' => $request->get('difficulty'),
-            'keyword'    => $request->get('keyword'),
-        ]);
+        // Ignora filtros da UI para manter a Busca Global idêntica ao Debug Admin
+        $sqlFilters = ['keyword' => $request->prompt];
 
         $candidateLimit = (int) \App\Models\Configuration::get('xavier_qdrant_candidate_limit', config('xavier.search.qdrant_candidate_limit', 50));
         $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, $sqlFilters, $candidateLimit);
