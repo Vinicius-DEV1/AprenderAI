@@ -485,7 +485,30 @@ class SemanticDashboardController extends Controller
     }
 
     /**
-     * Reset Completo — Wipe ALL embedding data and Qdrant collections.
+     * Clear all pending jobs in the embeddings queue.
+     */
+    public function clearQueue()
+    {
+        $queue = config('xavier.embeddings.queue', 'embeddings');
+
+        try {
+            $deleted = DB::table('jobs')->where('queue', $queue)->delete();
+            $deletedFailed = DB::table('failed_jobs')->where('queue', $queue)->delete();
+
+            Log::info("[Xavier][Queue] Queue '{$queue}' cleared by admin. Jobs: {$deleted}, Failed: {$deletedFailed}.");
+
+            return response()->json([
+                'message' => "Fila '{$queue}' limpa com sucesso. Jobs removidos: {$deleted}. Falhas removidas: {$deletedFailed}."
+            ]);
+        } catch (\Exception $e) {
+            Log::error("[Xavier][Queue] Failed to clear queue: " . $e->getMessage());
+            return response()->json(['error' => 'Falha ao limpar fila.'], 500);
+        }
+    }
+
+    /**
+     * Reset complete de toda a inteligência semântica.
+     * Cuidado: Isso apaga TODAS as coleções do Qdrant e obriga a re-indexar tudo do zero.
      *
      * ⚠️ AÇÃO DESTRUTIVA. Esta operação:
      *   1. Deleta as coleções questions_vectors e concepts_vectors do Qdrant
