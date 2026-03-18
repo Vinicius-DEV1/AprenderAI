@@ -549,6 +549,10 @@ EOT;
     protected function callGemini(ApiKey $apiKey, string $prompt, float $temperature = 0.7): array
     {
         $model = $apiKey->preferred_model;
+        if (empty($model) || str_contains($model, 'embedding')) {
+            $model = config('services.gemini.default_model', 'gemini-1.5-flash');
+        }
+
         $imageUrls = $this->responseSanitizer->extractImages($prompt);
         $parts = [['text' => $prompt]];
 
