@@ -56,11 +56,11 @@ return [
     |--------------------------------------------------------------------------
     */
     'search' => [
-        // Qdrant returns this many candidates before ReRankService filters to top-20
-        'qdrant_candidate_limit' => 50,
+        // Qdrant returns this many candidates before ReRankService filters to top-100
+        'qdrant_candidate_limit' => 200,
 
         // Final results returned to the user
-        'final_result_limit' => 20,
+        'final_result_limit' => 100,
 
         // ReRankService score weights (must sum to 1.0)
         'rerank_weights' => [
