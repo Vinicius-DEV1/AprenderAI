@@ -71,7 +71,7 @@ class IndexQuestionVectorJob implements ShouldQueue
 
         // Check if already indexed with same content AND same pipeline version
         $vectorRecord = QuestionVector::find($this->questionId);
-        $currentPipeline = config('xavier.embeddings.pipeline_version', 'v3_structured');
+        $currentPipeline = config('xavier.embeddings.pipeline_version', 'v6_intent_unification');
         
         if ($vectorRecord && 
             !$vectorRecord->hasContentChanged($combinedHash) && 
@@ -135,7 +135,7 @@ class IndexQuestionVectorJob implements ShouldQueue
                 'qdrant_id'        => (string) $this->questionId,
                 'embedding_hash'   => $combinedHash,
                 'index_version'    => $newVersion,
-                'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v3_structured'),
+                'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v6_intent_unification'),
                 'indexed_at'       => now(),
             ]
         );

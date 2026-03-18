@@ -775,18 +775,19 @@ class QuestionController extends Controller
             ], 200);
         }
 
-        // Caso inédito: dispara o Xavier Background
+        // [Fallback Rápido] Realiza busca textual síncrona, ignorando LLM lento
         $searchRequest = AiSearchRequest::create([
             'user_id' => $user->id,
             'prompt'  => $request->prompt,
-            'status'  => 'pending',
+            'status'  => 'completed',
+            'filters' => ['keyword' => $request->prompt]
         ]);
 
-        InterpretSearchPromptJob::dispatch($searchRequest);
-
         return response()->json([
-            'status'     => 'queued',
-            'request_id' => $searchRequest->id,
+            'status'         => 'completed',
+            'filters'        => ['keyword' => $request->prompt],
+            'suggestion_tip' => null,
+            'suggestions'    => [],
         ], 200);
     }
 
