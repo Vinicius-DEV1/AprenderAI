@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { 
     Database, Activity, Search, RefreshCw, Settings, Save, Server, 
     Box, FileJson, CheckCircle2, AlertCircle, PlayCircle, ChevronDown, Clock, Lightbulb,
-    Trash2, BarChart3, TrendingUp, Zap
+    Trash2, BarChart3, TrendingUp, Zap, Hash
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -56,6 +56,7 @@ interface DashboardStats {
         created_at: string;
         similarity_threshold: number;
     }>;
+    top_concepts?: Array<{ name: string; count: number }>;
     config: {
         vector_search_enabled: boolean | string;
         concept_detection_threshold: number;
@@ -458,6 +459,35 @@ const SemanticDashboard = () => {
                         ) : (
                             <p className="text-xs text-slate-400 text-center py-6">Sem dados nos últimos 7 dias.</p>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {stats && stats.top_concepts && stats.top_concepts.length > 0 && (
+                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm mb-6">
+                    <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-4 flex items-center gap-2">
+                        <Hash className="w-4 h-4 text-indigo-500" />
+                        Nuvem de Conceitos Indexados (Populares no Qdrant)
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                        {stats.top_concepts.map((concept: any, idx: number) => (
+                            <div 
+                                key={idx} 
+                                className="px-3 py-1 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2 shadow-sm"
+                                title={`${concept.count} questões vinculadas`}
+                            >
+                                <span>{concept.name}</span>
+                                <span className={clsx(
+                                    "text-[9px] px-1.5 rounded border font-mono font-bold",
+                                    concept.count > 10 
+                                        ? "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800" 
+                                        : "bg-white text-slate-500 border-slate-100 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700"
+                                )}>
+                                    {concept.count}
+                                {concept.count > 10 && <Zap className="w-2.5 h-2.5 inline ml-1 align-middle" />}
+                                </span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}
