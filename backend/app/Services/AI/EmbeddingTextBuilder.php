@@ -260,14 +260,20 @@ class EmbeddingTextBuilder
     }
 
     /**
-     * Strips HTML tags and normalizes whitespace from text.
+     * Strips HTML tags, normalizes whitespace and lowercases text.
+     *
      * Usado por todos os builders para garantir que o texto embedado
      * esteja limpo de HTML, entidades e espaços excessivos.
+     * O mb_strtolower garante que embeddings de indexação e busca
+     * estejam no mesmo case, eliminando ruído semântico.
+     * Usa mb_strtolower (multibyte) para tratar correctamente acentos
+     * do Português (ex: 'Ação' → 'ação', 'Índice' → 'índice').
      */
     private function cleanText(string $text): string
     {
         $text = strip_tags($text);
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = mb_strtolower($text, 'UTF-8');
         $text = preg_replace('/\s+/', ' ', $text);
         return trim($text);
     }

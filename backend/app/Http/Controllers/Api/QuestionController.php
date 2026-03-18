@@ -718,6 +718,8 @@ class QuestionController extends Controller
     /**
      * Legacy AI search path (SQL + LLM, existing behavior).
      * Used when VECTOR_SEARCH_ENABLED=false or when vector pipeline cannot proceed.
+     * Mantido para backwards-compatibility — usa cache semântico L1/L2 antes
+     * de disparar o InterpretSearchPromptJob assíncrono.
      */
     private function legacyAiSearch(Request $request, $user, SemanticCacheService $cacheService)
     {
@@ -729,7 +731,8 @@ class QuestionController extends Controller
         // [Nível 2] Busca por Similaridade (Embeddings) - Quase Instantâneo Síncrono
         if (!$cachedFilters) {
             $aiService = app(AIService::class);
-            $vector    = $aiService->generateEmbedding($userPrompt, $user->id);
+            // Usa RETRIEVAL_QUERY para consistência com o pipeline vetorial
+            $vector    = $aiService->generateEmbedding($userPrompt, $user->id, 'RETRIEVAL_QUERY');
             if ($vector) {
                 $cachedFilters = $cacheService->findSimilarMatch($vector, AiSearchRequest::DEFAULT_THRESHOLD);
             }
