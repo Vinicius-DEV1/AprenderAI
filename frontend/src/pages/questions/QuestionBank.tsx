@@ -142,6 +142,7 @@ export default function QuestionBank() {
     const [toastMessage, setToastMessage] = useState('');
     const [triggerScroll, setTriggerScroll] = useState(false);
     const [placeholderText, setPlaceholderText] = useState(STATIC_PREFIX);
+    const [aiScoreDetails, setAiScoreDetails] = useState<Record<string, any>>({});
 
     // --- Data Fetching (Moved up to avoid "used before declaration" in effects) ---
     const { data: questionsData, isLoading: questionsLoading } = useQuery({
@@ -338,6 +339,7 @@ export default function QuestionBank() {
                 setAiLoading(false);
                 if (res.data.suggestion_tip) setAiSuggestion(res.data.suggestion_tip);
                 if (res.data.suggestions) setAiSuggestions(res.data.suggestions);
+                if (res.data.score_details) setAiScoreDetails(res.data.score_details);
 
                 const baseFilters = {
                     type: '', subject: '', topic: '', keyword: '', year: '', id: '',
@@ -388,6 +390,7 @@ export default function QuestionBank() {
                     setAiLoading(false);
                     if (res.data.suggestion_tip) setAiSuggestion(res.data.suggestion_tip);
                     if (res.data.suggestions) setAiSuggestions(res.data.suggestions);
+                    if (res.data.score_details) setAiScoreDetails(res.data.score_details);
 
                     // RADICAL REPLACEMENT: When AI responds, we replace all filters to avoid ghosts
                     const baseFilters = {
@@ -770,7 +773,39 @@ export default function QuestionBank() {
 
                 <div className="space-y-4">
                     {questions.map((q: any) => (
-                        <QuestionCard key={q.id} question={q} />
+                        <div key={q.id} className="relative">
+                            {user?.role === 'admin' && aiScoreDetails[q.id] && (
+                                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 mb-2 rounded-lg text-xs">
+                                    <div className="flex justify-between font-bold mb-2">
+                                        <span className="text-slate-500">Apuramento Xavier AI</span>
+                                        <span className="text-emerald-600">FINAL: {aiScoreDetails[q.id].composite_score?.toFixed(4) || 'N/A'}</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                        <div className="bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
+                                            <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-widest">SEMÂNTICA VEC</span>
+                                            <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">+{aiScoreDetails[q.id].vector?.weighted?.toFixed(4)}</span>
+                                        </div>
+                                        <div className="bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
+                                            <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-widest">POPULARIDADE</span>
+                                            <span className="font-mono text-sky-600 dark:text-sky-400 font-bold">+{aiScoreDetails[q.id].popularity?.weighted?.toFixed(4)}</span>
+                                        </div>
+                                        <div className="bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
+                                            <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-widest">QUALIDADE PED.</span>
+                                            <span className="font-mono text-amber-600 dark:text-amber-400 font-bold">+{aiScoreDetails[q.id].quality?.weighted?.toFixed(4)}</span>
+                                        </div>
+                                        <div className="bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
+                                            <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-widest">RECÊNCIA ANO</span>
+                                            <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">+{aiScoreDetails[q.id].recency?.weighted?.toFixed(4)}</span>
+                                        </div>
+                                        <div className="bg-indigo-50 dark:bg-indigo-900/20 p-2 rounded border border-indigo-100 dark:border-indigo-800">
+                                            <span className="text-[9px] text-indigo-500 dark:text-indigo-400 block uppercase font-bold tracking-widest">INTENT BOOSTER</span>
+                                            <span className="font-mono text-purple-600 dark:text-purple-400 font-bold">+{aiScoreDetails[q.id].intent?.weighted?.toFixed(4)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            <QuestionCard question={q} />
+                        </div>
                     ))}
                     {questions.length === 0 && !questionsLoading && (
                         <div className="qb-card qb-no-results" style={{ textAlign: 'center', padding: '48px' }}>

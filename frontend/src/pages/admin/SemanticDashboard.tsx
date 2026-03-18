@@ -810,7 +810,7 @@ const SemanticDashboard = () => {
                                                             <span>📊 Composição da Nota Final (Weights)</span>
                                                             <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">FINAL: {res.final_score.toFixed(4)}</span>
                                                         </h5>
-                                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+                                                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-2">
                                                             <div className="flex flex-col bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700/50">
                                                                 <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Semântica VEC</span>
                                                                 <span className="text-sm font-mono text-indigo-600 dark:text-indigo-400 font-bold">+{res.score_details.vector.weighted.toFixed(4)}</span>
@@ -830,6 +830,11 @@ const SemanticDashboard = () => {
                                                                 <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Recência Ano</span>
                                                                 <span className="text-sm font-mono text-emerald-600 dark:text-emerald-400 font-bold">+{res.score_details.recency.weighted.toFixed(4)}</span>
                                                                 <span className="text-[9px] text-slate-400 mt-0.5">Raw: {res.score_details.recency.raw.toFixed(4)}</span>
+                                                            </div>
+                                                            <div className="flex flex-col bg-indigo-50 dark:bg-indigo-900/20 p-2 rounded shadow-sm border border-indigo-100 dark:border-indigo-800">
+                                                                <span className="text-[9px] text-indigo-500 dark:text-indigo-400 uppercase tracking-widest font-bold">Intent Booster</span>
+                                                                <span className="text-sm font-mono text-purple-600 dark:text-purple-400 font-bold">+{res.score_details.intent.weighted.toFixed(4)}</span>
+                                                                <span className="text-[9px] text-slate-400 mt-0.5">Raw: {res.score_details.intent.raw.toFixed(4)}</span>
                                                             </div>
                                                         </div>
                                                     </div>

@@ -52,11 +52,12 @@ class ReRankService
     /**
      * Rerank candidates and return top $topN question IDs ordered by composite score.
      *
-     * @param  array  $candidates   [{question_id, score, source, payload}]
-     * @param  int    $topN         Max results to return (default: 20)
+     * @param  array  $candidates    [{question_id, score, source, payload}]
+     * @param  int    $topN          Max results to return (default: 20)
+     * @param  array  $intentFilters Optional: Associative array of intents detected (e.g. ['subject_id' => [38, 20], 'topic_id' => [2194], 'type' => ['enem']])
      * @return array  [{question_id, score, composite_score}]
      */
-    public function rerank(array $candidates, int $topN = 20): array
+    public function rerank(array $candidates, int $topN = 20, array $intentFilters = []): array
     {
         if (empty($candidates)) {
             return [];
@@ -85,11 +86,28 @@ class ReRankService
             $qualityScore    = $this->qualityScore($payload['difficulty'] ?? null);
             $recencyScore    = $this->recencyScore((int) ($payload['year'] ?? 0));
 
+            // Intent Booster: Se a questão pertencer à matéria/assunto ou tipo buscado, ganha bônus (+0.10 a +0.30)
+            $intentBoost = 0.0;
+            if (!empty($intentFilters)) {
+                if (!empty($intentFilters['subject_id']) && in_array($payload['subject_id'] ?? null, $intentFilters['subject_id'])) {
+                    $intentBoost += 0.30;
+                }
+                if (!empty($intentFilters['topic_id']) && in_array($payload['topic_id'] ?? null, $intentFilters['topic_id'])) {
+                    $intentBoost += 0.15;
+                }
+                if (!empty($intentFilters['type']) && in_array($payload['type'] ?? null, $intentFilters['type'])) {
+                    $intentBoost += 0.10;
+                }
+                // Limita o boost máximo para manter a coerência geral
+                $intentBoost = min(0.40, $intentBoost);
+            }
+
             // Weights are applied to unified [0, 1] scales
             $composite = ($vectorScore     * $this->wVector)
                        + ($popularityScore * $this->wPopularity)
                        + ($qualityScore    * $this->wQuality)
-                       + ($recencyScore    * $this->wRecency);
+                       + ($recencyScore    * $this->wRecency)
+                       + $intentBoost;
 
             $scored[] = [
                 'question_id'     => $qid,
@@ -101,6 +119,7 @@ class ReRankService
                     'popularity' => ['raw' => round($popularityScore, 4), 'weighted' => round($popularityScore * $this->wPopularity, 4)],
                     'quality'    => ['raw' => round($qualityScore, 4),    'weighted' => round($qualityScore * $this->wQuality, 4)],
                     'recency'    => ['raw' => round($recencyScore, 4),    'weighted' => round($recencyScore * $this->wRecency, 4)],
+                    'intent'     => ['raw' => 1.0,                        'weighted' => round($intentBoost, 4)],
                 ]
             ];
         }
