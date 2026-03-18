@@ -145,7 +145,7 @@ class QuestionController extends Controller
             if ($request->filled('subjects')) {
                 $subjectIds = [];
                 foreach ($request->subjects as $subjectName) {
-                    $subject = \App\Models\Subject::firstOrCreate(['name' => $subjectName, 'slug' => \Str::slug($subjectName)]);
+                    $subject = \App\Models\Subject::firstOrCreate(['slug' => \Str::slug($subjectName)], ['name' => $subjectName]);
                     $subjectIds[] = $subject->id;
                 }
                 $question->subjects()->sync($subjectIds);
@@ -155,7 +155,7 @@ class QuestionController extends Controller
             if ($request->filled('topics')) {
                 $topicIds = [];
                 foreach ($request->topics as $topicName) {
-                    $topic = \App\Models\Topic::firstOrCreate(['name' => $topicName, 'slug' => \Str::slug($topicName)]);
+                    $topic = \App\Models\Topic::firstOrCreate(['slug' => \Str::slug($topicName)], ['name' => $topicName]);
                     $topicIds[] = $topic->id;
                 }
                 $question->topics()->sync($topicIds);
@@ -224,7 +224,7 @@ class QuestionController extends Controller
             if ($request->filled('subjects')) {
                 $subjectIds = [];
                 foreach ($newSubjects as $subjectName) {
-                    $subject = \App\Models\Subject::firstOrCreate(['name' => $subjectName, 'slug' => \Str::slug($subjectName)]);
+                    $subject = \App\Models\Subject::firstOrCreate(['slug' => \Str::slug($subjectName)], ['name' => $subjectName]);
                     $subjectIds[] = $subject->id;
                 }
                 $question->subjects()->sync($subjectIds);
@@ -237,7 +237,7 @@ class QuestionController extends Controller
             if ($request->filled('topics')) {
                 $topicIds = [];
                 foreach ($newTopics as $topicName) {
-                    $topic = \App\Models\Topic::firstOrCreate(['name' => $topicName, 'slug' => \Str::slug($topicName)]);
+                    $topic = \App\Models\Topic::firstOrCreate(['slug' => \Str::slug($topicName)], ['name' => $topicName]);
                     $topicIds[] = $topic->id;
                 }
                 $question->topics()->sync($topicIds);
