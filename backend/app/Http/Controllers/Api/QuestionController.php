@@ -562,8 +562,8 @@ class QuestionController extends Controller
         // - Subjects: Disciplinas principais (ex: Inglês, Matemática).
         // - Topics: Assuntos específicos (ex: Verbos, Geometria).
         $detectedConcepts = [];
-        $extractedSubjectId = null;
-        $extractedTopicId = null;
+        $extractedSubjects = [];
+        $extractedTopics = [];
         $searchPath = 'concept';
 
         try {
@@ -582,30 +582,30 @@ class QuestionController extends Controller
                     // Conceitos alimentam a expansão por Grafo (KG)
                     $detectedConcepts[] = $payload['concept_slug'];
                 } elseif ($type === 'subject' && isset($payload['subject_id'])) {
-                    // INTENÇÃO DE DISCIPLINA DETECTADA: Se o usuário pesquisou "Inglês", 
-                    // o Qdrant retornará o Subject "Inglês" com alta similaridade.
-                    // Isso nos permite ancorar a busca apenas nas questões dessa disciplina.
-                    $extractedSubjectId = $payload['subject_id'];
-                    Log::info("[Xavier][Search] Intent detected: Subject #{$extractedSubjectId} ({$payload['name']})");
+                    // INTENÇÃO DE DISCIPLINA DETECTADA: Salva múltiplos hits que serão
+                    // usados mais abaixo como bônus (boost) pelo ReRankService.
+                    $extractedSubjects[] = $payload['subject_id'];
+                    Log::info("[Xavier][Search] Intent detected: Subject #{$payload['subject_id']} ({$payload['name']})");
                 } elseif ($type === 'topic' && isset($payload['topic_id'])) {
-                    // INTENÇÃO DE TÓPICO DETECTADA: Similar à disciplina, mas para assuntos.
-                    $extractedTopicId = $payload['topic_id'];
-                    Log::info("[Xavier][Search] Intent detected: Topic #{$extractedTopicId} ({$payload['name']})");
+                    $extractedTopics[] = $payload['topic_id'];
+                    Log::info("[Xavier][Search] Intent detected: Topic #{$payload['topic_id']} ({$payload['name']})");
                 }
             }
             
             $detectedConcepts = array_values(array_unique($detectedConcepts));
+            $extractedSubjects = array_values(array_unique($extractedSubjects));
+            $extractedTopics = array_values(array_unique($extractedTopics));
             Log::info('[Xavier][Search] Step 5 done: intent detection.', [
                 'concepts' => $detectedConcepts,
-                'subject_id' => $extractedSubjectId,
-                'topic_id' => $extractedTopicId
+                'subject_ids' => $extractedSubjects,
+                'topic_ids' => $extractedTopics
             ]);
         } catch (\Exception $e) {
             Log::warning('[Xavier][Search] Step 5 FAILED: concept detection error.', ['err' => $e->getMessage()]);
         }
 
         // ── Step 5b: Fallback se nenhuma intenção ou conceito for encontrado ──
-        if (empty($detectedConcepts) && !$extractedSubjectId && !$extractedTopicId) {
+        if (empty($detectedConcepts) && empty($extractedSubjects) && empty($extractedTopics)) {
             Log::info('[Xavier][Search] Step 5b: no intents found, proceeding with pure vector search.');
             $searchPath = 'vector_only';
         }
@@ -657,9 +657,21 @@ class QuestionController extends Controller
         $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, $sqlFilters, $candidateLimit);
         Log::info('[Xavier][Search] Step 7 done: hybrid search.', ['candidates' => count($candidates)]);
 
-        // ── Step 8: ReRank (top-50 → top-limit) ─────────────────────────────────
-        $finalLimit  = (int) \App\Models\Configuration::get('xavier_final_result_limit', config('xavier.search.final_result_limit', 20));
-        $rankedItems = $reranker->rerank($candidates, $finalLimit);
+        // ── Step 8: ReRank (top-limit → final_limit) ──────────────────────────
+        $finalLimit  = (int) \App\Models\Configuration::get('xavier_final_result_limit', config('xavier.search.final_result_limit', 100));
+        
+        $intentFilters = [];
+        if (!empty($extractedSubjects)) {
+            $intentFilters['subject_id'] = $extractedSubjects;
+        }
+        if (!empty($extractedTopics)) {
+            $intentFilters['topic_id'] = $extractedTopics;
+        }
+        if ($extractedType) {
+            $intentFilters['type'] = [$extractedType]; 
+        }
+
+        $rankedItems = $reranker->rerank($candidates, $finalLimit, $intentFilters);
         $questionIds = array_column($rankedItems, 'question_id');
         Log::info('[Xavier][Search] Step 8 done: reranked.', ['top' => count($rankedItems)]);
 
@@ -672,7 +684,7 @@ class QuestionController extends Controller
         ]);
 
         // Log cada resultado em search_interaction_logs (rastreamento de posição)
-        foreach (array_slice($rankedItems, 0, 20) as $idx => $item) {
+        foreach ($rankedItems as $idx => $item) {
             SearchInteractionLog::create([
                 'ai_search_id'        => $searchRequest->id,
                 'user_id'             => $user->id,
@@ -706,6 +718,7 @@ class QuestionController extends Controller
             'total'         => count($questionIds),
             'concepts'      => $detectedConcepts,
             'request_id'    => $searchRequest->id,
+            'score_details' => array_column($rankedItems, null, 'question_id')
         ], 200);
     }
 

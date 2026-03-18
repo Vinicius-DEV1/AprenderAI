@@ -290,8 +290,8 @@ class SemanticDashboardController extends Controller
         $conceptMatches = $qdrant->searchConcepts($queryVector, 5, $conceptThreshold);
         
         $detectedConcepts = [];
-        $extractedSubjectId = null;
-        $extractedTopicId = null;
+        $extractedSubjects = [];
+        $extractedTopics = [];
 
         foreach ($conceptMatches as $match) {
             $payload = $match['payload'] ?? [];
@@ -300,11 +300,11 @@ class SemanticDashboardController extends Controller
             if ($type === 'concept' && isset($payload['concept_slug'])) {
                 $detectedConcepts[] = $payload['concept_slug'];
             } elseif ($type === 'subject' && isset($payload['subject_id'])) {
-                $extractedSubjectId = $payload['subject_id'];
-                $logs[] = "INTENT DETECTED: Subject #{$extractedSubjectId} ({$payload['name']})";
+                $extractedSubjects[] = $payload['subject_id'];
+                $logs[] = "INTENT DETECTED: Subject #{$payload['subject_id']} ({$payload['name']})";
             } elseif ($type === 'topic' && isset($payload['topic_id'])) {
-                $extractedTopicId = $payload['topic_id'];
-                $logs[] = "INTENT DETECTED: Topic #{$extractedTopicId} ({$payload['name']})";
+                $extractedTopics[] = $payload['topic_id'];
+                $logs[] = "INTENT DETECTED: Topic #{$payload['topic_id']} ({$payload['name']})";
             }
         }
 
@@ -341,7 +341,7 @@ class SemanticDashboardController extends Controller
 
         // ── Step 6: Hybrid Search ─────────────────────────────────────────────
         $hybridSearch = app(\App\Services\AI\HybridSearchService::class);
-        $limit = (int) \App\Models\Configuration::get('xavier_qdrant_candidate_limit', config('xavier.search.qdrant_candidate_limit', 50));
+        $limit = (int) \App\Models\Configuration::get('xavier_qdrant_candidate_limit', config('xavier.search.qdrant_candidate_limit', 200));
         
         // Ensure SQL fallback actually filters by the text if Qdrant is empty
         $sqlFilters = ['keyword' => $request->prompt];
@@ -351,7 +351,17 @@ class SemanticDashboardController extends Controller
 
         // ── Step 7: ReRank ────────────────────────────────────────────────────
         $reranker = app(\App\Services\AI\ReRankService::class);
-        $rankedItems = $reranker->rerank($candidates, 20);
+        $finalLimit = (int) \App\Models\Configuration::get('xavier_final_result_limit', config('xavier.search.final_result_limit', 100));
+
+        $intentFilters = [];
+        if (!empty($extractedSubjects)) {
+            $intentFilters['subject_id'] = $extractedSubjects;
+        }
+        if (!empty($extractedTopics)) {
+            $intentFilters['topic_id'] = $extractedTopics;
+        }
+
+        $rankedItems = $reranker->rerank($candidates, $finalLimit, $intentFilters);
 
         $latency = round((microtime(true) - $startTime) * 1000, 2);
         $logs[] = "Pipeline completed in {$latency}ms (4 embeddings total)";
