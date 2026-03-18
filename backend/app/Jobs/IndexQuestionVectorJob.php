@@ -89,12 +89,19 @@ class IndexQuestionVectorJob implements ShouldQueue
         // Usa taskType='RETRIEVAL_DOCUMENT' para que o Gemini otimize os vetores
         // para serem encontrados (não para encontrar documentos).
         $userId = null; // System job, no user attribution
+        Log::info("[Xavier][IndexQuestion] Generating 3 vectors for #{$this->questionId}...");
+        
         $statementVector   = $aiService->generateEmbedding($statementText,   $userId, 'RETRIEVAL_DOCUMENT');
+        Log::debug("[Xavier][IndexQuestion] #{$this->questionId} statement vector: " . ($statementVector ? 'OK' : 'FAILED'));
+        
         $conceptVector     = $aiService->generateEmbedding($conceptText,     $userId, 'RETRIEVAL_DOCUMENT');
+        Log::debug("[Xavier][IndexQuestion] #{$this->questionId} concept vector: " . ($conceptVector ? 'OK' : 'FAILED'));
+        
         $explanationVector = $aiService->generateEmbedding($explanationText, $userId, 'RETRIEVAL_DOCUMENT');
+        Log::debug("[Xavier][IndexQuestion] #{$this->questionId} explanation vector: " . ($explanationVector ? 'OK' : 'FAILED'));
 
         if (!$statementVector || !$conceptVector || !$explanationVector) {
-            Log::error("[Xavier][IndexQuestion] Embedding generation failed for question #{$this->questionId}.");
+            Log::error("[Xavier][IndexQuestion] FAILED for question #{$this->questionId}. Vectors status: S:".($statementVector?'OK':'FAIL')." C:".($conceptVector?'OK':'FAIL')." E:".($explanationVector?'OK':'FAIL'));
             $this->fail(new \RuntimeException('Embedding generation failed'));
             return;
         }
