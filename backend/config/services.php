@@ -35,10 +35,6 @@ return [
         ],
     ],
 
-    'gemini' => [
-        'default_model' => env('GEMINI_DEFAULT_MODEL', 'gemini-1.5-flash'),
-    ],
-
     'ai' => [
         'pricing' => [
             'exchange_rate' => 5.0, // USD to BRL

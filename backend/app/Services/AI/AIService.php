@@ -549,8 +549,11 @@ EOT;
     protected function callGemini(ApiKey $apiKey, string $prompt, float $temperature = 0.7): array
     {
         $model = $apiKey->preferred_model;
+        
+        // Se a chave estiver configurada com um modelo de embedding, ela não serve para geração de texto.
+        // Lançamos uma exceção para o executeWithFailover capturar e tentar a próxima chave.
         if (empty($model) || str_contains($model, 'embedding')) {
-            $model = config('services.gemini.default_model', 'gemini-1.5-flash');
+             throw new \Exception("Chave '" . ($apiKey->name ?? $apiKey->id) . "' configurada com modelo incompatível para texto: {$model}");
         }
 
         $imageUrls = $this->responseSanitizer->extractImages($prompt);
