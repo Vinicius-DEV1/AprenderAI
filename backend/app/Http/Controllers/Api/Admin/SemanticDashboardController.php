@@ -121,6 +121,11 @@ class SemanticDashboardController extends Controller
             ->orderBy('date')
             ->get();
 
+        // 8. Checar versão do Índice do Qdrant
+        $currentPipeline = config('xavier.embeddings.pipeline_version', 'v4_payload_boost');
+        $questionsVersionCheck = $qdrant->checkIndexVersion(config('xavier.qdrant.collections.questions'), $currentPipeline);
+        $conceptsVersionCheck  = $qdrant->checkIndexVersion(config('xavier.qdrant.collections.concepts'), $currentPipeline);
+
         return response()->json([
             'overview' => [
                 'mysql_published_questions' => $totalQuestions,
@@ -133,6 +138,11 @@ class SemanticDashboardController extends Controller
                 'status'           => $qdrantStatus,
                 'questions_points' => $qdrantQuestions,
                 'concepts_points'  => $qdrantConcepts,
+                'index_version_status' => [
+                    'expected'  => $currentPipeline,
+                    'questions' => $questionsVersionCheck,
+                    'concepts'  => $conceptsVersionCheck,
+                ]
             ],
             'performance' => [
                 'total_searches'      => $totalLogSearches,

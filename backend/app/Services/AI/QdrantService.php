@@ -305,6 +305,46 @@ class QdrantService
         return $response['result'] ?? null;
     }
 
+    /**
+     * Checks if the Qdrant database is using the specified pipeline version.
+     * It fetches 1 random point and checks its payload.
+     */
+    public function checkIndexVersion(string $collection, string $expectedVersion): array
+    {
+        try {
+            // Buscamos 1 ponto com scroll (sem filtro) para analisar o payload
+            $body = [
+                'limit'        => 1,
+                'with_payload' => true,
+                'with_vector'  => false,
+            ];
+
+            $result = $this->post("/collections/{$collection}/points/scroll", $body);
+            $points = $result['result']['points'] ?? [];
+
+            if (empty($points)) {
+                return ['status' => 'empty', 'message' => 'Coleção está vazia.'];
+            }
+
+            $point = $points[0];
+            $actualVersion = $point['payload']['pipeline_version'] ?? 'legacy';
+
+            $isMatch = ($actualVersion === $expectedVersion);
+            
+            return [
+                'status'   => $isMatch ? 'ok' : 'outdated',
+                'expected' => $expectedVersion,
+                'actual'   => $actualVersion,
+                'message'  => $isMatch 
+                                ? "O Qdrant está atualizado ({$expectedVersion})." 
+                                : "Atenção: Qdrant está usando a versão '{$actualVersion}' e o sistema espera '{$expectedVersion}'. É necessário Re-indexar."
+            ];
+
+        } catch (\Exception $e) {
+            return ['status' => 'error', 'message' => 'Não foi possível verificar a versão do índice. ' . $e->getMessage()];
+        }
+    }
+
     // ─── Health Check ─────────────────────────────────────────────────────────
 
     public function isHealthy(): bool

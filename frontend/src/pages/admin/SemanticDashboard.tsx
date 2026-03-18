@@ -20,6 +20,11 @@ interface DashboardStats {
         status: string;
         questions_points: number;
         concepts_points: number;
+        index_version_status?: {
+            expected: string;
+            questions: { status: string; expected: string; actual: string; message: string };
+            concepts: { status: string; expected: string; actual: string; message: string };
+        };
     };
     performance: {
         total_searches: number;
@@ -249,6 +254,17 @@ const SemanticDashboard = () => {
                         Monitoramento, configuração e testes do motor de busca vetorial.
                     </p>
                 </div>
+                
+                {stats?.qdrant?.index_version_status && (
+                    (stats.qdrant.index_version_status.questions.status === 'outdated' || 
+                     stats.qdrant.index_version_status.concepts.status === 'outdated') && (
+                        <div className="hidden lg:flex items-center gap-2 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 px-4 py-2 rounded-lg border border-rose-200 dark:border-rose-800 animate-pulse">
+                            <AlertCircle className="w-5 h-5" />
+                            <span className="text-sm font-medium">Re-indexação Necessária</span>
+                        </div>
+                    )
+                )}
+
                 <div className="flex gap-3">
                     <button 
                         onClick={loadStats} 
@@ -324,6 +340,41 @@ const SemanticDashboard = () => {
                         colorClass={stats.jobs.failed > 0 ? "bg-red-100 text-red-600 dark:bg-red-900/30" : "bg-blue-100 text-blue-600 dark:bg-blue-900/30"}
                     />
                 </div>
+            )}
+
+            {/* QDRANT INDEX HEALTH ALERTS */}
+            {stats?.qdrant?.index_version_status && (
+                (stats.qdrant.index_version_status.questions.status === 'outdated' || 
+                 stats.qdrant.index_version_status.concepts.status === 'outdated' ||
+                 stats.qdrant.index_version_status.questions.status === 'empty' ||
+                 stats.qdrant.index_version_status.concepts.status === 'empty'
+                ) && (
+                    <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800/50 rounded-xl p-4 shadow-sm">
+                        <h3 className="text-rose-800 dark:text-rose-400 font-bold mb-2 flex items-center gap-2">
+                            <AlertCircle className="w-5 h-5" />
+                            Atenção: Atualização de Banco Vetorial Necessária
+                        </h3>
+                        <p className="text-sm text-rose-700 dark:text-rose-300 mb-3">
+                            O formato dos dados salvos no Qdrant está desatualizado ou vazio em relação ao código atual do Painel 
+                            (Versão esperada: <span className="font-mono bg-rose-100 dark:bg-rose-900/50 px-1 rounded">{stats.qdrant.index_version_status.expected}</span>). 
+                            A busca semântica pode falhar ou retornar resultados de baixa precisão até que as coleções sejam re-indexadas.
+                        </p>
+                        <div className="space-y-2 text-sm">
+                            {stats.qdrant.index_version_status.questions.status !== 'ok' && (
+                                <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                                    <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                                    <strong>Questões:</strong> {stats.qdrant.index_version_status.questions.message}
+                                </div>
+                            )}
+                            {stats.qdrant.index_version_status.concepts.status !== 'ok' && (
+                                <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                                    <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                                    <strong>Conceitos:</strong> {stats.qdrant.index_version_status.concepts.message}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )
             )}
 
             {/* ANALYTICS ROW  — absorvido do antigo Xavier Insights */}
