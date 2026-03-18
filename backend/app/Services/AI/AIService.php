@@ -734,7 +734,11 @@ EOT;
             }, 'gemini');
 
         } catch (\Exception $e) {
-            Log::error('Exceção ao gerar Embedding com Failover.', ['error' => $e->getMessage()]);
+            Log::error("[Xavier][Embedding] Exceção ao gerar Embedding com Failover: {$e->getMessage()}", [
+                'taskType' => $taskType,
+                'text_preview' => substr($text, 0, 100),
+                'error_detail' => $e->getTraceAsString()
+            ]);
             return null;
         }
     }
