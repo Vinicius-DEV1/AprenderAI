@@ -52,11 +52,24 @@ class CheckFailedApiKeys extends Command
                     'last_error_message' => null,
                 ]);
                 
-                // Remove out of the short-term failover blacklist if they were in it
+                // Clear the shortlist blacklist for this key
                 $bannedIds = Cache::get('api_key_blacklist', []);
                 if (($index = array_search($key->id, $bannedIds)) !== false) {
                     unset($bannedIds[$index]);
                     Cache::put('api_key_blacklist', array_values($bannedIds), now()->addMinutes(60));
+                }
+
+                // Circuit Breaker Integration: When a key is restored, clear its capabilities' pauses
+                if ($key->relationLoaded('capabilitiesList') || count($key->capabilitiesList) > 0) {
+                    foreach ($key->capabilitiesList as $link) {
+                         $aiService->resume($link->capability);
+                    }
+                } else {
+                    // Fallback to all capabilities if relation is not loaded yet and we suspect this key helps
+                    $allCaps = array_keys(ApiKey::getAvailableCapabilities());
+                    foreach ($allCaps as $cap) {
+                         $aiService->resume($cap);
+                    }
                 }
 
                 $this->info("✓ Key ID {$key->id} recovered successfully.");
