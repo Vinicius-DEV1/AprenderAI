@@ -629,14 +629,17 @@ class QuestionController extends Controller
 
         // ── Step 5d: Detecção de Intenções Negativas (Exclusão) ────────────────
         // Se o usuário digitou "menos FGV", buscamos o vetor de "FGV" e marcamos como exclusão.
-        $excludedOrgs  = [];
-        $excludedInsts = [];
-        $excludedType  = null;
+        $excludedOrgs       = [];
+        $excludedInsts      = [];
+        $excludedSubjects   = [];
+        $excludedTopics     = [];
+        $excludedConceptIds = [];
+        $excludedType       = null;
 
         if (!empty($negativePrompt)) {
             try {
                 $negVector = $aiService->generateEmbedding($negativePrompt, $user->id, 'RETRIEVAL_QUERY');
-                $negMatches = $qdrant->searchConcepts($negVector, 3, 0.80);
+                $negMatches = $qdrant->searchConcepts($negVector, 5, 0.70); // Threshold menor para negação ser mais sensível
                 
                 foreach ($negMatches as $match) {
                     $payload = $match['payload'] ?? [];
@@ -644,10 +647,14 @@ class QuestionController extends Controller
                     
                     if ($type === 'organization' && isset($payload['organization'])) {
                         $excludedOrgs[] = $payload['organization'];
-                        Log::info("[Xavier][Search] EXCLUSION DETECTED: Organization '{$payload['organization']}'");
                     } elseif ($type === 'institution' && isset($payload['institution'])) {
                         $excludedInsts[] = $payload['institution'];
-                        Log::info("[Xavier][Search] EXCLUSION DETECTED: Institution '{$payload['institution']}'");
+                    } elseif ($type === 'subject' && isset($payload['subject_id'])) {
+                        $excludedSubjects[] = (int) $payload['subject_id'];
+                    } elseif ($type === 'topic' && isset($payload['topic_id'])) {
+                        $excludedTopics[] = (int) $payload['topic_id'];
+                    } elseif ($type === 'concept' && isset($payload['concept_slug'])) {
+                        $excludedConceptIds[] = $payload['concept_slug'];
                     }
                 }
 
@@ -655,6 +662,14 @@ class QuestionController extends Controller
                 $lowerNeg = mb_strtolower($negativePrompt);
                 if (str_contains($lowerNeg, 'concurso')) $excludedType = 'concurso';
                 if (str_contains($lowerNeg, 'enem')) $excludedType = 'enem';
+
+                Log::info('[Xavier][Search] Negative intents detected.', [
+                    'orgs' => $excludedOrgs,
+                    'insts' => $excludedInsts,
+                    'subs' => $excludedSubjects,
+                    'topi' => $excludedTopics,
+                    'conc' => $excludedConceptIds
+                ]);
 
             } catch (\Exception $e) {
                 Log::warning('[Xavier][Search] Step 5d FAILED: negative intent detection error.', ['err' => $e->getMessage()]);
@@ -731,12 +746,20 @@ class QuestionController extends Controller
         if ($excludedType) {
             $sqlFilters['exclude_type'] = $excludedType;
         }
+        // Exclusão de Disciplina/Tópico (Metadata Filters)
+        if (!empty($excludedSubjects)) {
+            $sqlFilters['exclude_subject_id'] = $excludedSubjects;
+        }
+        if (!empty($excludedTopics)) {
+            $sqlFilters['exclude_topic_id'] = $excludedTopics;
+        }
 
         $searchContext = [
             'prompt'              => $request->prompt,
             'normalized_query'    => $normalizedQuery,
             'query_vector'        => $queryVector,          // Vetor genérico = fallback de slots null
             'expanded_concept_ids'=> $expandedConceptIds,
+            'excluded_concept_ids'=> $excludedConceptIds, // <--- NOVO
             'detected_concepts'   => $detectedConcepts,
             'sql_filters'         => $sqlFilters,
             'intent_filters'      => array_filter([

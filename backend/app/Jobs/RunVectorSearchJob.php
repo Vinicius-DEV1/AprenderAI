@@ -99,8 +99,9 @@ class RunVectorSearchJob implements ShouldQueue
         $expandedConceptIds = $ctx['expanded_concept_ids'] ?? [];
         $sqlFilters         = $ctx['sql_filters']          ?? ['keyword' => $ctx['prompt']];
         $candidateLimit     = $ctx['candidate_limit']      ?? 50;
+        $excludedConceptIds = $ctx['excluded_concept_ids'] ?? [];
 
-        $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, $sqlFilters, $candidateLimit);
+        $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, $sqlFilters, $candidateLimit, $excludedConceptIds);
         Log::info("[Xavier][RunVectorSearch] Hybrid search: " . count($candidates) . " candidatos.");
 
         // ── Step 8: ReRank ──────────────────────────────────────────────────
@@ -141,10 +142,10 @@ class RunVectorSearchJob implements ShouldQueue
         }
 
         // ── Armazena no L2 Semantic Cache para buscas similares futuras ───────
-        $normalizedQuery = $ctx['normalized_query'] ?? '';
-        if ($normalizedQuery && $queryVector) {
+        $originalPrompt = $ctx['prompt'] ?? ''; // <--- USAR PROMPT COMPLETO AQUI
+        if ($originalPrompt && $queryVector) {
             $cacheService->storeInCache(
-                $normalizedQuery,
+                $originalPrompt,
                 $queryVector,
                 [
                     'vector_search' => true,
