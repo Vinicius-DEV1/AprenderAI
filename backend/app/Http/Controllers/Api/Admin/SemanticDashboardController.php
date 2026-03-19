@@ -391,10 +391,10 @@ class SemanticDashboardController extends Controller
             $sqlFilters['type'] = $extractedType;
         }
         if (!empty($extractedOrgs)) {
-            $sqlFilters['organization'] = $extractedOrgs[0];
+            $sqlFilters['organization'] = $extractedOrgs;
         }
         if (!empty($extractedInsts)) {
-            $sqlFilters['institution'] = $extractedInsts[0];
+            $sqlFilters['institution'] = $extractedInsts;
         }
         
         $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, $sqlFilters, $limit);
