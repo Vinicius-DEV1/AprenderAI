@@ -148,6 +148,7 @@ const SemanticDashboard = () => {
     const [resetting, setResetting] = useState(false);
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [resetConfirmText, setResetConfirmText] = useState('');
+    const [wakingUp, setWakingUp] = useState(false);
 
     // Config form
     const [configState, setConfigState] = useState({
@@ -645,9 +646,27 @@ const SemanticDashboard = () => {
                             ))}
                         </div>
 
-                        <div className="mt-6 flex items-center gap-2 text-[10px] text-amber-600 dark:text-amber-500 font-bold bg-amber-100/50 dark:bg-amber-900/20 w-fit px-3 py-1.5 rounded-lg border border-amber-200/50 dark:border-amber-800">
-                            <Zap className="w-3 h-3" />
-                            O sistema retentará automaticamente assim que as chaves esfriarem.
+                        <div className="mt-6 flex flex-wrap items-center gap-3">
+                            <div className="flex items-center gap-2 text-[10px] text-amber-600 dark:text-amber-500 font-bold bg-amber-100/50 dark:bg-amber-900/20 w-fit px-3 py-1.5 rounded-lg border border-amber-200/50 dark:border-amber-800">
+                                <Zap className="w-3 h-3" />
+                                O sistema retentará automaticamente assim que as chaves esfriarem.
+                            </div>
+                            <button
+                                onClick={async () => {
+                                    setWakingUp(true);
+                                    try {
+                                        await api.post('/api/v1/admin/semantic/clear-cache');
+                                        toast.success('Jobs acordados! O sistema vai retentar imediatamente.');
+                                        fetchStats();
+                                    } catch { toast.error('Falha ao acordar os jobs.'); }
+                                    finally { setWakingUp(false); }
+                                }}
+                                disabled={wakingUp}
+                                className="flex items-center gap-2 text-[10px] font-bold bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg border border-amber-600 transition-all shadow-sm"
+                            >
+                                {wakingUp ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                                Acordar Jobs Agora
+                            </button>
                         </div>
                     </div>
                 )}
@@ -889,6 +908,49 @@ const SemanticDashboard = () => {
                             <p className="text-[10px] text-slate-400 mt-4 leading-relaxed italic">
                                 * Se a soma for {'>'} 1.0, o sistema normaliza automaticamente. Recomendamos manter a soma em 1.0.
                             </p>
+
+                            {/* Fixed boosts - User Profile */}
+                            <div className="mt-5 border-t border-slate-100 dark:border-slate-700 pt-4">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3">Bônus do Perfil do Usuário (Fixos)</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="bg-indigo-50/50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-400 flex items-center gap-1">
+                                                🧠 Proficiência (Tema Fraco)
+                                            </span>
+                                            <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-300">+0.25</span>
+                                        </div>
+                                        <p className="text-[10px] text-slate-500">Questões de temas que o usuário erra com frequência recebem este bônus para forçar prática/crescimento.</p>
+                                    </div>
+                                    <div className="bg-emerald-50/50 dark:bg-emerald-900/20 p-3 rounded-xl border border-emerald-100 dark:border-emerald-800">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                                                ✅ Proficiência (Tema Forte)
+                                            </span>
+                                            <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-300">+0.05</span>
+                                        </div>
+                                        <p className="text-[10px] text-slate-500">Temas que o usuário domina recebem um bônus mínimo para manutenção/revisão leve.</p>
+                                    </div>
+                                    <div className="bg-amber-50/50 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-100 dark:border-amber-800">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                                                🎯 Intenção (Matéria)
+                                            </span>
+                                            <span className="text-xs font-mono font-bold text-amber-600 dark:text-amber-300">+0.30</span>
+                                        </div>
+                                        <p className="text-[10px] text-slate-500">Quando a busca detecta semanticamente a matéria certa, questões dessa matéria recebem este bônus.</p>
+                                    </div>
+                                    <div className="bg-purple-50/50 dark:bg-purple-900/20 p-3 rounded-xl border border-purple-100 dark:border-purple-800">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="text-xs font-semibold text-purple-700 dark:text-purple-400 flex items-center gap-1">
+                                                📌 Intenção (Assunto/Tópico)
+                                            </span>
+                                            <span className="text-xs font-mono font-bold text-purple-600 dark:text-purple-300">+0.15</span>
+                                        </div>
+                                        <p className="text-[10px] text-slate-500">Bônus para questões cujo tópico específico foi detectado na intenção da busca semântica.</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -900,6 +962,17 @@ const SemanticDashboard = () => {
                             <Zap className="w-5 h-5 text-amber-500" />
                             Painel do Maestro (Xavier 2.0)
                         </h2>
+
+                        {/* Warning: Qdrant empty */}
+                        {stats && stats.qdrant.questions_points === 0 && (
+                            <div className="mb-4 flex items-start gap-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-xl p-4">
+                                <AlertCircle className="w-5 h-5 text-rose-500 mt-0.5 shrink-0" />
+                                <div>
+                                    <p className="text-sm font-bold text-rose-700 dark:text-rose-400">Qdrant vazio — buscas retornarão zero resultados!</p>
+                                    <p className="text-xs text-rose-600 dark:text-rose-500 mt-1">O banco vetorial não possui questões indexadas. Use o botão <strong>"Indexar Questões"</strong> acima para iniciar a indexação.</p>
+                                </div>
+                            </div>
+                        )}
 
                         <form onSubmit={handleTestSearch} className="mb-6 flex gap-3 items-stretch w-full">
                             <div className="flex-1 relative">
