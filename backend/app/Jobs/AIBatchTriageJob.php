@@ -137,6 +137,13 @@ class AIBatchTriageJob implements ShouldQueue
 
             $this->writeChunkPhase('idle');
 
+        } catch (\App\Exceptions\AIServiceBusyException $e) {
+            // POOL BUSY: The dedicated AI keys for triage are currently locked or blacklisted.
+            // We release the job back to the queue for a retry in 5 minutes.
+            Log::info("[AIBATCH] AI key pool busy for batch #{$this->batchId}. Releasing chunk #{$this->chunkIndex}.");
+            $this->writeChunkPhase('idle');
+            $this->release(300);
+            return;
         } catch (\Throwable $e) {
             Log::error("[AIBATCH] Batch job failed", [
                 'batch_id' => $this->batchId,

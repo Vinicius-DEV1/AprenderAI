@@ -4,6 +4,7 @@ namespace App\Services\AI;
 
 use App\Models\ApiKey;
 use App\Models\Question;
+use App\Exceptions\AIServiceBusyException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -1499,63 +1500,89 @@ EOT;
      * Central Failover Engine for API calls.
      * Iterates over prioritized available keys using the provided closure.
      */
+    /**
+     * Executes an AI request with automatic failover across available API keys.
+     * Uses a Distributed Lock (Redis) to ensure each key is only used by one worker at a time.
+     * 
+     * @param string   $capability  The AI feature being used (e.g., 'embedding', 'chat')
+     * @param \Closure $closure     The actual API call logic
+     * @param string|null $provider Optional specific provider filter
+     * @return mixed
+     * @throws AIServiceBusyException If no keys are available or all are currently locked
+     */
     protected function executeWithFailover(string $capability, \Closure $closure, ?string $provider = null)
     {
+        // Fetch online keys, already sorted by priority and rotated via Round-Robin in the model.
         $keys = ApiKey::getKeysForCapability($capability, $provider);
-        $lastException = null;
 
         if ($keys->isEmpty()) {
-            throw new \Exception("Nenhum provedor de IA online ou com quota disponível para a rota: {$capability}.");
+            // If no keys are found (even without locks), we signal that the service is busy/unavailable.
+            throw new AIServiceBusyException("No active AI providers found for: {$capability}");
         }
 
+        $lastException = null;
+
         foreach ($keys as $apiKey) {
-            $attempts = 0;
-            $maxAttempts = 3;
+            // --- DISTRIBUTED LOCK (CONCURRENCY CONTROL) ---
+            // To maximize throughput while respecting provider limits, 
+            // we ensure that each API Key is used by exactly ONE worker at a time.
+            $lockKey = "ai_key_lock:{$apiKey->id}";
+            
+            // Atomic SET NX (SET if Not eXists) with a 60s TTL safety guard against deadlocks.
+            $isLocked = ! \Illuminate\Support\Facades\Redis::set($lockKey, '1', 'EX', 60, 'NX');
 
-            while ($attempts < $maxAttempts) {
-                try {
-                    return $closure($apiKey);
-                } catch (\Exception $e) {
-                    $attempts++;
-                    $lastException = $e;
+            if ($isLocked) {
+                // AGGRESSIVE SKIP: If another worker is using this key, skip to the next one instantly.
+                Log::debug("[AIService] Key #{$apiKey->id} is busy. Skipping to next available key.");
+                continue;
+            }
 
-                    if ($this->isRetriableError($e)) {
-                        // If it's a 429 (Quota), we don't waste retries on the same key.
-                        // We fail over immediately to the next available key (Fast Failover).
-                        $isQuota = str_contains(strtolower($e->getMessage()), '429') || str_contains(strtolower($e->getMessage()), 'quota');
+            // Lock acquired successfully. Use a try-finally block to guarantee unlocking.
+            try {
+                $attempts = 0;
+                $maxAttempts = 3;
 
-                        if ($attempts < $maxAttempts && !$isQuota) {
-                            $sleepSeconds = pow(2, $attempts); // 2s, 4s
-                            Log::warning("AI Provider {$apiKey->provider} hit temporary error, retrying in {$sleepSeconds}s...", [
-                                'attempt' => $attempts,
-                                'key_id' => $apiKey->id,
-                                'error' => $e->getMessage()
-                            ]);
-                            sleep($sleepSeconds);
-                            continue;
+                while ($attempts < $maxAttempts) {
+                    try {
+                        // Execute the request via the provided closure
+                        return $closure($apiKey);
+                    } catch (\Exception $e) {
+                        $attempts++;
+                        $lastException = $e;
+
+                        if ($this->isRetriableError($e)) {
+                            // FAST FAILOVER: If we hit a Quota/Rate limit (429), don't waste time retrying 
+                            // on the same key. Mark it as bad and try the next key in the pool immediately.
+                            $isQuota = str_contains(strtolower($e->getMessage()), '429') || 
+                                      str_contains(strtolower($e->getMessage()), 'quota');
+
+                            if ($attempts < $maxAttempts && !$isQuota) {
+                                // For non-quota retriable errors (5xx), perform exponential backoff
+                                $sleepSeconds = pow(2, $attempts);
+                                Log::warning("[AIService] Temporary error on #{$apiKey->id}. Retrying task in {$sleepSeconds}s...");
+                                sleep($sleepSeconds);
+                                continue;
+                            }
+
+                            // Key reached its limit or failed retries. Mark it as temporarily disabled.
+                            Log::warning("[AIService] " . ($isQuota ? 'QUOTA EXCEEDED' : 'FAILURE') . " on #{$apiKey->id}. Falling over...");
+                            $this->banKeyTemporarily($apiKey, $e);
+                            break; // Exit inner loop to select the next ApiKey
                         }
 
-                        Log::warning("AI Provider " . ($isQuota ? 'QUOTA EXCEEDED' : 'FAILED') . ", failing over to next priority...", [
-                            'capability' => $capability,
-                            'key_id' => $apiKey->id,
-                            'error' => $e->getMessage()
-                        ]);
-
-                        $this->banKeyTemporarily($apiKey, $e);
-                        break; // Exit while loop to try next ApiKey in foreach
+                        // Permanent error (e.g., 400 Bad Request) - Interrupt execution.
+                        throw $e;
                     }
-
-                    // If not a retryable error (e.g. 400 Bad Request), throw exception to interrupt the whole process.
-                    throw $e;
                 }
+            } finally {
+                // RELEASE LOCK: Ensure the key becomes available for other workers immediately.
+                \Illuminate\Support\Facades\Redis::del($lockKey);
             }
         }
 
-        // If we reach this point, it means ALL keys failed or were already exhausted.
-        // We activate the Circuit Breaker for this specific capability to prevent further job failures.
-        $this->pause($capability, 300); // 5 minutes pause by default
-
-        throw $lastException ?? new \Exception("Full failover failure for AI route: {$capability}.");
+        // DEGRADATION LOGIC: If we reach here, no key could be acquired (all busy) or all failed.
+        // We throw the specific BusyException so the Job can be released back to the queue (retry).
+        throw new AIServiceBusyException($lastException ? $lastException->getMessage() : "All valid AI keys are currently locked or exhausted.");
     }
 
     /**

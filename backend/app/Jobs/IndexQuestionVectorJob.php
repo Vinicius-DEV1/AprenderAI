@@ -116,21 +116,29 @@ class IndexQuestionVectorJob implements ShouldQueue
             if (!$statementVector || !$conceptVector || !$explanationVector) {
                 throw new \RuntimeException('Um dos vetores retornou inesperadamente vazio.');
             }
+        } catch (\App\Exceptions\AIServiceBusyException $e) {
+            // POOL BUSY OR LOCKED: All keys are currently used by other workers or blacklisted.
+            // Release back to queue with 5m delay (respecting the 2-day retry window).
+            Log::info("[IndexQuestionVectorJob] AI Key pool busy/locked for question #{$this->questionId}. Releasing for 5m backoff.");
+            $this->release(300);
+            return;
         } catch (\Exception $e) {
             $msg = $e->getMessage();
+            
+            // Check for Quota or other retriable failover failures
             $isQuota = str_contains(strtolower($msg), '429') || 
-                      str_contains(strtolower($msg), 'quota') || 
-                      str_contains(strtolower($msg), 'full failover failure');
+                       str_contains(strtolower($msg), 'quota') || 
+                       str_contains(strtolower($msg), 'full failover failure');
 
             if ($isQuota) {
-                Log::warning("[Xavier][IndexQuestion] Quota exhausted or no keys available for #{$this->questionId}. Releasing back to queue to retry in 5 min. Error: {$msg}");
-                $this->release(300); // 5 minutes backoff
+                Log::warning("[IndexQuestionVectorJob] Quota limit hit or no keys available for #{$this->questionId}. Releasing for 5m. Error: {$msg}");
+                $this->release(300);
                 return;
             }
 
-            Log::error("[Xavier][IndexQuestion] PERMANENT FAILURE for question #{$this->questionId}. Error: {$msg}");
+            // Permanent failure: Log and fail the job definitively.
+            Log::error("[IndexQuestionVectorJob] Permanent error indexing question #{$this->questionId}: " . $msg);
             $this->fail($e);
-            return;
         }
 
         // Build Qdrant payload for filtering
