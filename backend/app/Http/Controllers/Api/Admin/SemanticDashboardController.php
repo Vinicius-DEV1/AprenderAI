@@ -136,7 +136,7 @@ class SemanticDashboardController extends Controller
         $qdrant->ensureQuestionsCollection();
         $qdrant->ensureConceptsCollection();
         
-        $currentPipeline = config('xavier.embeddings.pipeline_version', 'v6_intent_unification');
+        $currentPipeline = config('xavier.embeddings.pipeline_version', 'v7_lexical_analyser');
         $questionsVersionCheck = $qdrant->checkIndexVersion(config('xavier.qdrant.collections.questions'), $currentPipeline);
         $conceptsVersionCheck  = $qdrant->checkIndexVersion(config('xavier.qdrant.collections.concepts'), $currentPipeline);
 
@@ -224,10 +224,15 @@ class SemanticDashboardController extends Controller
     {
         $validated = $request->validate([
             'vector_search_enabled'       => 'boolean',
-            'concept_detection_threshold' => 'numeric|min:0|max:1',
-            'search_threshold'           => 'numeric|min:0|max:1',
-            'qdrant_candidate_limit'      => 'integer|min:10|max:200',
-            'final_result_limit'          => 'integer|min:5|max:100',
+            'concept_detection_threshold' => 'numeric|min:0',
+            'search_threshold'           => 'numeric|min:0',
+            'qdrant_candidate_limit'      => 'integer|min:10|max:300',
+            'final_result_limit'          => 'integer|min:5|max:150',
+            'rerank_weights'              => 'nullable|array',
+            'rerank_weights.vector'       => 'numeric|min:0|max:1',
+            'rerank_weights.popularity'   => 'numeric|min:0|max:1',
+            'rerank_weights.quality'      => 'numeric|min:0|max:1',
+            'rerank_weights.recency'      => 'numeric|min:0|max:1',
         ]);
 
         if ($request->has('vector_search_enabled')) {
@@ -248,6 +253,10 @@ class SemanticDashboardController extends Controller
 
         if ($request->has('final_result_limit')) {
             \App\Models\Configuration::set('xavier_final_result_limit', (string) $validated['final_result_limit']);
+        }
+
+        if ($request->has('rerank_weights')) {
+            \App\Models\Configuration::set('xavier_rerank_weights', json_encode($validated['rerank_weights']));
         }
 
         // Clear config cache to ensure changes take effect immediately
