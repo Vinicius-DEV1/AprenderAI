@@ -17,7 +17,6 @@ class ApiKey extends Model
     public const CAPABILITY_SEARCH = 'search';
     public const CAPABILITY_STUDY_PLANS = 'study_plans';
     public const CAPABILITY_CHAT_TUTOR = 'chat_tutor';
-    public const CAPABILITY_GENERAL = 'general';
     public const CAPABILITY_EMBEDDING = 'embedding';          // Vetores de indexação (batch — IndexQuestionVectorJob)
     public const CAPABILITY_QUERY_EMBEDDING = 'query_embedding'; // Vetores de busca (search — GenerateQueryEmbeddingJob)
 
@@ -51,10 +50,8 @@ class ApiKey extends Model
             self::CAPABILITY_ESSAYS => 'Avaliação de Redações',
             self::CAPABILITY_TRIAGE => 'Triagem e Moderação',
             self::CAPABILITY_SEARCH => 'Busca Inteligente (Xavier)',
-            self::CAPABILITY_STUDY_PLANS => 'Geração de Plano de Estudos',
             self::CAPABILITY_EMBEDDING       => 'Gerador de Vetores (Indexação Batch)',
             self::CAPABILITY_QUERY_EMBEDDING  => 'Embedding de Busca (Xavier Search — Query)',
-            self::CAPABILITY_GENERAL          => 'Uso Geral / Fallback',
         ];
     }
 
@@ -151,7 +148,6 @@ class ApiKey extends Model
         // --- Arquitetura Exclusiva M:N (api_key_capabilities) ---
         // Aqui realizamos a busca das chaves rigorosamente pela tabela pivot ApiKeyCapability.
         // Todo o código de suporte ao legado (coluna 'capabilities' JSON da api_keys) foi removido
-        // para dar lugar a um sistema robusto e confiável de vinculação de módulos.
         $keys = (clone $query)
             ->whereHas('capabilitiesList', function ($sq) use ($capability) {
                 // Filtramos a consulta principal para trazer apenas as chaves cujo vínculo
@@ -170,18 +166,6 @@ class ApiKey extends Model
                 return $key->capabilitiesList->first()->priority ?? 999;
             })
             ->values();
-
-        // --- Fallback Inteligente Recursivo ---
-        // Se a capability demandada (ex: 'triage') não obteve NENHUM match na triagem rigorosa M:N acima,
-        // acionamos o sistema central com a diretriz de nos devolver chaves expressamente marcadas 
-        // para 'general' (Uso Geral / Fallback). Dessa forma, impedimos o vazamento de chaves
-        // (como uma chave dedicada à Questões cobrir as requisições de outras áreas).
-        if ($keys->isEmpty() && $capability !== self::CAPABILITY_GENERAL) {
-            $generalKeys = self::getKeysForCapability(self::CAPABILITY_GENERAL, $provider);
-            if ($generalKeys->isNotEmpty()) {
-                $keys = $generalKeys;
-            }
-        }
 
         // -------------------------------------------------------------------
         // ROUND-ROBIN: Rotação de Offset via Redis

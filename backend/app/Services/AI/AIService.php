@@ -219,16 +219,19 @@ EOT;
     /**
      * Checks if at least one provider has an active key for a given capability.
      */
-    public function hasActiveKey(string $capability = ApiKey::CAPABILITY_GENERAL): bool
+    public function hasActiveKey(?string $capability = null): bool
     {
         // If the circuit breaker is active for this capability, we consider it "no active keys"
         // to trigger a job release/pause before even querying the DB.
-        if ($this->isPaused($capability)) {
+        if ($capability && $this->isPaused($capability)) {
             return false;
         }
 
         try {
-            return ApiKey::getKeyForCapability($capability) !== null;
+            if ($capability) {
+                return ApiKey::getKeyForCapability($capability) !== null;
+            }
+            return ApiKey::where('is_active', true)->where('status', 'online')->exists();
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Error validating key for $capability: " . $e->getMessage());
             return false;
@@ -1405,17 +1408,17 @@ EOT;
         });
     }
 
-    public function generateJson(string $prompt, ?string $model = null, ?int $userId = null): array
+    public function generateJson(string $prompt, string $capability, ?string $model = null, ?int $userId = null): array
     {
         $provider = $model ? $this->getProviderForModel($model) : null;
 
-        return $this->executeWithFailover(ApiKey::CAPABILITY_GENERAL, function ($apiKey) use ($prompt, $model, $userId) {
+        return $this->executeWithFailover($capability, function ($apiKey) use ($prompt, $model, $userId, $capability) {
             $provider = $apiKey->provider;
             if ($model) {
                 $apiKey->preferred_model = $model;
             }
 
-            $result = $this->callAI($provider, $apiKey, $prompt, $userId, ApiKey::CAPABILITY_GENERAL);
+            $result = $this->callAI($provider, $apiKey, $prompt, $userId, $capability);
 
             // Decodifica o JSON retornado pela IA (pode vir como string bruta com markdown)
             $decoded = $this->responseSanitizer->sanitize($result['content']);
@@ -1709,9 +1712,9 @@ EOT;
      * @return string             Raw LLM response text
      * @throws \Exception         If no API key is available or all providers fail
      */
-    public function sendRawPrompt(string $prompt, ?int $userId = null): string
+    public function sendRawPrompt(string $prompt, string $capability, ?int $userId = null): string
     {
-        return $this->executeWithFailover(ApiKey::CAPABILITY_GENERAL, function ($apiKey) use ($prompt, $userId) {
+        return $this->executeWithFailover($capability, function ($apiKey) use ($prompt, $userId) {
             $provider = $apiKey->effective_provider;
 
             $response = match ($provider) {

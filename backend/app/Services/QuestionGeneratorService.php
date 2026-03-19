@@ -112,7 +112,7 @@ class QuestionGeneratorService
         $prompt = $this->buildPrompt($banca, $subject, $count);
 
         // Call AI Service
-        $result = $this->aiService->generateJson($prompt);
+        $result = $this->aiService->generateJson($prompt, \App\Models\ApiKey::CAPABILITY_QUESTIONS);
 
         // Parse result
         if (empty($result) || !isset($result['data'])) {
@@ -145,7 +145,7 @@ class QuestionGeneratorService
     protected function generateEssay(string $banca): ?array
     {
         $prompt = $this->buildEssayPrompt($banca);
-        $result = $this->aiService->generateJson($prompt);
+        $result = $this->aiService->generateJson($prompt, \App\Models\ApiKey::CAPABILITY_QUESTIONS);
 
         if (!empty($result) && isset($result['data'])) {
             $data = $result['data'];

@@ -435,8 +435,8 @@ export default function QuestionBank() {
     const showConcursoFilters = filters.type !== 'enem';
 
     return (
-        <div className="py-2">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="py-2 overflow-x-hidden w-full">
+            <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
 
                 {/* Original Header Restored + New Metrics */}
                 <div className="qb-header w-full flex-col md:flex-row items-start md:items-center gap-4 md:gap-8">
@@ -852,7 +852,7 @@ export default function QuestionBank() {
                         </button>
 
                         {/* Page info */}
-                        <span className="ml-4 text-xs text-slate-500 dark:text-slate-400">
+                        <span className="text-xs text-slate-500 dark:text-slate-400 mt-1 w-full text-center sm:w-auto sm:ml-4 sm:mt-0">
                             Página {meta.current_page} de {meta.last_page} ({meta.total} questões)
                         </span>
                     </div>
