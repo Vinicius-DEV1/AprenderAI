@@ -25,7 +25,7 @@ export function useConfig() {
             }
         },
         staleTime: 1000 * 60 * 60, // 1 hour
-        retry: 1,
+        retry: 0, // FIX: retry:1 causava 2 chamadas com 500 → threshold atingido → deploy overlay
     });
 
     useEffect(() => {

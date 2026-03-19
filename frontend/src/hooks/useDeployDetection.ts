@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
+// Tempo máximo (ms) que o overlay pode ficar ativo antes de auto-descartar.
+// FIX: Impede que a tela de deploy fique presa para sempre caso o servidor
+// não se recupere ou o health polling quebre.
+const MAX_DEPLOY_OVERLAY_MS = 5 * 60 * 1000; // 5 minutos
+
 export type DeployState = 'idle' | 'deploying' | 'recovering';
 
 interface UseDeployDetectionOptions {
@@ -21,13 +26,18 @@ interface UseDeployDetectionOptions {
 export function useDeployDetection({ onRecovered }: UseDeployDetectionOptions = {}) {
     const [deployState, setDeployState] = useState<DeployState>('idle');
     const pollingRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+    const timeoutRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isActiveRef  = useRef(false);
 
-    // Para o poll e libera o intervalo
+    // Para o poll e libera o intervalo e o timeout de segurança
     const stopPolling = useCallback(() => {
         if (pollingRef.current) {
             clearInterval(pollingRef.current);
             pollingRef.current = null;
+        }
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
         }
     }, []);
 
@@ -67,7 +77,17 @@ export function useDeployDetection({ onRecovered }: UseDeployDetectionOptions = 
         isActiveRef.current = true;
         setDeployState('deploying');
         startPolling();
-    }, [startPolling]);
+
+        // FIX: Timeout de segurança — se o servidor não voltar em 5 min, auto-descarta.
+        timeoutRef.current = setTimeout(() => {
+            if (isActiveRef.current) {
+                console.warn('[DeployOverlay] Timeout atingido sem recovery. Descartando overlay.');
+                stopPolling();
+                isActiveRef.current = false;
+                setDeployState('idle');
+            }
+        }, MAX_DEPLOY_OVERLAY_MS);
+    }, [startPolling, stopPolling]);
 
     /** Reseta manualmente (usado em test/debug) */
     const resetDeploy = useCallback(() => {

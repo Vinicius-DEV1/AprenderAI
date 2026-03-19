@@ -50,13 +50,24 @@ class HealthController extends Controller
         // -------------------------------
         // 3. PHP-FPM sentinel check
         //    (garante que o entrypoint terminou a inicialização)
+        //
+        // FIX: O arquivo /tmp/app_ready é criado pelo entrypoint Docker apenas em
+        // produção. Em ambiente local (APP_ENV != production) ele nunca existe,
+        // causando 503 permanente e fazendo o overlay de deploy ficar preso para sempre.
+        // Solução: verificar o sentinel somente em produção.
         // -------------------------------
-        $sentinelReady    = file_exists('/tmp/app_ready');
-        $checks['boot']   = $sentinelReady ? 'ok' : 'initializing';
+        if (app()->environment('production')) {
+            $sentinelReady  = file_exists('/tmp/app_ready');
+            $checks['boot'] = $sentinelReady ? 'ok' : 'initializing';
 
-        if (! $sentinelReady) {
-            $healthy = false;
+            if (! $sentinelReady) {
+                $healthy = false;
+            }
+        } else {
+            // Em dev/local, o sentinel não é usado — considera boot sempre ok.
+            $checks['boot'] = 'ok (dev)';
         }
+
 
         $statusCode = $healthy ? 200 : 503;
 

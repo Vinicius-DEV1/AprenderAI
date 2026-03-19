@@ -10,7 +10,8 @@ export const setBootstrapping = (value: boolean) => { _isBootstrapping = value; 
 
 // -----------------------------------------------------------------------
 // DEPLOY MODE — Bloqueia toasts e logout forçado durante deploy/restart.
-// Ativado quando o interceptor detecta 5xx ou Network Error em série.
+// Ativado quando o interceptor detecta erros 5xx ou Network Error EM SÉRIE
+// (não em um único erro isolado).
 // Desativado pelo useDeployDetection quando o servidor volta.
 // -----------------------------------------------------------------------
 let _isDeployMode = false;
@@ -24,20 +25,56 @@ export const setDeployModeCallback = (cb: () => void) => {
 /** Reseta o modo deploy quando o servidor recupera (chamado pelo hook). */
 export const resetDeployMode = () => {
     _isDeployMode = false;
+    _consecutiveServerErrors = 0;
     (window as any).__IS_DEPLOY_MODE__ = false;
 };
 
-/** Aciona o modo deploy de forma idempotente. */
+// -----------------------------------------------------------------------
+// THRESHOLD — Só ativa o deploy mode após N erros consecutivos de servidor.
+// FIX: Antes, um ÚNICO 500 ou Network Error já ativava a tela. Isso causava
+//      o overlay aparecer por erros pontuais, endpoints lentos ou quando o
+//      backend estava simplesmente offline em dev local.
+// -----------------------------------------------------------------------
+const DEPLOY_ERROR_THRESHOLD = 2;
+let _consecutiveServerErrors = 0;
+
+// Em ambiente local (dev), não ativamos deploy mode para Network Errors
+// porque o backend pode simplesmente não estar rodando — isso é esperado.
+// Em produção (IS_PROD=true), o backend DEVE estar sempre online.
+const IS_PROD = import.meta.env.PROD;
+
+/** Aciona o modo deploy de forma idempotente (apenas quando threshold atingido). */
 function activateDeployMode() {
     if (_isDeployMode) return;
     _isDeployMode = true;
-    // Expondo globalmente para blindagem do bootstrap (App.tsx)
     (window as any).__IS_DEPLOY_MODE__ = true;
     _onDeployDetected?.();
 }
 
+/**
+ * Incrementa o contador de erros consecutivos de servidor.
+ * Só dispara o overlay quando DEPLOY_ERROR_THRESHOLD for atingido.
+ * FIX: Em vez de ativar imediatamente no primeiro erro, aguardamos N erros.
+ */
+function recordServerError() {
+    _consecutiveServerErrors++;
+    if (_consecutiveServerErrors >= DEPLOY_ERROR_THRESHOLD) {
+        activateDeployMode();
+    }
+}
+
+/**
+ * Reseta o contador de erros quando uma requisição bem-sucedida chega.
+ * FIX: Garante que erros isolados não se "acumulem" mesmo após recovery.
+ */
+function resetErrorCount() {
+    if (_consecutiveServerErrors > 0) {
+        _consecutiveServerErrors = 0;
+    }
+}
+
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : '/'),
+    baseURL: import.meta.env.VITE_API_BASE_URL || (IS_PROD ? '' : '/'),
     withCredentials: true,
     headers: {
         'Accept': 'application/json',
@@ -45,6 +82,18 @@ const api = axios.create({
         'X-Requested-With': 'XMLHttpRequest',
     },
 });
+
+// -------------------------------------------------------
+// Interceptor 0: Reseta contador de erros em sucesso
+// FIX: Este interceptor faltava — sem ele, o contador nunca zerava.
+// -------------------------------------------------------
+api.interceptors.response.use(
+    (response) => {
+        resetErrorCount();
+        return response;
+    },
+    (error) => Promise.reject(error) // passa para o próximo interceptor
+);
 
 // -------------------------------------------------------
 // Interceptor 1: Auto-retry on 419 (CSRF mismatch)
@@ -84,40 +133,48 @@ api.interceptors.response.use(
                     return Promise.reject(error);
                 }
 
-                // Se já estivermos em modo deploy, apenas rejeita e "congela"
+                // Se já estivermos em modo deploy, apenas congela.
                 if (_isDeployMode) {
                     return new Promise(() => {});
                 }
 
                 // ESTRATÉGIA ANTI-LOGOUT FALSO:
                 // Antes de deslogar o usuário em um 401/419, verificamos se o servidor está saudável.
-                // Criamos uma IIFE async para poder dar wait no healthcheck antes de decidir se rejeitamos.
                 return (async () => {
                     try {
                         const healthRes = await fetch('/api/health', { method: 'GET', cache: 'no-store' });
                         if (!healthRes.ok) {
-                            activateDeployMode();
-                            return new Promise(() => {}); // Congela para evitar logout
+                            // Health retornou não-OK (degraded/503): é um deploy em andamento.
+                            // FIX: Aplicamos threshold mesmo aqui (não ativa no primeiro erro).
+                            if (IS_PROD) {
+                                recordServerError();
+                                if (_isDeployMode) return new Promise(() => {});
+                            }
                         }
                     } catch {
-                        activateDeployMode();
-                        return new Promise(() => {}); // Congela para evitar logout
+                        // Health call falhou completamente (servidor offline).
+                        // FIX: Só ativa deploy mode em produção — em dev isso é esperado.
+                        if (IS_PROD) {
+                            recordServerError();
+                            if (_isDeployMode) return new Promise(() => {});
+                        }
                     }
 
-                    // Se chegou aqui, o servidor está saudável MAS retornou 401/419 real.
-                    // Aí sim, procedemos com o logout.
+                    // Servidor saudável mas retornou 401/419 real → logout correto.
                     const currentPath = window.location.pathname.replace(/\/$/, '') || '/';
                     const publicPaths = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/privacidade', '/uso-justo', '/500', '/verify-email'];
 
                     if (!publicPaths.includes(currentPath)) {
-                        const message = status === 419 ? 'Página expirada por inatividade. Recarregando...' : 'Sessão expirada. Faça login novamente.';
+                        const message = status === 419
+                            ? 'Página expirada por inatividade. Recarregando...'
+                            : 'Sessão expirada. Faça login novamente.';
                         toast.error(message);
 
                         const { logout } = useAuthStore.getState();
                         logout();
                         window.location.href = '/login';
                     }
-                    
+
                     return Promise.reject(error);
                 })();
             }
@@ -133,14 +190,24 @@ api.interceptors.response.use(
             }
             // Handle 500+ - Server Errors
             else if (status >= 500) {
-                // Durante um deploy, o backend pode retornar 503/502/500 temporariamente.
-                // Em vez de exibir um toast de erro, ativamos o overlay de deploy.
-                activateDeployMode();
-                
-                // BLOQUEIO CRÍTICO: Para evitar que componentes mostrem seus próprios
-                // toasts (ex: no .catch()), retornamos uma promise que nunca resolve.
-                // O DeployOverlay assumirá o controle da UI.
-                return new Promise(() => {});
+                // FIX DEFINITIVO: deploy mode só faz sentido em produção.
+                // Em dev local o backend pode estar com DB/Redis offline — isso
+                // é esperado e NÃO deve travar toda a UI com a tela de deploy.
+                //
+                // CAUSA RAIZ DO BUG: este bloco não tinha IS_PROD guard.
+                // O useConfig tem retry:0 mas mesmo 1 chamada 500 + 1 retry
+                // já atingia o threshold=2, ativando o overlay imediatamente.
+                if (IS_PROD) {
+                    recordServerError();
+
+                    if (_isDeployMode) {
+                        // Congela a promise para impedir toasts duplicados.
+                        return new Promise(() => {});
+                    }
+                } else {
+                    // Em dev: mostra toast de erro simples, sem travar a UI.
+                    toast.error(data?.message || 'Erro no servidor. Verifique se o backend está rodando.');
+                }
             }
         } else if (!error.response) {
             // Network Error / servidor completamente offline
@@ -151,14 +218,23 @@ api.interceptors.response.use(
             });
 
             if (error.message === 'Network Error') {
-                // Se não estivermos na página de login, interpreta como deploy em andamento.
-                const isLoginPage = window.location.pathname === '/login' || window.location.pathname === '/login/';
-                if (!isLoginPage) {
-                    // Ativa o overlay ao invés de exibir toast genérico de rede.
-                    activateDeployMode();
-                    
-                    // Congela para evitar toasts em componentes
-                    return new Promise(() => {});
+                // FIX PRINCIPAL: Antes ativava o overlay para qualquer Network Error,
+                // inclusive em dev local onde o backend simplesmente não está rodando.
+                //
+                // Novo comportamento:
+                //  - Em DEV (IS_PROD=false): NÃO ativa deploy mode. Apenas registra o erro.
+                //  - Em PROD: ativa após DEPLOY_ERROR_THRESHOLD erros consecutivos,
+                //    e apenas fora de páginas públicas.
+                if (IS_PROD) {
+                    const isPublicPage = ['/', '/login', '/register', '/forgot-password', '/reset-password'].includes(
+                        window.location.pathname.replace(/\/$/, '') || '/'
+                    );
+                    if (!isPublicPage) {
+                        recordServerError();
+                        if (_isDeployMode) {
+                            return new Promise(() => {});
+                        }
+                    }
                 }
             }
         }
