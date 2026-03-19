@@ -307,6 +307,8 @@ class SemanticDashboardController extends Controller
         $detectedConcepts = [];
         $extractedSubjects = [];
         $extractedTopics = [];
+        $extractedOrgs = [];
+        $extractedInsts = [];
         $extractedType = null;
 
         foreach ($conceptMatches as $match) {
@@ -321,6 +323,12 @@ class SemanticDashboardController extends Controller
             } elseif ($type === 'topic' && isset($payload['topic_id'])) {
                 $extractedTopics[] = $payload['topic_id'];
                 $logs[] = "INTENT DETECTED: Topic #{$payload['topic_id']} ({$payload['name']})";
+            } elseif ($type === 'organization' && isset($payload['organization'])) {
+                $extractedOrgs[] = $payload['organization'];
+                $logs[] = "INTENT DETECTED: Organization '{$payload['organization']}'";
+            } elseif ($type === 'institution' && isset($payload['institution'])) {
+                $extractedInsts[] = $payload['institution'];
+                $logs[] = "INTENT DETECTED: Institution '{$payload['institution']}'";
             }
         }
 
@@ -369,8 +377,24 @@ class SemanticDashboardController extends Controller
         
         // Ensure SQL fallback actually filters by the text if Qdrant is empty
         $sqlFilters = ['keyword' => $request->prompt];
+        $intentFilters = []; // Initialize intentFilters here
+        if ($extractedType) {
+            $intentFilters['type'] = [$extractedType];
+        }
+        if (!empty($extractedOrgs)) {
+            $intentFilters['organization'] = $extractedOrgs;
+        }
+        if (!empty($extractedInsts)) {
+            $intentFilters['institution'] = $extractedInsts;
+        }
         if ($extractedType) {
             $sqlFilters['type'] = $extractedType;
+        }
+        if (!empty($extractedOrgs)) {
+            $sqlFilters['organization'] = $extractedOrgs[0];
+        }
+        if (!empty($extractedInsts)) {
+            $sqlFilters['institution'] = $extractedInsts[0];
         }
         
         $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, $sqlFilters, $limit);

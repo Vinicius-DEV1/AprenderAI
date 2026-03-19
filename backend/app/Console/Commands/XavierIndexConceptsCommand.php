@@ -52,6 +52,12 @@ class XavierIndexConceptsCommand extends Command
         // 3. Indexa os Conceitos Atômicos (para expansão e recall granular)
         $this->indexEntityType(Concept::class, 'concept', $isSync, $limit);
 
+        // 4. Indexa Bancas (Organizations) extraídas das questões
+        $this->indexUniqueMetadata('organization', 'organization', $isSync, $limit);
+
+        // 5. Indexa Órgãos (Institutions) extraídos das questões
+        $this->indexUniqueMetadata('institution', 'institution', $isSync, $limit);
+
         $this->newLine();
         $this->info('✅ Todos os jobs de indexação foram disparados com sucesso.');
         return 0;
@@ -77,6 +83,31 @@ class XavierIndexConceptsCommand extends Command
             }
         });
 
+        $this->newLine();
+    }
+
+    private function indexUniqueMetadata(string $column, string $type, bool $isSync, ?int $limit): void
+    {
+        $names = \App\Models\Question::whereNotNull($column)
+            ->whereRaw("TRIM({$column}) != ''")
+            ->distinct()
+            ->pluck($column);
+
+        $count = $names->count();
+        $this->info("🔢 Found {$count} unique {$type}s to index.");
+
+        if ($count === 0) return;
+
+        $bar = $this->output->createProgressBar($count);
+        foreach ($names as $name) {
+            if ($isSync) {
+                \App\Jobs\IndexSemanticEntityJob::dispatchSync($name, $type);
+            } else {
+                \App\Jobs\IndexSemanticEntityJob::dispatch($name, $type);
+            }
+            $bar->advance();
+        }
+        $bar->finish();
         $this->newLine();
     }
 }

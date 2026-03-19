@@ -63,6 +63,8 @@ class IndexSemanticEntityJob implements ShouldQueue
             'concept' => $this->buildConceptText($model, $textBuilder),
             'subject' => $textBuilder->buildForSubject($model),
             'topic'   => $textBuilder->buildForTopic($model),
+            'organization' => $textBuilder->buildForOrganization($model->name),
+            'institution'  => $textBuilder->buildForInstitution($model->name),
             default   => throw new \InvalidArgumentException("Invalid entity type: {$this->entityType}")
         };
 
@@ -97,6 +99,10 @@ class IndexSemanticEntityJob implements ShouldQueue
             $payload['subject_id'] = $model->id;
         } elseif ($this->entityType === 'topic') {
             $payload['topic_id']   = $model->id;
+        } elseif ($this->entityType === 'organization') {
+            $payload['organization'] = $model->name;
+        } elseif ($this->entityType === 'institution') {
+            $payload['institution'] = $model->name;
         }
 
         // ID determinístico para evitar duplicatas: prefixamos com o tipo (ex: subject:123).
@@ -105,8 +111,10 @@ class IndexSemanticEntityJob implements ShouldQueue
         $success = $qdrant->upsertConcept($qdrantId, $vector, $payload);
 
         if ($success) {
-            // Marca como indexado para controle no Dashboard
-            $model->update(['qdrant_indexed_at' => now()]);
+            // Marca como indexado para controle no Dashboard (apenas para modelos reais)
+            if (method_exists($model, 'update') && !in_array($this->entityType, ['organization', 'institution'])) {
+                $model->update(['qdrant_indexed_at' => now()]);
+            }
             Log::info("[Xavier][IndexEntity] {$this->entityType} '{$this->entityId}' indexed successfully.");
         } else {
             throw new \RuntimeException("Qdrant upsert failed");
@@ -119,6 +127,7 @@ class IndexSemanticEntityJob implements ShouldQueue
             'concept' => Concept::with(['subject', 'topic'])->find($this->entityId),
             'subject' => Subject::find($this->entityId),
             'topic'   => Topic::find($this->entityId),
+            'organization', 'institution' => (object) ['name' => $this->entityId, 'id' => $this->entityId],
             default   => null
         };
     }
