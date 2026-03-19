@@ -1513,10 +1513,11 @@ EOT;
      */
     protected function executeWithFailover(string $capability, \Closure $closure, ?string $provider = null)
     {
-        // Fetch online keys, already sorted by priority and rotated via Round-Robin in the model.
-        $keys = ApiKey::getKeysForCapability($capability, $provider);
+        // LEVEL 0: Fetch available keys from the database ONCE. 
+        // We don't want to hit the DB every 0.5s inside the wait loop.
+        $apiKeys = ApiKey::getKeysForCapability($capability, $provider);
 
-        if ($keys->isEmpty()) {
+        if ($apiKeys->isEmpty()) {
             throw new AIServiceBusyException("No active AI providers found for: {$capability}");
         }
 
@@ -1526,12 +1527,15 @@ EOT;
         $timeout = 15.0; // Level 1: Wait up to 15s internally for a key to become free
 
         while ((microtime(true) - $startTime) < $timeout) {
-            $apiKeys = ApiKey::getKeysForCapability($capability, $provider);
             $keysLockedCount = 0;
+            
+            // Read the latest quota blacklist from cache (Level 3). 
+            // This is very fast (Redis-backed) and ensures we skip newly 'burned' keys.
+            $blacklist = \Illuminate\Support\Facades\Cache::get('api_key_blacklist', []);
 
             foreach ($apiKeys as $apiKey) {
                 // Ignore keys that are currently in the Quota Blacklist (Level 3)
-                if (in_array($apiKey->id, \Illuminate\Support\Facades\Cache::get('api_key_blacklist', []))) {
+                if (in_array($apiKey->id, $blacklist)) {
                     continue;
                 }
 
@@ -1590,7 +1594,7 @@ EOT;
 
             // LEVEL 1: If pool was busy, wait with jitter and retry internally.
             if ($keysLockedCount > 0 && (microtime(true) - $startTime) < $timeout) {
-                $jitter = rand(100, 500) * 1000; // 100ms - 500ms jitter
+                $jitter = rand(100, 500) * 1000; // 100ms - 500ms jitter to prevent thundering herd
                 usleep(500000 + $jitter); 
                 continue;
             }
