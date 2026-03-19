@@ -32,9 +32,6 @@ class SemanticDashboardController extends Controller
             $query->published()->where('tipo_questao', '!=', 'Redação');
         })->distinct('question_id')->count('question_id');
         $totalVectors = QuestionVector::count();
-        $totalConcepts = Concept::count();
-        $indexedConcepts = Concept::whereNotNull('qdrant_indexed_at')->count();
-        
         $totalSubjects = \App\Models\Subject::count();
         $indexedSubjects = \App\Models\Subject::whereNotNull('qdrant_indexed_at')->count();
         
@@ -145,8 +142,6 @@ class SemanticDashboardController extends Controller
                 'mysql_published_questions' => $totalQuestions,
                 'mysql_indexed_questions'   => $indexedQuestions,
                 'mysql_total_vectors'       => $totalVectors,
-                'mysql_total_concepts'      => $totalConcepts,
-                'mysql_indexed_concepts'    => $indexedConcepts,
                 'mysql_total_subjects'      => $totalSubjects,
                 'mysql_indexed_subjects'    => $indexedSubjects,
                 'mysql_total_topics'        => $totalTopics,
