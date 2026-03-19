@@ -19,7 +19,7 @@ class QdrantService
     private int    $timeout;
 
     private string $questionsCollection;
-    private string $conceptsCollection;
+    private string $filtersCollection;
     private int    $vectorSize;
 
     public function __construct()
@@ -38,7 +38,8 @@ class QdrantService
         }
 
         $this->questionsCollection = config('xavier.qdrant.collections.questions', 'questions_vectors');
-        $this->conceptsCollection  = config('xavier.qdrant.collections.concepts', 'concepts_vectors');
+        // Backward-compat: se a chave 'filters' não existir, cai no nome legado 'concepts_vectors'
+        $this->filtersCollection   = config('xavier.qdrant.collections.filters', config('xavier.qdrant.collections.concepts', 'concepts_vectors'));
     }
 
     // ─── Collection Management ───────────────────────────────────────────────
@@ -69,26 +70,32 @@ class QdrantService
         return (bool) ($result['result'] ?? false);
     }
 
-    public function ensureConceptsCollection(): bool
+    /**
+     * Ensures the 'filters' collection (Subjects + Topics + Orgs) exists in Qdrant.
+     * Backward-compatible: the Qdrant collection name defaults to 'concepts_vectors'
+     * if a legacy collection already exists (avoids unnecessary re-indexing).
+     */
+    public function ensureFiltersCollection(): bool
     {
-        // Check if exists
-        $response = $this->get("/collections/{$this->conceptsCollection}");
+        $response = $this->get("/collections/{$this->filtersCollection}");
         if ($response && isset($response['result'])) {
             return true; // Already exists
         }
 
-        // Collection doesn't exist yet — create with 3072 dimensions (Gemini)
         $payload = [
             'vectors' => [
                 'size'     => 3072,
                 'distance' => 'Cosine'
             ]
         ];
-        
-        $result = $this->put("/collections/{$this->conceptsCollection}", $payload);
-        Log::info('[Qdrant] Concepts collection created.', ['result' => $result]);
+
+        $result = $this->put("/collections/{$this->filtersCollection}", $payload);
+        Log::info('[Qdrant] Filters (semantic intents) collection created.', ['result' => $result]);
         return (bool) ($result['result'] ?? false);
     }
+
+    /** @deprecated Use ensureFiltersCollection() instead */
+    public function ensureConceptsCollection(): bool { return $this->ensureFiltersCollection(); }
 
     /**
      * Deletes a Qdrant collection entirely.
@@ -224,62 +231,69 @@ class QdrantService
     // ─── Concepts ────────────────────────────────────────────────────────────
 
     /**
-     * Upserts a concept point with a single vector.
-     * Converts the string concept slug into a deterministic uint64 ID for Qdrant.
+     * Upserts a semantic filter entity (Subject, Topic, Organization, Institution).
+     * Uses a deterministic uint64 hash of the entity slug as Qdrant ID.
+     *
+     * @param string $entityId   Unique identifier string (e.g. "subject:42" or "topic:123")
+     * @param array  $vector     768/3072-dim Gemini embedding
+     * @param array  $payload    Structured metadata (entity_type, name, subject_id, topic_id, etc.)
      */
-    public function upsertConcept(string $conceptId, array $vector, array $payload): bool
+    public function upsertSemanticEntity(string $entityId, array $vector, array $payload): bool
     {
         $body = [
             'points' => [
                 [
-                    // Use collision-safe 64-bit hash instead of crc32 which has high
-                    // collision probability with hundreds of concepts (Birthday Paradox)
-                    'id'      => $this->conceptSlugToQdrantId($conceptId),
+                    'id'      => $this->entitySlugToQdrantId($entityId),
                     'vector'  => $vector,
-                    'payload' => array_merge($payload, ['concept_slug' => $conceptId]),
+                    'payload' => array_merge($payload, ['entity_slug' => $entityId]),
                 ],
             ],
         ];
 
-        $result = $this->put("/collections/{$this->conceptsCollection}/points?wait=true", $body);
+        $result = $this->put("/collections/{$this->filtersCollection}/points?wait=true", $body);
         $status = $result['status'] ?? ($result['result']['status'] ?? null);
-        
+
         if (!in_array($status, ['ok', 'completed', 'acknowledged'])) {
-            Log::error('[Qdrant] Failed to upsert concept.', [
-                'concept_id' => $conceptId,
-                'result'     => $result,
-                'body'       => $body
+            Log::error('[Qdrant] Failed to upsert semantic entity.', [
+                'entity_id' => $entityId,
+                'result'    => $result,
+                'body'      => $body
             ]);
             return false;
         }
-        
+
         return true;
     }
 
-    /**
-     * Converts a concept slug (string) into a deterministic uint64 ID for Qdrant.
-     *
-     * Uses the first 8 bytes of a SHA-256 hash, interpreted as a 64-bit unsigned integer.
-     * This provides ~2^64 possible values, making collisions effectively impossible
-     * for any realistic number of concepts (collision probability < 1e-10 with 1M concepts).
-     *
-     * Previous implementation used abs(crc32()), which only had ~2^31 possible values
-     * and a ~50% collision probability at ~77K concepts (Birthday Paradox).
-     */
-    private function conceptSlugToQdrantId(string $slug): int
+    /** @deprecated Use upsertSemanticEntity() instead */
+    public function upsertConcept(string $conceptId, array $vector, array $payload): bool
     {
-        // SHA-256 produces a 64-char hex string; take the first 15 hex chars
-        // (60 bits, well within PHP's int range on 64-bit systems)
+        return $this->upsertSemanticEntity($conceptId, $vector, $payload);
+    }
+
+    /**
+     * Converts any entity slug (string) into a deterministic uint64 ID for Qdrant.
+     * Uses the first 15 hex chars of SHA-256 (60 bits) for collision safety.
+     */
+    private function entitySlugToQdrantId(string $slug): int
+    {
         $hash = hash('sha256', $slug);
         return intval(substr($hash, 0, 15), 16);
     }
 
+    /** @deprecated Use entitySlugToQdrantId() instead */
+    private function conceptSlugToQdrantId(string $slug): int
+    {
+        return $this->entitySlugToQdrantId($slug);
+    }
+
     /**
-     * Searches for the most similar concepts to a query vector.
+     * Searches for the most similar semantic filter entities (Subjects, Topics, Orgs, Insts)
+     * to a query vector in the filters collection.
      *
-     * @return array [{id, score, payload}] — payload includes 'concept_slug'
+     * @return array [{id, score, payload}] — payload includes 'entity_type', 'name', etc.
      */
-    public function searchConcepts(array $queryVector, int $limit = 5, float $threshold = 0.45): array
+    public function searchIntents(array $queryVector, int $limit = 5, float $threshold = 0.45): array
     {
         $body = [
             'vector'          => $queryVector,
@@ -288,8 +302,14 @@ class QdrantService
             'with_payload'    => true,
         ];
 
-        $result = $this->post("/collections/{$this->conceptsCollection}/points/search", $body);
+        $result = $this->post("/collections/{$this->filtersCollection}/points/search", $body);
         return $result['result'] ?? [];
+    }
+
+    /** @deprecated Use searchIntents() instead */
+    public function searchConcepts(array $queryVector, int $limit = 5, float $threshold = 0.45): array
+    {
+        return $this->searchIntents($queryVector, $limit, $threshold);
     }
 
     /**
