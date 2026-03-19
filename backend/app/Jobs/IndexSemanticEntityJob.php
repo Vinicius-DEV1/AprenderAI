@@ -76,21 +76,29 @@ class IndexSemanticEntityJob implements ShouldQueue
             if (!$vector) {
                 throw new \RuntimeException("Vetor retornado vazio.");
             }
+        } catch (\App\Exceptions\AIServiceBusyException $e) {
+            // POOL BUSY OR LOCKED: All keys are currently used by other workers or blacklisted.
+            // Release back to queue with 5m delay to avoid aggressive key contention.
+            Log::info("[IndexSemanticEntityJob] AI pool busy for {$this->entityType} #{$this->entityId}. Releasing for 5m backoff.");
+            $this->release(300);
+            return;
         } catch (\Exception $e) {
             $msg = $e->getMessage();
+            
+            // Check for Quota limit or other retriable failover failures
             $isQuota = str_contains(strtolower($msg), '429') || 
-                      str_contains(strtolower($msg), 'quota') || 
-                      str_contains(strtolower($msg), 'full failover failure');
+                       str_contains(strtolower($msg), 'quota') || 
+                       str_contains(strtolower($msg), 'full failover failure');
 
             if ($isQuota) {
-                Log::warning("[Xavier][IndexEntity] Quota exhausted for {$this->entityType} '{$this->entityId}'. Releasing to retry in 5 min.");
+                Log::warning("[IndexSemanticEntityJob] Quota limit hit or no keys available for {$this->entityType} '{$this->entityId}'. Releasing for 5m. Error: {$msg}");
                 $this->release(300);
                 return;
             }
 
-            Log::error("[Xavier][IndexEntity] PERMANENT FAILURE for {$this->entityType} '{$this->entityId}'. Error: {$msg}");
+            // Permanent failure: Log and fail the job definitively.
+            Log::error("[IndexSemanticEntityJob] Permanent error indexing {$this->entityType} #{$this->entityId}: " . $msg);
             $this->fail($e);
-            return;
         }
 
         $qdrant->ensureFiltersCollection();

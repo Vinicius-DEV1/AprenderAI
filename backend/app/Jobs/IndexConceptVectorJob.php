@@ -75,21 +75,28 @@ class IndexConceptVectorJob implements ShouldQueue
             if (!$vector) {
                 throw new \RuntimeException("Vetor retornado vazio.");
             }
+        } catch (\App\Exceptions\AIServiceBusyException $e) {
+            // POOL BUSY OR LOCKED: Use 5-minute backoff to avoid aggressive key contention.
+            Log::info("[IndexConceptVectorJob] AI pool busy for concept #{$this->conceptId}. Releasing for 5m backoff.");
+            $this->release(300);
+            return;
         } catch (\Exception $e) {
             $msg = $e->getMessage();
+            
+            // Check for Quota limit or other retriable failover failures
             $isQuota = str_contains(strtolower($msg), '429') || 
-                      str_contains(strtolower($msg), 'quota') || 
-                      str_contains(strtolower($msg), 'full failover failure');
+                       str_contains(strtolower($msg), 'quota') || 
+                       str_contains(strtolower($msg), 'full failover failure');
 
             if ($isQuota) {
-                Log::warning("[Xavier][IndexConcept] Quota exhausted for concept '{$this->conceptId}'. Releasing to retry in 5 min.");
+                Log::warning("[IndexConceptVectorJob] Quota limit hit or no keys available for concept #{$this->conceptId}. Releasing for 5m. Error: {$msg}");
                 $this->release(300);
                 return;
             }
 
-            Log::error("[Xavier][IndexConcept] PERMANENT FAILURE for concept '{$this->conceptId}'. Error: {$msg}");
+            // Permanent failure: Log and fail the job definitively.
+            Log::error("[IndexConceptVectorJob] Permanent error indexing concept #{$this->conceptId}: " . $msg);
             $this->fail($e);
-            return;
         }
 
         Log::debug("[Xavier][IndexConcept] #{$this->conceptId} vector generated successfully.");

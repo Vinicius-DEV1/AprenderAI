@@ -34,10 +34,10 @@ return [
     |--------------------------------------------------------------------------
     */
     'embeddings' => [
-        // Queue name for all indexing jobs
-        'queue' => env('EMBEDDINGS_QUEUE', 'embeddings'),
+        // Default queue for background indexing tasks (low priority)
+        'queue' => env('EMBEDDINGS_QUEUE', 'low'),
 
-        // Queue name for AI batch processing (triage, classification, etc.)
+        // Queue for bulk processing (triage, classification, etc.)
         'batch_queue' => env('AI_BATCH_QUEUE', 'ai_triage'),
 
         // Pipeline version tag written to question_vectors.pipeline_version

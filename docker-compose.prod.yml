@@ -76,10 +76,14 @@ services:
       - ./certbot/www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     networks:
-      - production-network
+      - produ  # ── Consolidate Production Workers (Total: 30) ─────────────────────────
+  # We unify all worker types into a prioritized hybrid model.
+  # All 30 workers will listen to the 'high' priority queue (emails, results)
+  # while specific groups handle background tasks with concurrency limits.
 
-  # PHP Queue Worker
-  worker:
+  # Group: General Purpose (24 replicas)
+  # Focal point for transactional logic and standard tasks.
+  worker-general:
     image: aprender-ai-app
     restart: always
     working_dir: /var/www
@@ -88,13 +92,13 @@ services:
       - ./qdrant-data:/var/www/qdrant-backup:ro
       - /proc:/host_proc:ro
     env_file: ./backend/.env
-    # Prioriza explicitamente a fila 'default' (Simulados/Chats), 'essays' (Redações) e depois a 'import'.
-    command: php artisan queue:work --queue=search_embeddings,default,essays --sleep=3 --tries=3 --max-time=3600
+    # Queue priority: high > default
+    command: php artisan queue:work --queue=high,default --sleep=3 --tries=3 --max-time=3600
     deploy:
-      replicas: 40
+      replicas: 24
       resources:
         limits:
-          memory: 512M # Mantido em 512M conforme solicitado
+          memory: 512M
     depends_on:
       app:
         condition: service_started
@@ -102,14 +106,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-      qdrant:
-        condition: service_started
     networks:
       - production-network
 
-  # AI Triage Worker (Para processamento de lotes e classificações LLM)
-  # ESCALA: 1 réplica (Sequential processing for stability)
-  ai-triage-worker:
+  # Group: Embeddings (4 replicas)
+  # Strictly limited to 4 concurrent processes to manage API capacity safely.
+  worker-embeddings:
     image: aprender-ai-app
     restart: always
     working_dir: /var/www
@@ -118,8 +120,36 @@ services:
       - ./qdrant-data:/var/www/qdrant-backup:ro
       - /proc:/host_proc:ro
     env_file: ./backend/.env
-    # Queue 'ai_triage' handle batches and 'import' handles ZIP extractions
-    command: php artisan queue:work --queue=ai_triage,import --sleep=3 --tries=3 --timeout=700 --max-time=3600
+    # Queue priority: high > low (embeddings) > default
+    command: php artisan queue:work --queue=high,low,default --sleep=10 --tries=3 --timeout=120 --max-time=3600
+    deploy:
+      replicas: 4
+      resources:
+        limits:
+          memory: 1G
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - production-network
+
+  # Group: Triage & Batch (1 replica)
+  # Handles AI classifications and long-running batch logic sequentially.
+  worker-triage:
+    image: aprender-ai-app
+    restart: always
+    working_dir: /var/www
+    volumes:
+      - ./backend/storage/app/public:/var/www/storage/app/public
+      - ./qdrant-data:/var/www/qdrant-backup:ro
+      - /proc:/host_proc:ro
+    env_file: ./backend/.env
+    # Queue priority: high > ai_triage > default
+    command: php artisan queue:work --queue=high,ai_triage,default --sleep=3 --tries=3 --timeout=700 --max-time=3600
     deploy:
       replicas: 1
       resources:
@@ -132,14 +162,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-      qdrant:
-        condition: service_started
     networks:
       - production-network
 
-  # AI Embeddings Worker (Para indexação e geração de vetores)
-  # ESCALA: 3 réplicas
-  ai-embeddings-worker:
+  # Group: Import (1 replica)
+  # Handles heavy ZIP extractions and file imports.
+  worker-import:
     image: aprender-ai-app
     restart: always
     working_dir: /var/www
@@ -148,22 +176,20 @@ services:
       - ./qdrant-data:/var/www/qdrant-backup:ro
       - /proc:/host_proc:ro
     env_file: ./backend/.env
-    command: php artisan queue:work --queue=embeddings --sleep=10 --tries=3 --timeout=120 --max-time=3600
+    # Queue priority: high > import > default
+    command: php artisan queue:work --queue=high,import,default --sleep=3 --tries=3 --timeout=1200 --max-time=3600
     deploy:
-      replicas: 3
+      replicas: 1
       resources:
         limits:
           memory: 1G
     depends_on:
       app:
-        condition: service_started
+        condition: service_healthy
       db:
         condition: service_healthy
-      redis:
-        condition: service_started
-      qdrant:
-        condition: service_started
     networks:
+      - production-network
       - production-network
 
   # PHP Scheduler

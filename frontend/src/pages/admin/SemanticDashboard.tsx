@@ -176,6 +176,8 @@ const SemanticDashboard = () => {
             expansion: [] as string[],
             temporal: null as { operator: string, year: number } | null,
             difficulty: null as string | null,
+            organizations: [] as string[],
+            institutions: [] as string[],
             vector: { statement: false, concept: false, explanation: false },
             rerank: [] as string[]
         };
@@ -205,6 +207,12 @@ const SemanticDashboard = () => {
             if (log.includes("TEMPORAL OPERATOR:")) {
                 const parts = log.split("TEMPORAL OPERATOR: ")[1].split(" ");
                 steps.temporal = { operator: parts[0], year: parseInt(parts[1]) };
+            }
+            if (log.includes("ORG DETECTED:")) {
+                steps.organizations.push(log.split("ORG DETECTED: ")[1]);
+            }
+            if (log.includes("INST DETECTED:")) {
+                steps.institutions.push(log.split("INST DETECTED: ")[1]);
             }
         });
 
@@ -908,6 +916,16 @@ const SemanticDashboard = () => {
                                                     Ano: {parsePipelineSteps(searchResults.logs).temporal?.operator} {parsePipelineSteps(searchResults.logs).temporal?.year}
                                                 </span>
                                             )}
+                                            {parsePipelineSteps(searchResults.logs).organizations.map((org, idx) => (
+                                                <span key={idx} className="text-[10px] font-bold bg-purple-50 dark:bg-purple-900/30 text-purple-600 px-2 py-0.5 rounded-full border border-purple-100 dark:border-purple-800">
+                                                    Banca: {org}
+                                                </span>
+                                            ))}
+                                            {parsePipelineSteps(searchResults.logs).institutions.map((inst, idx) => (
+                                                <span key={idx} className="text-[10px] font-bold bg-blue-50 dark:bg-blue-900/30 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100 dark:border-blue-800">
+                                                    Instituição: {inst}
+                                                </span>
+                                            ))}
                                             {parsePipelineSteps(searchResults.logs).lexical.positive.length === 0 && 
                                              parsePipelineSteps(searchResults.logs).lexical.negative.length === 0 && 
                                              !parsePipelineSteps(searchResults.logs).difficulty &&
