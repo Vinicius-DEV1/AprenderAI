@@ -553,11 +553,6 @@ class SemanticDashboardController extends Controller
         $reranker = app(\App\Services\AI\ReRankService::class);
         $finalLimit = (int) \App\Models\Configuration::get('xavier_final_result_limit', config('xavier.search.final_result_limit', 100));
 
-        }
-        if (!empty($extractedTopics)) {
-            $intentFilters['topic_id'] = $extractedTopics;
-        }
-
         $rankedItems = $reranker->rerank($candidates, $finalLimit, $intentFilters);
 
         $latency = round((microtime(true) - $startTime) * 1000, 2);
