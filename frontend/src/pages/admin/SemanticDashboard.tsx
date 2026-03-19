@@ -45,6 +45,12 @@ interface DashboardStats {
             payload: string;
             error_preview: string;
         }>;
+        waiting_list?: Array<{
+            job: string;
+            id: string | number;
+            timestamp: string;
+            ago: string;
+        }>;
     };
     analytics: {
         total_ai_requests: number;
@@ -499,7 +505,7 @@ const SemanticDashboard = () => {
                         <StatCard 
                             title="Fila de Embedding" 
                             value={stats.jobs.pending} 
-                            subtitle={`${stats.jobs.failed} falhas`}
+                            subtitle={`${stats.jobs.failed} falhas | ${stats.jobs.waiting_list?.length || 0} em espera`}
                             icon={stats.jobs.failed > 0 ? AlertCircle : Clock}
                             colorClass={stats.jobs.failed > 0 ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30" : "bg-blue-100 text-blue-600 dark:bg-blue-900/30"}
                             helpText="Mostra quantos processos de 'transformar texto em vetor' estão aguardando no servidor. Falhas geralmente ocorrem por limite de cota da IA."
@@ -594,19 +600,53 @@ const SemanticDashboard = () => {
                 )
             )}
 
-            {/* TOP SEARCH TERMS */}
-            {stats && stats.analytics && stats.analytics.top_prompts.length > 0 && (
-                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <Search className="w-4 h-4 text-indigo-500" /> Termos mais buscados pelos usuários
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                        {stats.analytics.top_prompts.map((item, idx) => (
-                            <div key={idx} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 px-3 py-1.5 rounded-xl">
-                                <span className="text-sm text-slate-700 dark:text-slate-300">“{item.prompt}”</span>
-                                <span className="text-[10px] font-black bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 px-1.5 py-0.5 rounded-lg">{item.total}x</span>
+            {/* MAESTRO WAITING ROOM (CONGESTION MONITOR) */}
+            {stats && stats.jobs.waiting_list && stats.jobs.waiting_list.length > 0 && (
+                <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-6 shadow-lg shadow-amber-500/5 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                        <Clock className="w-24 h-24 rotate-12" />
+                    </div>
+                    
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <div>
+                            <h3 className="text-xl font-black text-amber-800 dark:text-amber-400 flex items-center gap-2">
+                                <Activity className="w-6 h-6 animate-pulse" />
+                                Maestro Waiting Room
+                            </h3>
+                            <p className="text-sm text-amber-700 dark:text-amber-500 mt-1 max-w-2xl font-medium">
+                                Shhh! Estes jobs estão "descansando" por 5 minutos antes da próxima tentativa. 
+                                <span className="hidden sm:inline"> Isso acontece quando as chaves de API atingem o limite de cota ou estão todas ocupadas. <strong>Zero dados perdidos.</strong></span>
+                            </p>
+                        </div>
+                        <div className="bg-amber-100 dark:bg-amber-900/40 px-4 py-2 rounded-xl border border-amber-200 dark:border-amber-700 font-black text-amber-700 dark:text-amber-300 flex items-center gap-3 shadow-inner">
+                            <span className="text-2xl">{stats.jobs.waiting_list.length}</span>
+                            <span className="text-[10px] uppercase tracking-widest leading-tight">Jobs em<br/>Recuperação</span>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                        {stats.jobs.waiting_list.map((item, idx) => (
+                            <div key={idx} className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm p-3 rounded-xl border border-white dark:border-slate-700 shadow-sm flex flex-col hover:scale-105 transition-transform cursor-help group/item" title={`Registrado em: ${item.timestamp}`}>
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded">
+                                        {item.job.replace('Job', '')}
+                                    </span>
+                                    <Clock className="w-3 h-3 text-amber-500 group-hover/item:animate-spin" />
+                                </div>
+                                <div className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 truncate">
+                                    ID: {item.id}
+                                </div>
+                                <div className="mt-auto flex items-center justify-between">
+                                    <span className="text-[9px] text-slate-400 font-medium">Tentou há {item.ago}</span>
+                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></div>
+                                </div>
                             </div>
                         ))}
+                    </div>
+
+                    <div className="mt-6 flex items-center gap-2 text-[10px] text-amber-600 dark:text-amber-500 font-bold bg-amber-100/50 dark:bg-amber-900/20 w-fit px-3 py-1.5 rounded-lg border border-amber-200/50 dark:border-amber-800">
+                        <Zap className="w-3 h-3" />
+                        O sistema retentará automaticamente assim que as chaves esfriarem.
                     </div>
                 </div>
             )}
@@ -686,10 +726,9 @@ const SemanticDashboard = () => {
                 </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* SETTINGS PANEL */}
-                <div className="lg:col-span-1 space-y-6">
-                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+            {/* SETTINGS AREA */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
                         <h2 className="text-lg font-semibold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
                             <Settings className="w-5 h-5 text-slate-400" />
                             Configurações em Tempo Real
@@ -799,25 +838,28 @@ const SemanticDashboard = () => {
                             </div>
                         </div>
                     )}
+                </div>
 
+                {/* PRIORITIES & SEARCH TESTER */}
+                <div className="space-y-6">
                     {stats && (
                         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
                             <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-4 flex items-center justify-between">
                                 <span className="flex items-center gap-2">
                                     <BarChart3 className="w-4 h-4 text-indigo-500" />
-                                    Prioridades de Ranking (Weights)
+                                    Prioridades de Ranking (Regras de Pesos)
                                 </span>
-                                <span className="text-[10px] bg-slate-100 dark:bg-slate-700 font-mono px-2 py-0.5 rounded">Total: {(configState.rerank_weights.vector + configState.rerank_weights.popularity + configState.rerank_weights.quality + configState.rerank_weights.recency).toFixed(2)}</span>
+                                <span className="text-[10px] bg-slate-100 dark:bg-slate-700 font-mono px-2 py-0.5 rounded">Soma: {(configState.rerank_weights.vector + configState.rerank_weights.popularity + configState.rerank_weights.quality + configState.rerank_weights.recency).toFixed(2)}</span>
                             </h3>
 
-                            <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 {[
-                                    { key: 'vector', label: 'Similaridade Vetorial', sub: 'Poder do Contexto/IA', color: 'accent-indigo-600', help: 'O quanto o significado da questão (vetores) vale na nota final. É o coração da busca semântica.' },
-                                    { key: 'popularity', label: 'Popularidade', sub: 'Questões mais acessadas', color: 'accent-sky-500', help: 'Dá um bônus para questões que outros alunos acessam ou resolvem com frequência.' },
+                                    { key: 'vector', label: 'Similaridade Vetorial', sub: 'Contexto/IA (Cérebro)', color: 'accent-indigo-600', help: 'O quanto o significado da questão (vetores) vale na nota final. É o coração da busca semântica.' },
+                                    { key: 'popularity', label: 'Popularidade', sub: 'Resolvidas/Acessos', color: 'accent-sky-500', help: 'Dá um bônus para questões que outros alunos acessam ou resolvem com frequência.' },
                                     { key: 'quality', label: 'Qualidade Pedagógica', sub: 'Banca e complexidade', color: 'accent-amber-500', help: 'Peso para questões de bancas renomadas ou com enunciados classificados como alta qualidade.' },
-                                    { key: 'recency', label: 'Recência (Ano)', sub: 'Favorece anos atuais', color: 'accent-emerald-500', help: 'Dá preferência para questões mais novas (ex: 2024 sobre 2010), mantendo a base atualizada.' }
+                                    { key: 'recency', label: 'Recência (Ano)', sub: 'Favorece o atual', color: 'accent-emerald-500', help: 'Dá preferência para questões mais novas (ex: 2024 sobre 2010), mantendo a base atualizada.' }
                                 ].map(w => (
-                                    <div key={w.key}>
+                                    <div key={w.key} className="bg-slate-50/50 dark:bg-slate-900/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
                                         <div className="flex justify-between items-center mb-1">
                                             <div>
                                                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
@@ -844,14 +886,14 @@ const SemanticDashboard = () => {
                                 ))}
                             </div>
                             <p className="text-[10px] text-slate-400 mt-4 leading-relaxed italic">
-                                * Se a soma for &gt; 1.0, o sistema normaliza automaticamente. Recomendamos manter a soma em 1.0.
+                                * Se a soma for {'>'} 1.0, o sistema normaliza automaticamente. Recomendamos manter a soma em 1.0.
                             </p>
                         </div>
                     )}
                 </div>
 
-                {/* SEARCH TESTER */}
-                <div className="lg:col-span-2 space-y-6">
+                {/* SEARCH TESTER (BOTTOM - FULL WIDTH) */}
+                <div className="space-y-6">
                     <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm flex flex-col h-full">
                         <h2 className="text-lg font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
                             <Zap className="w-5 h-5 text-amber-500" />
@@ -881,7 +923,7 @@ const SemanticDashboard = () => {
                         {searchResults ? (
                             <div className="flex-1 flex flex-col lg:flex-row gap-6 overflow-hidden">
                                 {/* LEFT: MAESTRO X-RAY */}
-                                <div className="w-full lg:w-80 shrink-0 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+                                <div className="w-full lg:w-96 shrink-0 space-y-4 overflow-y-auto pr-2 custom-scrollbar border-r border-slate-100 dark:border-slate-700/50">
                                     <div className="flex items-center gap-2 mb-4">
                                         <Microscope className="w-4 h-4 text-indigo-500" />
                                         <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Pipeline Maestro</h3>
@@ -1053,7 +1095,7 @@ const SemanticDashboard = () => {
                                                             </span>
                                                             <span className="font-mono text-emerald-600 dark:text-emerald-400 font-black px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/30 rounded">Bscore: {res.final_score.toFixed(4)}</span>
                                                         </h5>
-                                                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-2">
+                                                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mt-2">
                                                             <div className="flex flex-col bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700/50">
                                                                 <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Semântica VEC</span>
                                                                 <span className="text-sm font-mono text-indigo-600 dark:text-indigo-400 font-bold">+{res.score_details.vector.weighted.toFixed(4)}</span>
@@ -1075,9 +1117,14 @@ const SemanticDashboard = () => {
                                                                 <span className="text-[9px] text-slate-400 mt-0.5">Raw: {res.score_details.recency.raw.toFixed(4)}</span>
                                                             </div>
                                                             <div className="flex flex-col bg-indigo-50 dark:bg-indigo-900/20 p-2 rounded shadow-sm border border-indigo-100 dark:border-indigo-800">
-                                                                <span className="text-[9px] text-indigo-500 dark:text-indigo-400 uppercase tracking-widest font-bold">Intent Booster</span>
+                                                                <span className="text-[9px] text-indigo-500 dark:text-indigo-400 uppercase tracking-widest font-bold">Intent Boost</span>
                                                                 <span className="text-sm font-mono text-purple-600 dark:text-purple-400 font-bold">+{res.score_details.intent.weighted.toFixed(4)}</span>
                                                                 <span className="text-[9px] text-slate-400 mt-0.5">Raw: {res.score_details.intent.raw.toFixed(4)}</span>
+                                                            </div>
+                                                            <div className="flex flex-col bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded shadow-sm border border-emerald-100 dark:border-emerald-800">
+                                                                <span className="text-[9px] text-emerald-600 dark:text-emerald-400 uppercase tracking-widest font-bold">Proficiency</span>
+                                                                <span className="text-sm font-mono text-emerald-700 dark:text-emerald-300 font-bold">+{res.score_details.proficiency?.weighted.toFixed(4) || '0.0000'}</span>
+                                                                <span className="text-[9px] text-slate-400 mt-0.5">Raw: {res.score_details.proficiency?.raw.toFixed(4) || '0.0000'}</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1190,293 +1237,294 @@ const SemanticDashboard = () => {
                     )}
                 </div>
             </div>
-            {/* INDEX MODAL */}
-            {isIndexModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="p-6">
-                            <div className="flex justify-between items-start mb-4">
-                                <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                                    <Server className="w-6 h-6 text-indigo-500" />
-                                    Batch Indexer Xavier
-                                </h3>
-                                <button onClick={() => setIsIndexModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                                    <RefreshCw className="w-5 h-5" style={{ transform: 'rotate(45deg)' }} />
-                                </button>
-                            </div>
-                            
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                                Dispare jobs de vetorização controlada para economizar nos custos de API.
-                                <span className="block mt-1 text-[11px] font-mono text-indigo-500 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20 w-fit px-1.5 py-0.5 rounded">
-                                    Pipeline Ativo: {stats?.config.pipeline_version || TARGET_PIPELINE_VERSION}
-                                </span>
-                            </p>
+        </div>
 
-                            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl p-4 mb-6">
-                                <div className="flex justify-between items-center mb-1">
-                                    <span className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wider">
-                                        {indexForce ? 'Total de Questões para Re-indexar' : 'Pendentes de Indexação'}
-                                    </span>
-                                    <span className={clsx("text-lg font-bold", indexForce ? "text-indigo-600 dark:text-indigo-400" : "text-amber-800 dark:text-amber-200")}>
-                                        {stats ? (
-                                            indexForce 
-                                                ? stats.overview.mysql_published_questions 
-                                                : stats.overview.mysql_published_questions - stats.overview.mysql_indexed_questions
-                                        ) : '...'}
-                                    </span>
-                                </div>
-                                <p className="text-[10px] text-amber-600 dark:text-amber-500">
-                                    {indexForce 
-                                        ? "Modo FORÇAR ativado: Todas as questões publicadas no banco serão processadas novamente."
-                                        : "Questões publicadas (exceto redações) que ainda não possuem vetores sincronizados."}
-                                </p>
-                            </div>
-
-                            <div className="space-y-2 mb-8">
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                                    Quantas questões deseja indexar nesta leva?
-                                </label>
-                                <input 
-                                    type="number" 
-                                    min="1" max="100000"
-                                    value={indexBatchLimit}
-                                    onChange={(e) => setIndexBatchLimit(parseInt(e.target.value) || 0)}
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white"
-                                />
-                                <div className="flex justify-between items-center">
-                                    <p className="text-[10px] text-slate-400">
-                                        Custo estimado: aprox. ${(indexBatchLimit * 0.0001).toFixed(4)} USD (estimativa baseada em texto médio).
-                                    </p>
-                                    <button 
-                                        type="button"
-                                        onClick={() => {
-                                            const pending = stats ? (indexForce ? stats.overview.mysql_published_questions : stats.overview.mysql_published_questions - stats.overview.mysql_indexed_questions) : 0;
-                                            setIndexBatchLimit(pending);
-                                        }}
-                                        className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 underline"
-                                    >
-                                        Indexar Tudo Pendente
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="mb-6">
-                                <label className="flex items-center gap-3 cursor-pointer group">
-                                    <div className="relative">
-                                        <input 
-                                            type="checkbox" 
-                                            className="sr-only" 
-                                            checked={indexForce}
-                                            onChange={(e) => setIndexForce(e.target.checked)}
-                                        />
-                                        <div className={clsx("block w-10 h-6 rounded-full transition-colors", indexForce ? "bg-amber-500" : "bg-slate-300 dark:bg-slate-600")}></div>
-                                        <div className={clsx("dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform", indexForce && "transform translate-x-4")}></div>
-                                    </div>
-                                    <div>
-                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Forçar Re-indexação</span>
-                                        <p className="text-[10px] text-slate-500">Ignora se a questão já possui vetores e atualiza com a nova lógica.</p>
-                                    </div>
-                                </label>
-                            </div>
-
-                            <div className="flex gap-3">
-                                <button 
-                                    onClick={() => setIsIndexModalOpen(false)}
-                                    className="flex-1 px-4 py-2.5 rounded-xl font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-                                >
-                                    Cancelar
-                                </button>
-                                <button 
-                                    onClick={handleReindex}
-                                    disabled={reindexing || indexBatchLimit <= 0}
-                                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:shadow-none"
-                                >
-                                    {reindexing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
-                                    Iniciar Batch
-                 {/* INTENT INDEX MODAL */}
-            {isIntentModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="p-6">
-                            <div className="flex justify-between items-start mb-4">
-                                <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                                    <Lightbulb className="w-6 h-6 text-purple-500" />
-                                    Indexar Matérias & Assuntos
-                                </h3>
-                                <button onClick={() => setIsIntentModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                                    <RefreshCw className="w-5 h-5" style={{ transform: 'rotate(45deg)' }} />
-                                </button>
-                            </div>
-                            
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                                Vetorize Matérias e Assuntos no Qdrant para a Detecção de Intenção da busca semântica.
-                                <span className="block mt-1 text-[11px] font-mono text-purple-500 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-900/20 w-fit px-1.5 py-0.5 rounded">
-                                    Pipeline Ativo: {stats?.config.pipeline_version || TARGET_PIPELINE_VERSION}
-                                </span>
-                            </p>
- 
-                            <div className="grid grid-cols-1 gap-3 mb-6">
-                                {/* Subjects Stat */}
-                                <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-xl p-3">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-medium text-purple-700 dark:text-purple-400 uppercase tracking-wider">Matérias/Disciplinas Pendentes</span>
-                                        <span className="text-sm font-bold text-purple-800 dark:text-purple-200">
-                                            {stats ? (intentForce ? stats.overview.mysql_total_subjects : stats.overview.mysql_total_subjects - stats.overview.mysql_indexed_subjects) : '...'}
-                                        </span>
-                                    </div>
-                                </div>
- 
-                                {/* Topics Stat */}
-                                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-3">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-medium text-blue-700 dark:text-blue-400 uppercase tracking-wider">Assuntos Pendentes</span>
-                                        <span className="text-sm font-bold text-blue-800 dark:text-blue-200">
-                                            {stats ? (intentForce ? stats.overview.mysql_total_topics : stats.overview.mysql_total_topics - stats.overview.mysql_indexed_topics) : '...'}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
- 
-                            <div className="space-y-2 mb-8">
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                                    Quantos itens indexar nesta leva?
-                                </label>
-                                <input 
-                                    type="number" 
-                                    min="1" max="100000"
-                                    value={intentBatchLimit}
-                                    onChange={(e) => setIntentBatchLimit(parseInt(e.target.value) || 0)}
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 focus:ring-2 focus:ring-purple-500 outline-none text-slate-800 dark:text-white"
-                                />
-                                <div className="flex justify-end">
-                                    <button 
-                                        type="button"
-                                        onClick={() => {
-                                            const pending = stats ? (intentForce 
-                                                ? stats.overview.mysql_total_subjects + stats.overview.mysql_total_topics 
-                                                : (stats.overview.mysql_total_subjects - stats.overview.mysql_indexed_subjects) + 
-                                                  (stats.overview.mysql_total_topics - stats.overview.mysql_indexed_topics)
-                                            ) : 0;
-                                            setIntentBatchLimit(pending);
-                                        }}
-                                        className="text-[10px] font-bold text-purple-600 hover:text-purple-700 underline"
-                                    >
-                                        Indexar Tudo Pendente (Global)
-                                    </button>
-                                </div>
-                            </div>
- 
-                            <div className="mb-6">
-                                <label className="flex items-center gap-3 cursor-pointer group">
-                                    <div className="relative">
-                                        <input 
-                                            type="checkbox" 
-                                            className="sr-only" 
-                                            checked={intentForce}
-                                            onChange={(e) => setIntentForce(e.target.checked)}
-                                        />
-                                        <div className={clsx("block w-10 h-6 rounded-full transition-colors", intentForce ? "bg-purple-500" : "bg-slate-300 dark:bg-slate-600")}></div>
-                                        <div className={clsx("dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform", intentForce && "transform translate-x-4")}></div>
-                                    </div>
-                                    <div>
-                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Forçar Re-indexação</span>
-                                        <p className="text-[10px] text-slate-500">Re-indexa com novos IDs SHA-256 e formato de embedding atualizado.</p>
-                                    </div>
-                                </label>
-                            </div>
- 
-                            <div className="flex gap-3">
-                                <button 
-                                    onClick={() => setIsIntentModalOpen(false)}
-                                    className="flex-1 px-4 py-2.5 rounded-xl font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-                                >
-                                    Cancelar
-                                </button>
-                                <button 
-                                    onClick={handleReindexIntents}
-                                    disabled={reindexingIntents || intentBatchLimit <= 0}
-                                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 transition-all disabled:opacity-50 disabled:shadow-none"
-                                >
-                                    {reindexingIntents ? <RefreshCw className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
-                                    Iniciar Batch
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}Batch
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* RESET EMBEDDINGS MODAL */}
-            {isResetModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-red-200 dark:border-red-900/50 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="bg-red-600 p-6 text-white">
-                            <h3 className="text-xl font-bold flex items-center gap-2">
-                                <Trash2 className="w-6 h-6" />
-                                Reset Completo da Busca
+        {/* INDEX MODAL */}
+        {isIndexModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                    <div className="p-6">
+                        <div className="flex justify-between items-start mb-4">
+                            <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                <Server className="w-6 h-6 text-indigo-500" />
+                                Batch Indexer Xavier
                             </h3>
-                            <p className="text-red-100 text-sm mt-2">
-                                Esta é uma ação destrutiva irreversível.
-                            </p>
+                            <button onClick={() => setIsIndexModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                <RefreshCw className="w-5 h-5" style={{ transform: 'rotate(45deg)' }} />
+                            </button>
                         </div>
                         
-                        <div className="p-6">
-                            <div className="space-y-4 mb-6">
-                                <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg text-sm border border-red-100 dark:border-red-800">
-                                    <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                                    <ul className="list-disc pl-4 space-y-1">
-                                        <li>Apagará TODAS as coleções do Qdrant.</li>
-                                        <li>Limpará as tabelas question_vectors e ai_search_cache no MySQL.</li>
-                                        <li>Zerar o status de indexação de todas as matérias e assuntos.</li>
-                                        <li><strong>Você terá que rodar "Indexar Questões" e "Indexar Matérias/Assuntos" novamente do zero.</strong></li>
-                                    </ul>
-                                </div>
-                                
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                        Para confirmar, digite <strong>RESET</strong> no campo abaixo:
-                                    </label>
-                                    <input 
-                                        type="text" 
-                                        placeholder="Digite RESET"
-                                        value={resetConfirmText}
-                                        onChange={(e) => setResetConfirmText(e.target.value)}
-                                        className="w-full rounded-lg border-red-300 dark:border-red-700/50 bg-white dark:bg-slate-900 px-4 py-2 focus:ring-2 focus:ring-red-500 outline-none text-red-600 dark:text-red-400 font-bold uppercase"
-                                    />
-                                </div>
-                            </div>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                            Dispare jobs de vetorização controlada para economizar nos custos de API.
+                            <span className="block mt-1 text-[11px] font-mono text-indigo-500 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20 w-fit px-1.5 py-0.5 rounded">
+                                Pipeline Ativo: {stats?.config.pipeline_version || TARGET_PIPELINE_VERSION}
+                            </span>
+                        </p>
 
-                            <div className="flex gap-3">
+                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl p-4 mb-6">
+                            <div className="flex justify-between items-center mb-1">
+                                <span className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                                    {indexForce ? 'Total de Questões para Re-indexar' : 'Pendentes de Indexação'}
+                                </span>
+                                <span className={clsx("text-lg font-bold", indexForce ? "text-indigo-600 dark:text-indigo-400" : "text-amber-800 dark:text-amber-200")}>
+                                    {stats ? (
+                                        indexForce 
+                                            ? stats.overview.mysql_published_questions 
+                                            : stats.overview.mysql_published_questions - stats.overview.mysql_indexed_questions
+                                    ) : '...'}
+                                </span>
+                            </div>
+                            <p className="text-[10px] text-amber-600 dark:text-amber-500">
+                                {indexForce 
+                                    ? "Modo FORÇAR ativado: Todas as questões publicadas no banco serão processadas novamente."
+                                    : "Questões publicadas (exceto redações) que ainda não possuem vetores sincronizados."}
+                            </p>
+                        </div>
+
+                        <div className="space-y-2 mb-8">
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                Quantas questões deseja indexar nesta leva?
+                            </label>
+                            <input 
+                                type="number" 
+                                min="1" max="100000"
+                                value={indexBatchLimit}
+                                onChange={(e) => setIndexBatchLimit(parseInt(e.target.value) || 0)}
+                                className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white"
+                            />
+                            <div className="flex justify-between items-center">
+                                <p className="text-[10px] text-slate-400">
+                                    Custo estimado: aprox. ${(indexBatchLimit * 0.0001).toFixed(4)} USD (estimativa baseada em texto médio).
+                                </p>
                                 <button 
+                                    type="button"
                                     onClick={() => {
-                                        setIsResetModalOpen(false);
-                                        setResetConfirmText('');
+                                        const pending = stats ? (indexForce ? stats.overview.mysql_published_questions : stats.overview.mysql_published_questions - stats.overview.mysql_indexed_questions) : 0;
+                                        setIndexBatchLimit(pending);
                                     }}
-                                    className="flex-1 px-4 py-2.5 rounded-xl font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                                    className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 underline"
                                 >
-                                    Cancelar
-                                </button>
-                                <button 
-                                    onClick={handleResetEmbeddings}
-                                    disabled={resetting || resetConfirmText !== 'RESET'}
-                                    className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 transition-all disabled:opacity-50 disabled:shadow-none"
-                                >
-                                    {resetting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                                    Executar Reset
+                                    Indexar Tudo Pendente
                                 </button>
                             </div>
                         </div>
+
+                        <div className="mb-6">
+                            <label className="flex items-center gap-3 cursor-pointer group">
+                                <div className="relative">
+                                    <input 
+                                        type="checkbox" 
+                                        className="sr-only" 
+                                        checked={indexForce}
+                                        onChange={(e) => setIndexForce(e.target.checked)}
+                                    />
+                                    <div className={clsx("block w-10 h-6 rounded-full transition-colors", indexForce ? "bg-amber-500" : "bg-slate-300 dark:bg-slate-600")}></div>
+                                    <div className={clsx("dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform", indexForce && "transform translate-x-4")}></div>
+                                </div>
+                                <div>
+                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Forçar Re-indexação</span>
+                                    <p className="text-[10px] text-slate-500">Ignora se a questão já possui vetores e atualiza com a nova lógica.</p>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setIsIndexModalOpen(false)}
+                                className="flex-1 px-4 py-2.5 rounded-xl font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onClick={handleReindex}
+                                disabled={reindexing || indexBatchLimit <= 0}
+                                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:shadow-none"
+                            >
+                                {reindexing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
+                                Iniciar Batch
+                            </button>
+                        </div>
                     </div>
                 </div>
-            )}
-        </div>
-    );
+            </div>
+        )}
+
+        {/* INTENT INDEX MODAL */}
+        {isIntentModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                    <div className="p-6">
+                        <div className="flex justify-between items-start mb-4">
+                            <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                <Lightbulb className="w-6 h-6 text-purple-500" />
+                                Indexar Matérias & Assuntos
+                            </h3>
+                            <button onClick={() => setIsIntentModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                <RefreshCw className="w-5 h-5" style={{ transform: 'rotate(45deg)' }} />
+                            </button>
+                        </div>
+                        
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                            Vetorize Matérias e Assuntos no Qdrant para a Detecção de Intenção da busca semântica.
+                            <span className="block mt-1 text-[11px] font-mono text-purple-500 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-900/20 w-fit px-1.5 py-0.5 rounded">
+                                Pipeline Ativo: {stats?.config.pipeline_version || TARGET_PIPELINE_VERSION}
+                            </span>
+                        </p>
+
+                        <div className="grid grid-cols-1 gap-3 mb-6">
+                            <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-xl p-3">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-medium text-purple-700 dark:text-purple-400 uppercase tracking-wider">Matérias/Disciplinas Pendentes</span>
+                                    <span className="text-sm font-bold text-purple-800 dark:text-purple-200">
+                                        {stats ? (intentForce ? stats.overview.mysql_total_subjects : stats.overview.mysql_total_subjects - stats.overview.mysql_indexed_subjects) : '...'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-3">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-medium text-blue-700 dark:text-blue-400 uppercase tracking-wider">Assuntos Pendentes</span>
+                                    <span className="text-sm font-bold text-blue-800 dark:text-blue-200">
+                                        {stats ? (intentForce ? stats.overview.mysql_total_topics : stats.overview.mysql_total_topics - stats.overview.mysql_indexed_topics) : '...'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 mb-8">
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                Quantos itens indexar nesta leva?
+                            </label>
+                            <input 
+                                type="number" 
+                                min="1" max="100000"
+                                value={intentBatchLimit}
+                                onChange={(e) => setIntentBatchLimit(parseInt(e.target.value) || 0)}
+                                className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 focus:ring-2 focus:ring-purple-500 outline-none text-slate-800 dark:text-white"
+                            />
+                            <div className="flex justify-end">
+                                <button 
+                                    type="button"
+                                    onClick={() => {
+                                        const pending = stats ? (intentForce 
+                                            ? stats.overview.mysql_total_subjects + stats.overview.mysql_total_topics 
+                                            : (stats.overview.mysql_total_subjects - stats.overview.mysql_indexed_subjects) + 
+                                              (stats.overview.mysql_total_topics - stats.overview.mysql_indexed_topics)
+                                        ) : 0;
+                                        setIntentBatchLimit(pending);
+                                    }}
+                                    className="text-[10px] font-bold text-purple-600 hover:text-purple-700 underline"
+                                >
+                                    Indexar Tudo Pendente (Global)
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="flex items-center gap-3 cursor-pointer group">
+                                <div className="relative">
+                                    <input 
+                                        type="checkbox" 
+                                        className="sr-only" 
+                                        checked={intentForce}
+                                        onChange={(e) => setIntentForce(e.target.checked)}
+                                    />
+                                    <div className={clsx("block w-10 h-6 rounded-full transition-colors", intentForce ? "bg-purple-500" : "bg-slate-300 dark:bg-slate-600")}></div>
+                                    <div className={clsx("dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform", intentForce && "transform translate-x-4")}></div>
+                                </div>
+                                <div>
+                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Forçar Re-indexação</span>
+                                    <p className="text-[10px] text-slate-500">Re-indexa com novos IDs SHA-256 e formato de embedding atualizado.</p>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setIsIntentModalOpen(false)}
+                                className="flex-1 px-4 py-2.5 rounded-xl font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onClick={handleReindexIntents}
+                                disabled={reindexingIntents || intentBatchLimit <= 0}
+                                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 transition-all disabled:opacity-50 disabled:shadow-none"
+                            >
+                                {reindexingIntents ? <RefreshCw className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
+                                Iniciar Batch
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* RESET EMBEDDINGS MODAL */}
+        {isResetModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-red-200 dark:border-red-900/50 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                    <div className="bg-red-600 p-6 text-white">
+                        <h3 className="text-xl font-bold flex items-center gap-2">
+                            <Trash2 className="w-6 h-6" />
+                            Reset Completo da Busca
+                        </h3>
+                        <p className="text-red-100 text-sm mt-2">
+                            Esta é uma ação destrutiva irreversível.
+                        </p>
+                    </div>
+                    
+                    <div className="p-6">
+                        <div className="space-y-4 mb-6">
+                            <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg text-sm border border-red-100 dark:border-red-800">
+                                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                                <ul className="list-disc pl-4 space-y-1">
+                                    <li>Apagará TODAS as coleções do Qdrant.</li>
+                                    <li>Limpará as tabelas question_vectors e ai_search_cache no MySQL.</li>
+                                    <li>Zerar o status de indexação de todas as matérias e assuntos.</li>
+                                    <li><strong>Você terá que rodar "Indexar Questões" e "Indexar Matérias/Assuntos" novamente do zero.</strong></li>
+                                </ul>
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                    Para confirmar, digite <strong>RESET</strong> no campo abaixo:
+                                </label>
+                                <input 
+                                    type="text" 
+                                    placeholder="Digite RESET"
+                                    value={resetConfirmText}
+                                    onChange={(e) => setResetConfirmText(e.target.value)}
+                                    className="w-full rounded-lg border-red-300 dark:border-red-700/50 bg-white dark:bg-slate-900 px-4 py-2 focus:ring-2 focus:ring-red-500 outline-none text-red-600 dark:text-red-400 font-bold uppercase"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => {
+                                    setIsResetModalOpen(false);
+                                    setResetConfirmText('');
+                                }}
+                                className="flex-1 px-4 py-2.5 rounded-xl font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onClick={handleResetEmbeddings}
+                                disabled={resetting || resetConfirmText !== 'RESET'}
+                                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 transition-all disabled:opacity-50 disabled:shadow-none"
+                            >
+                                {resetting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                Executar Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+    </div>
+);
 };
 
 export default SemanticDashboard;

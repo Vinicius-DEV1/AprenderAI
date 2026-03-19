@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Cache;
 use App\Services\PromptService;
 use App\Services\AI\ResponseSanitizer;
 use App\Services\AI\AITelemetryService;
+use Illuminate\Support\Facades\Redis;
 
 /**
  * AIService - Core service for AI interaction and management.
@@ -1422,7 +1423,7 @@ EOT;
 
             $result = $this->callAI($provider, $apiKey, $prompt, $userId, $capability);
 
-            // Decodifica o JSON retornado pela IA (pode vir como string bruta com markdown)
+            // Decode the JSON returned by the AI (may come as raw string with markdown blocks)
             $decoded = $this->responseSanitizer->sanitize($result['content']);
 
             if (empty($decoded)) {
@@ -1521,6 +1522,7 @@ EOT;
         }
 
         $lastException = null;
+        $keysLockedCount = 0;
 
         foreach ($keys as $apiKey) {
             // --- DISTRIBUTED LOCK (CONCURRENCY CONTROL) ---
@@ -1532,8 +1534,9 @@ EOT;
             $isLocked = ! \Illuminate\Support\Facades\Redis::set($lockKey, '1', 'EX', 60, 'NX');
 
             if ($isLocked) {
-                // AGGRESSIVE SKIP: If another worker is using this key, skip to the next one instantly.
-                Log::debug("[AIService] Key #{$apiKey->id} is busy. Skipping to next available key.");
+                $keysLockedCount++;
+                // SKIP: Key is currently being used by another worker.
+                Log::debug("[AIService] Key #{$apiKey->id} is busy. Skipping...");
                 continue;
             }
 
@@ -1580,24 +1583,31 @@ EOT;
             }
         }
 
-        // DEGRADATION LOGIC: If we reach here, no key could be acquired (all busy) or all failed.
-        // We throw the specific BusyException so the Job can be released back to the queue (retry).
-        throw new AIServiceBusyException($lastException ? $lastException->getMessage() : "All valid AI keys are currently locked or exhausted.");
+        // --- CONGESTION HANDLING ---
+        // If we reach here, no key was available (all busy or all failed).
+        if ($keysLockedCount > 0) {
+            $this->registerCongestion($capability, "Busy Pool ({$keysLockedCount} Locked)");
+        }
+
+        throw new AIServiceBusyException(
+            "AI Pool Congestion: All keys for '{$capability}' are currently busy or reached quota limit.",
+            $lastException
+        );
     }
 
     /**
-     * Verifica se o erro gerado na chamada é passível de retry em outra chave.
+     * Determines if the AI error is retriable with a different key.
      */
     protected function isRetriableError(\Exception $e): bool
     {
         $message = strtolower($e->getMessage());
 
-        // 429 = Rate Limit / Quota Exceeded — tentar com outra chave
+        // 429 = Rate Limit / Quota Exceeded — try with another key.
         if (str_contains($message, '429') || str_contains($message, 'quota exceeded') || str_contains($message, 'rate limit')) {
             return true;
         }
 
-        // 500, 502, 503, 504 = Server error do Google/OpenAI.
+        // 500, 502, 503, 504 = Server errors from Google/OpenAI.
         if (
             str_contains($message, '500') ||
             str_contains($message, '502') ||
@@ -1815,6 +1825,53 @@ EOT;
         }
 
         return $response->json('choices.0.message.content') ?? '';
+    }
+
+    /**
+     * Registers a job that was released (backoff) due to API key congestion.
+     * Stores in a Redis list with a TTL of 1 hour.
+     */
+    public function registerCongestion(string $jobName, $id = null): void
+    {
+        try {
+            $key = "xavier:ai:congestion_list";
+            $data = json_encode([
+                'job' => $jobName,
+                'id' => $id,
+                'timestamp' => now()->toIso8601String(),
+            ]);
+
+            Redis::lpush($key, $data);
+            Redis::ltrim($key, 0, 49); // Keep a buffer of the last 50 congestion hits
+            Redis::expire($key, 3600); // 1 hour TTL
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("[AIService] Failed to register congestion in Redis: " . $e->getMessage());
+        }
+    }
+
+    public function getCongestionList(): array
+    {
+        try {
+            $key = "xavier:ai:congestion_list";
+            $items = Redis::lrange($key, 0, -1);
+            return array_map(function($item) {
+                $data = json_decode($item, true);
+                if (isset($data['timestamp'])) {
+                    $data['ago'] = \Carbon\Carbon::parse($data['timestamp'])->diffForHumans();
+                }
+                return $data;
+            }, $items);
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Clears the congestion list.
+     */
+    public function clearCongestionList(): void
+    {
+        Redis::del("xavier:ai:congestion_list");
     }
 }
 

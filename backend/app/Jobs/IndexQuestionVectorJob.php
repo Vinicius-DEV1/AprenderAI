@@ -60,6 +60,7 @@ class IndexQuestionVectorJob implements ShouldQueue
         // to wait for quota reset or manual intervention, preventing mass failures.
         if (!$aiService->hasActiveKey(\App\Models\ApiKey::CAPABILITY_EMBEDDING)) {
             Log::info("[Xavier][IndexQuestion] No active keys for embedding. Releasing question #{$this->questionId} to retry in 5 minutes.");
+            $aiService->registerCongestion('IndexQuestionVectorJob', $this->questionId);
             $this->release(300); // 5 minutes backoff
             return;
         }
@@ -120,6 +121,7 @@ class IndexQuestionVectorJob implements ShouldQueue
             // POOL BUSY OR LOCKED: All keys are currently used by other workers or blacklisted.
             // Release back to queue with 5m delay (respecting the 2-day retry window).
             Log::info("[IndexQuestionVectorJob] AI Key pool busy/locked for question #{$this->questionId}. Releasing for 5m backoff.");
+            $aiService->registerCongestion('IndexQuestionVectorJob', $this->questionId);
             $this->release(300);
             return;
         } catch (\Exception $e) {
@@ -132,6 +134,7 @@ class IndexQuestionVectorJob implements ShouldQueue
 
             if ($isQuota) {
                 Log::warning("[IndexQuestionVectorJob] Quota limit hit or no keys available for #{$this->questionId}. Releasing for 5m. Error: {$msg}");
+                $aiService->registerCongestion('IndexQuestionVectorJob', $this->questionId);
                 $this->release(300);
                 return;
             }
