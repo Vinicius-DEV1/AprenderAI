@@ -125,6 +125,8 @@ class RunVectorSearchJob implements ShouldQueue
                 'search_path'   => $searchPath,
                 'score_details' => $scoreDetailsMap,
                 'concepts'      => $ctx['detected_concepts'] ?? [],
+                'is_restricted' => $ctx['is_restricted']    ?? false,
+                'restricted'    => $ctx['restricted_terms'] ?? [],
             ]),
         ]);
 

@@ -568,78 +568,76 @@ class QuestionController extends Controller
         // - Topics: Assuntos específicos (ex: Verbos, Geometria).
         $extractedSubjects = [];
         $extractedTopics   = [];
-        $detectedConcepts  = [];
         $extractedOrgs     = [];
         $extractedInsts    = [];
-        $searchPath = 'concept';
+        $searchPath = 'intent_match';
 
         try {
-            // Obtém o threshold de detecção de conceito do banco de dados (default 0.75)
-            $conceptThreshold = (float) \App\Models\Configuration::get('xavier_concept_detection_threshold', config('xavier.embeddings.concept_detection_threshold', 0.75));
-            
-            // Busca na coleção 'concepts_vectors' as 5 entidades mais similares à query do usuário
-            $conceptMatches = $qdrant->searchConcepts($queryVector, 5, $conceptThreshold);
-            
-            foreach ($conceptMatches as $match) {
+            // Obtém o threshold de detecção de intenção do banco de dados (default 0.75)
+            $intentThreshold = (float) \App\Models\Configuration::get('xavier_concept_detection_threshold', config('xavier.embeddings.concept_detection_threshold', 0.75));
+
+            // Busca na coleção de filtros semânticos as 5 entidades mais similares à query
+            $intentMatches = $qdrant->searchIntents($queryVector, 5, $intentThreshold);
+
+            foreach ($intentMatches as $match) {
                 $payload = $match['payload'] ?? [];
-                $type = $payload['entity_type'] ?? 'concept';
-                
-                // Distribui os resultados conforme o tipo de entidade detectada
-                if ($type === 'concept' && isset($payload['concept_slug'])) {
-                    // Conceitos alimentam a expansão por Grafo (KG)
-                    $detectedConcepts[] = $payload['concept_slug'];
-                } elseif ($type === 'subject' && isset($payload['subject_id'])) {
-                    // INTENÇÃO DE DISCIPLINA DETECTADA: Salva múltiplos hits que serão
-                    // usados mais abaixo como bônus (boost) pelo ReRankService.
+                $type = $payload['entity_type'] ?? '';
+
+                if ($type === 'subject' && isset($payload['subject_id'])) {
                     $extractedSubjects[] = (int) $payload['subject_id'];
-                    Log::info("[Xavier][Search] INTENT DETECTED: Subject #{$payload['subject_id']} ({$payload['name']})");
+                    Log::info("[Xavier][Search] INTENT: Subject #{$payload['subject_id']} ({$payload['name']})");
                 } elseif ($type === 'topic' && isset($payload['topic_id'])) {
                     $extractedTopics[] = (int) $payload['topic_id'];
-                    Log::info("[Xavier][Search] INTENT DETECTED: Topic #{$payload['topic_id']} ({$payload['name']})");
+                    Log::info("[Xavier][Search] INTENT: Topic #{$payload['topic_id']} ({$payload['name']})");
                 } elseif ($type === 'organization' && isset($payload['organization'])) {
                     $extractedOrgs[] = $payload['organization'];
-                    Log::info("[Xavier][Search] INTENT DETECTED: Organization '{$payload['organization']}'");
+                    Log::info("[Xavier][Search] INTENT: Org '{$payload['organization']}'");
                 } elseif ($type === 'institution' && isset($payload['institution'])) {
                     $extractedInsts[] = $payload['institution'];
-                    Log::info("[Xavier][Search] INTENT DETECTED: Institution '{$payload['institution']}'");
+                    Log::info("[Xavier][Search] INTENT: Inst '{$payload['institution']}'");
                 }
             }
-            
-            $detectedConcepts = array_values(array_unique($detectedConcepts));
+
             $extractedSubjects = array_values(array_unique($extractedSubjects));
-            $extractedTopics = array_values(array_unique($extractedTopics));
-            $extractedOrgs = array_values(array_unique($extractedOrgs));
-            $extractedInsts = array_values(array_unique($extractedInsts));
-            Log::info('[Xavier][Search] Step 5 done: intent & concept detection.', [
-                'concepts' => $detectedConcepts,
-                'subject_ids' => $extractedSubjects,
-                'topic_ids' => $extractedTopics,
+            $extractedTopics   = array_values(array_unique($extractedTopics));
+            $extractedOrgs     = array_values(array_unique($extractedOrgs));
+            $extractedInsts    = array_values(array_unique($extractedInsts));
+
+            Log::info('[Xavier][Search] Step 5 done: intent detection.', [
+                'subject_ids'   => $extractedSubjects,
+                'topic_ids'     => $extractedTopics,
                 'organizations' => $extractedOrgs,
                 'institutions'  => $extractedInsts,
             ]);
         } catch (\Exception $e) {
-            Log::warning('[Xavier][Search] Step 5 FAILED: concept detection error.', ['err' => $e->getMessage()]);
+            Log::warning('[Xavier][Search] Step 5 FAILED: intent detection error.', ['err' => $e->getMessage()]);
         }
 
-        // ── Step 5b: Fallback se nenhuma intenção ou conceito for encontrado ──
-        if (empty($detectedConcepts) && empty($extractedSubjects) && empty($extractedTopics) && empty($extractedOrgs) && empty($extractedInsts)) {
+        // ── Step 5b: Fallback se nenhuma intenção for encontrada ───────────────
+        if (empty($extractedSubjects) && empty($extractedTopics) && empty($extractedOrgs) && empty($extractedInsts)) {
             Log::info('[Xavier][Search] Step 5b: no intents found, proceeding with pure vector search.');
             $searchPath = 'vector_only';
         }
 
-        // ── Step 5d: Detecção de Intenções Negativas (Exclusão) ────────────────
-        // Se o usuário digitou "menos FGV", buscamos o vetor de "FGV" e marcamos como exclusão.
+        // ── Step 5d: Detecção de Intenções Negativas e Restrições (Xavier 2.0) ──
         $excludedOrgs       = [];
         $excludedInsts      = [];
         $excludedSubjects   = [];
         $excludedTopics     = [];
         $excludedConceptIds = [];
         $excludedType       = null;
+        
+        // Entidades obrigatórias (MUST) vindas de "apenas / somente"
+        $mustOrgs           = [];
+        $mustInsts          = [];
+        $mustSubjects       = [];
+        $mustTopics         = [];
 
+        // 1. Processar NEGAÇÕES (O que remover)
         if (!empty($negativePrompt)) {
             try {
                 $negVector = $aiService->generateEmbedding($negativePrompt, $user->id, 'RETRIEVAL_QUERY');
-                $negMatches = $qdrant->searchConcepts($negVector, 5, 0.70); // Threshold menor para negação ser mais sensível
+                $negMatches = $qdrant->searchConcepts($negVector, 5, 0.70);
                 
                 foreach ($negMatches as $match) {
                     $payload = $match['payload'] ?? [];
@@ -658,24 +656,76 @@ class QuestionController extends Controller
                     }
                 }
 
-                // Detecção de tipo negativo via keyword no prompt negativo
                 $lowerNeg = mb_strtolower($negativePrompt);
                 if (str_contains($lowerNeg, 'concurso')) $excludedType = 'concurso';
                 if (str_contains($lowerNeg, 'enem')) $excludedType = 'enem';
 
-                Log::info('[Xavier][Search] Negative intents detected.', [
-                    'orgs' => $excludedOrgs,
-                    'insts' => $excludedInsts,
-                    'subs' => $excludedSubjects,
-                    'topi' => $excludedTopics,
-                    'conc' => $excludedConceptIds
-                ]);
-
             } catch (\Exception $e) {
-                Log::warning('[Xavier][Search] Step 5d FAILED: negative intent detection error.', ['err' => $e->getMessage()]);
+                Log::warning('[Xavier][Search] Negative intent detection error.', ['err' => $e->getMessage()]);
             }
         }
 
+        // 2. Processar RESTRIÇÕES (O que travar como MUST)
+        if ($analysis['is_restricted'] && !empty($analysis['restricted_terms'])) {
+            try {
+                foreach ($analysis['restricted_terms'] as $term) {
+                    $mustVector = $aiService->generateEmbedding($term, $user->id, 'RETRIEVAL_QUERY');
+                    $mustMatches = $qdrant->searchConcepts($mustVector, 3, 0.85); // Threshold ALTO para restrição ser precisa
+                    
+                    foreach ($mustMatches as $match) {
+                        $payload = $match['payload'] ?? [];
+                        $type = $payload['entity_type'] ?? '';
+                        
+                        if ($type === 'organization' && isset($payload['organization'])) {
+                            $mustOrgs[] = $payload['organization'];
+                        } elseif ($type === 'institution' && isset($payload['institution'])) {
+                            $mustInsts[] = $payload['institution'];
+                        } elseif ($type === 'subject' && isset($payload['subject_id'])) {
+                            $mustSubjects[] = (int) $payload['subject_id'];
+                        } elseif ($type === 'topic' && isset($payload['topic_id'])) {
+                            $mustTopics[] = (int) $payload['topic_id'];
+                        }
+                    }
+
+                    // Detecção de tipo via keyword no termo restrito
+                    $lowerTerm = mb_strtolower($term);
+                    if (str_contains($lowerTerm, 'concurso')) $sqlFilters['type'] = 'concurso';
+                    if (str_contains($lowerTerm, 'enem')) $sqlFilters['type'] = 'enem';
+                }
+            } catch (\Exception $e) {
+                Log::warning('[Xavier][Search] Restriction intent detection error.', ['err' => $e->getMessage()]);
+            }
+        }
+
+        Log::info('[Xavier][Search] Intent Analysis Finalized.', [
+            'exclusions' => count($excludedOrgs) + count($excludedInsts) + count($excludedSubjects) + count($excludedTopics) + count($excludedConceptIds),
+            'restrictions' => count($mustOrgs) + count($mustInsts) + count($mustSubjects) + count($mustTopics)
+        ]);
+
+        // ── Step 6: Expansão de Query via Co-ocorrência de Subjects/Topics ─────
+        // Se detectamos Subjects ou Topics via Qdrant, expandimos para entidades
+        // correlacionadas (e.g. Subject de Biologia → Topics como Genética, Citologia)
+        // baseado em co-ocorrências reais nas questões do banco de dados.
+        $expandedSubjectIds = $extractedSubjects;
+        $expandedTopicIds   = $extractedTopics;
+        
+        if (!empty($extractedSubjects) || !empty($extractedTopics)) {
+            $expanded = $expansion->expand($extractedSubjects, $extractedTopics);
+            $expandedSubjectIds = $expanded['subject_ids'];
+            $expandedTopicIds   = $expanded['topic_ids'];
+        }
+
+        Log::info('[Xavier][Search] Step 6 done: co-occurrence expansion.', [
+            'original_subjects' => $extractedSubjects,
+            'original_topics'   => $extractedTopics,
+            'expanded_subjects' => $expandedSubjectIds,
+            'expanded_topics' => $expandedTopicIds,
+        ]);
+
+        // Atualiza as intenções com os valores expandidos para uso no ReRank
+        // (os expanded IDs substituem os originais no intent_filters)
+        $extractedSubjects = $expandedSubjectIds;
+        $extractedTopics   = $expandedTopicIds;
         // ── Step 5c: Detecção de Tipo (ENEM/Concurso) via Keywords ─────────────
         // Usamos o prompt POSITIVO para detectar o tipo desejado.
         $extractedType = null;
@@ -736,7 +786,22 @@ class QuestionController extends Controller
             $sqlFilters['institution'] = $extractedInsts;
         }
 
-        // Aplicar exclusões detectadas
+        // Aplicar restrições detectadas (MUST)
+        if (!empty($mustOrgs)) {
+            $sqlFilters['organization'] = count($mustOrgs) === 1 ? $mustOrgs[0] : $mustOrgs;
+        }
+        if (!empty($mustInsts)) {
+            $sqlFilters['institution'] = count($mustInsts) === 1 ? $mustInsts[0] : $mustInsts;
+        }
+        if (!empty($mustSubjects)) {
+            // Se o usuário restringiu a disciplina, sobrescrevemos o filtro original
+            $sqlFilters['subject'] = $mustSubjects[0];
+        }
+        if (!empty($mustTopics)) {
+            $sqlFilters['topic'] = $mustTopics[0];
+        }
+
+        // Aplicar exclusões detectadas (MUST NOT)
         if (!empty($excludedOrgs)) {
             $sqlFilters['exclude_organization'] = $excludedOrgs;
         }
@@ -757,11 +822,10 @@ class QuestionController extends Controller
         $searchContext = [
             'prompt'              => $request->prompt,
             'normalized_query'    => $normalizedQuery,
-            'query_vector'        => $queryVector,          // Vetor genérico = fallback de slots null
-            'expanded_concept_ids'=> $expandedConceptIds,
-            'excluded_concept_ids'=> $excludedConceptIds, // <--- NOVO
-            'detected_concepts'   => $detectedConcepts,
+            'query_vector'        => $queryVector,
             'sql_filters'         => $sqlFilters,
+            'is_restricted'       => $analysis['is_restricted'],
+            'restricted_terms'    => $analysis['restricted_terms'],
             'intent_filters'      => array_filter([
                 'subject_id'   => $extractedSubjects ?: null,
                 'topic_id'     => $extractedTopics   ?: null,
