@@ -488,6 +488,7 @@ export function AdminApiKeys() {
         mutationFn: async (payload: any) => api.post('/api/v1/admin/api-keys', payload),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-api-keys'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-triage-active-keys'] });
             setRoutingForm({ vault_id: '', preferred_model: '', capabilities: [] });
             toast.success('Roteamento ativado com sucesso!');
         },
@@ -560,13 +561,11 @@ export function AdminApiKeys() {
     const aiLogs: AiLog[] = data?.ai_logs || [];
     const aiRanking: AiRanking[] = data?.ai_ranking || [];
 
-    // Metadata mapping for rich descriptions and icons
     const capabilityMeta: Record<string, { icon: string, description: string }> = {
         chat_tutor: { icon: '💬', description: 'Responde dúvidas dos alunos sobre questões resolvidas.' },
         questions: { icon: '✍️', description: 'Gera questões inéditas, explicações e gabaritos comentados.' },
         triage: { icon: '⚙️', description: 'Classifica e modera questões durante o processamento em lote.' },
-        search: { icon: '🔍', description: 'Interpreta buscas em linguagem natural na barra de pesquisa.' },
-        general: { icon: '🔄', description: 'Uso de propósito geral quando sem capability específica.' }
+        search: { icon: '🔍', description: 'Interpreta buscas em linguagem natural na barra de pesquisa.' }
     };
 
     return (
@@ -823,7 +822,7 @@ export function AdminApiKeys() {
                                             })}
                                         </div>
                                     </div>
-                                    <button onClick={() => activateRoutingMutation.mutate(routingForm)} disabled={activateRoutingMutation.isPending || !routingForm.vault_id || routingForm.capabilities.length === 0} className="w-full mt-8 py-4 bg-slate-900 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl">
+                                    <button onClick={() => activateRoutingMutation.mutate(routingForm)} disabled={activateRoutingMutation.isPending || !routingForm.vault_id || !routingForm.preferred_model || routingForm.capabilities.length === 0} className="w-full mt-8 py-4 bg-slate-900 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl">
                                         {activateRoutingMutation.isPending ? 'Ativando...' : '⚡ Ativar Roteamento AI'}
                                     </button>
                                 </section>
@@ -855,8 +854,15 @@ export function AdminApiKeys() {
                                                             <Reorder.Item key={key.pivot?.id || key.id} value={key} className={`p-3 bg-white border border-slate-100 rounded-xl shadow-sm flex items-center gap-3 cursor-grab active:cursor-grabbing hover:border-indigo-300 transition-all ${key.status !== 'online' ? 'bg-red-50' : ''}`}>
                                                                 <div className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-[10px] ${idx === 0 ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>{idx + 1}</div>
                                                                 <div className="flex-1 min-w-0">
-                                                                    <p className="font-bold text-slate-800 text-sm truncate">{key.effective_provider} ({key.vault?.nickname || 'Direto'})</p>
-                                                                    <p className="text-[10px] font-mono text-slate-400 truncate">{key.preferred_model || 'Auto'}</p>
+                                                                    <div className="flex items-center gap-2">
+                                                                        {key.status === 'online' ? (
+                                                                            <span className="flex h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" title="Online"></span>
+                                                                        ) : (
+                                                                            <span className="flex h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" title="Offline"></span>
+                                                                        )}
+                                                                        <p className="font-bold text-slate-800 text-sm truncate">{key.effective_provider} ({key.vault?.nickname || 'Direto'})</p>
+                                                                    </div>
+                                                                    <p className="text-[10px] font-mono text-slate-400 truncate mt-0.5">{key.preferred_model || 'Auto'}</p>
                                                                 </div>
                                                                 <button onClick={() => retestMutation.mutate(key.id)} className="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg">⚡</button>
                                                                 <button onClick={() => key.pivot?.id && deleteApiKeyMutation.mutate(key.pivot.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg">✕</button>

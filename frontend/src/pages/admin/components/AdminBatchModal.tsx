@@ -682,18 +682,32 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                             </div>
                         ) : step === 'config' ? (
                             <div className="space-y-6">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-xs font-black uppercase text-gray-400 mb-2">Quantidade Máxima (Disponível: {pendingCount})</label>
-                                        <input
-                                            type="number"
-                                            value={quantity}
-                                            onChange={(e) => setQuantity(parseInt(e.target.value))}
-                                            max={pendingCount}
-                                            className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold"
-                                        />
+                                <div className="flex flex-col gap-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-xs font-black uppercase text-gray-400 mb-2">Quantidade Máxima (Disponível: {pendingCount})</label>
+                                            <input
+                                                type="number"
+                                                value={quantity}
+                                                onChange={(e) => setQuantity(parseInt(e.target.value))}
+                                                max={pendingCount}
+                                                className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-black uppercase text-gray-400 mb-2">Tamanho do Lote (Chunk)</label>
+                                            <input
+                                                type="number"
+                                                value={chunkSize}
+                                                onChange={(e) => setChunkSize(parseInt(e.target.value) || 5)}
+                                                min={1}
+                                                className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold"
+                                            />
+                                            <p className="text-[10px] text-gray-400 mt-1 font-bold italic">Questões processadas por requisição API.</p>
+                                        </div>
                                     </div>
-                                    <div className="sm:col-span-2">
+
+                                    <div className="w-full">
                                         <label className="block text-xs font-black uppercase text-gray-400 mb-2">⚡ Roteamento de IA (Triagem)</label>
                                         {triageKeys.length === 0 ? (
                                             <div className="w-full px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-xs font-bold flex items-center gap-2">
@@ -722,51 +736,42 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                             </div>
                                         )}
                                     </div>
-                                    <div>
-                                        <label className="block text-xs font-black uppercase text-gray-400 mb-2">Tamanho do Lote (Chunk)</label>
-                                        <input
-                                            type="number"
-                                            value={chunkSize}
-                                            onChange={(e) => setChunkSize(parseInt(e.target.value) || 5)}
-                                            min={1}
-                                            className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold"
-                                        />
-                                        <p className="text-[10px] text-gray-400 mt-1 font-bold italic">Questões processadas por requisição API.</p>
-                                    </div>
-                                    <div className="flex items-center gap-3 pt-6">
-                                        <label className="relative inline-flex items-center cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={reprocess}
-                                                onChange={(e) => setReprocess(e.target.checked)}
-                                                className="sr-only peer"
-                                            />
-                                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                                            <span className="ml-3 text-xs font-black uppercase text-gray-400">Forçar Sobrescrita</span>
-                                        </label>
-                                    </div>
-                                    <div className="sm:col-span-2 space-y-2 mt-2">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                            <span>⏱️ Intervalo entre Blocos (segundos)</span>
-                                            <span className="normal-case font-bold text-[9px] text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">Seguro p/ Gemini Free: 5s+</span>
-                                        </label>
-                                        <div className="flex items-center gap-4 bg-gray-50/50 p-3 rounded-2xl border border-gray-100">
-                                            <input
-                                                type="range"
-                                                min="0"
-                                                max="60"
-                                                step="5"
-                                                value={delaySeconds}
-                                                onChange={(e) => setDelaySeconds(parseInt(e.target.value))}
-                                                className="flex-grow accent-indigo-600 h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer"
-                                            />
-                                            <div className="w-14 text-center py-1.5 bg-white border border-gray-100 rounded-xl font-black text-indigo-600 text-sm shadow-sm">
-                                                {delaySeconds}s
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                                <span>⏱️ Intervalo entre Blocos (segundos)</span>
+                                            </label>
+                                            <div className="flex items-center gap-4 bg-gray-50/50 p-3 rounded-2xl border border-gray-100">
+                                                <input
+                                                    type="range"
+                                                    min="0"
+                                                    max="60"
+                                                    step="5"
+                                                    value={delaySeconds}
+                                                    onChange={(e) => setDelaySeconds(parseInt(e.target.value))}
+                                                    className="flex-grow accent-indigo-600 h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer"
+                                                />
+                                                <div className="w-14 text-center py-1.5 bg-white border border-gray-100 rounded-xl font-black text-indigo-600 text-sm shadow-sm">
+                                                    {delaySeconds}s
+                                                </div>
                                             </div>
+                                            <p className="text-[9px] text-gray-400 font-bold italic leading-tight">
+                                                Atrasa o início de cada bloco para evitar bloqueios de quota do Google.
+                                            </p>
                                         </div>
-                                        <p className="text-[9px] text-gray-400 font-bold italic leading-tight">
-                                            Atrasa o início de cada bloco para evitar bloqueios de quota do Google.
-                                        </p>
+                                        <div className="flex items-center gap-3 pt-6">
+                                            <label className="relative inline-flex items-center cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={reprocess}
+                                                    onChange={(e) => setReprocess(e.target.checked)}
+                                                    className="sr-only peer"
+                                                />
+                                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                                <span className="ml-3 text-xs font-black uppercase text-gray-400">Forçar Sobrescrita</span>
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
 

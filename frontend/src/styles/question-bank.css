@@ -36,30 +36,34 @@
 .qb-header {
     background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
     border-radius: 16px;
-    padding: 28px 32px;
+    padding: 20px 24px;
     color: white;
     margin-bottom: 20px;
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     flex-wrap: wrap;
     gap: 16px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .qb-header-left h1 {
-    font-size: 26px;
+    font-size: 22px;
     font-weight: 700;
     margin-bottom: 2px;
+    word-break: break-word;
 }
 
 .qb-header-left p {
     font-size: 13px;
     opacity: 0.85;
+    word-break: break-word;
 }
 
 .qb-header-stats {
     display: flex;
-    gap: 10px;
+    gap: 6px;
     flex-wrap: wrap;
 }
 
@@ -67,18 +71,19 @@
     background: rgba(255, 255, 255, 0.15);
     backdrop-filter: blur(8px);
     border-radius: 10px;
-    padding: 10px 18px;
+    padding: 8px 12px;
     text-align: center;
-    min-width: 90px;
+    min-width: 76px;
+    flex: 1 1 76px;
 }
 
 .qb-stat .val {
-    font-size: 22px;
+    font-size: 18px;
     font-weight: 700;
 }
 
 .qb-stat .lbl {
-    font-size: 10px;
+    font-size: 9px;
     opacity: 0.8;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -107,6 +112,8 @@
 .qb-ai-wrapper {
     position: relative;
     margin-bottom: 24px;
+    /* prevent absolute children from causing horizontal overflow */
+    overflow: visible;
 }
 
 .qb-ai-search-container {
@@ -119,6 +126,8 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
 }
 
 .dark .qb-ai-search-container {
@@ -156,7 +165,7 @@
     background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
     color: white;
     border-radius: 12px;
-    padding: 10px 24px;
+    padding: 10px 20px;
     font-size: 13px;
     font-weight: 700;
     border: none;
@@ -165,8 +174,10 @@
     white-space: nowrap;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     margin-right: 4px;
+    flex-shrink: 0;
 }
 
 .qb-ai-button:hover {
@@ -372,11 +383,12 @@
 .xavier-bubble {
     position: absolute;
     top: calc(100% + 16px);
-    left: 20px;
+    left: 0;
+    right: 0;
     background: white;
     border: 1px solid #6366f1;
     border-radius: 20px;
-    padding: 20px 28px;
+    padding: 20px 24px;
     box-shadow: 0 15px 40px rgba(99, 102, 241, 0.2);
     max-width: 520px;
     z-index: 50;
@@ -384,6 +396,7 @@
     gap: 16px;
     align-items: flex-start;
     border-left-width: 6px;
+    box-sizing: border-box;
 }
 
 .dark .xavier-bubble {
@@ -499,13 +512,15 @@
 .qb-filters {
     background: white;
     border-radius: 20px;
-    padding: 24px;
+    padding: 20px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
     margin-bottom: 24px;
     border: 1px solid #e2e8f0;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 16px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .dark .qb-filters {
@@ -516,7 +531,7 @@
 .qb-filter-row {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
+    gap: 12px;
     align-items: end;
     width: 100%;
 }
@@ -542,6 +557,10 @@
     }
 
     .qb-filter-item[class*="flex-[2"] {
+        grid-column: span 2;
+    }
+
+    .qb-filter-toggle {
         grid-column: span 2;
     }
 }
@@ -966,6 +985,7 @@
         display: flex;
         flex-direction: column;
         align-items: stretch;
+        gap: 10px;
     }
 
     .qb-filter-item,
@@ -975,22 +995,125 @@
         width: 100% !important;
         max-width: 100% !important;
         flex: 1 1 100% !important;
+        grid-column: unset !important;
     }
 
     .qb-filter-toggle {
         justify-content: center;
-        margin-top: 8px;
+        margin-top: 0;
+        height: 44px;
     }
 
     .qb-filter-checkbox {
         padding-left: 0;
         padding-right: 0;
         justify-content: flex-start;
+        height: auto;
     }
 
     .qb-header {
         flex-direction: column;
         align-items: flex-start;
+        padding: 16px;
+    }
+
+    .qb-header-left h1 {
+        font-size: 18px;
+    }
+
+    .qb-header-stats {
+        gap: 6px;
+    }
+
+    .qb-stat {
+        padding: 6px 10px;
+        min-width: 60px;
+    }
+
+    .qb-stat .val {
+        font-size: 15px;
+    }
+
+    .qb-stat .lbl {
+        font-size: 8px;
+    }
+
+    .qb-filters {
+        padding: 14px;
+        gap: 12px;
+    }
+
+    .qb-filter-actions {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding-top: 12px;
+    }
+
+    .qb-result-count {
+        width: 100%;
+        margin-left: 0;
+        text-align: center;
+    }
+
+    /* AI Search bar stacks on mobile */
+    .qb-ai-search-container {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 8px;
+    }
+
+    .qb-ai-input {
+        font-size: 14px;
+        padding: 10px 12px;
+        width: 100%;
+    }
+
+    .qb-ai-button {
+        width: 100%;
+        margin-right: 0;
+        border-radius: 10px;
+        padding: 12px 16px;
+        justify-content: center;
+    }
+
+    /* Xavier bubble: use relative positioning on mobile to avoid overflow */
+    .xavier-bubble {
+        position: relative;
+        top: auto;
+        left: auto;
+        right: auto;
+        margin-top: 12px;
+        max-width: 100%;
+        border-radius: 16px;
+        padding: 16px;
+        gap: 10px;
+    }
+
+    .xavier-bubble::after {
+        display: none;
+    }
+
+    .xavier-header-badge {
+        font-size: 12px;
+        padding: 6px 12px;
+        flex-wrap: wrap;
+    }
+
+    .qb-btn-desempenho {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Pagination info wraps below buttons */
+    .qb-pagination-info {
+        width: 100%;
+        text-align: center;
+        margin-left: 0;
+    }
+
+    /* Score details grid for admins */
+    .qb-card .grid-cols-2 {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
@@ -1416,5 +1539,120 @@
 
 .katex .mtable .vlist-t {
     border-color: currentColor !important;
+}
+
+/* ══════════════════════════════════════════════════════════
+   EXTRA SMALL SCREENS (≤ 425px) — phones: 320, 375, 425
+   ══════════════════════════════════════════════════════════ */
+
+/* Global container safeguard — prevents horizontal scroll on the page */
+.py-2 {
+    overflow-x: hidden;
+}
+
+@media (max-width: 425px) {
+    /* Header: even smaller */
+    .qb-header {
+        padding: 12px;
+        border-radius: 12px;
+    }
+
+    .qb-header-left h1 {
+        font-size: 16px;
+    }
+
+    .qb-header-left p {
+        font-size: 12px;
+    }
+
+    /* Stats: 3 per row max on tiny screens */
+    .qb-header-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
+    }
+
+    .qb-stat {
+        min-width: 0;
+        padding: 5px 6px;
+        flex: unset;
+    }
+
+    .qb-stat .val {
+        font-size: 13px;
+    }
+
+    .qb-stat .lbl {
+        font-size: 7px;
+        letter-spacing: 0;
+    }
+
+    /* Desempenho button */
+    .qb-btn-desempenho {
+        font-size: 12px;
+        padding: 8px 12px;
+    }
+
+    /* Filters */
+    .qb-filters {
+        padding: 10px;
+        border-radius: 12px;
+    }
+
+    /* Filter actions */
+    .qb-btn {
+        padding: 8px 14px;
+        font-size: 12px;
+    }
+
+    /* Xavier badge: allow wrapping and prevent overflow */
+    .xavier-header-badge {
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 11px;
+        white-space: normal;
+        word-break: break-word;
+    }
+
+    /* Xavier bubble */
+    .xavier-bubble {
+        padding: 12px;
+        gap: 8px;
+        border-radius: 12px;
+    }
+
+    .xavier-bubble .txt {
+        font-size: 13px;
+    }
+
+    /* AI search */
+    .qb-ai-input {
+        font-size: 13px;
+    }
+
+    .qb-ai-button {
+        font-size: 12px;
+        padding: 10px 12px;
+    }
+
+    /* No-results card */
+    .qb-no-results {
+        padding: 32px 16px !important;
+    }
+}
+
+/* Prevent any element from leaking out at 375px/320px */
+@media (max-width: 375px) {
+    .qb-header-stats {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .qb-header {
+        padding: 10px;
+    }
+
+    .qb-header-left h1 {
+        font-size: 15px;
+    }
 }
 
