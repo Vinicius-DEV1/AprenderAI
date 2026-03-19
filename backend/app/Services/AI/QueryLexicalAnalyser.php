@@ -24,6 +24,17 @@ class QueryLexicalAnalyser
         'apenas', 'somente', 'exclusivamente', 'só', 'exclusivo'
     ];
 
+    protected array $difficultyMap = [
+        'fácil'    => 'easy',
+        'facil'    => 'easy',
+        'médio'    => 'medium',
+        'medio'    => 'medium',
+        'difícil'  => 'hard',
+        'dificil'  => 'hard',
+        'hard'     => 'hard',
+        'complexa' => 'hard',
+    ];
+
     public function analyse(string $prompt): array
     {
         $prompt = mb_strtolower($prompt);
@@ -34,7 +45,34 @@ class QueryLexicalAnalyser
             'negative_terms'  => [], // O que o usuário NÃO QUER
             'restricted_terms' => [], // O que o usuário quer EXCLUSIVAMENTE
             'is_restricted'   => false, // Se há um operador "apenas/somente"
+            'years'           => [], // Anos detectados (ex: [2023])
+            'year_operator'   => '>=', // Default para anos: maior ou igual
+            'difficulty'      => null, // Nível de dificuldade detectado
         ];
+
+        // 0. Detecção de Dificuldade
+        foreach ($this->difficultyMap as $keyword => $level) {
+            if (str_contains($prompt, $keyword)) {
+                $analysis['difficulty'] = $level;
+                // Remove a palavra do prompt para não confundir outros analisadores
+                $prompt = str_replace($keyword, '', $prompt);
+                break;
+            }
+        }
+
+        // 1. Detecção de Anos e Operadores Temporais
+        if (preg_match_all('/\b(19|20)\d{2}\b/', $prompt, $matches)) {
+            $analysis['years'] = array_map('intval', $matches[0]);
+            
+            // Detecta operadores como "desde", "após", "depois de", "superior a"
+            if (preg_match('/(desde|após|depois|superior|acima de)\s+(19|20)\d{2}/', $prompt)) {
+                $analysis['year_operator'] = '>=';
+            } elseif (preg_match('/(até|antes|anterior|abaixo de)\s+(19|20)\d{2}/', $prompt)) {
+                $analysis['year_operator'] = '<=';
+            } elseif (preg_match('/(em|de)\s+(19|20)\d{2}/', $prompt)) {
+                $analysis['year_operator'] = '=';
+            }
+        }
 
         // 1. Detecção de Restrição (Apenas/Somente)
         foreach ($this->restrictionKeywords as $kw) {

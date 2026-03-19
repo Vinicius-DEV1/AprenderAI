@@ -120,6 +120,23 @@ class HybridSearchService
             ];
         }
 
+        // Filter by Year (Range support)
+        if (!empty($sqlFilters['year'])) {
+            $year = (int) $sqlFilters['year'];
+            $op   = $sqlFilters['year_operator'] ?? '=';
+
+            if ($op === '=') {
+                $must[] = ['key' => 'year', 'match' => ['value' => $year]];
+            } else {
+                $range = ['key' => 'year', 'range' => []];
+                if ($op === '>=') $range['range']['gte'] = $year;
+                if ($op === '<=') $range['range']['lte'] = $year;
+                if ($op === '>')  $range['range']['gt']  = $year;
+                if ($op === '<')  $range['range']['lt']  = $year;
+                $must[] = $range;
+            }
+        }
+
         // Filter by organization (Banca)
         if (!empty($sqlFilters['organization'])) {
             if (is_array($sqlFilters['organization'])) {
@@ -265,6 +282,11 @@ class HybridSearchService
         }
         if (!empty($sqlFilters['difficulty'])) {
             $query->where('difficulty', $sqlFilters['difficulty']);
+        }
+        if (!empty($sqlFilters['year'])) {
+            $year = (int) $sqlFilters['year'];
+            $op   = $sqlFilters['year_operator'] ?? '=';
+            $query->where('year', $op, $year);
         }
         if (!empty($sqlFilters['keyword'])) {
             $query->where(function ($q) use ($sqlFilters) {

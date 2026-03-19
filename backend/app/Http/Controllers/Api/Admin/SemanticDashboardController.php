@@ -157,20 +157,12 @@ class SemanticDashboardController extends Controller
                     'concepts'  => $conceptsVersionCheck,
                 ]
             ],
-            'top_concepts' => Concept::whereNotNull('qdrant_indexed_at')
+            'top_concepts' => \App\Models\Subject::whereNotNull('qdrant_indexed_at')
                 ->withCount('questions')
                 ->orderByDesc('questions_count')
-                ->limit(50)
+                ->limit(20)
                 ->get(['id', 'name'])
-                ->map(fn($c) => ['name' => $c->name, 'count' => $c->questions_count, 'type' => 'concept'])
-                ->concat(
-                    \App\Models\Subject::whereNotNull('qdrant_indexed_at')
-                        ->withCount('questions')
-                        ->orderByDesc('questions_count')
-                        ->limit(20)
-                        ->get(['id', 'name'])
-                        ->map(fn($s) => ['name' => $s->name, 'count' => $s->questions_count, 'type' => 'subject'])
-                )
+                ->map(fn($s) => ['name' => $s->name, 'count' => $s->questions_count, 'type' => 'subject'])
                 ->concat(
                     \App\Models\Topic::whereNotNull('qdrant_indexed_at')
                         ->withCount('questions')
@@ -301,6 +293,14 @@ class SemanticDashboardController extends Controller
         $logs[] = " - Positive: '{$positivePrompt}'";
         if (!empty($negativePrompt)) {
             $logs[] = " - Negative: '{$negativePrompt}' (Exclusion Mode)";
+        }
+
+        if ($analysis['difficulty']) {
+            $logs[] = "DIFFICULTY DETECTED: " . strtoupper($analysis['difficulty']);
+        }
+
+        if (!empty($analysis['years'])) {
+            $logs[] = "TEMPORAL OPERATOR: " . $analysis['year_operator'] . " " . $analysis['years'][0];
         }
 
         // ── Step 2: Gerar Embedding Genérico ──────────────────────────────────
@@ -448,6 +448,15 @@ class SemanticDashboardController extends Controller
         }
         if ($excludedType) {
             $sqlFilters['exclude_type'] = $excludedType;
+        }
+
+        // Xavier 2.0 Fase 3: Filtros de Ano e Dificuldade
+        if ($analysis['difficulty']) {
+            $sqlFilters['difficulty'] = $analysis['difficulty'];
+        }
+        if (!empty($analysis['years'])) {
+            $sqlFilters['year'] = $analysis['years'][0];
+            $sqlFilters['year_operator'] = $analysis['year_operator'];
         }
         
         $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, $sqlFilters, $limit);

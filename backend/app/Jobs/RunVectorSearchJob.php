@@ -127,6 +127,9 @@ class RunVectorSearchJob implements ShouldQueue
                 'concepts'      => $ctx['detected_concepts'] ?? [],
                 'is_restricted' => $ctx['is_restricted']    ?? false,
                 'restricted'    => $ctx['restricted_terms'] ?? [],
+                'difficulty'    => $sqlFilters['difficulty'] ?? null,
+                'year'          => $sqlFilters['year'] ?? null,
+                'year_operator' => $sqlFilters['year_operator'] ?? null,
             ]),
         ]);
 
