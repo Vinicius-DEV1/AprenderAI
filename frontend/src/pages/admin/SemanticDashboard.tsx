@@ -3,10 +3,12 @@ import api from '../../api/axios';
 import { toast } from 'sonner';
 import { 
     Database, Activity, Search, RefreshCw, Settings, Save, Server, 
-    Box, FileJson, CheckCircle2, AlertCircle, PlayCircle, ChevronDown, Clock, Lightbulb,
+    Box, CheckCircle2, AlertCircle, PlayCircle, ChevronDown, Clock, Lightbulb,
     Trash2, BarChart3, TrendingUp, Zap, Hash, ArrowRight, Layers, Target, Filter, Microscope, HelpCircle
 } from 'lucide-react';
 import { clsx } from 'clsx';
+ 
+const TARGET_PIPELINE_VERSION = 'v7_lexical_analyser';
 
 interface DashboardStats {
     overview: {
@@ -74,8 +76,11 @@ interface DashboardStats {
 const StatCard = ({ title, value, subtitle, icon: Icon, colorClass, helpText }: any) => (
     <div className="bg-white dark:bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-700/50 p-5 flex flex-col items-start shadow-xl hover:shadow-indigo-500/10 transition-all hover:-translate-y-1 group relative">
         {helpText && (
-            <div className="absolute top-4 right-4 text-slate-300 hover:text-indigo-500 cursor-help transition-colors" title={helpText}>
+            <div className="absolute top-4 right-4 text-slate-300 hover:text-indigo-500 cursor-help transition-all group/tip">
                 <HelpCircle className="w-4 h-4" />
+                <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded-lg shadow-xl opacity-0 group-hover/tip:opacity-100 pointer-events-none transition-opacity z-50 border border-slate-700">
+                    {helpText}
+                </div>
             </div>
         )}
         <div className={clsx("p-3 rounded-xl mb-4 shadow-inner", colorClass)}>
@@ -111,8 +116,11 @@ const PipelineStep = ({ icon: Icon, title, status, description, children, isActi
                 <h4 className={clsx("text-sm font-bold flex items-center gap-1", isActive ? "text-slate-800 dark:text-white" : "text-slate-500")}>
                     {title}
                     {helpText && (
-                        <div className="cursor-help text-slate-400 font-normal" title={helpText}>
+                        <div className="cursor-help text-slate-400 font-normal group/ptip relative">
                             <HelpCircle className="w-3 h-3" />
+                            <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded-lg shadow-xl opacity-0 group-hover/ptip:opacity-100 pointer-events-none transition-opacity z-50 border border-slate-700 font-normal">
+                                {helpText}
+                            </div>
                         </div>
                     )}
                 </h4>
@@ -221,10 +229,9 @@ const SemanticDashboard = () => {
     useEffect(() => {
         loadStats();
 
-        // Auto-refresh every 10 seconds to show indexing progress
+        // Auto-refresh every 10 seconds for real-time monitoring
         const interval = setInterval(() => {
-            // Only refresh if not already loading and not in the middle of a test search
-            if (!loading && !testLoading) {
+            if (!testLoading && !loading && !reindexing && !reindexingConcepts) {
                 loadStats();
             }
         }, 10000);
@@ -451,16 +458,6 @@ const SemanticDashboard = () => {
                             helpText="O Qdrant é o nosso banco de dados vetorial. Ele armazena o 'conhecimento' matemático das questões para permitir buscas por contexto."
                         />
                         <StatCard 
-                            title="Fila de Indexação" 
-                            value={stats.jobs.pending} 
-                            subtitle={`${stats.jobs.failed} falhas (Clique em Limpar se travar)`}
-                            icon={stats.jobs.failed > 0 ? AlertCircle : Clock}
-                            colorClass={stats.jobs.failed > 0 ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30" : "bg-blue-100 text-blue-600 dark:bg-blue-900/30"}
-                            helpText="Mostra quantos processos de 'transformar texto em vetor' estão aguardando no servidor. Falhas geralmente ocorrem por limite de cota da IA."
-                        />
-
-                        {/* CONTENT GROUP */}
-                        <StatCard 
                             title="Questões no Xavier" 
                             value={`${stats.overview.mysql_indexed_questions.toLocaleString()} / ${stats.overview.mysql_published_questions.toLocaleString()}`} 
                             subtitle={`${stats.overview.mysql_published_questions - stats.overview.mysql_indexed_questions} questões pendentes`}
@@ -468,29 +465,29 @@ const SemanticDashboard = () => {
                             colorClass="bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400"
                             helpText="Representa o percentual da sua base de questões que já está 'consciente' para a IA. Questões não indexadas só aparecem por busca de texto simples."
                         />
-                         <StatCard 
-                            title="Disciplinas" 
+                        <StatCard 
+                            title="Subjects" 
                             value={`${stats.overview.mysql_indexed_subjects} / ${stats.overview.mysql_total_subjects}`} 
                             subtitle={`${stats.overview.mysql_total_subjects - stats.overview.mysql_indexed_subjects} pendentes`}
                             icon={Database}
                             colorClass="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
-                            helpText="Disciplinas detectadas no Qdrant atuam como filtros rígidos. Se o Xavier detecta 'Matemática', ele trava a busca apenas nessa gaveta."
+                            helpText="Subjects (Disciplinas) detectadas no Qdrant atuam como filtros rígidos na busca semântica."
                         />
                         <StatCard 
-                            title="Tópicos" 
+                            title="Topics" 
                             value={`${stats.overview.mysql_indexed_topics} / ${stats.overview.mysql_total_topics}`} 
                             subtitle={`${stats.overview.mysql_total_topics - stats.overview.mysql_indexed_topics} pendentes`}
                             icon={Hash}
                             colorClass="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-                            helpText="Sub-temas das matérias. Quando indexados, permitem que a IA dê notas maiores para questões que pertencem exatamente ao assunto pesquisado."
+                            helpText="Topics (Assuntos) vinculados às questões. Permitem maior precisão no re-ranking."
                         />
                         <StatCard 
-                            title="Conceitos" 
-                            value={`${stats.overview.mysql_indexed_concepts} / ${stats.overview.mysql_total_concepts}`} 
-                            subtitle={`${stats.overview.mysql_total_concepts - stats.overview.mysql_indexed_concepts} pendentes`}
-                            icon={Lightbulb}
-                            colorClass="bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-400"
-                            helpText="Entidades atômicas de conhecimento (ex: Verbo, Citologia). São usados para a 'Detecção de Intenção' fina da nossa busca inteligente."
+                            title="Fila de Embedding" 
+                            value={stats.jobs.pending} 
+                            subtitle={`${stats.jobs.failed} falhas`}
+                            icon={stats.jobs.failed > 0 ? AlertCircle : Clock}
+                            colorClass={stats.jobs.failed > 0 ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30" : "bg-blue-100 text-blue-600 dark:bg-blue-900/30"}
+                            helpText="Mostra quantos processos de 'transformar texto em vetor' estão aguardando no servidor. Falhas geralmente ocorrem por limite de cota da IA."
                         />
                     </div>
 
@@ -1000,6 +997,16 @@ const SemanticDashboard = () => {
                                                         <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800">
                                                             Final: {res.final_score.toFixed(3)}
                                                         </span>
+                                                        {res.payload?.pipeline_version && res.payload.pipeline_version !== TARGET_PIPELINE_VERSION && (
+                                                            <div className="group/vtip relative">
+                                                                <span className="text-[9px] uppercase font-black tracking-tighter px-1.5 py-0.5 rounded bg-amber-500 text-white animate-pulse cursor-help">
+                                                                    OUTDATED
+                                                                </span>
+                                                                <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded-lg shadow-xl opacity-0 group-hover/vtip:opacity-100 pointer-events-none transition-opacity z-50 border border-slate-700 font-normal">
+                                                                    Este vetor pertence à versão anterior ({res.payload.pipeline_version}). Recomenda-se re-indexar para obter a precisão do {TARGET_PIPELINE_VERSION}.
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <ChevronDown className="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform mt-1" />
                                                 </div>
@@ -1170,7 +1177,7 @@ const SemanticDashboard = () => {
                             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
                                 Dispare jobs de vetorização controlada para economizar nos custos de API.
                                 <span className="block mt-1 text-[11px] font-mono text-indigo-500 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20 w-fit px-1.5 py-0.5 rounded">
-                                    Pipeline Ativo: {stats?.config.pipeline_version || 'v7_lexical_analyser'}
+                                    Pipeline Ativo: {stats?.config.pipeline_version || TARGET_PIPELINE_VERSION}
                                 </span>
                             </p>
 
@@ -1270,7 +1277,7 @@ const SemanticDashboard = () => {
                             <div className="flex justify-between items-start mb-4">
                                 <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
                                     <Lightbulb className="w-6 h-6 text-purple-500" />
-                                    Indexar Entidades Semânticas
+                                    Indexar Subjects & Topics
                                 </h3>
                                 <button onClick={() => setIsConceptModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                                     <RefreshCw className="w-5 h-5" style={{ transform: 'rotate(45deg)' }} />
@@ -1278,9 +1285,9 @@ const SemanticDashboard = () => {
                             </div>
                             
                             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                                Vetorize Disciplinas (Subjects), Tópicos e Conceitos no Qdrant para a Detecção de Intenção da busca semântica.
+                                Vetorize Subjects e Topics no Qdrant para a Detecção de Intenção da busca semântica.
                                 <span className="block mt-1 text-[11px] font-mono text-purple-500 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-900/20 w-fit px-1.5 py-0.5 rounded">
-                                    Pipeline Ativo: {stats?.config.pipeline_version || 'v7_lexical_analyser'}
+                                    Pipeline Ativo: {stats?.config.pipeline_version || TARGET_PIPELINE_VERSION}
                                 </span>
                             </p>
 
@@ -1288,7 +1295,7 @@ const SemanticDashboard = () => {
                                 {/* Subjects Stat */}
                                 <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-xl p-3">
                                     <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-medium text-purple-700 dark:text-purple-400 uppercase tracking-wider">Disciplinas Pendentes</span>
+                                        <span className="text-[10px] font-medium text-purple-700 dark:text-purple-400 uppercase tracking-wider">Subjects Pendentes</span>
                                         <span className="text-sm font-bold text-purple-800 dark:text-purple-200">
                                             {stats ? (conceptForce ? stats.overview.mysql_total_subjects : stats.overview.mysql_total_subjects - stats.overview.mysql_indexed_subjects) : '...'}
                                         </span>
@@ -1298,19 +1305,9 @@ const SemanticDashboard = () => {
                                 {/* Topics Stat */}
                                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-3">
                                     <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-medium text-blue-700 dark:text-blue-400 uppercase tracking-wider">Tópicos Pendentes</span>
+                                        <span className="text-[10px] font-medium text-blue-700 dark:text-blue-400 uppercase tracking-wider">Topics Pendentes</span>
                                         <span className="text-sm font-bold text-blue-800 dark:text-blue-200">
                                             {stats ? (conceptForce ? stats.overview.mysql_total_topics : stats.overview.mysql_total_topics - stats.overview.mysql_indexed_topics) : '...'}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {/* Concepts Stat */}
-                                <div className="bg-slate-50 dark:bg-slate-900/20 border border-slate-100 dark:border-slate-800 rounded-xl p-3">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-medium text-slate-700 dark:text-slate-400 uppercase tracking-wider">Conceitos Pendentes</span>
-                                        <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                                            {stats ? (conceptForce ? stats.overview.mysql_total_concepts : stats.overview.mysql_total_concepts - stats.overview.mysql_indexed_concepts) : '...'}
                                         </span>
                                     </div>
                                 </div>
@@ -1318,7 +1315,7 @@ const SemanticDashboard = () => {
 
                             <div className="space-y-2 mb-8">
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                                    Quantos conceitos indexar nesta leva?
+                                    Quantos itens indexar nesta leva?
                                 </label>
                                 <input 
                                     type="number" 
@@ -1332,10 +1329,9 @@ const SemanticDashboard = () => {
                                         type="button"
                                         onClick={() => {
                                             const pending = stats ? (conceptForce 
-                                                ? stats.overview.mysql_total_subjects + stats.overview.mysql_total_topics + stats.overview.mysql_total_concepts 
+                                                ? stats.overview.mysql_total_subjects + stats.overview.mysql_total_topics 
                                                 : (stats.overview.mysql_total_subjects - stats.overview.mysql_indexed_subjects) + 
-                                                  (stats.overview.mysql_total_topics - stats.overview.mysql_indexed_topics) + 
-                                                  (stats.overview.mysql_total_concepts - stats.overview.mysql_indexed_concepts)
+                                                  (stats.overview.mysql_total_topics - stats.overview.mysql_indexed_topics)
                                             ) : 0;
                                             setConceptBatchLimit(pending);
                                         }}
