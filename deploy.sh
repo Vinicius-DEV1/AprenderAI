@@ -60,9 +60,21 @@ log_error()   { echo -e "${RED}❌ $1${NC}"; }
 
 echo ""
 echo -e "${BLUE}=================================================${NC}"
-echo -e "${BLUE}  🚀  AprenderAI — Deploy Seguro (v4.1)${NC}"
+echo -e "${BLUE}  🚀  AprenderAI — Deploy Seguro (v4.2)${NC}"
 echo -e "${BLUE}=================================================${NC}"
 echo ""
+
+# Helper para verificar se um ID de container está em uma lista de IDs
+is_id_in_list() {
+    local target="$1"
+    local list="$2"
+    for id in $list; do
+        if [ "$id" == "$target" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
 
 # Helper para verificar se um ID de container está em uma lista de IDs
 is_id_in_list() {
@@ -97,13 +109,18 @@ OLD_APP_NAMES=$($COMPOSE ps --format '{{.Name}}' $APP_SERVICE 2>/dev/null || \
                 $COMPOSE ps --format json $APP_SERVICE 2>/dev/null | \
                 python3 -c "import sys,json; data=sys.stdin.read().strip(); items=json.loads(data) if data.startswith('[') else [json.loads(data)]; [print(i.get('Name','').lstrip('/')) for i in items]" 2>/dev/null)
 
-log_info "[2/6] Subindo novo container App com a nova imagem (scale: 1 → 2)..."
+# Calcula escala dinâmica: Se já temos 2, escalamos para 3. Se temos 1, para 2.
+# Isso garante que SEMPRE um novo ID será criado, evitando o hang do --no-recreate.
+OLD_COUNT=$(echo "$OLD_APP_IDS" | wc -w)
+NEW_SCALE=$((OLD_COUNT + 1))
+
+log_info "[2/6] Subindo novo container App com a nova imagem (scale: $OLD_COUNT → $NEW_SCALE)..."
 log_info "      Containers antigos: $OLD_APP_NAMES"
 log_info "      O container atual continua servindo enquanto o novo inicializa."
 
-$COMPOSE up -d --no-recreate --scale $APP_SERVICE=2 $APP_SERVICE
+$COMPOSE up -d --no-recreate --scale $APP_SERVICE=$NEW_SCALE $APP_SERVICE
 
-log_success "2 containers App rodando."
+log_success "Escalonamento temporário para $NEW_SCALE concluído."
 echo ""
 
 # =============================================================================
