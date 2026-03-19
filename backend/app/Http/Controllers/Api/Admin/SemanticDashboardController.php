@@ -303,14 +303,33 @@ class SemanticDashboardController extends Controller
             $logs[] = "TEMPORAL OPERATOR: " . $analysis['year_operator'] . " " . $analysis['years'][0];
         }
 
+        if (!empty($analysis['organizations'])) {
+            foreach ($analysis['organizations'] as $org) {
+                $logs[] = "ORG DETECTED: " . strtoupper($org);
+            }
+        }
+
+        if (!empty($analysis['institutions'])) {
+            foreach ($analysis['institutions'] as $inst) {
+                $logs[] = "INST DETECTED: " . strtoupper($inst);
+            }
+        }
+
         // ── Step 2: Gerar Embedding Genérico ──────────────────────────────────
         $textBuilder = app(\App\Services\AI\EmbeddingTextBuilder::class);
         $aiService = app(\App\Services\AI\AIService::class);
         
         // Usamos o prompt POSITIVO para a busca semântica principal.
-        $queryVector = $aiService->generateEmbedding($positivePrompt, $user->id, 'RETRIEVAL_QUERY');
-        if (!$queryVector) {
-            return response()->json(['error' => 'Failed to generate embedding', 'logs' => $logs], 500);
+        try {
+            $queryVector = $aiService->generateEmbedding($positivePrompt, $user->id, 'RETRIEVAL_QUERY');
+            if (!$queryVector) {
+                throw new \Exception("Vetor retornado vazio.");
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Falha Crítica no Embedding: ' . $e->getMessage(),
+                'logs' => array_merge($logs, ["ERROR: " . $e->getMessage(), "Search aborted."])
+            ], 200); // 200 so the frontend shows the logs
         }
         $logs[] = "Generic Query Embedding generated (using positive prompt). (Length: " . count($queryVector) . ", taskType: RETRIEVAL_QUERY)";
 
@@ -350,6 +369,17 @@ class SemanticDashboardController extends Controller
             }
         }
 
+        // ── Step 3.1: Mesclar Detecções Léxicas (Fase 4) ──────────────────────
+        if (!empty($analysis['organizations'])) {
+            $extractedOrgs = array_merge($extractedOrgs, $analysis['organizations']);
+        }
+        if (!empty($analysis['institutions'])) {
+            $extractedInsts = array_merge($extractedInsts, $analysis['institutions']);
+        }
+
+        $extractedOrgs  = array_values(array_unique($extractedOrgs));
+        $extractedInsts = array_values(array_unique($extractedInsts));
+
         // ── Step 3.5: Detecção de Tipo (ENEM/Concurso) via Keywords ───────────
         // Usamos o prompt POSITIVO para detecção de tipo
         $lowerPrompt = mb_strtolower($positivePrompt);
@@ -364,18 +394,22 @@ class SemanticDashboardController extends Controller
         $excludedInsts = [];
         $excludedType = null;
         if (!empty($negativePrompt)) {
-            $negVector = $aiService->generateEmbedding($negativePrompt, $user->id, 'RETRIEVAL_QUERY');
-            $negMatches = $qdrant->searchConcepts($negVector, 3, 0.80);
-            foreach ($negMatches as $match) {
-                $payload = $match['payload'] ?? [];
-                $type = $payload['entity_type'] ?? '';
-                if ($type === 'organization' && isset($payload['organization'])) {
-                    $excludedOrgs[] = $payload['organization'];
-                    $logs[] = "EXCLUSION DETECTED: Organization '{$payload['organization']}'";
-                } elseif ($type === 'institution' && isset($payload['institution'])) {
-                    $excludedInsts[] = $payload['institution'];
-                    $logs[] = "EXCLUSION DETECTED: Institution '{$payload['institution']}'";
+            try {
+                $negVector = $aiService->generateEmbedding($negativePrompt, $user->id, 'RETRIEVAL_QUERY');
+                $negMatches = $qdrant->searchConcepts($negVector, 3, 0.80);
+                foreach ($negMatches as $match) {
+                    $payload = $match['payload'] ?? [];
+                    $type = $payload['entity_type'] ?? '';
+                    if ($type === 'organization' && isset($payload['organization'])) {
+                        $excludedOrgs[] = $payload['organization'];
+                        $logs[] = "EXCLUSION DETECTED: Organization '{$payload['organization']}'";
+                    } elseif ($type === 'institution' && isset($payload['institution'])) {
+                        $excludedInsts[] = $payload['institution'];
+                        $logs[] = "EXCLUSION DETECTED: Institution '{$payload['institution']}'";
+                    }
                 }
+            } catch (\Exception $e) {
+                $logs[] = "WARNING: Negative embedding failed: " . $e->getMessage() . ". Exclusion filters might be incomplete.";
             }
             $lowerNeg = mb_strtolower($negativePrompt);
             if (str_contains($lowerNeg, 'concurso')) $excludedType = 'concurso';
@@ -398,9 +432,17 @@ class SemanticDashboardController extends Controller
         $conceptQueryText     = $textBuilder->buildConceptQuery($positivePrompt);
         $explanationQueryText = $textBuilder->buildExplanationQuery($positivePrompt);
 
-        $statementVector   = $aiService->generateEmbedding($statementQueryText,   $user->id, 'RETRIEVAL_QUERY');
-        $conceptVectorQ    = $aiService->generateEmbedding($conceptQueryText,     $user->id, 'RETRIEVAL_QUERY');
-        $explanationVector = $aiService->generateEmbedding($explanationQueryText, $user->id, 'RETRIEVAL_QUERY');
+        $statementVector = null;
+        $conceptVectorQ = null;
+        $explanationVector = null;
+
+        try {
+            $statementVector   = $aiService->generateEmbedding($statementQueryText,   $user->id, 'RETRIEVAL_QUERY');
+            $conceptVectorQ    = $aiService->generateEmbedding($conceptQueryText,     $user->id, 'RETRIEVAL_QUERY');
+            $explanationVector = $aiService->generateEmbedding($explanationQueryText, $user->id, 'RETRIEVAL_QUERY');
+        } catch (\Exception $e) {
+            $logs[] = "WARNING: Aligned embeddings partially failed: " . $e->getMessage() . ". Falling back to generic vector.";
+        }
 
         // Fallback: se algum dos 3 falhar, usa o genérico
         $queryVectors = [

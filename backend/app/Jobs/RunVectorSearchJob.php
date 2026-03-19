@@ -130,6 +130,8 @@ class RunVectorSearchJob implements ShouldQueue
                 'difficulty'    => $sqlFilters['difficulty'] ?? null,
                 'year'          => $sqlFilters['year'] ?? null,
                 'year_operator' => $sqlFilters['year_operator'] ?? null,
+                'organization'  => $sqlFilters['organization'] ?? null,
+                'institution'   => $sqlFilters['institution'] ?? null,
             ]),
         ]);
 

@@ -103,18 +103,33 @@ class IndexQuestionVectorJob implements ShouldQueue
         $userId = null; // System job, no user attribution
         Log::info("[Xavier][IndexQuestion] Generating 3 vectors for #{$this->questionId}...");
         
-        $statementVector   = $aiService->generateEmbedding($statementText,   $userId, 'RETRIEVAL_DOCUMENT');
-        Log::debug("[Xavier][IndexQuestion] #{$this->questionId} statement vector: " . ($statementVector ? 'OK' : 'FAILED'));
-        
-        $conceptVector     = $aiService->generateEmbedding($conceptText,     $userId, 'RETRIEVAL_DOCUMENT');
-        Log::debug("[Xavier][IndexQuestion] #{$this->questionId} concept vector: " . ($conceptVector ? 'OK' : 'FAILED'));
-        
-        $explanationVector = $aiService->generateEmbedding($explanationText, $userId, 'RETRIEVAL_DOCUMENT');
-        Log::debug("[Xavier][IndexQuestion] #{$this->questionId} explanation vector: " . ($explanationVector ? 'OK' : 'FAILED'));
+        try {
+            $statementVector   = $aiService->generateEmbedding($statementText,   $userId, 'RETRIEVAL_DOCUMENT');
+            Log::debug("[Xavier][IndexQuestion] #{$this->questionId} statement vector: OK");
+            
+            $conceptVector     = $aiService->generateEmbedding($conceptText,     $userId, 'RETRIEVAL_DOCUMENT');
+            Log::debug("[Xavier][IndexQuestion] #{$this->questionId} concept vector: OK");
+            
+            $explanationVector = $aiService->generateEmbedding($explanationText, $userId, 'RETRIEVAL_DOCUMENT');
+            Log::debug("[Xavier][IndexQuestion] #{$this->questionId} explanation vector: OK");
+            
+            if (!$statementVector || !$conceptVector || !$explanationVector) {
+                throw new \RuntimeException('Um dos vetores retornou inesperadamente vazio.');
+            }
+        } catch (\Exception $e) {
+            $msg = $e->getMessage();
+            $isQuota = str_contains(strtolower($msg), '429') || 
+                      str_contains(strtolower($msg), 'quota') || 
+                      str_contains(strtolower($msg), 'full failover failure');
 
-        if (!$statementVector || !$conceptVector || !$explanationVector) {
-            Log::error("[Xavier][IndexQuestion] FAILED for question #{$this->questionId}. Vectors status: S:".($statementVector?'OK':'FAIL')." C:".($conceptVector?'OK':'FAIL')." E:".($explanationVector?'OK':'FAIL'));
-            $this->fail(new \RuntimeException('Embedding generation failed'));
+            if ($isQuota) {
+                Log::warning("[Xavier][IndexQuestion] Quota exhausted or no keys available for #{$this->questionId}. Releasing back to queue to retry in 5 min. Error: {$msg}");
+                $this->release(300); // 5 minutes backoff
+                return;
+            }
+
+            Log::error("[Xavier][IndexQuestion] PERMANENT FAILURE for question #{$this->questionId}. Error: {$msg}");
+            $this->fail($e);
             return;
         }
 
