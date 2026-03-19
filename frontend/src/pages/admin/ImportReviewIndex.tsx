@@ -114,7 +114,7 @@ export default function ImportReviewIndex() {
 
                 {/* Summary Cards */}
                 {summaryStats && (
-                    <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-6">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3 mb-6">
                         {[
                             { id: 'no_alternatives', icon: '⚠️', label: 'Sem Alts', color: 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100' },
                             { id: 'no_statement', icon: '📝', label: 'Sem Enunciado', color: 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100' },
@@ -122,6 +122,7 @@ export default function ImportReviewIndex() {
                             { id: 'has_image', icon: '🖼️', label: 'Tem Imagem', color: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' },
                             { id: 'missing_image', icon: '❓', label: 'Img Faltando', color: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' },
                             { id: 'missing_support_text', icon: '📄', label: 'Texto Faltando', color: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' },
+                            { id: 'hallucination', icon: '🧠', label: 'Alucinação', color: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200 hover:bg-fuchsia-100' },
                             { id: 'low_quality', icon: '👎', label: 'Baixa Qualid.', color: 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100', isQuality: true },
                         ].map(card => {
                             const count = summaryStats[card.id] || 0;
@@ -300,6 +301,7 @@ export default function ImportReviewIndex() {
                                             <option value="has_image">Tem Imagem</option>
                                             <option value="missing_image">Imagem Faltando</option>
                                             <option value="missing_support_text">Texto Base Faltando</option>
+                                            <option value="hallucination">Alucinação (IA)</option>
                                         </select>
                                     </div>
                                     <div>
