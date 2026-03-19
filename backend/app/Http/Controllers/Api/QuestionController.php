@@ -677,10 +677,10 @@ class QuestionController extends Controller
         
         // Se detectamos uma banca ou órgão específico como intenção clara, filtramos no Qdrant
         if (!empty($extractedOrgs)) {
-            $sqlFilters['organization'] = $extractedOrgs[0]; // Pega a primeira banca detectada
+            $sqlFilters['organization'] = $extractedOrgs; 
         }
         if (!empty($extractedInsts)) {
-            $sqlFilters['institution'] = $extractedInsts[0];
+            $sqlFilters['institution'] = $extractedInsts;
         }
 
         $searchContext = [
