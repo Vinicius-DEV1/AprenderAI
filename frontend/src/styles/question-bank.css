@@ -11,25 +11,34 @@
     --qb-card-bg: #1e293b;
 }
 
+/* ── Custom Scrollbar (more visible) ── */
+.qb-main-container::-webkit-scrollbar,
 .qb-scrollbar::-webkit-scrollbar {
-    width: 6px;
+    width: 10px;
+    height: 10px;
 }
 
+.qb-main-container::-webkit-scrollbar-track,
 .qb-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
+    background: rgba(0, 0, 0, 0.05);
 }
 
+.qb-main-container::-webkit-scrollbar-thumb,
 .qb-scrollbar::-webkit-scrollbar-thumb {
-    background: #e2e8f0;
-    border-radius: 10px;
-}
-
-.dark .qb-scrollbar::-webkit-scrollbar-thumb {
-    background: #334155;
-}
-
-.qb-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #cbd5e1;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.dark .qb-main-container::-webkit-scrollbar-thumb,
+.dark .qb-scrollbar::-webkit-scrollbar-thumb {
+    background: #475569;
+}
+
+.qb-main-container::-webkit-scrollbar-thumb:hover,
+.qb-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
 /* ── Header ── */
@@ -1546,8 +1555,10 @@
    ══════════════════════════════════════════════════════════ */
 
 /* Global container safeguard — prevents horizontal scroll on the page */
-.py-2 {
+.qb-main-container {
     overflow-x: hidden;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
 }
 
 @media (max-width: 425px) {
