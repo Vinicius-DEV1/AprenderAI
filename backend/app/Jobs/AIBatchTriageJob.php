@@ -62,6 +62,15 @@ class AIBatchTriageJob implements ShouldQueue
             return;
         }
 
+        // Circuit Breaker: If no API keys are available for triage, release the job back to the queue
+        // to wait for quota reset or manual intervention, preventing mass failures.
+        $aiService = app(\App\Services\AI\AIService::class);
+        if (!$aiService->hasActiveKey(\App\Models\ApiKey::CAPABILITY_TRIAGE)) {
+            Log::info("[AIBATCH] No active keys for triage. Releasing batch #{$this->batchId} chunk #{$this->chunkIndex} to retry in 5 minutes.");
+            $this->release(300); // 5 minutes backoff
+            return;
+        }
+
         // Check if batch was cancelled or failed before starting
         $batch = \App\Models\AiProcessingBatch::where('batch_id', $this->batchId)->first();
         if ($batch && in_array($batch->status, ['cancelled', 'failed'])) {

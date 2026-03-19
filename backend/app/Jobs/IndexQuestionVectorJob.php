@@ -52,6 +52,14 @@ class IndexQuestionVectorJob implements ShouldQueue
             return;
         }
 
+        // Circuit Breaker: If no API keys are available for embedding, release the job back to the queue
+        // to wait for quota reset or manual intervention, preventing mass failures.
+        if (!$aiService->hasActiveKey(\App\Models\ApiKey::CAPABILITY_EMBEDDING)) {
+            Log::info("[Xavier][IndexQuestion] No active keys for embedding. Releasing question #{$this->questionId} to retry in 5 minutes.");
+            $this->release(300); // 5 minutes backoff
+            return;
+        }
+
         // Only index approved questions
         if ($question->review_status !== 'approved' && !is_null($question->review_status)) {
             // Allow null (manually created questions that are always published)

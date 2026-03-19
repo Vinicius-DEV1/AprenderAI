@@ -48,6 +48,14 @@ class IndexConceptVectorJob implements ShouldQueue
             Log::error($msg);
             throw new \RuntimeException($msg);
         }
+
+        // Circuit Breaker: If no API keys are available for embedding, release the job back to the queue
+        // to wait for quota reset or manual intervention, preventing mass failures.
+        if (!$aiService->hasActiveKey(\App\Models\ApiKey::CAPABILITY_EMBEDDING)) {
+            Log::info("[Xavier][IndexConcept] No active keys for embedding. Releasing concept #{$concept->id} to retry in 5 minutes.");
+            $this->release(300); // 5 minutes backoff
+            return;
+        }
         
         Log::info("[Xavier][IndexConcept] Found concept #{$concept->id} ({$concept->name}). Starting indexing...");
 
