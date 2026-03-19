@@ -15,8 +15,6 @@ interface DashboardStats {
         mysql_published_questions: number;
         mysql_indexed_questions: number;
         mysql_total_vectors: number;
-        mysql_total_concepts: number;
-        mysql_indexed_concepts: number;
         mysql_total_subjects: number;
         mysql_indexed_subjects: number;
         mysql_total_topics: number;
@@ -138,7 +136,7 @@ const SemanticDashboard = () => {
     const [configLoading, setConfigLoading] = useState(false);
     const [testLoading, setTestLoading] = useState(false);
     const [reindexing, setReindexing] = useState(false);
-    const [reindexingConcepts, setReindexingConcepts] = useState(false);
+    const [reindexingIntents, setReindexingIntents] = useState(false);
     const [clearingCache, setClearingCache] = useState(false);
     const [clearingQueue, setClearingQueue] = useState(false);
     const [resetting, setResetting] = useState(false);
@@ -162,10 +160,10 @@ const SemanticDashboard = () => {
     const [indexBatchLimit, setIndexBatchLimit] = useState(500);
     const [indexForce, setIndexForce] = useState(false);
 
-    // Concept Index Modal
-    const [isConceptModalOpen, setIsConceptModalOpen] = useState(false);
-    const [conceptBatchLimit, setConceptBatchLimit] = useState(1000);
-    const [conceptForce, setConceptForce] = useState(false);
+    // Intent Index Modal (Subjects/Topics)
+    const [isIntentModalOpen, setIsIntentModalOpen] = useState(false);
+    const [intentBatchLimit, setIntentBatchLimit] = useState(1000);
+    const [intentForce, setIntentForce] = useState(false);
 
     // Test search
     const [searchPrompt, setSearchPrompt] = useState('');
@@ -176,6 +174,8 @@ const SemanticDashboard = () => {
             lexical: { positive: [] as string[], negative: [] as string[] },
             intent: [] as { type: string, value: string }[],
             expansion: [] as string[],
+            temporal: null as { operator: string, year: number } | null,
+            difficulty: null as string | null,
             vector: { statement: false, concept: false, explanation: false },
             rerank: [] as string[]
         };
@@ -198,6 +198,13 @@ const SemanticDashboard = () => {
             if (log.includes("EXCLUSION DETECTED:")) {
                 const parts = log.split("EXCLUSION DETECTED: ")[1].split(" ");
                 steps.intent.push({ type: 'EXCLUIR ' + parts[0], value: parts.slice(1).join(" ") });
+            }
+            if (log.includes("DIFFICULTY DETECTED:")) {
+                steps.difficulty = log.split("DIFFICULTY DETECTED: ")[1];
+            }
+            if (log.includes("TEMPORAL OPERATOR:")) {
+                const parts = log.split("TEMPORAL OPERATOR: ")[1].split(" ");
+                steps.temporal = { operator: parts[0], year: parseInt(parts[1]) };
             }
         });
 
@@ -231,7 +238,7 @@ const SemanticDashboard = () => {
 
         // Auto-refresh every 10 seconds for real-time monitoring
         const interval = setInterval(() => {
-            if (!testLoading && !loading && !reindexing && !reindexingConcepts) {
+            if (!testLoading && !loading && !reindexing && !reindexingIntents) {
                 loadStats();
             }
         }, 10000);
@@ -286,20 +293,20 @@ const SemanticDashboard = () => {
         }
     };
 
-    const handleReindexConcepts = async () => {
+    const handleReindexIntents = async () => {
         try {
-            setReindexingConcepts(true);
+            setReindexingIntents(true);
             const res = await api.post('/api/v1/admin/semantic/reindex-concepts', {
-                limit: conceptBatchLimit,
-                force: conceptForce
+                limit: intentBatchLimit,
+                force: intentForce
             });
-            toast.success(res.data.message || 'Indexação de conceitos iniciada!');
-            setIsConceptModalOpen(false);
+            toast.success(res.data.message || 'Indexação de intenções iniciada!');
+            setIsIntentModalOpen(false);
             loadStats();
         } catch (error) {
-            toast.error('Erro ao disparar indexação de conceitos.');
+            toast.error('Erro ao disparar indexação de intenções.');
         } finally {
-            setReindexingConcepts(false);
+            setReindexingIntents(false);
         }
     };
 
@@ -423,11 +430,11 @@ const SemanticDashboard = () => {
                         Indexar Questões
                     </button>
                     <button 
-                        onClick={() => setIsConceptModalOpen(true)}
+                        onClick={() => setIsIntentModalOpen(true)}
                         className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-lg shadow-purple-500/25 transition-all active:scale-95"
                     >
-                        {reindexingConcepts ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Lightbulb className="w-4 h-4" />}
-                        Indexar Intenções
+                        {reindexingIntents ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Lightbulb className="w-4 h-4" />}
+                        Indexar Matérias/Assuntos
                     </button>
                 </div>
             </div>
@@ -466,20 +473,20 @@ const SemanticDashboard = () => {
                             helpText="Representa o percentual da sua base de questões que já está 'consciente' para a IA. Questões não indexadas só aparecem por busca de texto simples."
                         />
                         <StatCard 
-                            title="Subjects" 
+                            title="Matérias/Disciplinas" 
                             value={`${stats.overview.mysql_indexed_subjects} / ${stats.overview.mysql_total_subjects}`} 
                             subtitle={`${stats.overview.mysql_total_subjects - stats.overview.mysql_indexed_subjects} pendentes`}
                             icon={Database}
                             colorClass="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
-                            helpText="Subjects (Disciplinas) detectadas no Qdrant atuam como filtros rígidos na busca semântica."
+                            helpText="Matérias/Disciplinas detectadas no Qdrant atuam como filtros rígidos na busca semântica."
                         />
                         <StatCard 
-                            title="Topics" 
+                            title="Assuntos" 
                             value={`${stats.overview.mysql_indexed_topics} / ${stats.overview.mysql_total_topics}`} 
                             subtitle={`${stats.overview.mysql_total_topics - stats.overview.mysql_indexed_topics} pendentes`}
                             icon={Hash}
                             colorClass="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-                            helpText="Topics (Assuntos) vinculados às questões. Permitem maior precisão no re-ranking."
+                            helpText="Assuntos (Topics) vinculados às questões. Permitem maior precisão no re-ranking."
                         />
                         <StatCard 
                             title="Fila de Embedding" 
@@ -602,11 +609,11 @@ const SemanticDashboard = () => {
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-2">
                             <Box className="w-5 h-5 text-indigo-500" />
-                            <h2 className="text-lg font-bold text-slate-800 dark:text-white">Nuvem de Conceitos & Disciplinas (Qdrant)</h2>
+                            <h2 className="text-lg font-bold text-slate-800 dark:text-white">Nuvem de Matérias & Assuntos (Qdrant)</h2>
                         </div>
                         <div className="flex gap-4 text-xs font-medium">
-                            <span className="flex items-center gap-1.5 text-slate-500"><div className="w-2.5 h-2.5 rounded-full bg-slate-100 dark:bg-slate-700"></div> Conceitos</span>
-                            <span className="flex items-center gap-1.5 text-purple-600"><div className="w-2.5 h-2.5 rounded-full bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-700"></div> Disciplinas</span>
+                            <span className="flex items-center gap-1.5 text-purple-600"><div className="w-2.5 h-2.5 rounded-full bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-700"></div> Matérias</span>
+                            <span className="flex items-center gap-1.5 text-blue-600"><div className="w-2.5 h-2.5 rounded-full bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-700"></div> Assuntos</span>
                         </div>
                     </div>
                     
@@ -652,27 +659,20 @@ const SemanticDashboard = () => {
                             );
                         })}
                     </div>
-                    <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
                         <div className="space-y-1">
                             <p className="text-slate-500 text-[10px] uppercase font-bold flex items-center gap-1.5">
                                 <Database className="w-3.5 h-3.5 text-purple-500" />
-                                <span className="text-purple-600 dark:text-purple-400">Roxo: Disciplinas (Hard Filter)</span>
+                                <span className="text-purple-600 dark:text-purple-400">Roxo: Matérias/Disciplinas (Hard Filter)</span>
                             </p>
-                            <p className="text-[10px] text-slate-400 leading-tight">A IA detectou uma matéria específica. A busca é travada APENAS nessas disciplinas.</p>
+                            <p className="text-[10px] text-slate-400 leading-tight">A IA detectou uma matéria específica. A busca é travada APENAS nessas matérias.</p>
                         </div>
                         <div className="space-y-1 border-l border-slate-200 dark:border-slate-700 pl-4">
                             <p className="text-slate-500 text-[10px] uppercase font-bold flex items-center gap-1.5">
                                 <Hash className="w-3.5 h-3.5 text-blue-500" />
-                                <span className="text-blue-600 dark:text-blue-400">Azul: Tópicos (Aumento Precisão)</span>
+                                <span className="text-blue-600 dark:text-blue-400">Azul: Assuntos (Aumento Precisão)</span>
                             </p>
                             <p className="text-[10px] text-slate-400 leading-tight">Expansão semântica para tópicos relacionados. Melhora a nota de questões que batem com esses temas.</p>
-                        </div>
-                        <div className="space-y-1 border-l border-slate-200 dark:border-slate-700 pl-4">
-                            <p className="text-slate-500 text-[10px] uppercase font-bold flex items-center gap-1.5">
-                                <Lightbulb className="w-3.5 h-3.5 text-slate-400" />
-                                <span className="text-slate-700 dark:text-slate-300">Branco: Conceitos (Soft Filter)</span>
-                            </p>
-                            <p className="text-[10px] text-slate-400 leading-tight">Termos abstratos capturados pelo Qdrant. Ajudam a IA a entender o "sobre o quê" é a questão.</p>
                         </div>
                     </div>
                 </div>
@@ -898,7 +898,20 @@ const SemanticDashboard = () => {
                                                     -{t}
                                                 </span>
                                             ))}
-                                            {parsePipelineSteps(searchResults.logs).lexical.positive.length === 0 && parsePipelineSteps(searchResults.logs).lexical.negative.length === 0 && (
+                                            {parsePipelineSteps(searchResults.logs).difficulty && (
+                                                <span className="text-[10px] font-bold bg-amber-50 dark:bg-amber-900/30 text-amber-600 px-2 py-0.5 rounded-full border border-amber-100 dark:border-amber-800">
+                                                    Dificuldade: {parsePipelineSteps(searchResults.logs).difficulty}
+                                                </span>
+                                            )}
+                                            {parsePipelineSteps(searchResults.logs).temporal && (
+                                                <span className="text-[10px] font-bold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-800">
+                                                    Ano: {parsePipelineSteps(searchResults.logs).temporal?.operator} {parsePipelineSteps(searchResults.logs).temporal?.year}
+                                                </span>
+                                            )}
+                                            {parsePipelineSteps(searchResults.logs).lexical.positive.length === 0 && 
+                                             parsePipelineSteps(searchResults.logs).lexical.negative.length === 0 && 
+                                             !parsePipelineSteps(searchResults.logs).difficulty &&
+                                             !parsePipelineSteps(searchResults.logs).temporal && (
                                                 <span className="text-[10px] text-slate-400">Nenhum termo processado.</span>
                                             )}
                                         </div>
@@ -1262,57 +1275,50 @@ const SemanticDashboard = () => {
                                 >
                                     {reindexing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
                                     Iniciar Batch
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* CONCEPT INDEX MODAL */}
-            {isConceptModalOpen && (
+                 {/* INTENT INDEX MODAL */}
+            {isIntentModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
                     <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
                         <div className="p-6">
                             <div className="flex justify-between items-start mb-4">
                                 <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
                                     <Lightbulb className="w-6 h-6 text-purple-500" />
-                                    Indexar Subjects & Topics
+                                    Indexar Matérias & Assuntos
                                 </h3>
-                                <button onClick={() => setIsConceptModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                <button onClick={() => setIsIntentModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                                     <RefreshCw className="w-5 h-5" style={{ transform: 'rotate(45deg)' }} />
                                 </button>
                             </div>
                             
                             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                                Vetorize Subjects e Topics no Qdrant para a Detecção de Intenção da busca semântica.
+                                Vetorize Matérias e Assuntos no Qdrant para a Detecção de Intenção da busca semântica.
                                 <span className="block mt-1 text-[11px] font-mono text-purple-500 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-900/20 w-fit px-1.5 py-0.5 rounded">
                                     Pipeline Ativo: {stats?.config.pipeline_version || TARGET_PIPELINE_VERSION}
                                 </span>
                             </p>
-
+ 
                             <div className="grid grid-cols-1 gap-3 mb-6">
                                 {/* Subjects Stat */}
                                 <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-xl p-3">
                                     <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-medium text-purple-700 dark:text-purple-400 uppercase tracking-wider">Subjects Pendentes</span>
+                                        <span className="text-[10px] font-medium text-purple-700 dark:text-purple-400 uppercase tracking-wider">Matérias/Disciplinas Pendentes</span>
                                         <span className="text-sm font-bold text-purple-800 dark:text-purple-200">
-                                            {stats ? (conceptForce ? stats.overview.mysql_total_subjects : stats.overview.mysql_total_subjects - stats.overview.mysql_indexed_subjects) : '...'}
+                                            {stats ? (intentForce ? stats.overview.mysql_total_subjects : stats.overview.mysql_total_subjects - stats.overview.mysql_indexed_subjects) : '...'}
                                         </span>
                                     </div>
                                 </div>
-
+ 
                                 {/* Topics Stat */}
                                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-3">
                                     <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-medium text-blue-700 dark:text-blue-400 uppercase tracking-wider">Topics Pendentes</span>
+                                        <span className="text-[10px] font-medium text-blue-700 dark:text-blue-400 uppercase tracking-wider">Assuntos Pendentes</span>
                                         <span className="text-sm font-bold text-blue-800 dark:text-blue-200">
-                                            {stats ? (conceptForce ? stats.overview.mysql_total_topics : stats.overview.mysql_total_topics - stats.overview.mysql_indexed_topics) : '...'}
+                                            {stats ? (intentForce ? stats.overview.mysql_total_topics : stats.overview.mysql_total_topics - stats.overview.mysql_indexed_topics) : '...'}
                                         </span>
                                     </div>
                                 </div>
                             </div>
-
+ 
                             <div className="space-y-2 mb-8">
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                                     Quantos itens indexar nesta leva?
@@ -1320,20 +1326,20 @@ const SemanticDashboard = () => {
                                 <input 
                                     type="number" 
                                     min="1" max="100000"
-                                    value={conceptBatchLimit}
-                                    onChange={(e) => setConceptBatchLimit(parseInt(e.target.value) || 0)}
+                                    value={intentBatchLimit}
+                                    onChange={(e) => setIntentBatchLimit(parseInt(e.target.value) || 0)}
                                     className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 focus:ring-2 focus:ring-purple-500 outline-none text-slate-800 dark:text-white"
                                 />
                                 <div className="flex justify-end">
                                     <button 
                                         type="button"
                                         onClick={() => {
-                                            const pending = stats ? (conceptForce 
+                                            const pending = stats ? (intentForce 
                                                 ? stats.overview.mysql_total_subjects + stats.overview.mysql_total_topics 
                                                 : (stats.overview.mysql_total_subjects - stats.overview.mysql_indexed_subjects) + 
                                                   (stats.overview.mysql_total_topics - stats.overview.mysql_indexed_topics)
                                             ) : 0;
-                                            setConceptBatchLimit(pending);
+                                            setIntentBatchLimit(pending);
                                         }}
                                         className="text-[10px] font-bold text-purple-600 hover:text-purple-700 underline"
                                     >
@@ -1341,18 +1347,18 @@ const SemanticDashboard = () => {
                                     </button>
                                 </div>
                             </div>
-
+ 
                             <div className="mb-6">
                                 <label className="flex items-center gap-3 cursor-pointer group">
                                     <div className="relative">
                                         <input 
                                             type="checkbox" 
                                             className="sr-only" 
-                                            checked={conceptForce}
-                                            onChange={(e) => setConceptForce(e.target.checked)}
+                                            checked={intentForce}
+                                            onChange={(e) => setIntentForce(e.target.checked)}
                                         />
-                                        <div className={clsx("block w-10 h-6 rounded-full transition-colors", conceptForce ? "bg-purple-500" : "bg-slate-300 dark:bg-slate-600")}></div>
-                                        <div className={clsx("dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform", conceptForce && "transform translate-x-4")}></div>
+                                        <div className={clsx("block w-10 h-6 rounded-full transition-colors", intentForce ? "bg-purple-500" : "bg-slate-300 dark:bg-slate-600")}></div>
+                                        <div className={clsx("dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform", intentForce && "transform translate-x-4")}></div>
                                     </div>
                                     <div>
                                         <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Forçar Re-indexação</span>
@@ -1360,21 +1366,27 @@ const SemanticDashboard = () => {
                                     </div>
                                 </label>
                             </div>
-
+ 
                             <div className="flex gap-3">
                                 <button 
-                                    onClick={() => setIsConceptModalOpen(false)}
+                                    onClick={() => setIsIntentModalOpen(false)}
                                     className="flex-1 px-4 py-2.5 rounded-xl font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
                                 >
                                     Cancelar
                                 </button>
                                 <button 
-                                    onClick={handleReindexConcepts}
-                                    disabled={reindexingConcepts || conceptBatchLimit <= 0}
+                                    onClick={handleReindexIntents}
+                                    disabled={reindexingIntents || intentBatchLimit <= 0}
                                     className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 transition-all disabled:opacity-50 disabled:shadow-none"
                                 >
-                                    {reindexingConcepts ? <RefreshCw className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
+                                    {reindexingIntents ? <RefreshCw className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
                                     Iniciar Batch
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}Batch
                                 </button>
                             </div>
                         </div>
@@ -1403,8 +1415,8 @@ const SemanticDashboard = () => {
                                     <ul className="list-disc pl-4 space-y-1">
                                         <li>Apagará TODAS as coleções do Qdrant.</li>
                                         <li>Limpará as tabelas question_vectors e ai_search_cache no MySQL.</li>
-                                        <li>Zerar o status de indexação de todos os conceitos.</li>
-                                        <li><strong>Você terá que rodar "Indexar Questões" e "Indexar Conceitos" novamente do zero.</strong></li>
+                                        <li>Zerar o status de indexação de todas as matérias e assuntos.</li>
+                                        <li><strong>Você terá que rodar "Indexar Questões" e "Indexar Matérias/Assuntos" novamente do zero.</strong></li>
                                     </ul>
                                 </div>
                                 

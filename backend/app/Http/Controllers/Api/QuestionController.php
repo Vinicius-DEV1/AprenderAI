@@ -811,6 +811,15 @@ class QuestionController extends Controller
             $sqlFilters['exclude_topic_id'] = $excludedTopics;
         }
 
+        // Filtros Temporais e de Dificuldade (Xavier 2.0 Fase 3)
+        if ($analysis['difficulty']) {
+            $sqlFilters['difficulty'] = $analysis['difficulty'];
+        }
+        if (!empty($analysis['years'])) {
+            $sqlFilters['year'] = $analysis['years'][0];
+            $sqlFilters['year_operator'] = $analysis['year_operator'];
+        }
+
         $searchContext = [
             'prompt'              => $request->prompt,
             'normalized_query'    => $normalizedQuery,
