@@ -74,6 +74,7 @@ class AdminImportReviewController extends Controller
             'missing_image' => 0,
             'missing_support_text' => 0,
             'low_quality' => 0,
+            'hallucination' => 0,
         ];
 
         foreach ($logs as $log) {
@@ -170,7 +171,12 @@ class AdminImportReviewController extends Controller
         if ($request->filled('issue')) {
             $issue = $request->issue;
             $query->whereHas('triageLogs', function ($q) use ($issue) {
-                $q->whereJsonContains('issues_detected', $issue);
+                if ($issue === 'hallucination') {
+                    $q->whereJsonContains('issues_detected', 'hallucination')
+                      ->orWhere('quality_score', '<', 30); // Hallucinations usually have very low scores
+                } else {
+                    $q->whereJsonContains('issues_detected', $issue);
+                }
             });
         }
 
