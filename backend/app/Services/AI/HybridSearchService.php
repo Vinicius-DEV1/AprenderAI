@@ -288,6 +288,14 @@ class HybridSearchService
             $op   = $sqlFilters['year_operator'] ?? '=';
             $query->where('year', $op, $year);
         }
+        if (!empty($sqlFilters['organization'])) {
+            $orgs = (array) $sqlFilters['organization'];
+            $query->whereIn('organization', $orgs);
+        }
+        if (!empty($sqlFilters['institution'])) {
+            $insts = (array) $sqlFilters['institution'];
+            $query->whereIn('institution', $insts);
+        }
         if (!empty($sqlFilters['keyword'])) {
             $query->where(function ($q) use ($sqlFilters) {
                 $q->where('statement', 'like', '%' . $sqlFilters['keyword'] . '%')

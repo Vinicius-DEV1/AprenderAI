@@ -544,10 +544,16 @@ class QuestionController extends Controller
         $extractedTopicId = null;
         // ── Step 3: Geração de Embedding Genérico ──────────────────────────────
         // Usamos o prompt POSITIVO para a busca semântica principal.
-        $queryVector = $aiService->generateEmbedding($normalizedQuery, $user->id, 'RETRIEVAL_QUERY');
-
-        if (!$queryVector) {
-            Log::warning('[Xavier][Search] Step 3 FAILED: embedding null. Falling back to legacy.');
+        try {
+            $queryVector = $aiService->generateEmbedding($normalizedQuery, $user->id, 'RETRIEVAL_QUERY');
+            
+            if (!$queryVector) {
+                throw new \Exception("Embedding returned null");
+            }
+        } catch (\Exception $e) {
+            Log::warning('[Xavier][Search] Step 3 FAILED: embedding exception. Falling back to legacy.', [
+                'error' => $e->getMessage()
+            ]);
             return $this->legacyAiSearch($request, $user, $cacheService);
         }
 
@@ -612,6 +618,19 @@ class QuestionController extends Controller
         } catch (\Exception $e) {
             Log::warning('[Xavier][Search] Step 5 FAILED: intent detection error.', ['err' => $e->getMessage()]);
         }
+
+        // ── 5.1: Mesclar Detecções Léxicas (Fase 4) ───────────────────────────
+        // Adicionamos o que o Analista Léxico detectou via Regex (ex: "FGV", "ENEM")
+        // às detecções semânticas para garantir que nada passe despercebido.
+        if (!empty($analysis['organizations'])) {
+            $extractedOrgs = array_merge($extractedOrgs, $analysis['organizations']);
+        }
+        if (!empty($analysis['institutions'])) {
+            $extractedInsts = array_merge($extractedInsts, $analysis['institutions']);
+        }
+
+        $extractedOrgs  = array_values(array_unique($extractedOrgs));
+        $extractedInsts = array_values(array_unique($extractedInsts));
 
         // ── Step 5b: Fallback se nenhuma intenção for encontrada ───────────────
         if (empty($extractedSubjects) && empty($extractedTopics) && empty($extractedOrgs) && empty($extractedInsts)) {

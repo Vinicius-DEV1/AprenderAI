@@ -46,10 +46,38 @@ class QueryLexicalAnalyser
             'restricted_terms' => [], // O que o usuário quer EXCLUSIVAMENTE
             'is_restricted'   => false, // Se há um operador "apenas/somente"
             'years'           => [], // Anos detectados (ex: [2023])
-            'year_operator'   => '>=', // Default para anos: maior ou igual
+            'year_operator'   => '=', // Default para anos: igual
             'difficulty'      => null, // Nível de dificuldade detectado
+            'organizations'   => [], // Bancas/Organizações detectadas
+            'institutions'    => [], // Instituições de ensino detectadas
         ];
 
+        $analysis = $this->detectDifficulty($prompt, $analysis);
+        $analysis = $this->detectTemporal($prompt, $analysis);
+        $analysis = $this->detectEntities($prompt, $analysis);
+        $analysis = $this->detectRestriction($prompt, $analysis);
+        $analysis = $this->detectNegation($prompt, $analysis);
+
+        $analysis['clean_prompt'] = $this->cleanPrompt($prompt, $analysis);
+
+        // Se houver restrições e nenhum termo positivo explícito ainda, 
+        // os próprios termos restritos são o foco positivo
+        if ($analysis['is_restricted'] && empty($analysis['positive_terms'])) {
+            $analysis['positive_terms'] = $analysis['restricted_terms'];
+        }
+
+        // Fallback: se não houver nada filtrado, o prompt todo é positivo
+        if (empty($analysis['positive_terms']) && empty($analysis['negative_terms'])) {
+            $analysis['positive_terms'] = [$analysis['clean_prompt']];
+        }
+
+        Log::info('[Xavier][Lexical] Prompt analysed.', $analysis);
+
+        return $analysis;
+    }
+
+    private function detectDifficulty(string &$prompt, array $analysis): array
+    {
         // 0. Detecção de Dificuldade
         foreach ($this->difficultyMap as $keyword => $level) {
             if (str_contains($prompt, $keyword)) {
@@ -59,7 +87,11 @@ class QueryLexicalAnalyser
                 break;
             }
         }
+        return $analysis;
+    }
 
+    private function detectTemporal(string &$prompt, array &$analysis): array
+    {
         // 1. Detecção de Anos e Operadores Temporais
         if (preg_match_all('/\b(19|20)\d{2}\b/', $prompt, $matches)) {
             $analysis['years'] = array_map('intval', $matches[0]);
@@ -72,49 +104,93 @@ class QueryLexicalAnalyser
             } elseif (preg_match('/(em|de)\s+(19|20)\d{2}/', $prompt)) {
                 $analysis['year_operator'] = '=';
             }
+
+            // Remove anos do prompt para não interferir em outras análises
+            $prompt = preg_replace('/\b(19|20)\d{2}\b/', '', $prompt);
+        }
+        return $analysis;
+    }
+
+    private function detectEntities(string &$prompt, array &$analysis): array
+    {
+        // ── Detecção de Instituições populares ────────────────────────────────
+        $institutions = [
+            'enem'    => ['enem'],
+            'usp'     => ['usp', 'fuvest'],
+            'unicamp' => ['unicamp', 'comvest'],
+            'unesp'   => ['unesp', 'vunesp'],
+            'ufrj'    => ['ufrj'],
+            'ufmg'    => ['ufmg'],
+        ];
+
+        foreach ($institutions as $key => $synonyms) {
+            foreach ($synonyms as $synonym) {
+                if (preg_match('/\b' . preg_quote($synonym, '/') . '\b/i', $prompt)) {
+                    $analysis['institutions'][] = strtoupper($key);
+                    $prompt = preg_replace('/\b' . preg_quote($synonym, '/') . '\b/i', '', $prompt);
+                    break;
+                }
+            }
         }
 
-        // 1. Detecção de Restrição (Apenas/Somente)
+        // ── Detecção de Bancas (Organizações) ─────────────────────────────────
+        $orgs = [
+            'fgv'        => ['fgv', 'getulio vargas', 'getúlio vargas'],
+            'cebraspe'   => ['cebraspe', 'cespe'],
+            'fcc'        => ['fcc', 'carlos chagas'],
+            'vunesp'     => ['vunesp'],
+            'idecan'     => ['idecan'],
+            'cesgranrio' => ['cesgranrio'],
+        ];
+
+        foreach ($orgs as $key => $synonyms) {
+            foreach ($synonyms as $synonym) {
+                if (preg_match('/\b' . preg_quote($synonym, '/') . '\b/i', $prompt)) {
+                    $analysis['organizations'][] = strtoupper($key);
+                    $prompt = preg_replace('/\b' . preg_quote($synonym, '/') . '\b/i', '', $prompt);
+                    break;
+                }
+            }
+        }
+
+        return $analysis;
+    }
+
+    private function detectRestriction(string &$prompt, array &$analysis): array
+    {
         foreach ($this->restrictionKeywords as $kw) {
             $parts = explode(" {$kw} ", " {$prompt} ");
             if (count($parts) > 1) {
                 $analysis['is_restricted'] = true;
-                // O que vem DEPOIS do 'apenas' é o que deve ser filtrado exclusivamente
                 $analysis['restricted_terms'][] = trim($parts[1]);
-                // O que vem ANTES pode ser o contexto (ex: "questões de biologia apenas da FGV")
                 if (!empty(trim($parts[0]))) {
                     $analysis['positive_terms'][] = trim($parts[0]);
                 }
+                $prompt = str_replace(" {$kw} ", ' ', $prompt);
             }
         }
+        return $analysis;
+    }
 
-        // 2. Detecção de Negação (Menos/Exceto)
+    private function detectNegation(string &$prompt, array &$analysis): array
+    {
         foreach ($this->negationKeywords as $kw) {
             $parts = explode(" {$kw} ", " {$prompt} ");
             if (count($parts) > 1) {
-                // O que veio ANTES da negação é positivo
                 if (!empty(trim($parts[0]))) {
                     $analysis['positive_terms'][] = trim($parts[0]);
                 }
-                
-                // O que veio DEPOIS da negação é negativo
                 $analysis['negative_terms'][] = trim($parts[1]);
+                $prompt = str_replace(" {$kw} ", ' ', $prompt);
             }
         }
-
-        // Se houver restrições e nenhum termo positivo explícito ainda, 
-        // os próprios termos restritos são o foco positivo
-        if ($analysis['is_restricted'] && empty($analysis['positive_terms'])) {
-            $analysis['positive_terms'] = $analysis['restricted_terms'];
-        }
-
-        // Fallback: se não houver nada filtrado, o prompt todo é positivo
-        if (empty($analysis['positive_terms']) && empty($analysis['negative_terms'])) {
-            $analysis['positive_terms'] = [$prompt];
-        }
-
-        Log::info('[Xavier][Lexical] Prompt analysed.', $analysis);
-
         return $analysis;
+    }
+
+    private function cleanPrompt(string $prompt, array $analysis): string
+    {
+        // Remove espaços extras e pontuação final
+        $clean = preg_replace('/\s+/', ' ', $prompt);
+        return trim($clean, " \t\n\r\0\x0B.,;?!");
     }
 }

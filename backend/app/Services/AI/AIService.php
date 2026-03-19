@@ -783,10 +783,11 @@ EOT;
         } catch (\Exception $e) {
             Log::error("[Xavier][Embedding] Exceção ao gerar Embedding com Failover: {$e->getMessage()}", [
                 'taskType' => $taskType,
-                'text_preview' => substr($text, 0, 100),
-                'error_detail' => $e->getTraceAsString()
+                'text_preview' => substr($text, 0, 100)
             ]);
-            return null;
+            
+            // Repropaga a exceção para que o Job possa decidir entre release() ou fail()
+            throw $e;
         }
     }
 

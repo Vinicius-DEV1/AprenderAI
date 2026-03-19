@@ -27,7 +27,7 @@ class IndexSemanticEntityJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries   = 2;
+    public int $tries   = 20; // 20 tries * 5 min = 1.6 hours of resilience for entities
     public int $timeout = 60;
 
     /**
@@ -52,7 +52,8 @@ class IndexSemanticEntityJob implements ShouldQueue
         if (!$model) {
             $msg = "[Xavier][IndexEntity] Entity '{$this->entityId}' of type '{$this->entityType}' NOT FOUND.";
             Log::error($msg);
-            throw new \RuntimeException($msg);
+            // Permanent error, no retry
+            return;
         }
 
         // Constrói o texto rico para o embedding baseado no tipo de entidade.
@@ -67,14 +68,29 @@ class IndexSemanticEntityJob implements ShouldQueue
 
         Log::info("[Xavier][IndexEntity] Generating vector for {$this->entityType} '{$this->entityId}'...");
         
-        // Gera o embedding usando o modelo configurado (Gemini).
-        // Usamos 'RETRIEVAL_DOCUMENT' pois esta entidade será a "âncora" buscada.
-        $vector = $aiService->generateEmbedding($text, null, 'RETRIEVAL_DOCUMENT');
+        try {
+            // Gera o embedding usando o modelo configurado (Gemini).
+            // Usamos 'RETRIEVAL_DOCUMENT' pois esta entidade será a "âncora" buscada.
+            $vector = $aiService->generateEmbedding($text, null, 'RETRIEVAL_DOCUMENT');
 
-        if (!$vector) {
-            $msg = "[Xavier][IndexEntity] Embedding FAILED for {$this->entityType} '{$this->entityId}'.";
-            Log::error($msg);
-            throw new \RuntimeException($msg);
+            if (!$vector) {
+                throw new \RuntimeException("Vetor retornado vazio.");
+            }
+        } catch (\Exception $e) {
+            $msg = $e->getMessage();
+            $isQuota = str_contains(strtolower($msg), '429') || 
+                      str_contains(strtolower($msg), 'quota') || 
+                      str_contains(strtolower($msg), 'full failover failure');
+
+            if ($isQuota) {
+                Log::warning("[Xavier][IndexEntity] Quota exhausted for {$this->entityType} '{$this->entityId}'. Releasing to retry in 5 min.");
+                $this->release(300);
+                return;
+            }
+
+            Log::error("[Xavier][IndexEntity] PERMANENT FAILURE for {$this->entityType} '{$this->entityId}'. Error: {$msg}");
+            $this->fail($e);
+            return;
         }
 
         $qdrant->ensureFiltersCollection();
