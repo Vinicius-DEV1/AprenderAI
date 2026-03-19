@@ -183,6 +183,7 @@ class SemanticDashboardController extends Controller
                 'pending' => $pendingJobs,
                 'failed'  => $failedJobs,
                 'recent_failures' => $failedJobsDetails,
+                'waiting_list'    => app(\App\Services\AI\AIService::class)->getCongestionList(),
             ],
             'analytics' => [
                 'total_ai_requests' => $totalAiRequests,

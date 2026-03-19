@@ -80,6 +80,7 @@ class IndexSemanticEntityJob implements ShouldQueue
             // POOL BUSY OR LOCKED: All keys are currently used by other workers or blacklisted.
             // Release back to queue with 5m delay to avoid aggressive key contention.
             Log::info("[IndexSemanticEntityJob] AI pool busy for {$this->entityType} #{$this->entityId}. Releasing for 5m backoff.");
+            $aiService->registerCongestion('IndexSemanticEntityJob', $this->entityId);
             $this->release(300);
             return;
         } catch (\Exception $e) {
@@ -92,6 +93,7 @@ class IndexSemanticEntityJob implements ShouldQueue
 
             if ($isQuota) {
                 Log::warning("[IndexSemanticEntityJob] Quota limit hit or no keys available for {$this->entityType} '{$this->entityId}'. Releasing for 5m. Error: {$msg}");
+                $aiService->registerCongestion('IndexSemanticEntityJob', $this->entityId);
                 $this->release(300);
                 return;
             }

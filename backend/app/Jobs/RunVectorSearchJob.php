@@ -109,7 +109,7 @@ class RunVectorSearchJob implements ShouldQueue
         $intentFilters = $ctx['intent_filters'] ?? [];
         $searchPath    = $ctx['search_path']    ?? 'vector_only';
 
-        $rankedItems = $reranker->rerank($candidates, $finalLimit, $intentFilters);
+        $rankedItems = $reranker->rerank($candidates, $finalLimit, $intentFilters, $this->userId);
         $questionIds = array_column($rankedItems, 'question_id');
         Log::info("[Xavier][RunVectorSearch] ReRank finalizado: " . count($rankedItems) . " questões.");
 

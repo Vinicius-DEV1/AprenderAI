@@ -66,10 +66,9 @@ class StudyStatsService
     {
         foreach ($simulation->answers as $answer) {
             $question = $answer->question;
-            // Lógica N:N (Pivot): A estrutura relacional de Subjects e Topics requer extrair o primeiro elemento 
-            // através dos relacionamentos. A extração visa manter compatibilidade com o sistema de estatísticas
-            // baseadas em string, sem a necessidade de reescrever inteiramente a engine métrica, 
-            // e cai para o fallback 'Geral' caso as queries N:N retornem nulo.
+            // N:N Logic (Pivot): The relational structure of Subjects and Topics requires extracting the first element 
+            // through relationships. This extraction aims to maintain compatibility with the string-based metrics engine
+            // and falls back to 'General' if the N:N queries return null.
             $subjectName = $question->subjects->first()?->name ?? 'Geral';
             $topicName = $question->topics->first()?->name ?? 'Geral';
 
@@ -87,6 +86,44 @@ class StudyStatsService
             $stat->last_attempt_at = now();
             $stat->save();
         }
+
+        // Xavier 2.0: Synchronize weak and strong themes in the UserStat model for faster re-ranking
+        $this->syncUserThemes($user);
+    }
+
+    /**
+     * Synchronizes the top 5 weak and strong topics into the UserStat model.
+     * This provides a flattened cache for the ReRankService to apply proficiency boosts.
+     */
+    protected function syncUserThemes(User $user): void
+    {
+        $stats = UserTopicStat::where('user_id', $user->id)->get();
+        if ($stats->isEmpty()) return;
+
+        // Weakest: Low accuracy topics with at least 2 attempts to avoid noise from early fails
+        $weak = $stats->where('attempts', '>=', 2)
+            ->sortBy('accuracy')
+            ->take(5)
+            ->map(fn($s) => $s->topic)
+            ->values()
+            ->toArray();
+
+        // Strongest: High accuracy topics
+        $strong = $stats->where('attempts', '>=', 2)
+            ->sortByDesc('accuracy')
+            ->take(5)
+            ->map(fn($s) => $s->topic)
+            ->values()
+            ->toArray();
+
+        \App\Models\UserStat::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'weak_themes' => $weak,
+                'strong_themes' => $strong,
+                'updated_at' => now()
+            ]
+        );
     }
 
     public function buildStats(User $user): array

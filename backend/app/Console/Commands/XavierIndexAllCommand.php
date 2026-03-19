@@ -15,10 +15,10 @@ use Illuminate\Support\Facades\Log;
  * Dispatches IndexQuestionVectorJob for each question.
  *
  * Usage:
- *   php artisan xavier:index-all            # async (dispatches to embeddings queue)
+ *   php artisan xavier:index-all            # async (dispatches to prioritized queue)
  *   php artisan xavier:index-all --sync     # processes synchronously (useful for testing)
  *   php artisan xavier:index-all --chunk=25 # custom chunk size
- *   php artisan xavier:index-all --fresh    # clears existing Qdrant collection first
+ *   php artisan xavier:index-all --fresh    # ensures Qdrant collection exists
  */
 class XavierIndexAllCommand extends Command
 {
@@ -46,7 +46,7 @@ class XavierIndexAllCommand extends Command
 
         $this->info('📦 Ensuring Qdrant collections exist...');
         $qdrant->ensureQuestionsCollection();
-        $qdrant->ensureConceptsCollection();
+        $qdrant->ensureFiltersCollection(); // Concepts were renamed to Filters/Entities in Xavier 2.0
         $this->info('  ✓ Collections ready.');
         $this->newLine();
 
@@ -90,10 +90,13 @@ class XavierIndexAllCommand extends Command
                 ->cursor(),
             function ($question) use ($isSync, &$indexed, &$failed) {
                 try {
+                    $job = new IndexQuestionVectorJob($question->id);
+                    
                     if ($isSync) {
-                        IndexQuestionVectorJob::dispatchSync($question->id);
+                        dispatch_sync($job);
                     } else {
-                        IndexQuestionVectorJob::dispatch($question->id)->onQueue(config('xavier.embeddings.queue', 'embeddings'));
+                        // Dispatches to the configured prioritized queue (default: 'low')
+                        dispatch($job)->onQueue(config('xavier.embeddings.queue', 'low'));
                     }
                     $indexed++;
                 } catch (\Exception $e) {
@@ -118,9 +121,10 @@ class XavierIndexAllCommand extends Command
             $this->newLine();
             $this->info('✅ Synchronous indexing complete.');
         } else {
+            $queueName = config('xavier.embeddings.queue', 'low');
             $this->newLine();
-            $this->info('✅ Jobs dispatched to [embeddings] queue.');
-            $this->line('   Run: php artisan queue:work --queue=embeddings');
+            $this->info("✅ Jobs dispatched to [{$queueName}] queue (Prioritized Workers).");
+            $this->line("   Hybrid workers will process this as a background task.");
         }
 
         return 0;

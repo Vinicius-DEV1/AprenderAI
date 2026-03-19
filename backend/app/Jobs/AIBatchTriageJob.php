@@ -17,7 +17,7 @@ class AIBatchTriageJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 600; // 10 minutes timeout for larger batches
-    public $tries = 1;    // Não retentar automaticamente — retry manual disponível no painel
+    public $tries = 1;    // Do not retry automatically — manual retry available in the dashboard
 
     protected $batchId;
     protected $questionIds;
@@ -53,7 +53,6 @@ class AIBatchTriageJob implements ShouldQueue
      */
     public function handle(AIBatchService $batchService): void
     {
-        // Safety check for old/corrupted jobs in queue
         if (empty($this->batchId) || empty($this->questionIds)) {
             Log::warning("[AIBATCH] Skipping job: missing batchId or questionIds. If this is an old job retried after a deploy, it cannot be recovered.", [
                 'batch_id' => $this->batchId ?? 'NULL',
@@ -141,6 +140,7 @@ class AIBatchTriageJob implements ShouldQueue
             // POOL BUSY: The dedicated AI keys for triage are currently locked or blacklisted.
             // We release the job back to the queue for a retry in 5 minutes.
             Log::info("[AIBATCH] AI key pool busy for batch #{$this->batchId}. Releasing chunk #{$this->chunkIndex}.");
+            $aiService->registerCongestion('AIBatchTriageJob', "Batch: {$this->batchId} | Chunk: {$this->chunkIndex}");
             $this->writeChunkPhase('idle');
             $this->release(300);
             return;

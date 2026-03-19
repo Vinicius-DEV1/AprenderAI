@@ -30,7 +30,7 @@ class AIBatchService
     {
         $prompt = $this->buildBatchPrompt($questions, $type, $reprocess);
         try {
-            // Use generateJsonForBatch to route through CAPABILITY_TRIAGE keys with full failover support
+            // Use generateJsonForBatch to route through CAPABILITY_TRIAGE keys with full failover support and Redis locks
             $result = $this->aiService->generateJsonForBatch($prompt, $batchId, $userId);
             $data = $result['data'] ?? [];
             $usage = $result['usage'] ?? ['input_tokens' => 0, 'output_tokens' => 0];
@@ -125,7 +125,7 @@ class AIBatchService
             default => "Avalie a questao e forneca os dados necessarios."
         };
 
-        // Usa o SystemPrompt se existir, senão usa o fallback hardcoded melhorado
+        // Use the SystemPrompt if it exists, otherwise use the improved hardcoded fallback
         return $this->promptService->get('triage_batch_classification', [
             'instruction' => $instruction,
             'subjects_reference' => json_encode($subjectsRef),
@@ -185,13 +185,13 @@ class AIBatchService
             'low_quality' => 0,
         ];
 
-        // Log para depuração de erros massivos (ajuda a ver o que a IA mandou)
+        // Log for debugging massive errors (helps visualize what the AI actually sent)
         \Illuminate\Support\Facades\Log::debug("[AIBATCH] Raw result keys detected: " . implode(', ', array_keys($results)));
         if (count($results) === 0) {
-            \Illuminate\Support\Facades\Log::warning("[AIBATCH] Advertência: A IA retornou um array vazio ou inválido.");
+            \Illuminate\Support\Facades\Log::warning("[AIBATCH] Warning: AI returned an empty or invalid array.");
         }
         if (is_array($results)) {
-            // Se a IA devolver um wrapper com a chave text contendo string JSON (Gemini via Guzzle sem parse completo)
+            // If the AI returns a wrapper with the 'text' key containing a JSON string (Gemini via Guzzle without full auto-parse)
             if (isset($results['text']) && is_string($results['text'])) {
                 $sanitizer = app(\App\Services\AI\ResponseSanitizer::class);
                 $sanitized = $sanitizer->sanitize($results['text']);

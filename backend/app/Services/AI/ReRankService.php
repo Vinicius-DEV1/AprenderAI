@@ -54,10 +54,11 @@ class ReRankService
      *
      * @param  array  $candidates    [{question_id, score, source, payload}]
      * @param  int    $topN          Max results to return (default: 20)
-     * @param  array  $intentFilters Optional: Associative array of intents detected (e.g. ['subject_id' => [38, 20], 'topic_id' => [2194], 'type' => ['enem']])
+     * @param  array  $intentFilters Optional: Associative array of intents detected
+     * @param  int|null $userId      Optional: User ID for proficiency-based boosting
      * @return array  [{question_id, score, composite_score}]
      */
-    public function rerank(array $candidates, int $topN = 20, array $intentFilters = []): array
+    public function rerank(array $candidates, int $topN = 20, array $intentFilters = [], ?int $userId = null): array
     {
         if (empty($candidates)) {
             return [];
@@ -72,6 +73,17 @@ class ReRankService
 
         $maxVectorScore = !empty($candidates) ? max(array_column($candidates, 'score')) : 1.0;
         $maxPopularity  = !empty($popularityCounts) ? max($popularityCounts) : 1;
+
+        // Xavier 2.0: Fetch user proficiency stats for adaptive boosting
+        $weakThemes = [];
+        $strongThemes = [];
+        if ($userId) {
+            $userStat = \App\Models\UserStat::where('user_id', $userId)->first();
+            if ($userStat) {
+                $weakThemes   = $userStat->weak_themes   ?? [];
+                $strongThemes = $userStat->strong_themes ?? [];
+            }
+        }
 
         // Score each candidate
         $scored = [];
@@ -104,8 +116,21 @@ class ReRankService
                 if (!empty($intentFilters['institution']) && in_array($payload['institution'] ?? null, $intentFilters['institution'])) {
                     $intentBoost += 0.20;
                 }
-                // Limita o boost máximo para manter a coerência geral
+                // Maximize boost to keep general coherence
                 $intentBoost = min(0.50, $intentBoost);
+            }
+
+            // Xavier 2.0: Proficiency Boost (Pedagogical Growth)
+            // If the user is struggling with this specific topic (weak_themes), 
+            // give it a significant boost to encourage practice/growth.
+            $proficiencyBoost = 0.0;
+            $topicName = $payload['topic'] ?? null;
+            if ($topicName) {
+                if (in_array($topicName, $weakThemes)) {
+                    $proficiencyBoost = 0.25; // High priority: study needed
+                } elseif (in_array($topicName, $strongThemes)) {
+                    $proficiencyBoost = 0.05; // Low priority: maintenance
+                }
             }
 
             // Weights are applied to unified [0, 1] scales
@@ -113,7 +138,8 @@ class ReRankService
                        + ($popularityScore * $this->wPopularity)
                        + ($qualityScore    * $this->wQuality)
                        + ($recencyScore    * $this->wRecency)
-                       + $intentBoost;
+                       + $intentBoost
+                       + $proficiencyBoost;
 
             $scored[] = [
                 'question_id'     => $qid,
@@ -126,6 +152,7 @@ class ReRankService
                     'quality'    => ['raw' => round($qualityScore, 4),    'weighted' => round($qualityScore * $this->wQuality, 4)],
                     'recency'    => ['raw' => round($recencyScore, 4),    'weighted' => round($recencyScore * $this->wRecency, 4)],
                     'intent'     => ['raw' => 1.0,                        'weighted' => round($intentBoost, 4)],
+                    'proficiency' => ['raw' => 1.0,                       'weighted' => round($proficiencyBoost, 4)],
                 ]
             ];
         }
