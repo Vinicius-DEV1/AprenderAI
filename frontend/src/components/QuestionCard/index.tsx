@@ -143,6 +143,38 @@ const QuestionCard = memo(({
 
     const [activeTab, setActiveTab] = useState<'gabarito' | 'chat' | 'history' | 'notes' | 'admin_history' | null>(isResultMode ? 'gabarito' : null);
 
+    // Horizontal Scroll Indicator Logic
+    const actionsScrollRef = useRef<HTMLDivElement>(null);
+    const [showRightArrow, setShowRightArrow] = useState(false);
+
+    const checkScroll = () => {
+        const el = actionsScrollRef.current;
+        if (el) {
+            const canScrollRight = el.scrollWidth > el.clientWidth && (el.scrollLeft + el.clientWidth) < (el.scrollWidth - 10);
+            setShowRightArrow(canScrollRight);
+        }
+    };
+
+    useEffect(() => {
+        if (answered) {
+            const timeout = setTimeout(checkScroll, 100); // Wait for render
+            return () => clearTimeout(timeout);
+        }
+    }, [answered, activeTab]);
+
+    useEffect(() => {
+        const el = actionsScrollRef.current;
+        if (el) {
+            el.addEventListener('scroll', checkScroll);
+            window.addEventListener('resize', checkScroll);
+            checkScroll(); // Initial check
+            return () => {
+                el.removeEventListener('scroll', checkScroll);
+                window.removeEventListener('resize', checkScroll);
+            };
+        }
+    }, [answered]);
+
     const [chatMessages, setChatMessages] = useState<any[]>([]);
     const [chatInput, setChatInput] = useState('');
     const [chatTyping, setChatTyping] = useState(false);
@@ -562,27 +594,51 @@ const QuestionCard = memo(({
                 </div>
             )}
 
-            <div className="qb-card-actions mt-6">
+            <div className="qb-card-actions mt-6 relative">
                 {!answered && (
                     <button className="qb-action-btn primary" onClick={submitAnswer} disabled={submitting || (!isDiscursive && !selectedAnswer)}>
                         {!submitting ? '📝 Responder' : '⏳ Enviando...'}
                     </button>
                 )}
                 {answered && (
-                    <div className="flex overflow-x-auto whitespace-nowrap gap-2 pb-2 items-center w-full shadow-inner-x" style={{ scrollbarWidth: 'none' }}>
-                        <button className={`qb-action-btn ${activeTab === 'gabarito' ? '!bg-indigo-600 !text-white' : ''}`} onClick={() => setActiveTab(activeTab === 'gabarito' ? null : 'gabarito')}>📖 Gabarito Comentado</button>
-                        <button className={`qb-action-btn ${activeTab === 'chat' ? '!bg-indigo-600 !text-white' : ''}`} onClick={toggleChat}>✨ Tirar Dúvida</button>
-                        <button className={`qb-action-btn ${activeTab === 'history' ? '!bg-indigo-600 !text-white' : ''}`} onClick={toggleHistory}>📜 Meu Histórico</button>
-                        <button className={`qb-action-btn ${activeTab === 'notes' ? '!bg-indigo-600 !text-white' : ''} ${hasNotes && activeTab !== 'notes' ? '!bg-emerald-50 !text-emerald-700 !border-emerald-200' : ''}`} onClick={toggleNotes}>
-                            {hasNotes ? '📝' : '✏️'} Minhas Anotações
-                        </button>
-                        {isAdmin && (
-                            <button className={`qb-action-btn ${activeTab === 'admin_history' ? '!bg-indigo-600 !text-white' : ''} !border-indigo-200 !text-indigo-600 bg-indigo-50/50`} onClick={() => setActiveTab(activeTab === 'admin_history' ? null : 'admin_history')}>
-                                🛡️ Admin: Histórico & IA
+                    <>
+                        <div
+                            ref={actionsScrollRef}
+                            className="flex overflow-x-auto whitespace-nowrap gap-2 pb-2 items-center w-full no-scrollbar px-1"
+                            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                        >
+                            <button className={`qb-action-btn ${activeTab === 'gabarito' ? '!bg-indigo-600 !text-white' : ''}`} onClick={() => setActiveTab(activeTab === 'gabarito' ? null : 'gabarito')}>📖 Gabarito Comentado</button>
+                            <button className={`qb-action-btn ${activeTab === 'chat' ? '!bg-indigo-600 !text-white' : ''}`} onClick={toggleChat}>✨ Tirar Dúvida</button>
+                            <button className={`qb-action-btn ${activeTab === 'history' ? '!bg-indigo-600 !text-white' : ''}`} onClick={toggleHistory}>📜 Meu Histórico</button>
+                            <button className={`qb-action-btn ${activeTab === 'notes' ? '!bg-indigo-600 !text-white' : ''} ${hasNotes && activeTab !== 'notes' ? '!bg-emerald-50 !text-emerald-700 !border-emerald-200' : ''}`} onClick={toggleNotes}>
+                                {hasNotes ? '📝' : '✏️'} Minhas Anotações
                             </button>
-                        )}
-                        {mode !== 'result' && <button className="qb-action-btn retry" onClick={resetCard}>🔄 Tentar Novamente</button>}
-                    </div>
+                            {isAdmin && (
+                                <button className={`qb-action-btn ${activeTab === 'admin_history' ? '!bg-indigo-600 !text-white' : ''} !border-indigo-200 !text-indigo-600 bg-indigo-50/50`} onClick={() => setActiveTab(activeTab === 'admin_history' ? null : 'admin_history')}>
+                                    🛡️ Admin: Histórico & IA
+                                </button>
+                            )}
+                            {mode !== 'result' && <button className="qb-action-btn retry" onClick={resetCard}>🔄 Tentar Novamente</button>}
+                        </div>
+
+                        {/* Right Scroll Indicator */}
+                        <AnimatePresence>
+                            {showRightArrow && (
+                                <motion.div
+                                    initial={{ opacity: 0, x: 10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 10 }}
+                                    className="absolute right-0 top-0 bottom-2 w-12 flex items-center justify-end pr-1 pointer-events-none bg-gradient-to-l from-white via-white/80 to-transparent dark:from-slate-900 dark:via-slate-900/80 z-10"
+                                >
+                                    <div className="bg-indigo-600/10 text-indigo-600 rounded-full p-1 qb-animate-pulse-horizontal">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </>
                 )}
             </div>
 

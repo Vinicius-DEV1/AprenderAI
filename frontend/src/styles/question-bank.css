@@ -1681,4 +1681,22 @@
         justify-content: flex-start;
     }
 }
+
+/* Scroll indicator and utilities */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+@keyframes qb-pulse-horizontal {
+    0%, 100% { transform: translateX(0); opacity: 1; }
+    50% { transform: translateX(3px); opacity: 0.7; }
+}
+
+.qb-animate-pulse-horizontal {
+    animation: qb-pulse-horizontal 1.5s ease-in-out infinite;
+}
 
