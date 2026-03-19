@@ -26,6 +26,8 @@ class ReRankService
     private float $wPopularity;
     private float $wQuality;
     private float $wRecency;
+    private float $pBoost;
+    private float $iBoost;
 
     // Difficulty → pedagogical quality score mapping
     private const DIFFICULTY_QUALITY = [
@@ -47,6 +49,10 @@ class ReRankService
         $this->wPopularity = (float) ($weights['popularity'] ?? 0.15);
         $this->wQuality    = (float) ($weights['quality']    ?? 0.15);
         $this->wRecency    = (float) ($weights['recency']    ?? 0.10);
+        
+        $userWeights = $weights['user_profile'] ?? [];
+        $this->pBoost      = (float) ($userWeights['proficiency_boost'] ?? 0.25);
+        $this->iBoost      = (float) ($userWeights['intent_boost']      ?? 0.30);
     }
 
     /**
@@ -102,19 +108,19 @@ class ReRankService
             $intentBoost = 0.0;
             if (!empty($intentFilters)) {
                 if (!empty($intentFilters['subject_id']) && in_array($payload['subject_id'] ?? null, $intentFilters['subject_id'])) {
-                    $intentBoost += 0.30;
+                    $intentBoost += $this->iBoost;
                 }
                 if (!empty($intentFilters['topic_id']) && in_array($payload['topic_id'] ?? null, $intentFilters['topic_id'])) {
-                    $intentBoost += 0.15;
+                    $intentBoost += $this->iBoost * 0.5;
                 }
                 if (!empty($intentFilters['type']) && in_array($payload['type'] ?? null, $intentFilters['type'])) {
                     $intentBoost += 0.10;
                 }
                 if (!empty($intentFilters['organization']) && in_array($payload['organization'] ?? null, $intentFilters['organization'])) {
-                    $intentBoost += 0.30;
+                    $intentBoost += $this->iBoost;
                 }
                 if (!empty($intentFilters['institution']) && in_array($payload['institution'] ?? null, $intentFilters['institution'])) {
-                    $intentBoost += 0.20;
+                    $intentBoost += $this->iBoost * 0.6;
                 }
                 // Maximize boost to keep general coherence
                 $intentBoost = min(0.50, $intentBoost);
@@ -127,7 +133,7 @@ class ReRankService
             $topicName = $payload['topic'] ?? null;
             if ($topicName) {
                 if (in_array($topicName, $weakThemes)) {
-                    $proficiencyBoost = 0.25; // High priority: study needed
+                    $proficiencyBoost = $this->pBoost; // High priority: study needed
                 } elseif (in_array($topicName, $strongThemes)) {
                     $proficiencyBoost = 0.05; // Low priority: maintenance
                 }

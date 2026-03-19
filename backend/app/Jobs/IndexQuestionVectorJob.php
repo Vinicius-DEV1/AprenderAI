@@ -59,9 +59,9 @@ class IndexQuestionVectorJob implements ShouldQueue
         // Circuit Breaker: If no API keys are available for embedding, release the job back to the queue
         // to wait for quota reset or manual intervention, preventing mass failures.
         if (!$aiService->hasActiveKey(\App\Models\ApiKey::CAPABILITY_EMBEDDING)) {
-            Log::info("[Xavier][IndexQuestion] No active keys for embedding. Releasing question #{$this->questionId} to retry in 5 minutes.");
+            Log::info("[Xavier][IndexQuestion] No active keys for embedding. Releasing question #{$this->questionId} to retry in 1 minute.");
             $aiService->registerCongestion('IndexQuestionVectorJob', $this->questionId);
-            $this->release(300); // 5 minutes backoff
+            $this->release(60); // 1 minute backoff for global empty pool
             return;
         }
 
@@ -118,11 +118,11 @@ class IndexQuestionVectorJob implements ShouldQueue
                 throw new \RuntimeException('Um dos vetores retornou inesperadamente vazio.');
             }
         } catch (\App\Exceptions\AIServiceBusyException $e) {
-            // POOL BUSY OR LOCKED: All keys are currently used by other workers or blacklisted.
-            // Release back to queue with 5m delay (respecting the 2-day retry window).
-            Log::info("[IndexQuestionVectorJob] AI Key pool busy/locked for question #{$this->questionId}. Releasing for 5m backoff.");
+            // POOL BUSY OR LOCKED: All keys are currently used by other workers.
+            // Release back to queue with shorter delay (30s) to retry quickly
+            Log::info("[IndexQuestionVectorJob] AI Key pool busy/locked for question #{$this->questionId}. Releasing for 30s backoff.");
             $aiService->registerCongestion('IndexQuestionVectorJob', $this->questionId);
-            $this->release(300);
+            $this->release(30);
             return;
         } catch (\Exception $e) {
             $msg = $e->getMessage();
@@ -133,9 +133,9 @@ class IndexQuestionVectorJob implements ShouldQueue
                        str_contains(strtolower($msg), 'full failover failure');
 
             if ($isQuota) {
-                Log::warning("[IndexQuestionVectorJob] Quota limit hit or no keys available for #{$this->questionId}. Releasing for 5m. Error: {$msg}");
+                Log::warning("[IndexQuestionVectorJob] Quota limit hit or all providers failed for #{$this->questionId}. Releasing for 2m. Error: {$msg}");
                 $aiService->registerCongestion('IndexQuestionVectorJob', $this->questionId);
-                $this->release(300);
+                $this->release(120);
                 return;
             }
 

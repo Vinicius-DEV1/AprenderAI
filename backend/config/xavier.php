@@ -68,6 +68,12 @@ return [
             'popularity' => 0.15,
             'quality'    => 0.15,
             'recency'    => 0.10,
+
+            // Xavier 2.0: Pedagogical & User Context Boosts
+            'user_profile' => [
+                'proficiency_boost' => 0.25, // For Weak Themes
+                'intent_boost'      => 0.30, // For Subject/Organization Match
+            ],
         ],
     ],
 ];
