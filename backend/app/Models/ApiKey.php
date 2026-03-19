@@ -220,7 +220,7 @@ class ApiKey extends Model
     }
 
     /**
-     * Limpa o cache de blacklist para esta chave ou globalmente.
+     * Clears the blacklist and circuit breakers.
      */
     public static function clearBlacklist(?int $id = null): void
     {
@@ -230,6 +230,12 @@ class ApiKey extends Model
             \Illuminate\Support\Facades\Cache::put('api_key_blacklist', array_values($bannedIds), now()->addMinutes(60));
         } else {
             \Illuminate\Support\Facades\Cache::forget('api_key_blacklist');
+            
+            // Clear circuit breakers for all capabilities to allow jobs to resume immediately
+            $capabilities = array_keys(self::getAvailableCapabilities());
+            foreach ($capabilities as $cap) {
+                \Illuminate\Support\Facades\Cache::forget("ai_circuit_breaker_{$cap}");
+            }
         }
     }
 }

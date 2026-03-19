@@ -217,23 +217,49 @@ EOT;
     }
 
     /**
-     * Checks if streaming is globally enabled.
-     */
-    public function isStreamingEnabled(): bool
-    {
-        return \App\Models\Setting::where('key', 'ai_streaming_enabled')->value('value') === 'true';
-    }
-
-    /**
      * Checks if at least one provider has an active key for a given capability.
      */
     public function hasActiveKey(string $capability = ApiKey::CAPABILITY_GENERAL): bool
     {
+        // If the circuit breaker is active for this capability, we consider it "no active keys"
+        // to trigger a job release/pause before even querying the DB.
+        if ($this->isPaused($capability)) {
+            return false;
+        }
+
         try {
             return ApiKey::getKeyForCapability($capability) !== null;
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Erro ao validar chave para $capability: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("Error validating key for $capability: " . $e->getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Checks if a capability is currently under circuit breaker (no keys available).
+     */
+    public function isPaused(string $capability): bool
+    {
+        return Cache::has("ai_circuit_breaker_{$capability}");
+    }
+
+    /**
+     * Activates the circuit breaker for a specific capability.
+     */
+    public function pause(string $capability, int $seconds = 300): void
+    {
+        Log::warning("[AIService] CIRCUIT BREAKER ACTIVE for '$capability'. Pausing for $seconds seconds.");
+        Cache::put("ai_circuit_breaker_{$capability}", true, $seconds);
+    }
+
+    /**
+     * Deactivates the circuit breaker for a specific capability.
+     */
+    public function resume(string $capability): void
+    {
+        if ($this->isPaused($capability)) {
+            Log::info("[AIService] CIRCUIT BREAKER CLEARED for '$capability'. Resuming operations.");
+            Cache::forget("ai_circuit_breaker_{$capability}");
         }
     }
 
@@ -659,17 +685,17 @@ EOT;
     }
 
     /**
-     * Gera um embedding usando o Gemini gemini-embedding-001 (3072 dims) com Engine de Failover.
+     * Generates an embedding using Gemini gemini-embedding-001 (3072 dims) with Failover Engine.
      *
-     * O parâmetro $taskType informa ao Gemini a finalidade do embedding, permitindo
-     * otimização interna do vetor para o caso de uso:
-     *   - 'RETRIEVAL_DOCUMENT': usado na indexação de documentos (questões, conceitos)
-     *   - 'RETRIEVAL_QUERY': usado na busca — otimizado para encontrar documentos relevantes
+     * The $taskType informs Gemini of the embedding purpose, allowing internal 
+     * vector optimization for the specific use case:
+     *   - 'RETRIEVAL_DOCUMENT': used for document indexing (questions, concepts)
+     *   - 'RETRIEVAL_QUERY': used for search — optimized for finding relevant documents
      *
-     * @param  string      $text     Texto a ser embedado
-     * @param  int|null    $userId   ID do usuário para telemetria (null para jobs de sistema)
-     * @param  string      $taskType Tipo de tarefa Gemini: RETRIEVAL_DOCUMENT ou RETRIEVAL_QUERY
-     * @return array|null  Vetor de 3072 dimensões, ou null em caso de erro
+     * @param  string      $text     Text to be embedded
+     * @param  int|null    $userId   User ID for telemetry (null for system jobs)
+     * @param  string      $taskType Gemini task type: RETRIEVAL_DOCUMENT or RETRIEVAL_QUERY
+     * @return array|null  3072-dimensional vector, or null on error
      */
     public function generateEmbedding(string $text, ?int $userId = null, string $taskType = 'RETRIEVAL_DOCUMENT'): ?array
     {
@@ -700,9 +726,10 @@ EOT;
                     'taskType' => $taskType,
                 ];
 
-                // Controle Tático de Rate Limit: 2s fixos entre requisições de Embeddings para evitar 429
-                \Illuminate\Support\Facades\Log::info("[AIBATCH] Worker de Embeddings pausando por 2s antes da requisição para evitar Rate Limit.");
-                usleep((1 * 1000000));
+                // Tactical Rate Limit Control: Random delay (jitter) to prevent synchronization between workers
+                $jitterMicro = random_int(500000, 2000000); // 0.5s to 2s
+                \Illuminate\Support\Facades\Log::info("[AIBATCH] Embedding worker pausing for " . ($jitterMicro/1000000) . "s (jitter) before request.");
+                usleep($jitterMicro);
 
                 $response = Http::timeout(10)->post($url, $payload);
                 $executionTime = microtime(true) - $startTime;
@@ -1465,8 +1492,8 @@ EOT;
     }
 
     /**
-     * Engine Central de Failover para as chamadas de API.
-     * Iterates over priorized available keys using $closure.
+     * Central Failover Engine for API calls.
+     * Iterates over prioritized available keys using the provided closure.
      */
     protected function executeWithFailover(string $capability, \Closure $closure, ?string $provider = null)
     {
@@ -1489,7 +1516,11 @@ EOT;
                     $lastException = $e;
 
                     if ($this->isRetriableError($e)) {
-                        if ($attempts < $maxAttempts) {
+                        // If it's a 429 (Quota), we don't waste retries on the same key.
+                        // We fail over immediately to the next available key (Fast Failover).
+                        $isQuota = str_contains(strtolower($e->getMessage()), '429') || str_contains(strtolower($e->getMessage()), 'quota');
+
+                        if ($attempts < $maxAttempts && !$isQuota) {
                             $sleepSeconds = pow(2, $attempts); // 2s, 4s
                             Log::warning("AI Provider {$apiKey->provider} hit temporary error, retrying in {$sleepSeconds}s...", [
                                 'attempt' => $attempts,
@@ -1500,23 +1531,27 @@ EOT;
                             continue;
                         }
 
-                        Log::warning("AI Provider failed after {$maxAttempts} attempts, failing over to next priority...", [
+                        Log::warning("AI Provider " . ($isQuota ? 'QUOTA EXCEEDED' : 'FAILED') . ", failing over to next priority...", [
                             'capability' => $capability,
                             'key_id' => $apiKey->id,
                             'error' => $e->getMessage()
                         ]);
 
                         $this->banKeyTemporarily($apiKey, $e);
-                        break; // Move out of the while loop to try the next Key in foreach
+                        break; // Exit while loop to try next ApiKey in foreach
                     }
 
-                    // Se for erro na formatação do prompt (ex. 400 Bad Request), jogar pra cima pois tentamos e fomos rejeitados na raiz.
+                    // If not a retryable error (e.g. 400 Bad Request), throw exception to interrupt the whole process.
                     throw $e;
                 }
             }
         }
 
-        throw $lastException ?? new \Exception("Falha completa de Failover para a rota de IA: {$capability}.");
+        // If we reach this point, it means ALL keys failed or were already exhausted.
+        // We activate the Circuit Breaker for this specific capability to prevent further job failures.
+        $this->pause($capability, 300); // 5 minutes pause by default
+
+        throw $lastException ?? new \Exception("Full failover failure for AI route: {$capability}.");
     }
 
     /**
