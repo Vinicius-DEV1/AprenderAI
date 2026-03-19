@@ -805,8 +805,7 @@
     font-weight: 600;
     letter-spacing: 0.3px;
     text-transform: uppercase;
-    white-space: normal;
-    word-break: break-word;
+    white-space: nowrap !important;
     text-align: center;
     line-height: 1.4;
     display: inline-block;
@@ -1664,6 +1663,22 @@
 
     .qb-header-left h1 {
         font-size: 15px;
+    }
+}
+
+/* QuestionCard Header fix for mobile (prevent squeezing tags) */
+@media (max-width: 480px) {
+    .qb-card-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    
+    .qb-card-header > div:last-child {
+        margin-left: 0 !important;
+        margin-top: 8px;
+        width: 100%;
+        position: relative !important;
+        justify-content: flex-start;
     }
 }
 

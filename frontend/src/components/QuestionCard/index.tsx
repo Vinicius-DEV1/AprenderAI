@@ -453,7 +453,7 @@ const QuestionCard = memo(({
                     <span className="animate-pulse">🛡️</span> ADMIN VIEW
                 </div>
             )}
-            <div className="flex justify-between items-start mb-4 border-b border-gray-100 dark:border-slate-800 pb-3">
+            <div className="qb-card-header flex justify-between items-start mb-4 border-b border-gray-100 dark:border-slate-800 pb-3">
                 <div className="qb-card-meta !mb-0 flex-1 flex flex-wrap gap-1.5 items-center">
                     {q.source === 'ai_generated' && <span className="qb-badge qb-badge-ai">✨ INÉDITA</span>}
                     {q.year && <span className="qb-badge qb-badge-origin !bg-slate-100 !text-slate-600 border-slate-200">{q.year}</span>}
