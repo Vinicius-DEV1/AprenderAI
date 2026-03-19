@@ -435,7 +435,7 @@ export default function QuestionBank() {
     const showConcursoFilters = filters.type !== 'enem';
 
     return (
-        <div className="py-2 overflow-x-hidden w-full">
+        <div className="qb-main-container w-full">
             <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
 
                 {/* Original Header Restored + New Metrics */}
