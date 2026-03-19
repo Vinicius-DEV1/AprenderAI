@@ -60,9 +60,21 @@ log_error()   { echo -e "${RED}❌ $1${NC}"; }
 
 echo ""
 echo -e "${BLUE}=================================================${NC}"
-echo -e "${BLUE}  🚀  AprenderAI — Deploy Seguro (v4)${NC}"
+echo -e "${BLUE}  🚀  AprenderAI — Deploy Seguro (v4.1)${NC}"
 echo -e "${BLUE}=================================================${NC}"
 echo ""
+
+# Helper para verificar se um ID de container está em uma lista de IDs
+is_id_in_list() {
+    local target="$1"
+    local list="$2"
+    for id in $list; do
+        if [ "$id" == "$target" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
 
 # =============================================================================
 # PASSO 1: Build de TODAS as imagens (sem parar nada)
@@ -136,7 +148,7 @@ while true; do
     # Verifica se algum container NOVO (não-antigo) está healthy
     ALL_IDS=$($COMPOSE ps -q $APP_SERVICE)
     for CID in $ALL_IDS; do
-        if [[ ! " $OLD_APP_IDS " =~ " $CID " ]]; then
+        if ! is_id_in_list "$CID" "$OLD_APP_IDS"; then
             HEALTH=$(docker inspect --format='{{.State.Health.Status}}' "$CID" 2>/dev/null || echo "unknown")
             if [ "$HEALTH" == "healthy" ]; then
                 HEALTHY_NEW_CONTAINER="$CID"
@@ -160,17 +172,22 @@ log_info "[4/6] Removendo containers App antigos (swap definitivo)..."
 # Pequena espera para o Nginx propagar o novo upstream via DNS
 sleep 3
 
-# PARA e REMOVE os containers antigos explicitamente.
-# Removê-los garante que o 'scale 1' mantenha apenas o novo (Green).
+# PARA e REMOVE os containers antigos explicitamente, 
+# EXCETO o que acabamos de marcar como saudável (caso ele tenha sido reusado por algum motivo).
 for CID in $OLD_APP_IDS; do
+    if [ "$CID" == "$HEALTHY_NEW_CONTAINER" ]; then
+        log_warning "      Pulando remoção do container $CID (marcado como novo saudável)"
+        continue
+    fi
     log_info "      Parando container antigo: $CID"
     docker stop "$CID" >/dev/null 2>&1 || true
     log_info "      Removendo container antigo: $CID"
     docker rm   "$CID" >/dev/null 2>&1 || true
 done
 
-# Agora que os antigos foram removidos, o container novo (seja index 1 ou 2) permanece 
-# sendo o único 'app' vivo na rede rodando nativamente o ping-pong blue-green da imagem nova!
+# RE-SINCRONIZAÇÃO: Após remover osIDs antigos via docker-direct, o Compose pode ficar "perdido".
+# Forçamos um scale 1 agora para garantir que ele entenda que só o GREEN sobrou.
+$COMPOSE up -d --no-recreate --scale $APP_SERVICE=1 $APP_SERVICE >/dev/null 2>&1
 
 log_success "Swap concluído. Apenas novo container ativo."
 echo ""
