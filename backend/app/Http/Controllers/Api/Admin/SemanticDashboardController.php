@@ -165,17 +165,27 @@ class SemanticDashboardController extends Controller
             'top_concepts' => Concept::whereNotNull('qdrant_indexed_at')
                 ->withCount('questions')
                 ->orderByDesc('questions_count')
-                ->limit(30)
+                ->limit(50)
                 ->get(['id', 'name'])
                 ->map(fn($c) => ['name' => $c->name, 'count' => $c->questions_count, 'type' => 'concept'])
                 ->concat(
                     \App\Models\Subject::whereNotNull('qdrant_indexed_at')
                         ->withCount('questions')
                         ->orderByDesc('questions_count')
-                        ->limit(10)
+                        ->limit(20)
                         ->get(['id', 'name'])
                         ->map(fn($s) => ['name' => $s->name, 'count' => $s->questions_count, 'type' => 'subject'])
-                ),
+                )
+                ->concat(
+                    \App\Models\Topic::whereNotNull('qdrant_indexed_at')
+                        ->withCount('questions')
+                        ->orderByDesc('questions_count')
+                        ->limit(30)
+                        ->get(['id', 'name'])
+                        ->map(fn($t) => ['name' => $t->name, 'count' => $t->questions_count, 'type' => 'topic'])
+                )
+                ->sortByDesc('count')
+                ->values(),
             'performance' => [
                 'total_searches'      => $totalLogSearches,
                 'l1_cache_hits'       => $l1CacheHits,
