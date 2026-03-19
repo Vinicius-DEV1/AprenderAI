@@ -30,7 +30,7 @@ class IndexQuestionVectorJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries   = 2;
+    public int $tries   = 20; // Allow many retries since we handle backoff manually
     public int $timeout = 120;
 
     public function __construct(protected int $questionId)
