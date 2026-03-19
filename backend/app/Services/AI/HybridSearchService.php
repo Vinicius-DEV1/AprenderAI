@@ -33,10 +33,11 @@ class HybridSearchService
         array  $queryVectors,
         array  $expandedConceptIds = [],
         array  $sqlFilters = [],
-        int    $limit = 50
+        int    $limit = 50,
+        array  $excludedConceptIds = []
     ): array {
         // Build Qdrant filter from expanded concept IDs + SQL filters
-        $qdrantFilter = $this->buildQdrantFilter($expandedConceptIds, $sqlFilters);
+        $qdrantFilter = $this->buildQdrantFilter($expandedConceptIds, $sqlFilters, $excludedConceptIds);
 
         // Try Qdrant multi-vector search
         try {
@@ -66,7 +67,7 @@ class HybridSearchService
     /**
      * Build the Qdrant filter clause from concept IDs and SQL-style metadata filters.
      */
-    private function buildQdrantFilter(array $conceptIds, array $sqlFilters): array
+    private function buildQdrantFilter(array $conceptIds, array $sqlFilters, array $excludedConceptIds = []): array
     {
         $must = [];
 
@@ -178,12 +179,38 @@ class HybridSearchService
             }
         }
 
-        // Exclude by type (ENEM/Concurso)
+        // Exclude by Type (ENEM/Concurso)
         if (!empty($sqlFilters['exclude_type'])) {
             $mustNot[] = [
                 'key'   => 'type',
                 'match' => ['value' => $sqlFilters['exclude_type']],
             ];
+        }
+
+        // Exclude by Subject ID
+        if (!empty($sqlFilters['exclude_subject_id'])) {
+            $mustNot[] = [
+                'key'   => 'subject_id',
+                'match' => ['any' => (array) $sqlFilters['exclude_subject_id']],
+            ];
+        }
+
+        // Exclude by Topic ID
+        if (!empty($sqlFilters['exclude_topic_id'])) {
+            $mustNot[] = [
+                'key'   => 'topic_id',
+                'match' => ['any' => (array) $sqlFilters['exclude_topic_id']],
+            ];
+        }
+
+        // Exclude by Concepts (Negative Semantic Intent)
+        if (!empty($excludedConceptIds)) {
+            foreach ($excludedConceptIds as $slug) {
+                $mustNot[] = [
+                    'key'   => 'concepts',
+                    'match' => ['value' => $slug]
+                ];
+            }
         }
 
         // Only active, approved questions -- always
