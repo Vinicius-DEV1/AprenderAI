@@ -44,6 +44,12 @@ class EmbeddingTextBuilder
         if ($topicName) {
             $parts[] = "topic: {$topicName}";
         }
+        if (!empty($question->organization)) {
+            $parts[] = "organization: {$question->organization}";
+        }
+        if (!empty($question->institution)) {
+            $parts[] = "institution: {$question->institution}";
+        }
 
         $parts[] = '';
         $parts[] = 'question:';
@@ -100,6 +106,12 @@ class EmbeddingTextBuilder
         if ($topicName) {
             $parts[] = "topic: {$topicName}";
         }
+        if (!empty($question->organization)) {
+            $parts[] = "organization: {$question->organization}";
+        }
+        if (!empty($question->institution)) {
+            $parts[] = "institution: {$question->institution}";
+        }
 
         $allTerms = [];
         foreach ($question->concepts as $concept) {
@@ -137,6 +149,9 @@ class EmbeddingTextBuilder
         if ($subjectName) {
             $parts[] = "subject: {$subjectName}";
         }
+        if (!empty($question->organization)) {
+            $parts[] = "organization: {$question->organization}";
+        }
 
         $parts[] = '';
         $parts[] = 'explanation:';
@@ -171,6 +186,22 @@ class EmbeddingTextBuilder
     public function buildForTopic(\App\Models\Topic $topic): string
     {
         return "topic: {$topic->name}";
+    }
+
+    /**
+     * Constrói o texto rico para os vetores de BANCAS (Organizations).
+     */
+    public function buildForOrganization(string $name): string
+    {
+        return "organization: {$name}";
+    }
+
+    /**
+     * Constrói o texto rico para os vetores de ÓRGÃOS (Institutions).
+     */
+    public function buildForInstitution(string $name): string
+    {
+        return "institution: {$name}";
     }
 
     /**
