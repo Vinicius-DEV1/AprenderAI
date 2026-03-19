@@ -518,9 +518,16 @@ class QuestionController extends Controller
         $hybridSearch  = app(HybridSearchService::class);
         $reranker      = app(ReRankService::class);
 
-        // ── Step 1: Query Normalization ──────────────────────────────────────
-        $normalizedQuery = $textBuilder->buildForQuery($request->prompt);
-        Log::info('[Xavier][Search] Step 1 done: normalized query.', ['q' => $normalizedQuery]);
+        // ── Step 1b: Lexical Analysis (Xavier 2.0) ───────────────────────────
+        // Identifica termos positivos, negativos (negação) e restrição.
+        $lexical   = app(QueryLexicalAnalyser::class);
+        $analysis  = $lexical->analyse($request->prompt);
+        $positivePrompt = implode(' ', $analysis['positive_terms']);
+        $negativePrompt = implode(' ', $analysis['negative_terms']);
+
+        // ── Step 2: Normalização da Query ─────────────────────────────────────
+        $normalizedQuery = $this->normalizePrompt($positivePrompt);
+        Log::info('[Xavier][Search] Step 2 done: query normalized.', ['original' => $request->prompt, 'normalized' => $normalizedQuery, 'negative' => $negativePrompt]);
 
         // â”€â”€ Step 2: L1 Cache (exact hash) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         $cachedFilters = $cacheService->findExactMatch($normalizedQuery);
@@ -535,11 +542,8 @@ class QuestionController extends Controller
         // e limitando os resultados artificialmente. Agora confiamos 100% nos vetores.
         $extractedSubjectId = null;
         $extractedTopicId = null;
-        // ── Step 3: Generic Query Embedding (for cache + concept detection) ────
-        // Este embedding genérico é usado para:
-        //   - L2 Semantic Cache (busca por similaridade em queries anteriores)
-        //   - Concept Detection (busca de conceitos no Qdrant)
-        // Usa RETRIEVAL_QUERY para otimizar o vetor como busca, não como documento.
+        // ── Step 3: Geração de Embedding Genérico ──────────────────────────────
+        // Usamos o prompt POSITIVO para a busca semântica principal.
         $queryVector = $aiService->generateEmbedding($normalizedQuery, $user->id, 'RETRIEVAL_QUERY');
 
         if (!$queryVector) {
@@ -623,10 +627,44 @@ class QuestionController extends Controller
             $searchPath = 'vector_only';
         }
 
+        // ── Step 5d: Detecção de Intenções Negativas (Exclusão) ────────────────
+        // Se o usuário digitou "menos FGV", buscamos o vetor de "FGV" e marcamos como exclusão.
+        $excludedOrgs  = [];
+        $excludedInsts = [];
+        $excludedType  = null;
+
+        if (!empty($negativePrompt)) {
+            try {
+                $negVector = $aiService->generateEmbedding($negativePrompt, $user->id, 'RETRIEVAL_QUERY');
+                $negMatches = $qdrant->searchConcepts($negVector, 3, 0.80);
+                
+                foreach ($negMatches as $match) {
+                    $payload = $match['payload'] ?? [];
+                    $type = $payload['entity_type'] ?? '';
+                    
+                    if ($type === 'organization' && isset($payload['organization'])) {
+                        $excludedOrgs[] = $payload['organization'];
+                        Log::info("[Xavier][Search] EXCLUSION DETECTED: Organization '{$payload['organization']}'");
+                    } elseif ($type === 'institution' && isset($payload['institution'])) {
+                        $excludedInsts[] = $payload['institution'];
+                        Log::info("[Xavier][Search] EXCLUSION DETECTED: Institution '{$payload['institution']}'");
+                    }
+                }
+
+                // Detecção de tipo negativo via keyword no prompt negativo
+                $lowerNeg = mb_strtolower($negativePrompt);
+                if (str_contains($lowerNeg, 'concurso')) $excludedType = 'concurso';
+                if (str_contains($lowerNeg, 'enem')) $excludedType = 'enem';
+
+            } catch (\Exception $e) {
+                Log::warning('[Xavier][Search] Step 5d FAILED: negative intent detection error.', ['err' => $e->getMessage()]);
+            }
+        }
+
         // ── Step 5c: Detecção de Tipo (ENEM/Concurso) via Keywords ─────────────
-        // Se o usuário digitar "questões de concurso", ativamos o filtro de tipo.
+        // Usamos o prompt POSITIVO para detectar o tipo desejado.
         $extractedType = null;
-        $lowerPrompt = mb_strtolower($request->prompt);
+        $lowerPrompt = mb_strtolower($positivePrompt);
         if (str_contains($lowerPrompt, 'concurso')) {
             $extractedType = 'concurso';
         } elseif (str_contains($lowerPrompt, 'enem')) {
@@ -655,9 +693,9 @@ class QuestionController extends Controller
         //   - Um contador atômico Redis garante que o RunVectorSearchJob só é disparado
         //     quando os 3 slots terminam (é atômico — sem race-condition).
 
-        $statementQueryText   = $textBuilder->buildStatementQuery($request->prompt);
-        $conceptQueryText     = $textBuilder->buildConceptQuery($request->prompt);
-        $explanationQueryText = $textBuilder->buildExplanationQuery($request->prompt);
+        $statementQueryText   = $textBuilder->buildStatementQuery($positivePrompt);
+        $conceptQueryText     = $textBuilder->buildConceptQuery($positivePrompt);
+        $explanationQueryText = $textBuilder->buildExplanationQuery($positivePrompt);
 
         // Cria o registro de busca com status 'generating' — será atualizado para
         // 'completed' pelo RunVectorSearchJob ao finalizar a busca no Qdrant.
@@ -681,6 +719,17 @@ class QuestionController extends Controller
         }
         if (!empty($extractedInsts)) {
             $sqlFilters['institution'] = $extractedInsts;
+        }
+
+        // Aplicar exclusões detectadas
+        if (!empty($excludedOrgs)) {
+            $sqlFilters['exclude_organization'] = $excludedOrgs;
+        }
+        if (!empty($excludedInsts)) {
+            $sqlFilters['exclude_institution'] = $excludedInsts;
+        }
+        if ($excludedType) {
+            $sqlFilters['exclude_type'] = $excludedType;
         }
 
         $searchContext = [

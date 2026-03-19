@@ -287,17 +287,31 @@ class SemanticDashboardController extends Controller
         $normalizedQuery = $textBuilder->buildForQuery($request->prompt);
         $logs[] = "Normalized: {$normalizedQuery}";
 
-        // ── Step 2: Embedding genérico (para concept detection e cache comparison) ──
-        $aiService = app(AIService::class);
-        $queryVector = $aiService->generateEmbedding($normalizedQuery, $user->id, 'RETRIEVAL_QUERY');
-
-        if (!$queryVector) {
-            return response()->json(['error' => 'Failed to generate embedding.', 'logs' => $logs], 500);
+        // ── Step 1b: Lexical Analysis (Xavier 2.0) ───────────────────────────
+        $lexical = app(\App\Services\AI\QueryLexicalAnalyser::class);
+        $analysis = $lexical->analyse($request->prompt);
+        $positivePrompt = implode(' ', $analysis['positive_terms']);
+        $negativePrompt = implode(' ', $analysis['negative_terms']);
+        
+        $logs[] = "Xavier 2.0 Lexical Analysis:";
+        $logs[] = " - Positive: '{$positivePrompt}'";
+        if (!empty($negativePrompt)) {
+            $logs[] = " - Negative: '{$negativePrompt}' (Exclusion Mode)";
         }
-        $logs[] = "Generic Embedding Generated (Length: " . count($queryVector) . ", taskType: RETRIEVAL_QUERY)";
+
+        // ── Step 2: Gerar Embedding Genérico ──────────────────────────────────
+        $textBuilder = app(\App\Services\AI\EmbeddingTextBuilder::class);
+        $aiService = app(\App\Services\AI\AIService::class);
+        
+        // Usamos o prompt POSITIVO para a busca semântica principal.
+        $queryVector = $aiService->generateEmbedding($positivePrompt, $user->id, 'RETRIEVAL_QUERY');
+        if (!$queryVector) {
+            return response()->json(['error' => 'Failed to generate embedding', 'logs' => $logs], 500);
+        }
+        $logs[] = "Generic Query Embedding generated (using positive prompt). (Length: " . count($queryVector) . ", taskType: RETRIEVAL_QUERY)";
 
         // ── Step 3: Concept Detection ─────────────────────────────────────────
-        $qdrant = app(QdrantService::class);
+        $qdrant = app(\App\Services\AI\QdrantService::class);
         $conceptThreshold = (float) \App\Models\Configuration::get(
             'xavier_concept_detection_threshold',
             config('xavier.embeddings.concept_detection_threshold', 0.75)
@@ -333,11 +347,35 @@ class SemanticDashboardController extends Controller
         }
 
         // ── Step 3.5: Detecção de Tipo (ENEM/Concurso) via Keywords ───────────
-        $lowerPrompt = mb_strtolower($request->prompt);
+        // Usamos o prompt POSITIVO para detecção de tipo
+        $lowerPrompt = mb_strtolower($positivePrompt);
         if (str_contains($lowerPrompt, 'concurso')) {
             $extractedType = 'concurso';
         } elseif (str_contains($lowerPrompt, 'enem')) {
             $extractedType = 'enem';
+        }
+
+        // ── Step 3.6: Detecção de Intenções Negativas (Excluir) ───────────────
+        $excludedOrgs = [];
+        $excludedInsts = [];
+        $excludedType = null;
+        if (!empty($negativePrompt)) {
+            $negVector = $aiService->generateEmbedding($negativePrompt, $user->id, 'RETRIEVAL_QUERY');
+            $negMatches = $qdrant->searchConcepts($negVector, 3, 0.80);
+            foreach ($negMatches as $match) {
+                $payload = $match['payload'] ?? [];
+                $type = $payload['entity_type'] ?? '';
+                if ($type === 'organization' && isset($payload['organization'])) {
+                    $excludedOrgs[] = $payload['organization'];
+                    $logs[] = "EXCLUSION DETECTED: Organization '{$payload['organization']}'";
+                } elseif ($type === 'institution' && isset($payload['institution'])) {
+                    $excludedInsts[] = $payload['institution'];
+                    $logs[] = "EXCLUSION DETECTED: Institution '{$payload['institution']}'";
+                }
+            }
+            $lowerNeg = mb_strtolower($negativePrompt);
+            if (str_contains($lowerNeg, 'concurso')) $excludedType = 'concurso';
+            if (str_contains($lowerNeg, 'enem')) $excludedType = 'enem';
         }
 
         $detectedConcepts = array_values(array_unique($detectedConcepts));
@@ -352,9 +390,9 @@ class SemanticDashboardController extends Controller
         // Cada named vector no Qdrant foi indexado com formato diferente.
         // Para maximizar a similaridade de cosseno, geramos um embedding
         // alinhado para cada named vector.
-        $statementQueryText   = $textBuilder->buildStatementQuery($request->prompt);
-        $conceptQueryText     = $textBuilder->buildConceptQuery($request->prompt);
-        $explanationQueryText = $textBuilder->buildExplanationQuery($request->prompt);
+        $statementQueryText   = $textBuilder->buildStatementQuery($positivePrompt);
+        $conceptQueryText     = $textBuilder->buildConceptQuery($positivePrompt);
+        $explanationQueryText = $textBuilder->buildExplanationQuery($positivePrompt);
 
         $statementVector   = $aiService->generateEmbedding($statementQueryText,   $user->id, 'RETRIEVAL_QUERY');
         $conceptVectorQ    = $aiService->generateEmbedding($conceptQueryText,     $user->id, 'RETRIEVAL_QUERY');
@@ -395,6 +433,17 @@ class SemanticDashboardController extends Controller
         }
         if (!empty($extractedInsts)) {
             $sqlFilters['institution'] = $extractedInsts;
+        }
+
+        // Aplicar filtros de exclusão
+        if (!empty($excludedOrgs)) {
+            $sqlFilters['exclude_organization'] = $excludedOrgs;
+        }
+        if (!empty($excludedInsts)) {
+            $sqlFilters['exclude_institution'] = $excludedInsts;
+        }
+        if ($excludedType) {
+            $sqlFilters['exclude_type'] = $excludedType;
         }
         
         $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, $sqlFilters, $limit);
