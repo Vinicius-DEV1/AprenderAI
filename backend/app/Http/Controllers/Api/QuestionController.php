@@ -624,7 +624,6 @@ class QuestionController extends Controller
         $excludedInsts      = [];
         $excludedSubjects   = [];
         $excludedTopics     = [];
-        $excludedConceptIds = [];
         $excludedType       = null;
         
         // Entidades obrigatórias (MUST) vindas de "apenas / somente"
@@ -651,8 +650,6 @@ class QuestionController extends Controller
                         $excludedSubjects[] = (int) $payload['subject_id'];
                     } elseif ($type === 'topic' && isset($payload['topic_id'])) {
                         $excludedTopics[] = (int) $payload['topic_id'];
-                    } elseif ($type === 'concept' && isset($payload['concept_slug'])) {
-                        $excludedConceptIds[] = $payload['concept_slug'];
                     }
                 }
 
@@ -698,7 +695,7 @@ class QuestionController extends Controller
         }
 
         Log::info('[Xavier][Search] Intent Analysis Finalized.', [
-            'exclusions' => count($excludedOrgs) + count($excludedInsts) + count($excludedSubjects) + count($excludedTopics) + count($excludedConceptIds),
+            'exclusions'   => count($excludedOrgs) + count($excludedInsts) + count($excludedSubjects) + count($excludedTopics),
             'restrictions' => count($mustOrgs) + count($mustInsts) + count($mustSubjects) + count($mustTopics)
         ]);
 
@@ -726,6 +723,7 @@ class QuestionController extends Controller
         // (os expanded IDs substituem os originais no intent_filters)
         $extractedSubjects = $expandedSubjectIds;
         $extractedTopics   = $expandedTopicIds;
+
         // ── Step 5c: Detecção de Tipo (ENEM/Concurso) via Keywords ─────────────
         // Usamos o prompt POSITIVO para detectar o tipo desejado.
         $extractedType = null;
@@ -735,12 +733,6 @@ class QuestionController extends Controller
         } elseif (str_contains($lowerPrompt, 'enem')) {
             $extractedType = 'enem';
         }
-
-        // ── Step 6: Expansão de Query via Grafo de Conhecimento ─────────────────
-        // Se detectamos conceitos (ex: "fotossíntese"), expandimos para termos
-        // relacionados (ex: "clorofila") para aumentar o recall da busca vetorial lateral.
-        $expandedConceptIds = !empty($detectedConcepts) ? $expansion->expand($detectedConcepts, depth: 1) : [];
-        Log::info('[Xavier][Search] Step 6 done: query expansion.', ['expanded' => $expandedConceptIds]);
 
         // ── Step 6.5: Despacha os 3 Embeddings Format-Aligned em PARALELO (Job Workers) ──
         //
