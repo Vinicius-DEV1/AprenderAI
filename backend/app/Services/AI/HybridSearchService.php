@@ -145,6 +145,47 @@ class HybridSearchService
             }
         }
 
+        // --- EXCLUSION FILTERS (must_not) ---
+        $mustNot = [];
+
+        // Exclude by organization
+        if (!empty($sqlFilters['exclude_organization'])) {
+            if (is_array($sqlFilters['exclude_organization'])) {
+                $mustNot[] = [
+                    'key'   => 'organization',
+                    'match' => ['any' => $sqlFilters['exclude_organization']],
+                ];
+            } else {
+                $mustNot[] = [
+                    'key'   => 'organization',
+                    'match' => ['value' => $sqlFilters['exclude_organization']],
+                ];
+            }
+        }
+
+        // Exclude by institution
+        if (!empty($sqlFilters['exclude_institution'])) {
+            if (is_array($sqlFilters['exclude_institution'])) {
+                $mustNot[] = [
+                    'key'   => 'institution',
+                    'match' => ['any' => $sqlFilters['exclude_institution']],
+                ];
+            } else {
+                $mustNot[] = [
+                    'key'   => 'institution',
+                    'match' => ['value' => $sqlFilters['exclude_institution']],
+                ];
+            }
+        }
+
+        // Exclude by type (ENEM/Concurso)
+        if (!empty($sqlFilters['exclude_type'])) {
+            $mustNot[] = [
+                'key'   => 'type',
+                'match' => ['value' => $sqlFilters['exclude_type']],
+            ];
+        }
+
         // Only active, approved questions -- always
         $must[] = [
             'key'   => 'is_active',
@@ -152,8 +193,9 @@ class HybridSearchService
         ];
 
         $filter = [];
-        if (!empty($must)) $filter['must'] = $must;
-        if (!empty($should)) $filter['should'] = $should;
+        if (!empty($must))    $filter['must'] = $must;
+        if (!empty($should))  $filter['should'] = $should;
+        if (!empty($mustNot)) $filter['must_not'] = $mustNot;
 
         return $filter;
     }
