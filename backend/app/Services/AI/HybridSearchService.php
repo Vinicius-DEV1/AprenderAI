@@ -75,7 +75,9 @@ class HybridSearchService
         if (!empty($sqlFilters['subject'])) {
             $must[] = [
                 'key'   => 'subject_id',
-                'match' => ['value' => (int) $sqlFilters['subject']],
+                'match' => is_array($sqlFilters['subject']) 
+                    ? ['any' => array_map('intval', $sqlFilters['subject'])]
+                    : ['value' => (int) $sqlFilters['subject']],
             ];
         }
 
@@ -83,7 +85,9 @@ class HybridSearchService
         if (!empty($sqlFilters['topic'])) {
             $must[] = [
                 'key'   => 'topic_id',
-                'match' => ['value' => (int) $sqlFilters['topic']],
+                'match' => is_array($sqlFilters['topic'])
+                    ? ['any' => array_map('intval', $sqlFilters['topic'])]
+                    : ['value' => (int) $sqlFilters['topic']],
             ];
         }
 

@@ -24,9 +24,6 @@ class QueryLexicalAnalyser
         'apenas', 'somente', 'exclusivamente', 'só', 'exclusivo'
     ];
 
-    /**
-     * Analisa o prompt e retorna uma estrutura de intenção decomposta.
-     */
     public function analyse(string $prompt): array
     {
         $prompt = mb_strtolower($prompt);
@@ -35,33 +32,46 @@ class QueryLexicalAnalyser
             'original_prompt' => $prompt,
             'positive_terms'  => [], // O que o usuário QUER
             'negative_terms'  => [], // O que o usuário NÃO QUER
+            'restricted_terms' => [], // O que o usuário quer EXCLUSIVAMENTE
             'is_restricted'   => false, // Se há um operador "apenas/somente"
         ];
 
         // 1. Detecção de Restrição (Apenas/Somente)
         foreach ($this->restrictionKeywords as $kw) {
-            if (str_contains($prompt, $kw)) {
+            $parts = explode(" {$kw} ", " {$prompt} ");
+            if (count($parts) > 1) {
                 $analysis['is_restricted'] = true;
-                break;
+                // O que vem DEPOIS do 'apenas' é o que deve ser filtrado exclusivamente
+                $analysis['restricted_terms'][] = trim($parts[1]);
+                // O que vem ANTES pode ser o contexto (ex: "questões de biologia apenas da FGV")
+                if (!empty(trim($parts[0]))) {
+                    $analysis['positive_terms'][] = trim($parts[0]);
+                }
             }
         }
 
         // 2. Detecção de Negação (Menos/Exceto)
-        // Usamos uma lógica de quebra de prompt para identificar o que vem após a negação.
         foreach ($this->negationKeywords as $kw) {
             $parts = explode(" {$kw} ", " {$prompt} ");
             if (count($parts) > 1) {
                 // O que veio ANTES da negação é positivo
-                $analysis['positive_terms'][] = trim($parts[0]);
+                if (!empty(trim($parts[0]))) {
+                    $analysis['positive_terms'][] = trim($parts[0]);
+                }
                 
                 // O que veio DEPOIS da negação é negativo
-                // Se houver múltiplas negações, pegamos o resto da string e continuamos processando
                 $analysis['negative_terms'][] = trim($parts[1]);
             }
         }
 
-        // Se não houver termos negativos definidos, o prompt todo é positivo
-        if (empty($analysis['negative_terms'])) {
+        // Se houver restrições e nenhum termo positivo explícito ainda, 
+        // os próprios termos restritos são o foco positivo
+        if ($analysis['is_restricted'] && empty($analysis['positive_terms'])) {
+            $analysis['positive_terms'] = $analysis['restricted_terms'];
+        }
+
+        // Fallback: se não houver nada filtrado, o prompt todo é positivo
+        if (empty($analysis['positive_terms']) && empty($analysis['negative_terms'])) {
             $analysis['positive_terms'] = [$prompt];
         }
 
