@@ -479,27 +479,15 @@ class SemanticDashboardController extends Controller
         
         // Ensure SQL fallback actually filters by the text if Qdrant is empty
         $sqlFilters = ['keyword' => $request->prompt];
-        $intentFilters = []; // Initialize intentFilters here
-        if ($extractedType) {
-            $intentFilters['type'] = [$extractedType];
-        }
-        if (!empty($extractedOrgs)) {
-            $intentFilters['organization'] = $extractedOrgs;
-        }
-        if (!empty($extractedInsts)) {
-            $intentFilters['institution'] = $extractedInsts;
-        }
-        // Intent Detection Logging
-        $intentService = app(\App\Services\AI\IntentDetectionService::class);
-        if (empty($analysis['positive_terms'])) {
-            $logs[] = "INTENT SKIP: No positive tokens found. Using raw prompt for semantic search.";
-            $intentFilters = [];
-        } else {
-            $intentPrompt = implode(' ', $analysis['positive_terms']);
-            $logs[] = "INTENT START: Detecting intent for '{$intentPrompt}'...";
-            $intentFilters = $intentService->detectIntent($intentPrompt);
-            $logs[] = "INTENT DONE: Found " . count($intentFilters['subject_id'] ?? []) . " subjects, " . count($intentFilters['topic_id'] ?? []) . " topics, " . count($intentFilters['organization'] ?? []) . " orgs.";
-        }
+        $intentFilters = [
+            'subject_id'   => $extractedSubjects,
+            'topic_id'     => $extractedTopics,
+            'organization' => $extractedOrgs,
+            'institution'  => $extractedInsts,
+            'type'         => $extractedType ? [$extractedType] : [],
+        ];
+
+        $logs[] = "INTENT MAP: " . count($extractedSubjects) . " subjects, " . count($extractedTopics) . " topics found in initial pass.";
 
         if ($extractedType) {
             $sqlFilters['type'] = $extractedType;
