@@ -83,7 +83,7 @@ class IndexQuestionVectorJob implements ShouldQueue
 
         // Check if already indexed with same content AND same pipeline version
         $vectorRecord = QuestionVector::find($this->questionId);
-        $currentPipeline = config('xavier.embeddings.pipeline_version', 'v6_intent_unification');
+        $currentPipeline = config('xavier.embeddings.pipeline_version', 'v7_lexical_analyser');
         
         if ($vectorRecord && 
             !$vectorRecord->hasContentChanged($combinedHash) && 
@@ -147,7 +147,7 @@ class IndexQuestionVectorJob implements ShouldQueue
                 'qdrant_id'        => (string) $this->questionId,
                 'embedding_hash'   => $combinedHash,
                 'index_version'    => $newVersion,
-                'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v6_intent_unification'),
+                'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v7_lexical_analyser'),
                 'indexed_at'       => now(),
             ]
         );
@@ -180,7 +180,7 @@ class IndexQuestionVectorJob implements ShouldQueue
             'concepts'      => $question->concepts->pluck('id')->toArray(),
             // Popularity signal for ReRankService
             'answer_count'     => $question->userAnswers()->count(),
-            'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v6_intent_unification'),
+            'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v7_lexical_analyser'),
         ];
     }
 }

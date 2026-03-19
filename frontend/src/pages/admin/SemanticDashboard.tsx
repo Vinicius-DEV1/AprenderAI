@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { 
     Database, Activity, Search, RefreshCw, Settings, Save, Server, 
     Box, FileJson, CheckCircle2, AlertCircle, PlayCircle, ChevronDown, Clock, Lightbulb,
-    Trash2, BarChart3, TrendingUp, Zap, Hash
+    Trash2, BarChart3, TrendingUp, Zap, Hash, ArrowRight, Layers, Target, Filter, Microscope, HelpCircle
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -71,15 +71,55 @@ interface DashboardStats {
     };
 }
 
-const StatCard = ({ title, value, subtitle, icon: Icon, colorClass }: any) => (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 flex flex-col items-start shadow-sm hover:shadow transition-shadow">
-        <div className={clsx("p-3 rounded-lg mb-4", colorClass)}>
+const StatCard = ({ title, value, subtitle, icon: Icon, colorClass, helpText }: any) => (
+    <div className="bg-white dark:bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-700/50 p-5 flex flex-col items-start shadow-xl hover:shadow-indigo-500/10 transition-all hover:-translate-y-1 group relative">
+        {helpText && (
+            <div className="absolute top-4 right-4 text-slate-300 hover:text-indigo-500 cursor-help transition-colors" title={helpText}>
+                <HelpCircle className="w-4 h-4" />
+            </div>
+        )}
+        <div className={clsx("p-3 rounded-xl mb-4 shadow-inner", colorClass)}>
             <Icon className="w-6 h-6" />
         </div>
         <div className="flex flex-col">
-            <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">{title}</h3>
-            <span className="text-2xl font-bold text-slate-800 dark:text-white">{value}</span>
-            {subtitle && <span className="text-xs text-slate-400 mt-1">{subtitle}</span>}
+            <h3 className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">{title}</h3>
+            <span className="text-2xl font-black text-slate-800 dark:text-white">{value}</span>
+            {subtitle && <span className="text-[10px] text-slate-400 mt-1 font-medium">{subtitle}</span>}
+        </div>
+    </div>
+);
+
+const PipelineStep = ({ icon: Icon, title, status, description, children, isActive, helpText }: any) => (
+    <div className={clsx(
+        "relative pl-8 pb-8 border-l-2 last:pb-0 transition-all duration-500",
+        isActive ? "border-indigo-500" : "border-slate-200 dark:border-slate-800"
+    )}>
+        <div className={clsx(
+            "absolute -left-[11px] top-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
+            isActive ? "bg-indigo-600 border-indigo-600 shadow-lg shadow-indigo-500/50" : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+        )}>
+            <div className={clsx("w-1.5 h-1.5 rounded-full", isActive ? "bg-white" : "bg-slate-300 dark:bg-slate-700")}></div>
+        </div>
+        <div className={clsx(
+            "p-4 rounded-xl border transition-all",
+            isActive 
+                ? "bg-white dark:bg-slate-800/80 shadow-lg border-indigo-100 dark:border-indigo-900/30" 
+                : "bg-slate-50/50 dark:bg-slate-900/30 border-transparent opacity-60"
+        )}>
+            <div className="flex items-center gap-2 mb-1">
+                <Icon className={clsx("w-4 h-4", isActive ? "text-indigo-500" : "text-slate-400")} />
+                <h4 className={clsx("text-sm font-bold flex items-center gap-1", isActive ? "text-slate-800 dark:text-white" : "text-slate-500")}>
+                    {title}
+                    {helpText && (
+                        <div className="cursor-help text-slate-400 font-normal" title={helpText}>
+                            <HelpCircle className="w-3 h-3" />
+                        </div>
+                    )}
+                </h4>
+                {status && <span className="ml-auto text-[10px] font-mono bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 px-1.5 py-0.5 rounded">{status}</span>}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{description}</p>
+            {children}
         </div>
     </div>
 );
@@ -101,6 +141,12 @@ const SemanticDashboard = () => {
     const [configState, setConfigState] = useState({
         vector_search_enabled: true,
         concept_detection_threshold: 0.45,
+        rerank_weights: {
+            vector: 0.60,
+            popularity: 0.15,
+            quality: 0.15,
+            recency: 0.10
+        }
     });
 
     // Index Modal (Questions)
@@ -117,6 +163,39 @@ const SemanticDashboard = () => {
     const [searchPrompt, setSearchPrompt] = useState('');
     const [searchResults, setSearchResults] = useState<any>(null);
 
+    const parsePipelineSteps = (logs: string[]) => {
+        const steps = {
+            lexical: { positive: [] as string[], negative: [] as string[] },
+            intent: [] as { type: string, value: string }[],
+            expansion: [] as string[],
+            vector: { statement: false, concept: false, explanation: false },
+            rerank: [] as string[]
+        };
+
+        if (!logs) return steps;
+
+        logs.forEach(log => {
+            if (log.includes(" - Positive:")) {
+                const match = log.match(/- Positive: '(.*)'/);
+                if (match) steps.lexical.positive = match[1].split(' ').filter(t => t);
+            }
+            if (log.includes(" - Negative:")) {
+                const match = log.match(/- Negative: '(.*)'/);
+                if (match) steps.lexical.negative = match[1].split(' ').filter(t => t);
+            }
+            if (log.includes("INTENT DETECTED:")) {
+                const parts = log.split("INTENT DETECTED: ")[1].split(" ");
+                steps.intent.push({ type: parts[0], value: parts.slice(1).join(" ") });
+            }
+            if (log.includes("EXCLUSION DETECTED:")) {
+                const parts = log.split("EXCLUSION DETECTED: ")[1].split(" ");
+                steps.intent.push({ type: 'EXCLUIR ' + parts[0], value: parts.slice(1).join(" ") });
+            }
+        });
+
+        return steps;
+    };
+
     const loadStats = async () => {
         try {
             setLoading(true);
@@ -125,6 +204,12 @@ const SemanticDashboard = () => {
             setConfigState({
                 vector_search_enabled: res.data.config.vector_search_enabled == 1 || res.data.config.vector_search_enabled == true,
                 concept_detection_threshold: parseFloat(res.data.config.concept_detection_threshold) || 0.45,
+                rerank_weights: res.data.config.rerank_weights || {
+                    vector: 0.60,
+                    popularity: 0.15,
+                    quality: 0.15,
+                    recency: 0.10
+                }
             });
         } catch (error) {
             toast.error('Erro ao carregar os dados do dashboard.');
@@ -342,42 +427,125 @@ const SemanticDashboard = () => {
 
             {/* OVERVIEW STATS */}
             {stats && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-                    <StatCard 
-                        title="Status Qdrant" 
-                        value={stats.qdrant.status.toUpperCase()} 
-                        subtitle={`${stats.qdrant.questions_points} pts em Questions`}
-                        icon={stats.qdrant.status === 'online' ? CheckCircle2 : AlertCircle}
-                        colorClass={stats.qdrant.status === 'online' ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30" : "bg-red-100 text-red-600 dark:bg-red-900/30"}
-                    />
-                    <StatCard 
-                        title="Questões Vetorizadas" 
-                        value={`${stats.overview.mysql_indexed_questions} / ${stats.overview.mysql_published_questions}`} 
-                        subtitle={`Total Vetores: ${stats.overview.mysql_total_vectors}`}
-                        icon={Box}
-                        colorClass="bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400"
-                    />
-                    <StatCard 
-                        title="Buscas & Cache (L1+L2)" 
-                        value={`${((stats.performance.l1_cache_hits + stats.performance.l2_cache_hits) / (stats.performance.total_searches || 1) * 100).toFixed(1)}%`} 
-                        subtitle={`L1: ${stats.performance.l1_cache_hits} | L2: ${stats.performance.l2_cache_hits}`}
-                        icon={Activity}
-                        colorClass="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
-                    />
-                    <StatCard 
-                        title="Conceitos Vetorizados" 
-                        value={`${stats.overview.mysql_indexed_concepts} / ${stats.overview.mysql_total_concepts}`} 
-                        subtitle={`Qdrant: ${stats.qdrant.concepts_points} pontos`}
-                        icon={Lightbulb}
-                        colorClass="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
-                    />
-                    <StatCard 
-                        title="Status de Fila (Embeddings)" 
-                        value={`${stats.jobs.pending}`} 
-                        subtitle={`${stats.jobs.failed} falhas registradas`}
-                        icon={stats.jobs.failed > 0 ? AlertCircle : CheckCircle2}
-                        colorClass={stats.jobs.failed > 0 ? "bg-red-100 text-red-600 dark:bg-red-900/30" : "bg-blue-100 text-blue-600 dark:bg-blue-900/30"}
-                    />
+                <div className="space-y-6">
+                    {/* MONITORING CENTER HEADER */}
+                    <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
+                        <h2 className="text-sm font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <Activity className="w-4 h-4" /> Centro de Monitoramento
+                        </h2>
+                        <div className="flex items-center gap-4 text-[10px] font-bold">
+                            <span className="flex items-center gap-1.5 text-indigo-500 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-1 rounded-lg border border-indigo-100 dark:border-indigo-800">
+                                <Layers className="w-3 h-3" /> Pipeline: {stats.config.pipeline_version || 'v7'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {/* INFRA GROUP */}
+                        <StatCard 
+                            title="Saúde do Qdrant" 
+                            value={stats.qdrant.status.toUpperCase()} 
+                            subtitle={`${stats.qdrant.questions_points.toLocaleString()} pontos vetoriais`}
+                            icon={stats.qdrant.status === 'online' ? CheckCircle2 : AlertCircle}
+                            colorClass={stats.qdrant.status === 'online' ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30" : "bg-red-100 text-red-600 dark:bg-red-900/30"}
+                            helpText="O Qdrant é o nosso banco de dados vetorial. Ele armazena o 'conhecimento' matemático das questões para permitir buscas por contexto."
+                        />
+                        <StatCard 
+                            title="Fila de Indexação" 
+                            value={stats.jobs.pending} 
+                            subtitle={`${stats.jobs.failed} falhas (Clique em Limpar se travar)`}
+                            icon={stats.jobs.failed > 0 ? AlertCircle : Clock}
+                            colorClass={stats.jobs.failed > 0 ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30" : "bg-blue-100 text-blue-600 dark:bg-blue-900/30"}
+                            helpText="Mostra quantos processos de 'transformar texto em vetor' estão aguardando no servidor. Falhas geralmente ocorrem por limite de cota da IA."
+                        />
+
+                        {/* CONTENT GROUP */}
+                        <StatCard 
+                            title="Questões no Xavier" 
+                            value={`${stats.overview.mysql_indexed_questions.toLocaleString()} / ${stats.overview.mysql_published_questions.toLocaleString()}`} 
+                            subtitle={`${stats.overview.mysql_published_questions - stats.overview.mysql_indexed_questions} questões pendentes`}
+                            icon={Box}
+                            colorClass="bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400"
+                            helpText="Representa o percentual da sua base de questões que já está 'consciente' para a IA. Questões não indexadas só aparecem por busca de texto simples."
+                        />
+                         <StatCard 
+                            title="Disciplinas" 
+                            value={`${stats.overview.mysql_indexed_subjects} / ${stats.overview.mysql_total_subjects}`} 
+                            subtitle={`${stats.overview.mysql_total_subjects - stats.overview.mysql_indexed_subjects} pendentes`}
+                            icon={Database}
+                            colorClass="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
+                            helpText="Disciplinas detectadas no Qdrant atuam como filtros rígidos. Se o Xavier detecta 'Matemática', ele trava a busca apenas nessa gaveta."
+                        />
+                        <StatCard 
+                            title="Tópicos" 
+                            value={`${stats.overview.mysql_indexed_topics} / ${stats.overview.mysql_total_topics}`} 
+                            subtitle={`${stats.overview.mysql_total_topics - stats.overview.mysql_indexed_topics} pendentes`}
+                            icon={Hash}
+                            colorClass="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+                            helpText="Sub-temas das matérias. Quando indexados, permitem que a IA dê notas maiores para questões que pertencem exatamente ao assunto pesquisado."
+                        />
+                        <StatCard 
+                            title="Conceitos" 
+                            value={`${stats.overview.mysql_indexed_concepts} / ${stats.overview.mysql_total_concepts}`} 
+                            subtitle={`${stats.overview.mysql_total_concepts - stats.overview.mysql_indexed_concepts} pendentes`}
+                            icon={Lightbulb}
+                            colorClass="bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-400"
+                            helpText="Entidades atômicas de conhecimento (ex: Verbo, Citologia). São usados para a 'Detecção de Intenção' fina da nossa busca inteligente."
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                         {/* PERFORMANCE GROUP */}
+                         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm overflow-hidden relative">
+                            <div className="absolute top-0 right-0 p-4 opacity-10">
+                                <TrendingUp className="w-12 h-12" />
+                            </div>
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Taxa de Sucesso (IA)</h3>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{stats.analytics.success_rate}%</span>
+                                <span className="text-[10px] text-slate-400 font-medium">em {stats.analytics.total_ai_requests} buscas</span>
+                            </div>
+                            <div className="mt-4 w-full bg-slate-100 dark:bg-slate-700 h-1 rounded-full overflow-hidden">
+                                <div className="bg-emerald-500 h-full" style={{ width: `${stats.analytics.success_rate}%` }}></div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm overflow-hidden relative">
+                            <div className="absolute top-0 right-0 p-4 opacity-10">
+                                <Zap className="w-12 h-12" />
+                            </div>
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Eficiência de Cache</h3>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-3xl font-black text-amber-600 dark:text-amber-400">
+                                    {((stats.performance.l1_cache_hits + stats.performance.l2_cache_hits) / (stats.performance.total_searches || 1) * 100).toFixed(1)}%
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-medium">Economia de Tokens</span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-2 font-mono">
+                                Hit L1: {stats.performance.l1_cache_hits} | Hit L2: {stats.performance.l2_cache_hits}
+                            </p>
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+                             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <BarChart3 className="w-4 h-4 text-indigo-500" /> Volume de Buscas (7 dias)
+                            </h3>
+                            <div className="flex items-end gap-1 h-14">
+                                {stats.analytics.chart_data.map((day, idx) => {
+                                    const maxCount = Math.max(...stats.analytics.chart_data.map(d => d.count), 1);
+                                    const heightPct = (day.count / maxCount) * 100;
+                                    return (
+                                        <div key={idx} className="flex-1 flex flex-col items-center gap-1" title={`${day.date}: ${day.count} buscas`}>
+                                            <div 
+                                                className="w-full rounded-t-sm bg-indigo-500/20 hover:bg-indigo-500 transition-all cursor-help"
+                                                style={{ height: `${Math.max(heightPct, 5)}%` }}
+                                            />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -394,11 +562,9 @@ const SemanticDashboard = () => {
                             Atenção: Atualização de Banco Vetorial Necessária
                         </h3>
                         <p className="text-sm text-rose-700 dark:text-rose-300 mb-3">
-                            O formato dos dados salvos no Qdrant está desatualizado ou vazio em relação ao código atual do Painel 
-                            (Versão esperada: <span className="font-mono bg-rose-100 dark:bg-rose-900/50 px-1 rounded">{stats.qdrant.index_version_status.expected}</span>). 
-                            A busca semântica pode falhar ou retornar resultados de baixa precisão até que as coleções sejam re-indexadas.
+                            O formato dos dados salvos no Qdrant está desatualizado (Versão esperada: <span className="font-mono bg-rose-100 dark:bg-rose-900/50 px-1 rounded">{stats.qdrant.index_version_status.expected}</span>). 
                         </p>
-                        <div className="space-y-2 text-sm">
+                        <div className="flex gap-4 text-xs">
                             {stats.qdrant.index_version_status.questions.status !== 'ok' && (
                                 <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
                                     <span className="w-2 h-2 rounded-full bg-rose-500"></span>
@@ -416,116 +582,20 @@ const SemanticDashboard = () => {
                 )
             )}
 
-            {/* ANALYTICS ROW  — absorvido do antigo Xavier Insights */}
-            {stats && stats.analytics && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Success Rate Card */}
-                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
-                        <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4 text-emerald-500" />
-                            Taxa de Sucesso
-                        </h3>
-                        <div className="flex items-end gap-3">
-                            <span className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">
-                                {stats.analytics.success_rate}%
-                            </span>
-                            <span className="text-xs text-slate-400 mb-1">
-                                de {stats.analytics.total_ai_requests} buscas
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Top Searched Terms */}
-                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
-                        <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
-                            <Zap className="w-4 h-4 text-amber-500" />
-                            Top 5 Termos Buscados
-                        </h3>
-                        <div className="space-y-2">
-                            {stats.analytics.top_prompts.length > 0 ? stats.analytics.top_prompts.map((item, idx) => (
-                                <div key={idx} className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <span className="text-xs font-bold text-slate-400 w-4 shrink-0">#{idx + 1}</span>
-                                        <span className="text-sm text-slate-700 dark:text-slate-300 truncate" title={item.prompt}>
-                                            {item.prompt}
-                                        </span>
-                                    </div>
-                                    <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded shrink-0">
-                                        {item.total}x
-                                    </span>
-                                </div>
-                            )) : (
-                                <p className="text-xs text-slate-400">Nenhuma busca registrada.</p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* 7-Day Chart */}
-                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
-                        <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
-                            <BarChart3 className="w-4 h-4 text-indigo-500" />
-                            Volume de Buscas (7 dias)
-                        </h3>
-                        {stats.analytics.chart_data.length > 0 ? (
-                            <div className="flex items-end gap-1 h-24">
-                                {stats.analytics.chart_data.map((day, idx) => {
-                                    const maxCount = Math.max(...stats.analytics.chart_data.map(d => d.count), 1);
-                                    const heightPct = (day.count / maxCount) * 100;
-                                    return (
-                                        <div key={idx} className="flex-1 flex flex-col items-center gap-1" title={`${day.date}: ${day.count} buscas (${day.success} ok, ${day.failed} falhas)`}>
-                                            <div className="w-full flex flex-col justify-end" style={{ height: '80px' }}>
-                                                <div 
-                                                    className="w-full rounded-t bg-gradient-to-t from-indigo-600 to-indigo-400 dark:from-indigo-500 dark:to-indigo-300 transition-all hover:opacity-80"
-                                                    style={{ height: `${Math.max(heightPct, 4)}%` }}
-                                                />
-                                            </div>
-                                            <span className="text-[9px] text-slate-400 font-mono">
-                                                {day.date.slice(-2)}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
+            {/* TOP SEARCH TERMS */}
+            {stats && stats.analytics && stats.analytics.top_prompts.length > 0 && (
+                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <Search className="w-4 h-4 text-indigo-500" /> Termos mais buscados pelos usuários
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                        {stats.analytics.top_prompts.map((item, idx) => (
+                            <div key={idx} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 px-3 py-1.5 rounded-xl">
+                                <span className="text-sm text-slate-700 dark:text-slate-300">“{item.prompt}”</span>
+                                <span className="text-[10px] font-black bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 px-1.5 py-0.5 rounded-lg">{item.total}x</span>
                             </div>
-                        ) : (
-                            <div className="h-24 flex items-center justify-center text-xs text-slate-400 italic">Sem dados nos últimos 7 dias</div>
-                        )}
+                        ))}
                     </div>
-                </div>
-            )}
-
-            {stats && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <StatCard 
-                        title="Taxa de Sucesso (IA)"
-                        value={`${stats.analytics.success_rate}%`}
-                        subtitle={`${stats.analytics.total_ai_requests} buscas totais`}
-                        icon={TrendingUp}
-                        colorClass="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
-                    />
-
-                    <StatCard 
-                        title="Cache Semântico"
-                        value={stats.performance.total_cache_entries}
-                        subtitle={`${stats.performance.l2_cache_hits} hits acumulados`}
-                        icon={Zap}
-                        colorClass="bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400"
-                    />
-
-                    <StatCard 
-                        title="Disciplinas Indexadas"
-                        value={`${stats.overview.mysql_indexed_subjects} / ${stats.overview.mysql_total_subjects}`}
-                        subtitle="Vetorizadas para intenção"
-                        icon={Database}
-                        colorClass="bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400"
-                    />
-
-                    <StatCard 
-                        title="Tópicos Indexados"
-                        value={`${stats.overview.mysql_indexed_topics} / ${stats.overview.mysql_total_topics}`}
-                        subtitle="Aumento de precisão"
-                        icon={Hash}
-                        colorClass="bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
-                    />
                 </div>
             )}
 
@@ -585,19 +655,28 @@ const SemanticDashboard = () => {
                             );
                         })}
                     </div>
-                    <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                        <p className="text-slate-500 italic flex items-center gap-1.5">
-                            <Database className="w-3.5 h-3.5 text-purple-500" />
-                            <span className="text-purple-600 dark:text-purple-400 font-bold">Roxo:</span> Disciplinas (Filtro Hard)
-                        </p>
-                        <p className="text-slate-500 italic flex items-center gap-1.5">
-                            <Hash className="w-3.5 h-3.5 text-blue-500" />
-                            <span className="text-blue-600 dark:text-blue-400 font-bold">Azul:</span> Tópicos (Aumento Precisão)
-                        </p>
-                        <p className="text-slate-500 italic flex items-center gap-1.5">
-                            <Lightbulb className="w-3.5 h-3.5 text-slate-400" />
-                            <span className="text-slate-700 dark:text-slate-300 font-bold">Branco:</span> Conceitos Semânticos
-                        </p>
+                    <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <div className="space-y-1">
+                            <p className="text-slate-500 text-[10px] uppercase font-bold flex items-center gap-1.5">
+                                <Database className="w-3.5 h-3.5 text-purple-500" />
+                                <span className="text-purple-600 dark:text-purple-400">Roxo: Disciplinas (Hard Filter)</span>
+                            </p>
+                            <p className="text-[10px] text-slate-400 leading-tight">A IA detectou uma matéria específica. A busca é travada APENAS nessas disciplinas.</p>
+                        </div>
+                        <div className="space-y-1 border-l border-slate-200 dark:border-slate-700 pl-4">
+                            <p className="text-slate-500 text-[10px] uppercase font-bold flex items-center gap-1.5">
+                                <Hash className="w-3.5 h-3.5 text-blue-500" />
+                                <span className="text-blue-600 dark:text-blue-400">Azul: Tópicos (Aumento Precisão)</span>
+                            </p>
+                            <p className="text-[10px] text-slate-400 leading-tight">Expansão semântica para tópicos relacionados. Melhora a nota de questões que batem com esses temas.</p>
+                        </div>
+                        <div className="space-y-1 border-l border-slate-200 dark:border-slate-700 pl-4">
+                            <p className="text-slate-500 text-[10px] uppercase font-bold flex items-center gap-1.5">
+                                <Lightbulb className="w-3.5 h-3.5 text-slate-400" />
+                                <span className="text-slate-700 dark:text-slate-300">Branco: Conceitos (Soft Filter)</span>
+                            </p>
+                            <p className="text-[10px] text-slate-400 leading-tight">Termos abstratos capturados pelo Qdrant. Ajudam a IA a entender o "sobre o quê" é a questão.</p>
+                        </div>
                     </div>
                 </div>
             )}
@@ -627,9 +706,16 @@ const SemanticDashboard = () => {
                                         <div className={clsx("block w-14 h-8 rounded-full transition-colors", configState.vector_search_enabled ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600")}></div>
                                         <div className={clsx("dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform", configState.vector_search_enabled && "transform translate-x-6")}></div>
                                     </div>
-                                    <div>
-                                        <span className="font-medium text-slate-800 dark:text-white">Motor Semântico</span>
-                                        <p className="text-xs text-slate-500">Habilita ou desabilita o pipeline Xavier na plataforma toda.</p>
+                                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700/50">
+                                        <div>
+                                            <span className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-1">
+                                                Motor Semântico
+                                                <div className="cursor-help text-slate-400" title="Quando ativado, o Xavier utiliza o Qdrant (Vetores) para entender o significado das perguntas, não apenas as palavras exatas.">
+                                                    <HelpCircle className="w-3.5 h-3.5" />
+                                                </div>
+                                            </span>
+                                            <p className="text-[10px] text-slate-500">Uso de Embeddings (Cérebro IA)</p>
+                                        </div>
                                     </div>
                                 </label>
                             </div>
@@ -710,11 +796,51 @@ const SemanticDashboard = () => {
                     )}
 
                     {stats && (
-                        <div className="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-sm overflow-hidden text-sm">
-                           <h3 className="text-indigo-400 font-medium mb-3 flex items-center gap-2"><FileJson className="w-4 h-4"/> Rerank Weights Dump</h3>
-                           <pre className="text-slate-300 font-mono text-xs overflow-x-auto whitespace-pre-wrap">
-                               {JSON.stringify(stats.config.rerank_weights, null, 2)}
-                           </pre>
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+                            <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-4 flex items-center justify-between">
+                                <span className="flex items-center gap-2">
+                                    <BarChart3 className="w-4 h-4 text-indigo-500" />
+                                    Prioridades de Ranking (Weights)
+                                </span>
+                                <span className="text-[10px] bg-slate-100 dark:bg-slate-700 font-mono px-2 py-0.5 rounded">Total: {(configState.rerank_weights.vector + configState.rerank_weights.popularity + configState.rerank_weights.quality + configState.rerank_weights.recency).toFixed(2)}</span>
+                            </h3>
+
+                            <div className="space-y-4">
+                                {[
+                                    { key: 'vector', label: 'Similaridade Vetorial', sub: 'Poder do Contexto/IA', color: 'accent-indigo-600', help: 'O quanto o significado da questão (vetores) vale na nota final. É o coração da busca semântica.' },
+                                    { key: 'popularity', label: 'Popularidade', sub: 'Questões mais acessadas', color: 'accent-sky-500', help: 'Dá um bônus para questões que outros alunos acessam ou resolvem com frequência.' },
+                                    { key: 'quality', label: 'Qualidade Pedagógica', sub: 'Banca e complexidade', color: 'accent-amber-500', help: 'Peso para questões de bancas renomadas ou com enunciados classificados como alta qualidade.' },
+                                    { key: 'recency', label: 'Recência (Ano)', sub: 'Favorece anos atuais', color: 'accent-emerald-500', help: 'Dá preferência para questões mais novas (ex: 2024 sobre 2010), mantendo a base atualizada.' }
+                                ].map(w => (
+                                    <div key={w.key}>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <div>
+                                                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                                    {w.label}
+                                                    <div className="cursor-help text-slate-400" title={w.help}>
+                                                        <HelpCircle className="w-3 h-3" />
+                                                    </div>
+                                                </span>
+                                                <p className="text-[10px] text-slate-500">{w.sub}</p>
+                                            </div>
+                                            <span className="text-xs font-mono font-bold text-slate-600 dark:text-slate-400">{(configState.rerank_weights as any)[w.key].toFixed(2)}</span>
+                                        </div>
+                                        <input 
+                                            type="range" 
+                                            min="0" max="1" step="0.01" 
+                                            value={(configState.rerank_weights as any)[w.key]}
+                                            onChange={(e) => setConfigState({
+                                                ...configState, 
+                                                rerank_weights: { ...configState.rerank_weights, [w.key]: parseFloat(e.target.value) }
+                                            })}
+                                            className={clsx("w-full h-1.5 rounded-lg cursor-pointer", w.color)}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-4 leading-relaxed italic">
+                                * Se a soma for &gt; 1.0, o sistema normaliza automaticamente. Recomendamos manter a soma em 1.0.
+                            </p>
                         </div>
                     )}
                 </div>
@@ -723,81 +849,131 @@ const SemanticDashboard = () => {
                 <div className="lg:col-span-2 space-y-6">
                     <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm flex flex-col h-full">
                         <h2 className="text-lg font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                            <Search className="w-5 h-5 text-indigo-500" />
-                            Console de Busca Avançado (Debug)
+                            <Zap className="w-5 h-5 text-amber-500" />
+                            Painel do Maestro (Xavier 2.0)
                         </h2>
                         
                         <form onSubmit={handleTestSearch} className="mb-6 flex gap-3 items-stretch w-full">
-                            <input 
-                                type="text"
-                                value={searchPrompt}
-                                onChange={(e) => setSearchPrompt(e.target.value)}
-                                placeholder="Digite uma busca para simular a visão da IA (ex: perguntas de matemática nivel medio)"
-                                className="flex-1 min-w-0 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white"
-                            />
+                            <div className="flex-1 relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                <input 
+                                    type="text"
+                                    value={searchPrompt}
+                                    onChange={(e) => setSearchPrompt(e.target.value)}
+                                    placeholder="Simule uma busca... ex: física menos mecânica"
+                                    className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 backdrop-blur-sm outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner transition-all text-slate-800 dark:text-white"
+                                />
+                            </div>
                             <button 
                                 type="submit" 
                                 disabled={testLoading || !searchPrompt}
-                                className="flex-none bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white px-6 py-2.5 flex items-center justify-center rounded-lg shadow-sm transition-colors"
+                                className="bg-gradient-to-br from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 disabled:from-slate-400 disabled:to-slate-500 text-white min-w-[60px] flex items-center justify-center rounded-2xl shadow-lg shadow-indigo-500/25 transition-all active:scale-95"
                             >
-                                {testLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <PlayCircle className="w-5 h-5" />}
+                                {testLoading ? <RefreshCw className="w-6 h-6 animate-spin" /> : <ArrowRight className="w-6 h-6" />}
                             </button>
                         </form>
 
                         {searchResults ? (
-                            <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-100 dark:border-slate-700">
-                                        <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Motor Xavier (Vectorial)</h4>
-                                        <p className="text-xs text-slate-500 mb-1">Latência Total: <span className="font-mono text-emerald-600">{searchResults.latency_ms}ms</span></p>
-                                        <div className="flex justify-between items-center text-xs text-slate-500 mb-1">
-                                            <span>Qdrant Retornou:</span>
-                                            <span className="font-mono text-slate-700 dark:text-white">{searchResults.results?.length} candidatos</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-xs text-slate-500">
-                                            <span>Tolerância Ativa:</span>
-                                            <span className="font-mono font-bold text-indigo-500">{stats?.config?.concept_detection_threshold || 'v5'}</span>
-                                        </div>
+                            <div className="flex-1 flex flex-col lg:flex-row gap-6 overflow-hidden">
+                                {/* LEFT: MAESTRO X-RAY */}
+                                <div className="w-full lg:w-80 shrink-0 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Microscope className="w-4 h-4 text-indigo-500" />
+                                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Pipeline Maestro</h3>
                                     </div>
-                                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-100 dark:border-slate-700">
-                                        <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Motor Antigo (SQL Fallback)</h4>
-                                        <p className="text-xs text-slate-500 mb-1">Latência Simulada: <span className="font-mono text-amber-600">{searchResults.sql_fallback.latency_ms}ms</span></p>
-                                        <p className="text-xs text-slate-500 mb-2 whitespace-nowrap">
-                                            Status: {searchResults.sql_fallback.cache_hit 
-                                                ? <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">No Cache L2</span> 
-                                                : <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">Precisaria LLM (Async)</span>}
-                                        </p>
+
+                                    {/* Step 1: Lexical */}
+                                    <PipelineStep 
+                                        icon={Filter} 
+                                        title="Análise Léxica" 
+                                        isActive={true}
+                                        description="O Xavier separa o que você QUER (+) do que você NÃO QUER (-) na busca."
+                                        helpText="Primeira camada: a IA limpa o seu texto e identifica palavras de negação (ex: 'menos', 'não') para criar filtros rígidos."
+                                    >
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {parsePipelineSteps(searchResults.logs).lexical.positive.map(t => (
+                                                <span key={t} className="text-[10px] font-bold bg-blue-50 dark:bg-blue-900/30 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100 dark:border-blue-800">
+                                                    +{t}
+                                                </span>
+                                            ))}
+                                            {parsePipelineSteps(searchResults.logs).lexical.negative.map(t => (
+                                                <span key={t} className="text-[10px] font-bold bg-rose-50 dark:bg-rose-900/30 text-rose-600 px-2 py-0.5 rounded-full border border-rose-100 dark:border-rose-800">
+                                                    -{t}
+                                                </span>
+                                            ))}
+                                            {parsePipelineSteps(searchResults.logs).lexical.positive.length === 0 && parsePipelineSteps(searchResults.logs).lexical.negative.length === 0 && (
+                                                <span className="text-[10px] text-slate-400">Nenhum termo processado.</span>
+                                            )}
+                                        </div>
+                                    </PipelineStep>
+
+                                    {/* Step 2: Intent */}
+                                    <PipelineStep 
+                                        icon={Target} 
+                                        title="Detecção de Intenção" 
+                                        isActive={true}
+                                        description="A IA tenta adivinhar a matéria ou assunto técnico."
+                                        helpText="Segunda camada: cruzamos seu texto com nossa base de Disciplinas e Tópicos. Se houver match forte (>0.45), a busca é filtrada automaticamente."
+                                    >
+                                        <div className="space-y-1">
+                                            {parsePipelineSteps(searchResults.logs).intent.map((i, idx) => (
+                                                <div key={idx} className={clsx(
+                                                    "flex items-center justify-between text-[10px] p-1.5 rounded-lg border",
+                                                    i.type.includes('EXCLUIR') 
+                                                        ? "bg-rose-50/50 border-rose-100 dark:bg-rose-900/20 dark:border-rose-800 text-rose-700 dark:text-rose-400" 
+                                                        : "bg-indigo-50/50 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400"
+                                                )}>
+                                                    <span className="font-bold shrink-0">{i.type}:</span>
+                                                    <span className="truncate ml-2 text-right">{i.value}</span>
+                                                </div>
+                                            ))}
+                                            {parsePipelineSteps(searchResults.logs).intent.length === 0 && (
+                                                <p className="text-[10px] text-slate-400 italic">Busca puramente semântica.</p>
+                                            )}
+                                        </div>
+                                    </PipelineStep>
+
+                                    {/* Step 3: Vector */}
+                                    <PipelineStep 
+                                        icon={Layers} 
+                                        title="Busca Vetorial" 
+                                        isActive={true}
+                                        status={`${searchResults.results?.length || 0} candidatos`}
+                                        description="Captura de contexto no 'Cérebro' do Qdrant."
+                                        helpText="Terceira camada: o Qdrant vasculha o 'significado' da sua pergunta em milissegundos, trazendo as 50 candidatas mais próximas pelo sentido (vetores)."
+                                    >
+                                        <div className="grid grid-cols-3 gap-1">
+                                            {['Statement', 'Concept', 'Expl'].map(slot => (
+                                                <div key={slot} className="flex flex-col items-center p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mb-1"></div>
+                                                    <span className="text-[8px] uppercase font-bold text-emerald-700 dark:text-emerald-400">{slot}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </PipelineStep>
+
+                                    <div className="p-4 bg-slate-900 rounded-2xl border border-slate-800 shadow-inner">
+                                        <h4 className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                                            <Clock className="w-3 h-3" /> Latência API
+                                        </h4>
+                                        <div className="flex justify-between items-end">
+                                            <span className="text-2xl font-black text-white">{searchResults.latency_ms}ms</span>
+                                            <span className="text-[10px] text-slate-500 mb-1">Qdrant+Logic</span>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="mt-2 bg-slate-900 text-slate-300 font-mono text-xs p-3 rounded-lg overflow-y-auto max-h-40 border border-slate-800">
-                                    {searchResults.logs?.map((log: string, idx: number) => (
-                                        <div key={idx} className="mb-1 text-slate-400">
-                                            <span className="text-indigo-400">[{idx+1}]</span> {log}
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {searchResults.results?.some((r: any) => r.source === 'sql_fallback') && (
-                                    <div className="mt-4 bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-500 p-4 rounded-r-lg">
-                                        <div className="flex">
-                                            <div className="flex-shrink-0">
-                                                <AlertCircle className="h-5 w-5 text-orange-500 dark:text-orange-400" />
-                                            </div>
-                                            <div className="ml-3">
-                                                <p className="text-sm text-orange-800 dark:text-orange-300">
-                                                    <strong>Aviso Explicito: Plano B Ativado!</strong> Nenhum vetor foi encontrado no Qdrant com nota suficiente (ou a coleção está vazia). O sistema recorreu ao motor <strong>SQL Fallback</strong> buscando apenas palavras-chave textuais no MySQL. A nota Vetorial (VEC) destes resultados será sempre 0.000.
-                                                </p>
-                                            </div>
-                                        </div>
+                                {/* RIGHT: RESULTS */}
+                                <div className="flex-1 flex flex-col gap-4 overflow-hidden border-l border-slate-200 dark:border-slate-700 pl-0 lg:pl-6">
+                                    <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
+                                        <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">
+                                            Resultados Ranqueados
+                                        </h4>
+                                        <span className="text-xs font-mono text-slate-400">{searchResults.results?.length} itens</span>
                                     </div>
-                                )}
-
-                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mt-6 border-b border-slate-200 dark:border-slate-700 pb-2">
-                                    Resultados Ranqueados ({searchResults.results?.length})
-                                </h4>
-                                <div className="overflow-y-auto pr-2 max-h-[500px] space-y-4">
-                                    {searchResults.results?.map((res: any) => (
+                                    
+                                    <div className="overflow-y-auto pr-2 custom-scrollbar space-y-4 pb-20">
+                                        {searchResults.results?.map((res: any) => (
                                         <details key={res.question_id} className="group mb-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm hover:border-indigo-300 transition-colors overflow-hidden">
                                             <summary className="flex justify-between items-start p-3 cursor-pointer list-none">
                                                 <div className="flex flex-col gap-1 flex-1">
@@ -830,12 +1006,14 @@ const SemanticDashboard = () => {
                                             </summary>
                                             
                                             <div className="p-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 space-y-4">
-                                                
                                                 {res.score_details && Object.keys(res.score_details).length > 0 && (
                                                     <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
-                                                        <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 border-b border-slate-200 dark:border-slate-700 pb-1 flex justify-between">
-                                                            <span>📊 Composição da Nota Final (Weights)</span>
-                                                            <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">FINAL: {res.final_score.toFixed(4)}</span>
+                                                        <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 border-b border-slate-200 dark:border-slate-700 pb-1 flex justify-between items-center">
+                                                            <span className="flex items-center gap-1">
+                                                                📊 Anatomia do Score (Re-Ranking)
+                                                                <span className="text-[9px] text-slate-400 font-normal ml-2">Explicando por que esta questão venceu</span>
+                                                            </span>
+                                                            <span className="font-mono text-emerald-600 dark:text-emerald-400 font-black px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/30 rounded">Bscore: {res.final_score.toFixed(4)}</span>
                                                         </h5>
                                                         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-2">
                                                             <div className="flex flex-col bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700/50">
@@ -900,6 +1078,7 @@ const SemanticDashboard = () => {
                                             </div>
                                         </details>
                                     ))}
+                                    </div>
                                 </div>
                             </div>
                         ) : (
@@ -991,7 +1170,7 @@ const SemanticDashboard = () => {
                             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
                                 Dispare jobs de vetorização controlada para economizar nos custos de API.
                                 <span className="block mt-1 text-[11px] font-mono text-indigo-500 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20 w-fit px-1.5 py-0.5 rounded">
-                                    Pipeline Ativo: {stats?.config.pipeline_version || 'v6_intent_unification'}
+                                    Pipeline Ativo: {stats?.config.pipeline_version || 'v7_lexical_analyser'}
                                 </span>
                             </p>
 
@@ -1101,7 +1280,7 @@ const SemanticDashboard = () => {
                             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
                                 Vetorize Disciplinas (Subjects), Tópicos e Conceitos no Qdrant para a Detecção de Intenção da busca semântica.
                                 <span className="block mt-1 text-[11px] font-mono text-purple-500 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-900/20 w-fit px-1.5 py-0.5 rounded">
-                                    Pipeline Ativo: {stats?.config.pipeline_version || 'v6_intent_unification'}
+                                    Pipeline Ativo: {stats?.config.pipeline_version || 'v7_lexical_analyser'}
                                 </span>
                             </p>
 
