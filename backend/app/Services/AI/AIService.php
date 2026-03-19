@@ -1498,18 +1498,18 @@ EOT;
     }
 
     /**
-     * Central Failover Engine for API calls.
-     * Iterates over prioritized available keys using the provided closure.
-     */
-    /**
-     * Executes an AI request with automatic failover across available API keys.
-     * Uses a Distributed Lock (Redis) to ensure each key is only used by one worker at a time.
+     * Executes an AI request with a robust multi-level failover and recovery strategy.
      * 
-     * @param string   $capability  The AI feature being used (e.g., 'embedding', 'chat')
-     * @param \Closure $closure     The actual API call logic
-     * @param string|null $provider Optional specific provider filter
-     * @return mixed
-     * @throws AIServiceBusyException If no keys are available or all are currently locked
+     * STRATEGY:
+     * - LEVEL 1 (Instant Recovery): If all keys are locked (busy), the worker stays in an internal
+     *   wait loop for up to 15s. It polls specifically for an unlocked key every ~0.5s with jitter.
+     *   This allows 'pouncing' on keys released by other workers without queue latency.
+     * 
+     * - LEVEL 2 (Queue Backoff): If the 15s wait fails, it throws a 'Busy' exception, which 
+     *   triggers a 30s backoff in the background job (releasing it back to the queue).
+     * 
+     * - LEVEL 3 (Quota Blacklisting): If a key is picked but returns a 429/Quota error, it is 
+     *   blacklisted for 60 minutes. Jobs will ignore this key and use others in the pool.
      */
     protected function executeWithFailover(string $capability, \Closure $closure, ?string $provider = null)
     {
@@ -1517,78 +1517,93 @@ EOT;
         $keys = ApiKey::getKeysForCapability($capability, $provider);
 
         if ($keys->isEmpty()) {
-            // If no keys are found (even without locks), we signal that the service is busy/unavailable.
             throw new AIServiceBusyException("No active AI providers found for: {$capability}");
         }
 
         $lastException = null;
         $keysLockedCount = 0;
+        $startTime = microtime(true);
+        $timeout = 15.0; // Level 1: Wait up to 15s internally for a key to become free
 
-        foreach ($keys as $apiKey) {
-            // --- DISTRIBUTED LOCK (CONCURRENCY CONTROL) ---
-            // To maximize throughput while respecting provider limits, 
-            // we ensure that each API Key is used by exactly ONE worker at a time.
-            $lockKey = "ai_key_lock:{$apiKey->id}";
-            
-            // Atomic SET NX (SET if Not eXists) with a 60s TTL safety guard against deadlocks.
-            $isLocked = ! \Illuminate\Support\Facades\Redis::set($lockKey, '1', 'EX', 60, 'NX');
+        while ((microtime(true) - $startTime) < $timeout) {
+            $apiKeys = ApiKey::getKeysForCapability($capability, $provider);
+            $keysLockedCount = 0;
 
-            if ($isLocked) {
-                $keysLockedCount++;
-                // SKIP: Key is currently being used by another worker.
-                Log::debug("[AIService] Key #{$apiKey->id} is busy. Skipping...");
+            foreach ($apiKeys as $apiKey) {
+                // Ignore keys that are currently in the Quota Blacklist (Level 3)
+                if (in_array($apiKey->id, \Illuminate\Support\Facades\Cache::get('api_key_blacklist', []))) {
+                    continue;
+                }
+
+                $lockKey = "ai_provider_lock_{$apiKey->id}";
+                $isLocked = \Illuminate\Support\Facades\Redis::get($lockKey);
+
+                if ($isLocked) {
+                    $keysLockedCount++;
+                    // Key is occupied by another worker. Skip to the next one.
+                    continue;
+                }
+
+                // Acquire distributed lock (1 min safety TTL)
+                $lockAcquired = \Illuminate\Support\Facades\Redis::set($lockKey, '1', 'EX', 60, 'NX');
+                if (!$lockAcquired) {
+                    $keysLockedCount++;
+                    continue;
+                }
+
+                try {
+                    $attempts = 0;
+                    $maxAttempts = 3;
+
+                    while ($attempts < $maxAttempts) {
+                        try {
+                            return $closure($apiKey);
+                        } catch (\Exception $e) {
+                            $attempts++;
+                            $lastException = $e;
+
+                            if ($this->isRetriableError($e)) {
+                                $isQuota = str_contains(strtolower($e->getMessage()), '429') || 
+                                          str_contains(strtolower($e->getMessage()), 'quota');
+
+                                if ($attempts < $maxAttempts && !$isQuota) {
+                                    $sleepSeconds = pow(2, $attempts);
+                                    Log::warning("[AIService] Temporary error on #{$apiKey->id}. Retrying task in {$sleepSeconds}s...");
+                                    sleep($sleepSeconds);
+                                    continue;
+                                }
+
+                                // Key exhausted or failed. Mark it as 'Resting' (Level 3).
+                                Log::warning("[AIService] " . ($isQuota ? 'QUOTA EXCEEDED' : 'FAILURE') . " on #{$apiKey->id}. Falling over...");
+                                $this->banKeyTemporarily($apiKey, $e);
+                                break; 
+                            }
+
+                            throw $e;
+                        }
+                    }
+                } finally {
+                    // Always release the lock for Level 1 workers to pounce.
+                    \Illuminate\Support\Facades\Redis::del($lockKey);
+                }
+            }
+
+            // LEVEL 1: If pool was busy, wait with jitter and retry internally.
+            if ($keysLockedCount > 0 && (microtime(true) - $startTime) < $timeout) {
+                $jitter = rand(100, 500) * 1000; // 100ms - 500ms jitter
+                usleep(500000 + $jitter); 
                 continue;
             }
 
-            // Lock acquired successfully. Use a try-finally block to guarantee unlocking.
-            try {
-                $attempts = 0;
-                $maxAttempts = 3;
-
-                while ($attempts < $maxAttempts) {
-                    try {
-                        // Execute the request via the provided closure
-                        return $closure($apiKey);
-                    } catch (\Exception $e) {
-                        $attempts++;
-                        $lastException = $e;
-
-                        if ($this->isRetriableError($e)) {
-                            // FAST FAILOVER: If we hit a Quota/Rate limit (429), don't waste time retrying 
-                            // on the same key. Mark it as bad and try the next key in the pool immediately.
-                            $isQuota = str_contains(strtolower($e->getMessage()), '429') || 
-                                      str_contains(strtolower($e->getMessage()), 'quota');
-
-                            if ($attempts < $maxAttempts && !$isQuota) {
-                                // For non-quota retriable errors (5xx), perform exponential backoff
-                                $sleepSeconds = pow(2, $attempts);
-                                Log::warning("[AIService] Temporary error on #{$apiKey->id}. Retrying task in {$sleepSeconds}s...");
-                                sleep($sleepSeconds);
-                                continue;
-                            }
-
-                            // Key reached its limit or failed retries. Mark it as temporarily disabled.
-                            Log::warning("[AIService] " . ($isQuota ? 'QUOTA EXCEEDED' : 'FAILURE') . " on #{$apiKey->id}. Falling over...");
-                            $this->banKeyTemporarily($apiKey, $e);
-                            break; // Exit inner loop to select the next ApiKey
-                        }
-
-                        // Permanent error (e.g., 400 Bad Request) - Interrupt execution.
-                        throw $e;
-                    }
-                }
-            } finally {
-                // RELEASE LOCK: Ensure the key becomes available for other workers immediately.
-                \Illuminate\Support\Facades\Redis::del($lockKey);
-            }
+            break;
         }
 
-        // --- CONGESTION HANDLING ---
-        // If we reach here, no key was available (all busy or all failed).
-        if ($keysLockedCount > 0) {
+        // --- CONGESTION LOGGING ---
+        if (isset($keysLockedCount) && $keysLockedCount > 0) {
             $this->registerCongestion($capability, "Busy Pool ({$keysLockedCount} Locked)");
         }
 
+        // LEVEL 2: Timeout reached. Release to Queue Backoff.
         throw new AIServiceBusyException(
             "AI Pool Congestion: All keys for '{$capability}' are currently busy or reached quota limit.",
             0,
@@ -1830,49 +1845,72 @@ EOT;
 
     /**
      * Registers a job that was released (backoff) due to API key congestion.
-     * Stores in a Redis list with a TTL of 1 hour.
+     * Stores in a Redis Hash so that it can be specifically removed upon success.
      */
     public function registerCongestion(string $jobName, $id = null): void
     {
         try {
-            $key = "xavier:ai:congestion_list";
+            $key = "xavier:ai:active_congestion";
+            $field = $id ? "{$jobName}:{$id}" : $jobName;
+
             $data = json_encode([
                 'job' => $jobName,
                 'id' => $id,
                 'timestamp' => now()->toIso8601String(),
             ]);
 
-            Redis::lpush($key, $data);
-            Redis::ltrim($key, 0, 49); // Keep a buffer of the last 50 congestion hits
+            Redis::hset($key, $field, $data);
             Redis::expire($key, 3600); // 1 hour TTL
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::warning("[AIService] Failed to register congestion in Redis: " . $e->getMessage());
         }
     }
 
+    /**
+     * Removes a job from the active congestion list (called upon success).
+     */
+    public function removeCongestion(string $jobName, $id = null): void
+    {
+        try {
+            $key = "xavier:ai:active_congestion";
+            $field = $id ? "{$jobName}:{$id}" : $jobName;
+            Redis::hdel($key, $field);
+        } catch (\Exception $e) {
+            // Failure to clear UI log shouldn't crash the job
+        }
+    }
+
     public function getCongestionList(): array
     {
         try {
-            $key = "xavier:ai:congestion_list";
-            $items = Redis::lrange($key, 0, -1);
-            return array_map(function($item) {
+            // Merging both for transition, but primarily using the active Hash
+            $hashKey = "xavier:ai:active_congestion";
+            $items = Redis::hvals($hashKey);
+            
+            $results = array_map(function($item) {
                 $data = json_decode($item, true);
                 if (isset($data['timestamp'])) {
                     $data['ago'] = \Carbon\Carbon::parse($data['timestamp'])->diffForHumans();
                 }
                 return $data;
             }, $items);
+
+            // Sort by timestamp desc to show newest first
+            usort($results, fn($a, $b) => strcmp($b['timestamp'] ?? '', $a['timestamp'] ?? ''));
+
+            return $results;
         } catch (\Exception $e) {
             return [];
         }
     }
 
     /**
-     * Clears the congestion list.
+     * Clears all congestion tracking.
      */
     public function clearCongestionList(): void
     {
-        Redis::del("xavier:ai:congestion_list");
+        Redis::del("xavier:ai:congestion_list");       // Legacy list
+        Redis::del("xavier:ai:active_congestion");     // New Hash
     }
 }
 

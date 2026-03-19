@@ -296,6 +296,23 @@ class HybridSearchService
             $insts = (array) $sqlFilters['institution'];
             $query->whereIn('institution', $insts);
         }
+
+        // --- Exclusions ---
+        if (!empty($sqlFilters['exclude_subject_id'])) {
+            $query->whereNotIn('subject_id', (array) $sqlFilters['exclude_subject_id']);
+        }
+        if (!empty($sqlFilters['exclude_topic_id'])) {
+            $query->whereNotIn('topic_id', (array) $sqlFilters['exclude_topic_id']);
+        }
+        if (!empty($sqlFilters['exclude_org'])) {
+            $query->whereNotIn('organization', (array) $sqlFilters['exclude_org']);
+        }
+        if (!empty($sqlFilters['exclude_inst'])) {
+            $query->whereNotIn('institution', (array) $sqlFilters['exclude_inst']);
+        }
+        if (!empty($sqlFilters['exclude_type'])) {
+            $query->where('tipo_concurso', '!=', $sqlFilters['exclude_type']);
+        }
         if (!empty($sqlFilters['keyword'])) {
             $query->where(function ($q) use ($sqlFilters) {
                 $q->where('statement', 'like', '%' . $sqlFilters['keyword'] . '%')
