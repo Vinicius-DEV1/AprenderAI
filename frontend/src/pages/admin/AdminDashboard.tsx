@@ -13,7 +13,7 @@ import {
     Legend,
     Filler
 } from 'chart.js';
-import { Line, Doughnut } from 'react-chartjs-2';
+import { Line, Doughnut, Bar } from 'react-chartjs-2';
 
 ChartJS.register(
     CategoryScale,
@@ -77,6 +77,45 @@ export default function AdminDashboard() {
             backgroundColor: ['#10B981', '#E5E7EB'],
             borderWidth: 0
         }]
+    };
+
+    const deviceDoughnutData = {
+        labels: ['Desktop', 'Mobile', 'Tablet'],
+        datasets: [{
+            data: charts.device_distribution || [0, 0, 0],
+            backgroundColor: ['#3B82F6', '#F59E0B', '#10B981'],
+            borderWidth: 0
+        }]
+    };
+
+    const osBarData = {
+        labels: charts.os_distribution?.labels || [],
+        datasets: [{
+            label: 'Acessos por SO',
+            data: charts.os_distribution?.data || [],
+            backgroundColor: 'rgba(99, 102, 241, 0.8)',
+            borderRadius: 8,
+            barThickness: 20
+        }]
+    };
+
+    const osOptions = {
+        indexAxis: 'y' as const,
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+        },
+        scales: {
+            x: {
+                beginAtZero: true,
+                grid: { display: false },
+                ticks: { display: false }
+            },
+            y: {
+                grid: { display: false }
+            }
+        }
     };
 
     return (
@@ -210,6 +249,39 @@ export default function AdminDashboard() {
                                     <span className="w-3 h-3 rounded-full bg-gray-300"></span>
                                     <span className="text-sm">Gratuitos: <b>{charts.user_distribution[1]}</b></span>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* New Analytics Section: Devices & OS */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm">
+                            <h3 className="font-bold mb-4">Acessos por Dispositivo</h3>
+                            <div className="h-48 flex items-center justify-around">
+                                <div className="w-36 h-36">
+                                    <Doughnut data={deviceDoughnutData} options={{ cutout: '70%', plugins: { legend: { display: false } } }} />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                                        <span className="text-[11px] uppercase font-bold text-gray-500">Desktop: <b>{charts.device_distribution?.[0] || 0}</b></span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+                                        <span className="text-[11px] uppercase font-bold text-gray-500">Mobile: <b>{charts.device_distribution?.[1] || 0}</b></span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+                                        <span className="text-[11px] uppercase font-bold text-gray-500">Tablet: <b>{charts.device_distribution?.[2] || 0}</b></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm">
+                            <h3 className="font-bold mb-4">Top Sistemas Operacionais</h3>
+                            <div className="h-48">
+                                <Bar data={osBarData} options={osOptions} />
                             </div>
                         </div>
                     </div>
