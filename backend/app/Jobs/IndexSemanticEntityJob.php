@@ -2,10 +2,8 @@
 
 namespace App\Jobs;
 
-use App\Models\Concept;
 use App\Models\Subject;
 use App\Models\Topic;
-use App\Models\ConceptRelation;
 use App\Services\AI\AIService;
 use App\Services\AI\EmbeddingTextBuilder;
 use App\Services\AI\QdrantService;
@@ -19,9 +17,9 @@ use Illuminate\Support\Facades\Log;
 /**
  * IndexSemanticEntityJob
  *
- * Generates a single embedding vector for a semantic entity (Concept, Subject, or Topic)
- * and upserts it to the Qdrant `concepts_vectors` collection.
- * This unification allows "Disciplines" to be detected semantically just like "Concepts".
+ * Generates a single embedding vector for a semantic filter entity (Subject or Topic)
+ * and upserts it to the Qdrant `filters` collection (backward-compatible: 'concepts_vectors').
+ * This allows Subjects and Topics to be detected semantically during the Xavier intent search.
  *
  * Queue: embeddings
  */
@@ -34,11 +32,11 @@ class IndexSemanticEntityJob implements ShouldQueue
 
     /**
      * @param string $entityId   The ID or slug of the entity
-     * @param string $entityType 'concept', 'subject', or 'topic'
+     * @param string $entityType 'subject', 'topic', 'organization', or 'institution'
      */
     public function __construct(
         protected string $entityId,
-        protected string $entityType = 'concept'
+        protected string $entityType = 'subject'
     ) {
         $this->onQueue(config('xavier.embeddings.queue', 'embeddings'));
     }
@@ -60,12 +58,11 @@ class IndexSemanticEntityJob implements ShouldQueue
         // Constrói o texto rico para o embedding baseado no tipo de entidade.
         // Subjects e Topics agora possuem templates próprios para capturar a semântica da disciplina.
         $text = match ($this->entityType) {
-            'concept' => $this->buildConceptText($model, $textBuilder),
-            'subject' => $textBuilder->buildForSubject($model),
-            'topic'   => $textBuilder->buildForTopic($model),
+            'subject'      => $textBuilder->buildForSubject($model),
+            'topic'        => $textBuilder->buildForTopic($model),
             'organization' => $textBuilder->buildForOrganization($model->name),
             'institution'  => $textBuilder->buildForInstitution($model->name),
-            default   => throw new \InvalidArgumentException("Invalid entity type: {$this->entityType}")
+            default        => throw new \InvalidArgumentException("Invalid entity type: {$this->entityType}")
         };
 
         Log::info("[Xavier][IndexEntity] Generating vector for {$this->entityType} '{$this->entityId}'...");
@@ -80,22 +77,17 @@ class IndexSemanticEntityJob implements ShouldQueue
             throw new \RuntimeException($msg);
         }
 
-        $qdrant->ensureConceptsCollection();
+        $qdrant->ensureFiltersCollection();
 
-        // Payload unificado que o QuestionController usará para filtrar a busca.
+        // Unified payload that QuestionController uses for intent detection.
         $payload = [
             'name'             => $model->name,
             'entity_type'      => $this->entityType,
             'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v7_lexical_analyser'),
         ];
 
-        // Metadados específicos para permitir o hard filter no MySQL/Vector Search
-        if ($this->entityType === 'concept') {
-            $payload['subject_id'] = $model->subject_id;
-            $payload['topic_id']   = $model->topic_id;
-            $payload['concept_slug'] = $model->slug;
-            $payload['aliases']    = $model->aliases ?? [];
-        } elseif ($this->entityType === 'subject') {
+        // Type-specific metadata for precise filtering during Qdrant search
+        if ($this->entityType === 'subject') {
             $payload['subject_id'] = $model->id;
         } elseif ($this->entityType === 'topic') {
             $payload['topic_id']   = $model->id;
@@ -105,10 +97,9 @@ class IndexSemanticEntityJob implements ShouldQueue
             $payload['institution'] = $model->name;
         }
 
-        // ID determinístico para evitar duplicatas: prefixamos com o tipo (ex: subject:123).
-        // O QdrantService cuida da conversão para UUID v5 internamente.
+        // Deterministic Qdrant ID: "subject:42" → deterministic uint64
         $qdrantId = $this->entityType . ':' . $this->entityId;
-        $success = $qdrant->upsertConcept($qdrantId, $vector, $payload);
+        $success = $qdrant->upsertSemanticEntity($qdrantId, $vector, $payload);
 
         if ($success) {
             // Marca como indexado para controle no Dashboard (apenas para modelos reais)
@@ -124,26 +115,10 @@ class IndexSemanticEntityJob implements ShouldQueue
     private function resolveModel()
     {
         return match ($this->entityType) {
-            'concept' => Concept::with(['subject', 'topic'])->find($this->entityId),
-            'subject' => Subject::find($this->entityId),
-            'topic'   => Topic::find($this->entityId),
+            'subject'                    => Subject::find($this->entityId),
+            'topic'                      => Topic::find($this->entityId),
             'organization', 'institution' => (object) ['name' => $this->entityId, 'id' => $this->entityId],
-            default   => null
+            default                      => null
         };
-    }
-
-    private function buildConceptText(Concept $concept, EmbeddingTextBuilder $textBuilder): string
-    {
-        $relatedNames = ConceptRelation::where('concept_id', $concept->id)
-            ->with('relatedConcept')
-            ->orderByDesc('weight')
-            ->limit(5)
-            ->get()
-            ->pluck('relatedConcept.name')
-            ->filter()
-            ->values()
-            ->toArray();
-
-        return $textBuilder->buildForConcept($concept, $relatedNames);
     }
 }
