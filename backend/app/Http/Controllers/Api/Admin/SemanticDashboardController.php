@@ -641,8 +641,14 @@ class SemanticDashboardController extends Controller
             // Truncate cache table
             \Illuminate\Support\Facades\DB::table('ai_search_cache')->truncate();
             
-            // Clear application cache as well just in case
+            // Clear application cache
             \Illuminate\Support\Facades\Artisan::call('cache:clear');
+
+            // Clear AI Key Blacklist (Wake up sleeping keys)
+            \App\Models\ApiKey::clearBlacklist();
+
+            // Clear Congestion History (Clean up Waiting Room UI)
+            app(\App\Services\AI\AIService::class)->clearCongestionList();
 
             return response()->json(['message' => 'Cache de busca semântica limpo com sucesso. Todas as próximas buscas serão processadas do zero pelo Xavier.']);
         } catch (\Exception $e) {

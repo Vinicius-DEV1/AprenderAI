@@ -1591,6 +1591,7 @@ EOT;
 
         throw new AIServiceBusyException(
             "AI Pool Congestion: All keys for '{$capability}' are currently busy or reached quota limit.",
+            0,
             $lastException
         );
     }

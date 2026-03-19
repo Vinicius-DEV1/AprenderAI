@@ -63,12 +63,8 @@ services:
       - local-network
 
   # ── Consolidate Standard Workers ───────────────────────────────────────
-  # These workers process jobs based on priority: high > default > low.
-  # We use different worker groups to enforce concurrency limits while 
-  # allowing all workers to help with high-priority tasks (emails/chats).
-  
-  # Group: Embeddings (Max 4 parallel jobs)
-  worker-embeddings:
+  # These workers process jobs based on priority: high > default > low etc.
+  worker:
     build:
       context: ./backend
       dockerfile: Dockerfile.local
@@ -78,8 +74,7 @@ services:
       - /var/www/vendor
       - /proc:/host_proc:ro
     env_file: ./backend/.env
-    # priority: high (urgent), low (embeddings), default (others)
-    command: php artisan queue:work --queue=high,low,default --sleep=3 --tries=3 --timeout=120
+    command: php artisan queue:work --queue=high,embeddings,default,ai_triage,import,low --sleep=3 --tries=3 --timeout=1200
     depends_on:
       app:
         condition: service_started
@@ -90,53 +85,7 @@ services:
     networks:
       - local-network
     deploy:
-      replicas: 4
-
-  # Group: Triage (Max 1 parallel job)
-  worker-triage:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.local
-    restart: unless-stopped
-    volumes:
-      - ./backend:/var/www
-      - /var/www/vendor
-      - /proc:/host_proc:ro
-    env_file: ./backend/.env
-    # priority: high (urgent), ai_triage (batches), default (others)
-    command: php artisan queue:work --queue=high,ai_triage,default --sleep=3 --tries=3 --timeout=700
-    depends_on:
-      app:
-        condition: service_started
-      db:
-        condition: service_healthy
-    networks:
-      - local-network
-    deploy:
-      replicas: 1
-
-  # Group: Zip Import (Max 1 parallel job)
-  worker-import:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.local
-    restart: unless-stopped
-    volumes:
-      - ./backend:/var/www
-      - /var/www/vendor
-      - /proc:/host_proc:ro
-    env_file: ./backend/.env
-    # priority: high (urgent), import (ZIP extractions), default (others)
-    command: php artisan queue:work --queue=high,import,default --sleep=3 --tries=3 --timeout=1200
-    depends_on:
-      app:
-        condition: service_started
-      db:
-        condition: service_healthy
-    networks:
-      - local-network
-    deploy:
-      replicas: 1
+      replicas: 5
 
   scheduler:
     build:

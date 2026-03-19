@@ -6,11 +6,10 @@ echo "🚀 Iniciando ambiente de DESENVOLVIMENTO..."
 # Fix git ownership
 git config --global --add safe.directory /var/www
 
-# Ajusta permissões iniciais (usando uid 1000 que é o padrão no Dockerfile.local)
-# CRÍTICO: criar ANTES do composer install (package:discover precisa de bootstrap/cache)
+# Ajusta permissões iniciais de forma não-recursiva (mais rápido em Windows)
 mkdir -p bootstrap/cache storage/framework/sessions storage/framework/views storage/framework/cache storage/logs
-chown -R 1000:www-data bootstrap/cache storage || true
-chmod -R 775 bootstrap/cache storage || true
+chown 1000:www-data bootstrap/cache storage || true
+chmod 775 bootstrap/cache storage || true
 
 
 if [ -f .env ] || [ -f .env.example ]; then
@@ -38,10 +37,10 @@ if [ -f .env ] || [ -f .env.example ]; then
             COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader
         fi
 
-        # Só ajusta permissões se ACABOU de instalar de fato
+        # Se ACABOU de instalar, tenta garantir permissões básicas
         echo "🔑 Ajustando permissões da pasta vendor (pós-instalação)..."
-        chown -R 1000:www-data vendor || true
-        chmod -R 775 vendor || true
+        chown 1000:www-data vendor || true
+        chmod 775 vendor || true
     fi
 
     # Instala dependências do Node removido do app container para agilizar startup 
