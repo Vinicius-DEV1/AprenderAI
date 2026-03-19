@@ -1138,8 +1138,13 @@ const SemanticDashboard = () => {
                                                     </div>
                                                     <div className="flex gap-2 shrink-0">
                                                         <div className="flex flex-col items-end gap-1">
+                                                            {res.source === 'sql_fallback' && (
+                                                                <span className="text-[10px] uppercase font-black tracking-widest px-2 py-0.5 rounded bg-rose-500 text-white border border-rose-600 animate-pulse shadow-lg shadow-rose-500/20 mb-1">
+                                                                    SQL FALLBACK
+                                                                </span>
+                                                            )}
                                                             <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
-                                                                Vec: {res.qdrant_score.toFixed(3)}
+                                                                {res.source === 'sql_fallback' ? 'SQL' : 'VEC'}: {res.qdrant_score.toFixed(3)}
                                                             </span>
                                                             <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800">
                                                                 Final: {res.final_score.toFixed(3)}
@@ -1160,6 +1165,39 @@ const SemanticDashboard = () => {
                                                 </summary>
 
                                                 <div className="p-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 space-y-4">
+                                                    {/* New Debug Metadata Section */}
+                                                    <div className="flex flex-wrap gap-4 p-2.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700/50">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[8px] uppercase font-bold text-slate-400">Origem</span>
+                                                            <span className={clsx(
+                                                                "text-[10px] font-mono font-bold",
+                                                                res.source === 'sql_fallback' ? "text-rose-500" : "text-indigo-500"
+                                                            )}>
+                                                                {res.source === 'sql_fallback' ? 'SQL_FALLBACK' : 'QDRANT_VECTOR'}
+                                                            </span>
+                                                        </div>
+                                                        <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 self-center"></div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[8px] uppercase font-bold text-slate-400">Pipeline</span>
+                                                            <span className="text-[10px] font-mono text-slate-600 dark:text-slate-300">
+                                                                {res.payload?.pipeline_version || 'N/A'}
+                                                            </span>
+                                                        </div>
+                                                        <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 self-center"></div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[8px] uppercase font-bold text-slate-400">Banca / Org</span>
+                                                            <span className="text-[10px] text-slate-600 dark:text-slate-300 font-medium">
+                                                                {res.payload?.organization || 'N/A'}
+                                                            </span>
+                                                        </div>
+                                                        <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 self-center"></div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[8px] uppercase font-bold text-slate-400">Instituição</span>
+                                                            <span className="text-[10px] text-slate-600 dark:text-slate-300 font-medium shrink-0">
+                                                                {res.payload?.institution || 'N/A'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
                                                     {res.score_details && Object.keys(res.score_details).length > 0 && (
                                                         <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
                                                             <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 border-b border-slate-200 dark:border-slate-700 pb-1 flex justify-between items-center">

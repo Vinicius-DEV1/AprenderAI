@@ -99,7 +99,7 @@ class SemanticDashboardController extends Controller
                     'user_name' => $req->user ? $req->user->name : 'System/Guest',
                     'prompt' => $req->prompt,
                     'status' => $req->status,
-                    'created_at' => $req->created_at->format('d/m/Y H:i:s'),
+                    'created_at' => \Carbon\Carbon::parse($req->created_at)->format('d/m/Y H:i:s'),
                     'similarity_threshold' => $req->similarity_threshold,
                 ];
             });
@@ -286,10 +286,17 @@ class SemanticDashboardController extends Controller
 
         // ── Step 1b: Lexical Analysis (Xavier 2.0) ───────────────────────────
         $lexical = app(\App\Services\AI\QueryLexicalAnalyser::class);
+        $logs[] = "LEXICAL START: Processing prompt '{$request->prompt}'";
         $analysis = $lexical->analyse($request->prompt);
         $positivePrompt = implode(' ', $analysis['positive_terms']);
         $negativePrompt = implode(' ', $analysis['negative_terms']);
+        $logs[] = "LEXICAL DONE: Positive tokens: ['" . implode("', '", $analysis['positive_terms']) . "'], Negative: ['" . implode("', '", $analysis['negative_terms']) . "']";
         
+        if ($analysis['difficulty']) $logs[] = "FILTER DETECTED: Difficulty is '{$analysis['difficulty']}'";
+        if (!empty($analysis['years'])) $logs[] = "FILTER DETECTED: Date filter '{$analysis['year_operator']} {$analysis['years'][0]}'";
+        if (!empty($analysis['organizations'])) $logs[] = "FILTER DETECTED: Organizations: [" . implode(", ", $analysis['organizations']) . "]";
+        if (!empty($analysis['institutions'])) $logs[] = "FILTER DETECTED: Institutions: [" . implode(", ", $analysis['institutions']) . "]";
+
         $logs[] = "Xavier 2.0 Lexical Analysis:";
         $logs[] = " - Positive: '{$positivePrompt}'";
         if (!empty($negativePrompt)) {
@@ -393,6 +400,8 @@ class SemanticDashboardController extends Controller
         // ── Step 3.6: Detecção de Intenções Negativas (Excluir) ───────────────
         $excludedOrgs = [];
         $excludedInsts = [];
+        $excludedSubjectIds = [];
+        $excludedTopicIds = [];
         $excludedType = null;
         if (!empty($negativePrompt)) {
             try {
@@ -407,6 +416,12 @@ class SemanticDashboardController extends Controller
                     } elseif ($type === 'institution' && isset($payload['institution'])) {
                         $excludedInsts[] = $payload['institution'];
                         $logs[] = "EXCLUSION DETECTED: Institution '{$payload['institution']}'";
+                    } elseif ($type === 'subject' && isset($payload['subject_id'])) {
+                        $excludedSubjectIds[] = $payload['subject_id'];
+                        $logs[] = "EXCLUSION DETECTED: Subject #{$payload['subject_id']} ({$payload['name']})";
+                    } elseif ($type === 'topic' && isset($payload['topic_id'])) {
+                        $excludedTopicIds[] = $payload['topic_id'];
+                        $logs[] = "EXCLUSION DETECTED: Topic #{$payload['topic_id']} ({$payload['name']})";
                     }
                 }
             } catch (\Exception $e) {
@@ -472,6 +487,18 @@ class SemanticDashboardController extends Controller
         if (!empty($extractedInsts)) {
             $intentFilters['institution'] = $extractedInsts;
         }
+        // Intent Detection Logging
+        $intentService = app(\App\Services\AI\IntentDetectionService::class);
+        if (empty($analysis['positive_terms'])) {
+            $logs[] = "INTENT SKIP: No positive tokens found. Using raw prompt for semantic search.";
+            $intentFilters = [];
+        } else {
+            $intentPrompt = implode(' ', $analysis['positive_terms']);
+            $logs[] = "INTENT START: Detecting intent for '{$intentPrompt}'...";
+            $intentFilters = $intentService->detectIntent($intentPrompt);
+            $logs[] = "INTENT DONE: Found " . count($intentFilters['subject_id'] ?? []) . " subjects, " . count($intentFilters['topic_id'] ?? []) . " topics, " . count($intentFilters['organization'] ?? []) . " orgs.";
+        }
+
         if ($extractedType) {
             $sqlFilters['type'] = $extractedType;
         }
@@ -492,6 +519,18 @@ class SemanticDashboardController extends Controller
         if ($excludedType) {
             $sqlFilters['exclude_type'] = $excludedType;
         }
+        if (!empty($excludedSubjectIds)) {
+            $sqlFilters['exclude_subject_id'] = $excludedSubjectIds;
+        }
+        if (!empty($excludedTopicIds)) {
+            $sqlFilters['exclude_topic_id'] = $excludedTopicIds;
+        }
+        if (!empty($excludedOrgs)) {
+            $sqlFilters['exclude_org'] = $excludedOrgs;
+        }
+        if (!empty($excludedInsts)) {
+            $sqlFilters['exclude_inst'] = $excludedInsts;
+        }
 
         // Xavier 2.0 Fase 3: Filtros de Ano e Dificuldade
         if ($analysis['difficulty']) {
@@ -502,16 +541,18 @@ class SemanticDashboardController extends Controller
             $sqlFilters['year_operator'] = $analysis['year_operator'];
         }
         
+        $logs[] = "SEARCH START: Requesting hybrid results (Limit: {$limit})";
         $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, $sqlFilters, $limit);
-        $logs[] = "Candidates found in Qdrant (or SQL Fallback): " . count($candidates);
+        $logs[] = "SEARCH DONE: Found " . count($candidates) . " candidates.";
+        
+        $qdrantCount = collect($candidates)->where('source', 'qdrant')->count();
+        $sqlCount    = collect($candidates)->where('source', 'sql_fallback')->count();
+        $logs[] = "SEARCH BREAKDOWN: Qdrant: {$qdrantCount}, SQL Fallback: {$sqlCount}";
 
         // ── Step 7: ReRank ────────────────────────────────────────────────────
         $reranker = app(\App\Services\AI\ReRankService::class);
         $finalLimit = (int) \App\Models\Configuration::get('xavier_final_result_limit', config('xavier.search.final_result_limit', 100));
 
-        $intentFilters = [];
-        if (!empty($extractedSubjects)) {
-            $intentFilters['subject_id'] = $extractedSubjects;
         }
         if (!empty($extractedTopics)) {
             $intentFilters['topic_id'] = $extractedTopics;

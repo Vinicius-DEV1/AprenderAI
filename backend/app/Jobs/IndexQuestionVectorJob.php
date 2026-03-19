@@ -179,6 +179,7 @@ class IndexQuestionVectorJob implements ShouldQueue
         );
 
         Log::info("[Xavier][IndexQuestion] Question #{$this->questionId} indexed successfully (v{$newVersion}).");
+        $aiService->removeCongestion('IndexQuestionVectorJob', $this->questionId);
     }
 
     /**
