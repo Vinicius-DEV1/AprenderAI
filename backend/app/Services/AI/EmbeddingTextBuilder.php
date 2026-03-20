@@ -359,20 +359,31 @@ class EmbeddingTextBuilder
 
     /**
      * Builds query text aligned with the EXPLANATION vector format.
-     *
-     * Na indexação, o explanation vector é gerado a partir de:
-     *   "subject: X\nexplanation:\n{explicação}\ncorrect answer content:\n{resposta}"
-     *
-     * A query para busca por explicação deve usar o mesmo prefixo "explanation:"
-     * para alinhar ao espaço semântico das explicações indexadas.
-     *
-     * @param string $userQuery  Query natural do usuário
-     * @return string  Texto formatado para gerar o embedding de busca de explicações
      */
     public function buildExplanationQuery(string $userQuery): string
     {
         $query = $this->cleanText($userQuery);
         return "explanation:\n" . $query;
+    }
+
+    /**
+     * Builds query text aligned with the ALTERNATIVES vector format. (V2)
+     * Aligns the search query to the distractor/wrong-answer semantic space.
+     */
+    public function buildAlternativesQuery(string $userQuery): string
+    {
+        $query = $this->cleanText($userQuery);
+        return "alternatives:\n" . $query;
+    }
+
+    /**
+     * Builds query text aligned with the SKILLS vector format. (V2)
+     * Aligns the search query to the cognitive skills semantic space.
+     */
+    public function buildSkillsQuery(string $userQuery): string
+    {
+        $query = $this->cleanText($userQuery);
+        return "skill:\n" . $query;
     }
 
     /**

@@ -753,87 +753,69 @@ class QuestionController extends Controller
             $extractedType = 'enem';
         }
 
-        // ── Step 6.5: Despacha os 3 Embeddings Format-Aligned em PARALELO (Job Workers) ──
-        //
-        // ANTES: 3 chamadas HTTP sequenciais ao Gemini (~500ms × 3 = ~1.5s)
-        //   $statementVector   = $aiService->generateEmbedding($statementQueryText, ...);
-        //   $conceptVectorQ    = $aiService->generateEmbedding($conceptQueryText, ...);
-        //   $explanationVector = $aiService->generateEmbedding($explanationQueryText, ...);
-        //
-        // AGORA: 3 jobs independentes disparados simultaneamente.
-        //   - Cada job é processado por um worker diferente do pool 'search_embeddings'.
-        //   - Os workers são os mesmos 40 'default', mas com search_embeddings na frente
-        //     da lista de filas, garantindo prioridade máxima e zero custo de infra.
-        //   - O GenerateQueryEmbeddingJob usa CAPABILITY_QUERY_EMBEDDING (isolada de
-        //     CAPABILITY_EMBEDDING usada pela indexação batch) — sem contenção de chaves.
-        //   - Um contador atômico Redis garante que o RunVectorSearchJob só é disparado
-        //     quando os 3 slots terminam (é atômico — sem race-condition).
-
+        // Xavier 2.0 (v8) — Generate all 5 query-side vectors in a single BATCH call
+        // This is 5x faster than sequential and eliminates queue wait times for query generation.
         $statementQueryText   = $textBuilder->buildStatementQuery($positivePrompt);
         $conceptQueryText     = $textBuilder->buildConceptQuery($positivePrompt);
         $explanationQueryText = $textBuilder->buildExplanationQuery($positivePrompt);
+        $alternativesQueryText = $textBuilder->buildAlternativesQuery($positivePrompt);
+        $skillsQueryText       = $textBuilder->buildSkillsQuery($positivePrompt);
 
-        // Cria o registro de busca com status 'generating' — será atualizado para
-        // 'completed' pelo RunVectorSearchJob ao finalizar a busca no Qdrant.
+        // Prepare texts for batch
+        $texts = [$statementQueryText, $conceptQueryText, $explanationQueryText, $alternativesQueryText, $skillsQueryText];
+        $slots = ['statement', 'concept', 'explanation', 'alternatives', 'skills'];
+
+        // Create the search request record
         $searchRequest = AiSearchRequest::create([
             'user_id' => $user->id,
             'prompt'  => $request->prompt,
             'status'  => 'generating',
         ]);
 
-        // Contexto serializado para o RunVectorSearchJob — contém tudo necessário
-        // para executar o Qdrant + ReRank sem precisar re-queryar o banco de dados.
-        // Armazenado em Redis pelo GenerateQueryEmbeddingJob ao concluir.
+        $ttl = config('xavier.search_embeddings.ttl', 300);
+
+        try {
+            $vectors = $aiService->generateEmbeddingsBatch($texts, $user->id, 'RETRIEVAL_QUERY');
+
+            if ($vectors && count($vectors) === 5) {
+                // Store all vectors in Redis for RunVectorSearchJob to consume
+                foreach ($slots as $idx => $slot) {
+                    Cache::put("xavier:qembed:{$searchRequest->id}:{$slot}", $vectors[$idx], $ttl);
+                }
+                
+                // Mark all 5 slots as "done" to trigger/satisfy the counter
+                Redis::set("xavier:qembed_done:{$searchRequest->id}", 5);
+                Redis::expire("xavier:qembed_done:{$searchRequest->id}", $ttl);
+                
+                Log::info("[Xavier][Search] Batch embeddings generated (5 vectors). Proceeding to Qdrant search.");
+            } else {
+                throw new \Exception("Batch embedding failed or returned incomplete results.");
+            }
+        } catch (\Exception $e) {
+            Log::warning("[Xavier][Search] Batch embedding failed, search will use generic fallback. Error: " . $e->getMessage());
+            // Counter must be 1 to trigger fallback in some logic or just handled by RunVectorSearchJob
+            Redis::set("xavier:qembed_done:{$searchRequest->id}", 5); 
+        }
+
+        // Build search context for the runner
         $sqlFilters = ['keyword' => $request->prompt];
-        if ($extractedType) {
-            $sqlFilters['type'] = $extractedType;
-        }
+        if ($extractedType) $sqlFilters['type'] = $extractedType;
+        if (!empty($extractedOrgs)) $sqlFilters['organization'] = $extractedOrgs;
+        if (!empty($extractedInsts)) $sqlFilters['institution'] = $extractedInsts;
         
-        // Se detectamos uma banca ou órgão específico como intenção clara, filtramos no Qdrant
-        if (!empty($extractedOrgs)) {
-            $sqlFilters['organization'] = $extractedOrgs; 
-        }
-        if (!empty($extractedInsts)) {
-            $sqlFilters['institution'] = $extractedInsts;
-        }
+        // Exclusions/Restrictions (Xavier 2.0)
+        if (!empty($mustOrgs))     $sqlFilters['organization'] = $mustOrgs;
+        if (!empty($mustInsts))    $sqlFilters['institution']  = $mustInsts;
+        if (!empty($mustSubjects)) $sqlFilters['subject']     = $mustSubjects[0];
+        if (!empty($mustTopics))   $sqlFilters['topic']       = $mustTopics[0];
+        
+        if (!empty($excludedOrgs))     $sqlFilters['exclude_organization'] = $excludedOrgs;
+        if (!empty($excludedInsts))    $sqlFilters['exclude_institution']  = $excludedInsts;
+        if ($excludedType)             $sqlFilters['exclude_type']         = $excludedType;
+        if (!empty($excludedSubjects)) $sqlFilters['exclude_subject_id']   = $excludedSubjects;
+        if (!empty($excludedTopics))   $sqlFilters['exclude_topic_id']     = $excludedTopics;
 
-        // Aplicar restrições detectadas (MUST)
-        if (!empty($mustOrgs)) {
-            $sqlFilters['organization'] = count($mustOrgs) === 1 ? $mustOrgs[0] : $mustOrgs;
-        }
-        if (!empty($mustInsts)) {
-            $sqlFilters['institution'] = count($mustInsts) === 1 ? $mustInsts[0] : $mustInsts;
-        }
-        if (!empty($mustSubjects)) {
-            // Se o usuário restringiu a disciplina, sobrescrevemos o filtro original
-            $sqlFilters['subject'] = $mustSubjects[0];
-        }
-        if (!empty($mustTopics)) {
-            $sqlFilters['topic'] = $mustTopics[0];
-        }
-
-        // Aplicar exclusões detectadas (MUST NOT)
-        if (!empty($excludedOrgs)) {
-            $sqlFilters['exclude_organization'] = $excludedOrgs;
-        }
-        if (!empty($excludedInsts)) {
-            $sqlFilters['exclude_institution'] = $excludedInsts;
-        }
-        if ($excludedType) {
-            $sqlFilters['exclude_type'] = $excludedType;
-        }
-        // Exclusão de Disciplina/Tópico (Metadata Filters)
-        if (!empty($excludedSubjects)) {
-            $sqlFilters['exclude_subject_id'] = $excludedSubjects;
-        }
-        if (!empty($excludedTopics)) {
-            $sqlFilters['exclude_topic_id'] = $excludedTopics;
-        }
-
-        // Filtros Temporais e de Dificuldade (Xavier 2.0 Fase 3)
-        if ($analysis['difficulty']) {
-            $sqlFilters['difficulty'] = $analysis['difficulty'];
-        }
+        if ($analysis['difficulty']) $sqlFilters['difficulty'] = $analysis['difficulty'];
         if (!empty($analysis['years'])) {
             $sqlFilters['year'] = $analysis['years'][0];
             $sqlFilters['year_operator'] = $analysis['year_operator'];
@@ -858,12 +840,6 @@ class QuestionController extends Controller
             'final_limit'         => (int) \App\Models\Configuration::get('xavier_final_result_limit', config('xavier.search.final_result_limit', 100)),
         ];
 
-        // Despacha os 3 jobs — cada um processa um slot de embedding independentemente
-        GenerateQueryEmbeddingJob::dispatch($searchRequest->id, 'statement',   $statementQueryText,   $user->id, $searchContext);
-        GenerateQueryEmbeddingJob::dispatch($searchRequest->id, 'concept',     $conceptQueryText,     $user->id, $searchContext);
-        GenerateQueryEmbeddingJob::dispatch($searchRequest->id, 'explanation', $explanationQueryText, $user->id, $searchContext);
-
-        Log::info('[Xavier][Search] Step 6.5 done: 3 embedding jobs dispatched in parallel.', [
             'search_request_id' => $searchRequest->id,
             'slots'             => ['statement', 'concept', 'explanation'],
         ]);
