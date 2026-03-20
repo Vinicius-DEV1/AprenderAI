@@ -28,11 +28,11 @@ class SemanticDashboardController extends Controller
     {
         // 1. MySQL Data
         $totalQuestions = Question::published()->where('tipo_questao', '!=', 'Redação')->count();
-        $indexedQuestions = \Illuminate\Support\Facades\Cache::remember('semantic_dashboard_indexed_questions', 300, function () {
-            return QuestionVector::whereHas('question', function ($query) {
-                $query->published()->where('tipo_questao', '!=', 'Redação');
-            })->distinct('question_id')->count('question_id');
-        });
+        // Direct count — no cache here since this is a real-time monitoring dashboard.
+        // Caching hid indexing progress from the admin view.
+        $indexedQuestions = QuestionVector::whereHas('question', function ($query) {
+            $query->published()->where('tipo_questao', '!=', 'Redação');
+        })->distinct('question_id')->count('question_id');
         $totalVectors = QuestionVector::count();
         $totalSubjects = \App\Models\Subject::count();
         $indexedSubjects = \App\Models\Subject::whereNotNull('qdrant_indexed_at')->count();
