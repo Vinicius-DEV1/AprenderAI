@@ -1524,7 +1524,12 @@ EOT;
         $lastException = null;
         $keysLockedCount = 0;
         $startTime = microtime(true);
-        $timeout = 15.0; // Level 1: Wait up to 15s internally for a key to become free
+        
+        // Priority System: 
+        // Background workers (CLI) should back off quickly (2s) to Level 2 (Queue Backoff)
+        // while interactive users (Web) get more endurance (15s) to acquire a key.
+        $isBackground = app()->runningInConsole();
+        $timeout = $isBackground ? 2.0 : 15.0; 
 
         while ((microtime(true) - $startTime) < $timeout) {
             $keysLockedCount = 0;
