@@ -92,8 +92,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.local
-    container_name: aprender-ai-worker
     command: php artisan queue:work --queue=embeddings,search_embeddings,essays,import,default --tries=3 --timeout=90
+    deploy:
+      replicas: 7
     volumes:
       - ./backend:/var/www
       - vendor_volume:/var/www/vendor
