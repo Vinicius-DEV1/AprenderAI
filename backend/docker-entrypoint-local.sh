@@ -6,84 +6,40 @@ echo "🚀 Iniciando ambiente de DESENVOLVIMENTO..."
 # Fix git ownership
 git config --global --add safe.directory /var/www
 
-# Ajusta permissões iniciais de forma não-recursiva (mais rápido em Windows)
-mkdir -p bootstrap/cache storage/framework/sessions storage/framework/views storage/framework/cache storage/logs
-chown 1000:www-data bootstrap/cache storage || true
-chmod 775 bootstrap/cache storage || true
-
-
-if [ -f .env ] || [ -f .env.example ]; then
-    # Se não houver .env, copia do .env.example
-    if [ ! -f .env ]; then
+# --- SETUP INICIAL ---
+if [ "$1" = "php-fpm" ] || [ -z "$1" ]; then
+    if [ ! -f .env ] && [ -f .env.example ]; then
         echo "📄 Criando arquivo .env a partir do .env.example..."
         cp .env.example .env
     fi
 
-    # Instala dependências do Composer se a pasta vendor/autoload.php não existir
-    if [ ! -f "vendor/autoload.php" ]; then
-        echo "📦 Autoload não encontrado ou corrompido. Tentando (re)instalar dependências..."
-        
-        # Garantir permissões básicas para o composer conseguir escrever
-        mkdir -p vendor
-        chown -R 1000:www-data vendor 2>/dev/null || true
-        chmod -R 775 vendor 2>/dev/null || true
-        
-        COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader
-        
-        # Se falhou, tenta limpar e instalar de novo
-        if [ $? -ne 0 ]; then
-            echo "⚠️ Falha na instalação inicial. Tentando limpar e forçar nova instalação..."
-            rm -rf vendor/.* vendor/* 2>/dev/null || true
-            COMPOSER_MEMORY_LIMIT=-1 composer install --no-interaction --prefer-dist --optimize-autoloader
+    if [ "$INITIALIZE_APP" = "true" ]; then
+        echo "🛡️  [CONTAINER PRINCIPAL] Realizando setup inicial..."
+
+        # Instala dependências do Composer se a pasta vendor/autoload.php não existir
+        if [ ! -f "vendor/autoload.php" ]; then
+            echo "📦 Instalando dependências do Composer..."
+            composer install --no-interaction --prefer-dist --optimize-autoloader
         fi
 
-        # Se ACABOU de instalar, tenta garantir permissões básicas
-        echo "🔑 Ajustando permissões da pasta vendor (pós-instalação)..."
-        chown 1000:www-data vendor || true
-        chmod 775 vendor || true
-    fi
-
-    # Instala dependências do Node removido do app container para agilizar startup 
-    # (O frontend container cuida disso)
-
-    # ----------------------------------------------------------------
-    # Aguarda o MySQL estar PRONTO para aceitar conexões.
-    # ----------------------------------------------------------------
-    echo "⏳ Aguardando o banco de dados ficar disponível..."
-    MAX_TRIES=100
-    COUNT=0
-    # Debug env
-    echo "DB_HOST=$DB_HOST, DB_DATABASE=$DB_DATABASE, DB_USERNAME=$DB_USERNAME"
-    # Usando PHP puro para testar a conexão sem carregar o framework (mais rápido e robusto)
-    until php -r "try { new PDO('mysql:host=' . getenv('DB_HOST') . ';dbname=' . getenv('DB_DATABASE'), getenv('DB_USERNAME'), getenv('DB_PASSWORD')); exit(0); } catch (Exception \$e) { echo \$e->getMessage() . PHP_EOL; exit(1); }" ; do
-        COUNT=$((COUNT + 1))
-        if [ "$COUNT" -ge "$MAX_TRIES" ]; then
-            echo "❌ ERRO: Banco de dados não ficou disponível após ${MAX_TRIES} tentativas. Abortando."
-            exit 1
+        # Gerar chave se necessário
+        if ! grep -q "APP_KEY=base64:" .env; then
+            echo "🔑 Gerando chave da aplicação..."
+            php artisan key:generate
         fi
-        echo "  Banco não está pronto ainda (Tentativa ${COUNT}/${MAX_TRIES}). Aguardando 3s..."
-        sleep 3
-    done
-    echo "✅ Banco de dados disponível!"
-fi
 
-# ----------------------------------------------------------------
-# Inicialização do Laravel
-# ----------------------------------------------------------------
-if [ -f .env ]; then
-    if ! grep -q "APP_KEY=base64:" .env; then
-        echo "🔑 Gerando chave da aplicação..."
-        php artisan key:generate
-    fi
-    
-    echo "🔗 Verificando link de storage..."
-    php artisan storage:link --force || true
+        # Storage link
+        echo "🔗 Verificando link de storage..."
+        php artisan storage:link --force || true
 
+        # Aguarda o MySQL
+        echo "⏳ Aguardando o banco de dados ficar disponível..."
+        until php -r "try { new PDO('mysql:host=' . getenv('DB_HOST') . ';dbname=' . getenv('DB_DATABASE'), getenv('DB_USERNAME'), getenv('DB_PASSWORD'), [PDO::ATTR_TIMEOUT => 3]); exit(0); } catch (Exception \$e) { exit(1); }" ; do
+            echo "  Banco não está pronto ainda... aguardando 2s..."
+            sleep 2
+        done
+        echo "✅ Banco de dados disponível!"
 
-fi
-
-if [ "$1" = "php-fpm" ] || [ -z "$1" ]; then
-    if [ -f .env ]; then
         echo "📂 Rodando migrações de banco..."
         php artisan migrate --force
 
@@ -91,6 +47,12 @@ if [ "$1" = "php-fpm" ] || [ -z "$1" ]; then
         php artisan config:clear
         php artisan route:clear
         php artisan view:clear
+    else
+        echo "⏳ [CONTAINER SECUNDÁRIO] Aguardando inicialização completa do App..."
+        # Espera o vendor estar presente pelo menos
+        while [ ! -f "vendor/autoload.php" ]; do
+            sleep 2
+        done
     fi
 
     echo "🚀 Tudo pronto! Iniciando PHP-FPM..."
