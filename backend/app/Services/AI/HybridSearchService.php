@@ -23,9 +23,9 @@ class HybridSearchService
     /**
      * Perform hybrid search.
      *
-     * @param  array  $queryVectors      ['statement'=>[...], 'concept'=>[...], 'explanation'=>[...]]
+     * @param  array  $queryVectors      ['statement'=>[...], 'concept'=>[...], 'explanation'=>[...], 'alternatives'=>[...], 'skills'=>[...]]
      * @param  string[] $expandedConceptIds  Concept slugs from QueryExpansionService
-     * @param  array  $sqlFilters        Optional SQL filters: subject, topic, type, difficulty, year
+     * @param  array  $sqlFilters        Optional SQL filters: subject, topic, type, difficulty, year, has_explanation, word_count_max
      * @param  int    $limit             Candidate limit for Qdrant (pre-ReRank)
      * @return array  [{question_id, score, source, payload}]
      */
@@ -71,23 +71,26 @@ class HybridSearchService
     {
         $must = [];
 
-        // Filter by subject
+        // Filter by subject — use subject_ids (array) for multi-discipline support
+        // Falls back to subject_id for backward compatibility with legacy-indexed points.
         if (!empty($sqlFilters['subject'])) {
+            $ids = is_array($sqlFilters['subject'])
+                ? array_map('intval', $sqlFilters['subject'])
+                : [(int) $sqlFilters['subject']];
             $must[] = [
-                'key'   => 'subject_id',
-                'match' => is_array($sqlFilters['subject']) 
-                    ? ['any' => array_map('intval', $sqlFilters['subject'])]
-                    : ['value' => (int) $sqlFilters['subject']],
+                'key'   => 'subject_ids',
+                'match' => ['any' => $ids],
             ];
         }
 
-        // Filter by topic
+        // Filter by topic — use topic_ids (array) for multi-topic support
         if (!empty($sqlFilters['topic'])) {
+            $ids = is_array($sqlFilters['topic'])
+                ? array_map('intval', $sqlFilters['topic'])
+                : [(int) $sqlFilters['topic']];
             $must[] = [
-                'key'   => 'topic_id',
-                'match' => is_array($sqlFilters['topic'])
-                    ? ['any' => array_map('intval', $sqlFilters['topic'])]
-                    : ['value' => (int) $sqlFilters['topic']],
+                'key'   => 'topic_ids',
+                'match' => ['any' => $ids],
             ];
         }
 
@@ -208,19 +211,35 @@ class HybridSearchService
             ];
         }
 
-        // Exclude by Subject ID
+        // Exclude by Subject ID — match against subject_ids array for V2 multi-subject support
         if (!empty($sqlFilters['exclude_subject_id'])) {
             $mustNot[] = [
-                'key'   => 'subject_id',
-                'match' => ['any' => (array) $sqlFilters['exclude_subject_id']],
+                'key'   => 'subject_ids',
+                'match' => ['any' => array_map('intval', (array) $sqlFilters['exclude_subject_id'])],
             ];
         }
 
-        // Exclude by Topic ID
+        // Exclude by Topic ID — match against topic_ids array for V2 multi-topic support
         if (!empty($sqlFilters['exclude_topic_id'])) {
             $mustNot[] = [
-                'key'   => 'topic_id',
-                'match' => ['any' => (array) $sqlFilters['exclude_topic_id']],
+                'key'   => 'topic_ids',
+                'match' => ['any' => array_map('intval', (array) $sqlFilters['exclude_topic_id'])],
+            ];
+        }
+
+        // Filter: only questions with explanation/resolution (V2 field)
+        if (!empty($sqlFilters['has_explanation'])) {
+            $must[] = [
+                'key'   => 'has_explanation',
+                'match' => ['value' => true],
+            ];
+        }
+
+        // Filter: word count ceiling — avoids very long-winded questions (V2 field)
+        if (!empty($sqlFilters['word_count_max'])) {
+            $must[] = [
+                'key'   => 'word_count',
+                'range' => ['lte' => (int) $sqlFilters['word_count_max']],
             ];
         }
 
