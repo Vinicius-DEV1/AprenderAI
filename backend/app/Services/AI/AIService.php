@@ -1153,7 +1153,79 @@ EOT;
         ]);
     }
     /**
-     * Interaction chat focusing on a specific exam question (Simulations context).
+     * Generates multiple embeddings in a single Batch API call.
+     * DRRASTICALLY faster for multi-vector systems like Xavier 2.0.
+     * 
+     * @param  string[]   $texts    Array of text strings to be embedded
+     * @param  int|null    $userId   User ID for telemetry
+     * @param  string      $taskType Gemini task type (RETRIEVAL_DOCUMENT or RETRIEVAL_QUERY)
+     * @return array[]|null Array of vectors, or null on error
+     */
+    public function generateEmbeddingsBatch(array $texts, ?int $userId = null, string $taskType = 'RETRIEVAL_DOCUMENT'): ?array
+    {
+        if (empty($texts)) return [];
+
+        try {
+            $capability = ($taskType === 'RETRIEVAL_QUERY') 
+                ? ApiKey::CAPABILITY_QUERY_EMBEDDING 
+                : ApiKey::CAPABILITY_EMBEDDING;
+
+            return $this->executeWithFailover($capability, function ($apiKeyModel) use ($texts, $userId, $taskType) {
+                $startTime = microtime(true);
+                $apiKey = $apiKeyModel->decrypted_key;
+                
+                // Gemini Batch Embedding API
+                $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents?key={$apiKey}";
+
+                $requests = array_map(function($text) use ($taskType) {
+                    return [
+                        'model' => 'models/gemini-embedding-001',
+                        'content' => ['parts' => [['text' => $text]]],
+                        'taskType' => $taskType,
+                    ];
+                }, $texts);
+
+                $payload = ['requests' => $requests];
+
+                // Jitter to prevent worker synchronization
+                $jitterMicro = random_int(500000, 2000000); 
+                if (app()->runningInConsole()) {
+                    usleep($jitterMicro);
+                }
+
+                $response = Http::timeout(30)->post($url, $payload);
+                $executionTime = microtime(true) - $startTime;
+
+                if ($response->failed()) {
+                    $statusCode = $response->status();
+                    throw new \Exception("Gemini Batch API Error: " . $response->body() . " (Status: $statusCode)");
+                }
+
+                $data = $response->json();
+                $embeddings = $data['embeddings'] ?? [];
+                
+                $vectors = array_map(function($e) {
+                    return $e['values'] ?? null;
+                }, $embeddings);
+
+                // Telemetry (Log first text as representative)
+                $this->telemetryService->logRequest(
+                    $apiKeyModel,
+                    $texts[0] . " [+ " . (count($texts)-1) . " more]",
+                    ['content' => '[BATCH VECTOR DATA]', 'usage' => ['total_tokens' => $this->telemetryService->estimateTokens(implode(' ', $texts))]],
+                    $executionTime,
+                    $userId,
+                    null,
+                    'embedding_batch'
+                );
+
+                return $vectors;
+            });
+        } catch (\Exception $e) {
+            Log::error('AI Batch Embedding failed: ' . $e->getMessage());
+            return null;
+        }
+    }
      */
     public function chatAboutQuestion(mixed $question, mixed $simulation, string $userMessage, array $history): ?string
     {

@@ -449,30 +449,47 @@ class SemanticDashboardController extends Controller
         $statementQueryText   = $textBuilder->buildStatementQuery($positivePrompt);
         $conceptQueryText     = $textBuilder->buildConceptQuery($positivePrompt);
         $explanationQueryText = $textBuilder->buildExplanationQuery($positivePrompt);
+        $alternativesQueryText = $textBuilder->buildAlternativesQuery($positivePrompt);
+        $skillsQueryText       = $textBuilder->buildSkillsQuery($positivePrompt);
 
-        $statementVector = null;
-        $conceptVectorQ = null;
-        $explanationVector = null;
+        $queryVectors = [];
 
         try {
-            $statementVector   = $aiService->generateEmbedding($statementQueryText,   $user->id, 'RETRIEVAL_QUERY');
-            $conceptVectorQ    = $aiService->generateEmbedding($conceptQueryText,     $user->id, 'RETRIEVAL_QUERY');
-            $explanationVector = $aiService->generateEmbedding($explanationQueryText, $user->id, 'RETRIEVAL_QUERY');
+            $texts = [
+                $statementQueryText,
+                $conceptQueryText,
+                $explanationQueryText,
+                $alternativesQueryText,
+                $skillsQueryText
+            ];
+
+            $vectors = $aiService->generateEmbeddingsBatch($texts, $user->id, 'RETRIEVAL_QUERY');
+
+            if ($vectors && count($vectors) === 5) {
+                $queryVectors = [
+                    'statement'    => $vectors[0],
+                    'concept'      => $vectors[1],
+                    'explanation'  => $vectors[2],
+                    'alternatives' => $vectors[3],
+                    'skills'       => $vectors[4],
+                ];
+                $logs[] = "Format-aligned embeddings (Batch): statement, concept, explanation, alternatives, skills = OK";
+            } else {
+                throw new \Exception("Batch embedding returned incomplete results.");
+            }
         } catch (\Exception $e) {
-            $logs[] = "WARNING: Aligned embeddings partially failed: " . $e->getMessage() . ". Falling back to generic vector.";
+            $logs[] = "WARNING: Batch embeddings failed: " . $e->getMessage() . ". Falling back to single generic vector.";
+            $queryVectors = [
+                'statement'    => $queryVector,
+                'concept'      => $queryVector,
+                'explanation'  => $queryVector,
+                'alternatives' => $queryVector,
+                'skills'       => $queryVector,
+            ];
         }
 
-        // Fallback: se algum dos 3 falhar, usa o genérico
-        $queryVectors = [
-            'statement'   => $statementVector   ?? $queryVector,
-            'concept'     => $conceptVectorQ    ?? $queryVector,
-            'explanation' => $explanationVector  ?? $queryVector,
-        ];
-
-        $logs[] = "Format-aligned embeddings: statement=" . ($statementVector ? 'OK' : 'FALLBACK')
-                . ", concept=" . ($conceptVectorQ ? 'OK' : 'FALLBACK')
-                . ", explanation=" . ($explanationVector ? 'OK' : 'FALLBACK');
-
+        $logs[] = "Format-aligned embeddings (Batch): OK (" . count($queryVectors) . " vectors)";
+        
         // ── Step 6: Hybrid Search ─────────────────────────────────────────────
         $hybridSearch = app(\App\Services\AI\HybridSearchService::class);
         $limit = (int) \App\Models\Configuration::get('xavier_qdrant_candidate_limit', config('xavier.search.qdrant_candidate_limit', 200));

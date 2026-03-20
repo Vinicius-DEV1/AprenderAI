@@ -107,24 +107,24 @@ class IndexQuestionVectorJob implements ShouldQueue
         Log::info("[Xavier][IndexQuestion] Generating 5 vectors for #{$this->questionId}...");
         
         try {
-            $statementVector   = $aiService->generateEmbedding($statementText,    $userId, 'RETRIEVAL_DOCUMENT');
-            Log::debug("[Xavier][IndexQuestion] #{$this->questionId} statement vector: OK");
-            
-            $conceptVector     = $aiService->generateEmbedding($conceptText,      $userId, 'RETRIEVAL_DOCUMENT');
-            Log::debug("[Xavier][IndexQuestion] #{$this->questionId} concept vector: OK");
-            
-            $explanationVector = $aiService->generateEmbedding($explanationText,  $userId, 'RETRIEVAL_DOCUMENT');
-            Log::debug("[Xavier][IndexQuestion] #{$this->questionId} explanation vector: OK");
+            $texts = [
+                $statementText,
+                $conceptText,
+                $explanationText,
+                $alternativesText,
+                $skillsText
+            ];
 
-            $alternativesVector = $aiService->generateEmbedding($alternativesText, $userId, 'RETRIEVAL_DOCUMENT');
-            Log::debug("[Xavier][IndexQuestion] #{$this->questionId} alternatives vector: OK");
+            $vectors = $aiService->generateEmbeddingsBatch($texts, $userId, 'RETRIEVAL_DOCUMENT');
 
-            $skillsVector      = $aiService->generateEmbedding($skillsText,       $userId, 'RETRIEVAL_DOCUMENT');
-            Log::debug("[Xavier][IndexQuestion] #{$this->questionId} skills vector: OK");
-            
-            if (!$statementVector || !$conceptVector || !$explanationVector || !$alternativesVector || !$skillsVector) {
-                throw new \RuntimeException('One of the 5 embedding vectors returned unexpectedly empty.');
+            if (!$vectors || count($vectors) !== 5) {
+                throw new \RuntimeException('Batch embedding failed or returned incomplete results.');
             }
+
+            [$statementVector, $conceptVector, $explanationVector, $alternativesVector, $skillsVector] = $vectors;
+
+            Log::debug("[Xavier][IndexQuestion] #{$this->questionId} batch embeddings: OK");
+
         } catch (\App\Exceptions\AIServiceBusyException $e) {
             Log::info("[IndexQuestionVectorJob] AI Key pool busy for question #{$this->questionId}. Releasing for 30s backoff.");
             $aiService->registerCongestion('IndexQuestionVectorJob', $this->questionId);
