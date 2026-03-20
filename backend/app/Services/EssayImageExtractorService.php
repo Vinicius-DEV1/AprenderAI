@@ -24,7 +24,7 @@ class EssayImageExtractorService
      */
     public function extractText(string $absoluteImagePath, string $publicUrl): string
     {
-        if (!$this->aiService->hasActiveKey(ApiKey::CAPABILITY_GENERAL)) {
+        if (!$this->aiService->hasActiveKey(ApiKey::CAPABILITY_ESSAYS)) {
             Log::warning('OCR failed - No active API key', ['path' => $absoluteImagePath]);
             throw new \Exception('Serviço de extração de texto (OCR) não configurado ou indisponível.');
         }
@@ -34,7 +34,7 @@ class EssayImageExtractorService
             $prompt = "Transcreva exatamente o texto manuscrito contido nesta imagem. Não adicione nenhum comentário, markdown, ou introdução, apenas retorne o texto legível da redação da melhor forma que conseguir. Imagem: " . $publicUrl;
 
             // Prefer Gemini model as it supports vision smoothly in this stack
-            $result = $this->aiService->generateJson($prompt, 'gemini-1.5-pro-latest');
+            $result = $this->aiService->generateJson($prompt, ApiKey::CAPABILITY_ESSAYS, 'gemini-1.5-pro-latest');
 
             if (isset($result['data']['text'])) {
                 return $result['data']['text'];

@@ -98,8 +98,14 @@ class ReRankService
                 if (!empty($intentFilters['type']) && in_array($payload['type'] ?? null, $intentFilters['type'])) {
                     $intentBoost += 0.10;
                 }
+                if (!empty($intentFilters['organization']) && in_array($payload['organization'] ?? null, $intentFilters['organization'])) {
+                    $intentBoost += 0.30;
+                }
+                if (!empty($intentFilters['institution']) && in_array($payload['institution'] ?? null, $intentFilters['institution'])) {
+                    $intentBoost += 0.20;
+                }
                 // Limita o boost máximo para manter a coerência geral
-                $intentBoost = min(0.40, $intentBoost);
+                $intentBoost = min(0.50, $intentBoost);
             }
 
             // Weights are applied to unified [0, 1] scales

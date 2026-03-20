@@ -115,6 +115,36 @@ class HybridSearchService
             ];
         }
 
+        // Filter by organization (Banca)
+        if (!empty($sqlFilters['organization'])) {
+            if (is_array($sqlFilters['organization'])) {
+                $must[] = [
+                    'key'   => 'organization',
+                    'match' => ['any' => $sqlFilters['organization']],
+                ];
+            } else {
+                $must[] = [
+                    'key'   => 'organization',
+                    'match' => ['value' => $sqlFilters['organization']],
+                ];
+            }
+        }
+
+        // Filter by institution (Órgão)
+        if (!empty($sqlFilters['institution'])) {
+            if (is_array($sqlFilters['institution'])) {
+                $must[] = [
+                    'key'   => 'institution',
+                    'match' => ['any' => $sqlFilters['institution']],
+                ];
+            } else {
+                $must[] = [
+                    'key'   => 'institution',
+                    'match' => ['value' => $sqlFilters['institution']],
+                ];
+            }
+        }
+
         // Only active, approved questions -- always
         $must[] = [
             'key'   => 'is_active',
