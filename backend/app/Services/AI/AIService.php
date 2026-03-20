@@ -1226,7 +1226,7 @@ EOT;
             return null;
         }
     }
-     */
+
     public function chatAboutQuestion(mixed $question, mixed $simulation, string $userMessage, array $history): ?string
     {
         if (!$this->hasActiveKey(ApiKey::CAPABILITY_QUESTIONS)) {
