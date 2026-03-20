@@ -50,7 +50,7 @@ class ConceptExtractionJob implements ShouldQueue
         $prompt = $this->buildPrompt($question, $subjectName, $topicName);
 
         try {
-            $raw = $aiService->sendRawPrompt($prompt, $this->questionId);
+            $raw = $aiService->sendRawPrompt($prompt, \App\Models\ApiKey::CAPABILITY_QUESTIONS, $this->questionId);
             $concepts = $this->parseConcepts($raw);
         } catch (\Exception $e) {
             Log::error("[Xavier][ConceptExtraction] LLM call failed for #{$this->questionId}: " . $e->getMessage());

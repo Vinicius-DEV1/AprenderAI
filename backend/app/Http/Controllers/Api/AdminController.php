@@ -85,6 +85,28 @@ class AdminController extends Controller
 
         $activityFeed = $latestUsers->concat($latestSubs)->sortByDesc('created_at')->take(10)->values();
 
+        // 4. Device and OS Stats (Last 30 days)
+        $detector = new \App\Services\DeviceDetectorService();
+        $recentSessions = \App\Models\PlatformSession::where('started_at', '>=', now()->subDays(30))
+            ->select('user_agent')
+            ->get();
+
+        $deviceCounts = ['Desktop' => 0, 'Mobile' => 0, 'Tablet' => 0];
+        $osCounts = [];
+
+        foreach ($recentSessions as $session) {
+            $ua = $session->user_agent;
+            $category = $detector->getDeviceCategory($ua);
+            $os = $detector->getOperatingSystem($ua);
+
+            $deviceCounts[$category]++;
+            $osCounts[$os] = ($osCounts[$os] ?? 0) + 1;
+        }
+
+        // Sort OS by count descending
+        arsort($osCounts);
+        $topOs = array_slice($osCounts, 0, 5, true);
+
         return response()->json([
             'kpis' => [
                 'active_subscriptions' => $activeSubscriptions,
@@ -98,6 +120,15 @@ class AdminController extends Controller
                 'user_distribution' => [
                     $userStats['active'],
                     $userStats['inactive']
+                ],
+                'device_distribution' => [
+                    $deviceCounts['Desktop'],
+                    $deviceCounts['Mobile'],
+                    $deviceCounts['Tablet'],
+                ],
+                'os_distribution' => [
+                    'labels' => array_keys($topOs),
+                    'data' => array_values($topOs)
                 ]
             ],
             'activity_feed' => $activityFeed

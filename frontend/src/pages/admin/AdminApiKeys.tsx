@@ -59,15 +59,6 @@ interface AiRanking {
     request_count: number;
 }
 
-interface ApiEvent {
-    id: number;
-    type: 'success' | 'error' | 'warning' | 'fallback';
-    provider: string;
-    message: string;
-    status_code: number | null;
-    created_at: string;
-}
-
 interface AnalyticsDaily {
     date: string;
     provider: string;
@@ -388,15 +379,13 @@ function ApiAnalyticsDash({
     );
 }
 
-export default function AdminApiKeys() {
+export function AdminApiKeys() {
     const { aiName } = useConfigStore();
     const queryClient = useQueryClient();
 
-    // UI Local State
-    const [vaultCollapsed, setVaultCollapsed] = useState(false);
-    const [routingCollapsed, setRoutingCollapsed] = useState(false);
-    const [priorityCollapsed, setPriorityCollapsed] = useState(false);
-    const [historyCollapsed, setHistoryCollapsed] = useState(false);
+    // UI Local State (New Tab System)
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'management' | 'failover' | 'audit'>('dashboard');
+    const [activeSubTab, setActiveSubTab] = useState<string>('list');
 
     // Modals
     const [showModelModal, setShowModelModal] = useState(false);
@@ -499,6 +488,7 @@ export default function AdminApiKeys() {
         mutationFn: async (payload: any) => api.post('/api/v1/admin/api-keys', payload),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-api-keys'] });
+            queryClient.invalidateQueries({ queryKey: ['admin-triage-active-keys'] });
             setRoutingForm({ vault_id: '', preferred_model: '', capabilities: [] });
             toast.success('Roteamento ativado com sucesso!');
         },
@@ -570,19 +560,12 @@ export default function AdminApiKeys() {
     const capabilitiesGrid: Record<string, ApiKey[]> = data?.capabilities_grid || {};
     const aiLogs: AiLog[] = data?.ai_logs || [];
     const aiRanking: AiRanking[] = data?.ai_ranking || [];
-    const events: ApiEvent[] = data?.logs || [];
 
-    // Metadata mapping for rich descriptions and icons
     const capabilityMeta: Record<string, { icon: string, description: string }> = {
         chat_tutor: { icon: '💬', description: 'Responde dúvidas dos alunos sobre questões resolvidas.' },
         questions: { icon: '✍️', description: 'Gera questões inéditas, explicações e gabaritos comentados.' },
         triage: { icon: '⚙️', description: 'Classifica e modera questões durante o processamento em lote.' },
-        search: { icon: '🔍', description: 'Interpreta buscas em linguagem natural na barra de pesquisa.' },
-        essays: { icon: '📝', description: 'Corrige e pontua redações enviadas pelos alunos.' },
-        study_plans: { icon: '📅', description: 'Cria cronogramas dinâmicos baseados no desempenho real.' },
-        embedding: { icon: '🧬', description: 'Gera vetores semânticos para indexação e busca vetorial.' },
-        query_embedding: { icon: '🧠', description: 'Gera embeddings paralelos para busca semântica em tempo real.' },
-        general: { icon: '🔄', description: 'Uso de propósito geral quando sem capaiblity específica.' }
+        search: { icon: '🔍', description: 'Interpreta buscas em linguagem natural na barra de pesquisa.' }
     };
 
     return (
@@ -614,46 +597,127 @@ export default function AdminApiKeys() {
                 )}
             </div>
 
-            {/* 0. ANALYTICS DASHBOARD */}
-            <ApiAnalyticsDash
-                daily={data.analytics_daily || []}
-                modules={data.analytics_modules || []}
-                vaultKeys={vaultKeys}
-                availableCapabilities={availableCapabilities}
-                aiLogs={aiLogs}
-                aiRanking={aiRanking}
-                filters={filters}
-                onFilterChange={setFilters}
-                isFetching={isFetching}
-            />
+            {/* Premium Tab Navigation */}
+            <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 flex gap-1 sticky top-4 z-40 backdrop-blur-xl bg-white/80">
+                {[
+                    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+                    { id: 'management', label: 'Gerenciamento', icon: '⚙️' },
+                    { id: 'failover', label: 'Failover & Prioridade', icon: '🛡️' },
+                    { id: 'audit', label: 'Auditoria & Logs', icon: '📋' },
+                ].map((tab) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id as any)}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-xs transition-all ${
+                            activeTab === tab.id
+                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 scale-[1.02]'
+                                : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'
+                        }`}
+                    >
+                        <span>{tab.icon}</span>
+                        <span className="hidden md:inline">{tab.label}</span>
+                    </button>
+                ))}
+            </div>
 
-            {/* 1. KEY VAULT */}
-            <section className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div
-                    onClick={() => setVaultCollapsed(!vaultCollapsed)}
-                    className="p-6 border-b border-slate-50 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition-colors">
-                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-3">
-                        <span className="p-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm">🔐</span>
-                        Cofre de Chaves (Key Vault)
-                    </h3>
-                    <motion.svg animate={{ rotate: vaultCollapsed ? 0 : 180 }} className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></motion.svg>
-                </div>
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={activeTab}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                >
+                    {activeTab === 'dashboard' && (
+                        /* 0. ANALYTICS DASHBOARD */
+                        <ApiAnalyticsDash
+                            daily={data.analytics_daily || []}
+                            modules={data.analytics_modules || []}
+                            vaultKeys={vaultKeys}
+                            availableCapabilities={availableCapabilities}
+                            aiLogs={aiLogs} 
+                            aiRanking={aiRanking} 
+                            filters={filters}
+                            onFilterChange={setFilters}
+                            isFetching={isFetching}
+                        />
+                    )}
 
-                <AnimatePresence>
-                    {!vaultCollapsed && (
-                        <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
-                            <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-10">
-                                {/* Form */}
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center bg-slate-50 p-3 rounded-xl mb-1">
-                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{editingVaultId ? 'Editar Registro' : 'Novo Registro'}</h4>
+                    {activeTab === 'management' && (
+                        <div className="space-y-6">
+                            {/* Sub-tabs for Management */}
+                            <div className="flex gap-4 mb-2">
+                                {[
+                                    { id: 'list', label: 'Lista de Chaves' },
+                                    { id: 'new', label: 'Cadastrar Nova' },
+                                    { id: 'routing', label: 'Configurar Roteamento' }
+                                ].map(sub => (
+                                    <button
+                                        key={sub.id}
+                                        onClick={() => setActiveSubTab(sub.id)}
+                                        className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+                                            activeSubTab === sub.id
+                                                ? 'bg-slate-800 text-white'
+                                                : 'bg-white text-slate-400 border border-slate-200 hover:border-slate-300'
+                                        }`}
+                                    >
+                                        {sub.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {activeSubTab === 'list' && (
+                                <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
+                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Chaves Armazenadas no Cofre</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {vaultKeys.map(vk => (
+                                            <div key={vk.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50 shadow-sm hover:border-indigo-200 transition-all flex justify-between items-center group">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-slate-800 truncate">{vk.nickname}</span>
+                                                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full flex-shrink-0 ${vk.provider === 'openai' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                            {vk.provider}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">
+                                                        {vk.is_valid ? <span className="text-emerald-500">✅ Validada</span> : <span className="text-amber-500">❓ Não Testada</span>}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingVaultId(vk.id);
+                                                            setVaultForm({ nickname: vk.nickname, provider: vk.provider, key: '' });
+                                                            setActiveSubTab('new');
+                                                        }}
+                                                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-all"
+                                                        title="Editar Chave">✏️</button>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (window.confirm(`Tem certeza?`)) {
+                                                                deleteVaultMutation.mutate(vk.id);
+                                                            }
+                                                        }}
+                                                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-white rounded-lg transition-all"
+                                                        title="Excluir">🗑️</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+
+                            {activeSubTab === 'new' && (
+                                <section className="max-w-xl bg-white rounded-2xl shadow-sm border border-slate-100 p-8 mx-auto">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest">{editingVaultId ? 'Editar Chave' : 'Nova Chave de API'}</h4>
                                         {editingVaultId && (
                                             <button
-                                                onClick={() => { setEditingVaultId(null); setVaultForm({ nickname: '', provider: 'gemini', key: '' }); }}
-                                                className="text-[10px] font-black text-indigo-600 uppercase hover:underline">Cancelar Edição</button>
+                                                onClick={() => { setEditingVaultId(null); setVaultForm({ nickname: '', provider: 'gemini', key: '' }); setActiveSubTab('list'); }}
+                                                className="text-[10px] font-black text-indigo-600 uppercase hover:underline">Voltar</button>
                                         )}
                                     </div>
-                                    <div className="space-y-3">
+                                    <div className="space-y-4">
                                         <div>
                                             <label className="text-xs font-bold text-slate-600 mb-1 block">Apelido (Ex: Google Prod)</label>
                                             <input
@@ -691,378 +755,192 @@ export default function AdminApiKeys() {
                                             {addVaultMutation.isPending ? 'Guardando...' : editingVaultId ? 'Atualizar no Cofre' : 'Guardar no Cofre'}
                                         </button>
                                     </div>
-                                </div>
+                                </section>
+                            )}
 
-                                {/* List */}
-                                <div className="lg:col-span-2 space-y-4">
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Chaves Armazenadas</h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {vaultKeys.map(vk => (
-                                            <div key={vk.id} className="p-4 rounded-xl border border-slate-100 bg-white shadow-sm hover:border-indigo-200 transition-all flex justify-between items-center group">
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-slate-800 truncate">{vk.nickname}</span>
-                                                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex-shrink-0 ${vk.provider === 'openai' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                            {vk.provider}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">
-                                                        Status: {vk.is_valid ? <span className="text-emerald-500">✅ Validada</span> : <span className="text-amber-500">❓ Não Testada</span>}
-                                                    </p>
+                            {activeSubTab === 'routing' && (
+                                <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 max-w-4xl mx-auto">
+                                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-3 mb-6">
+                                        <span className="p-2 bg-purple-50 text-purple-600 rounded-lg text-sm">🎯</span>
+                                        Roteamento Inteligente
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-600 mb-2 block">1. Selecione a Chave do Cofre</label>
+                                            <select
+                                                value={routingForm.vault_id}
+                                                onChange={e => setRoutingForm({ ...routingForm, vault_id: e.target.value })}
+                                                className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50">
+                                                <option value="">-- Escolha um Apelido --</option>
+                                                {vaultKeys.map(vk => (
+                                                    <option key={vk.id} value={vk.id}>{vk.nickname} ({vk.provider.toUpperCase()})</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-600 mb-2 block">2. Modelo Selecionado</label>
+                                            <div className="flex gap-2">
+                                                <div className="flex-1 px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-sm font-mono text-slate-600 flex items-center">
+                                                    {routingForm.preferred_model ? (
+                                                        <span className="flex items-center gap-2"><span className="text-emerald-500">✨</span> {routingForm.preferred_model}</span>
+                                                    ) : <span className="text-slate-400 italic">Descoberta Necessária...</span>}
                                                 </div>
-                                                <div className="flex items-center gap-1">
-                                                    <button
-                                                        onClick={() => {
-                                                            setEditingVaultId(vk.id);
-                                                            setVaultForm({ nickname: vk.nickname, provider: vk.provider, key: '' });
-                                                            setVaultCollapsed(false);
-                                                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                                                        }}
-                                                        className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                                                        title="Editar Chave">
-                                                        ✏️
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            if (window.confirm(`Tem certeza que deseja excluir a chave "${vk.nickname}" do cofre? Esta ação não pode ser desfeita.`)) {
-                                                                deleteVaultMutation.mutate(vk.id);
-                                                            }
-                                                        }}
-                                                        className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                        title="Excluir do Cofre">
-                                                        🗑️
-                                                    </button>
-                                                </div>
+                                                <button
+                                                    onClick={handleDiscover}
+                                                    disabled={!routingForm.vault_id || discoveryLoading}
+                                                    className="px-6 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50">
+                                                    {discoveryLoading ? <span className="animate-spin inline-block">⌛</span> : '🔍'}
+                                                </button>
                                             </div>
-                                        ))}
-                                        {vaultKeys.length === 0 && <p className="col-span-2 text-center py-10 text-slate-400 italic">O cofre está vazio.</p>}
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </section>
-
-            {/* 2. ROUTING CONFIG */}
-            <section className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div
-                    onClick={() => setRoutingCollapsed(!routingCollapsed)}
-                    className="p-6 border-b border-slate-50 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition-colors">
-                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-3">
-                        <span className="p-2 bg-purple-50 text-purple-600 rounded-lg text-sm">🎯</span>
-                        Configuração por Funcionalidade (Roteamento)
-                    </h3>
-                    <motion.svg animate={{ rotate: routingCollapsed ? 0 : 180 }} className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></motion.svg>
-                </div>
-
-                <AnimatePresence>
-                    {!routingCollapsed && (
-                        <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
-                            <div className="p-8 space-y-8">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-600 mb-2 block">1. Selecione a Chave do Cofre</label>
-                                        <select
-                                            value={routingForm.vault_id}
-                                            onChange={e => {
-                                                setRoutingForm({ ...routingForm, vault_id: e.target.value });
-                                                // Handle discovery logic or just rely on the manual button
-                                            }}
-                                            className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50">
-                                            <option value="">-- Escolha um Apelido --</option>
-                                            {vaultKeys.map(vk => (
-                                                <option key={vk.id} value={vk.id}>{vk.nickname} ({vk.provider.toUpperCase()})</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-600 mb-2 block">2. Modelo Selecionado</label>
-                                        <div className="flex gap-2">
-                                            <div className="flex-1 px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-sm font-mono text-slate-600 flex items-center">
-                                                {routingForm.preferred_model ? (
-                                                    <span className="flex items-center gap-2"><span className="text-emerald-500">✨</span> {routingForm.preferred_model}</span>
-                                                ) : <span className="text-slate-400 italic">Descoberta Necessária...</span>}
-                                            </div>
-                                            <button
-                                                onClick={handleDiscover}
-                                                disabled={!routingForm.vault_id || discoveryLoading}
-                                                className="px-6 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50">
-                                                {discoveryLoading ? <span className="animate-spin inline-block">⌛</span> : '🔍'}
-                                            </button>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div className="p-6 bg-slate-50/50 rounded-2xl border border-slate-100">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <h4 className="text-sm font-bold text-slate-700">3. Atribuir Funcionalidades</h4>
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Roteamento N:N</span>
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {Object.entries(availableCapabilities).map(([code, label]) => {
-                                            const meta = capabilityMeta[code] || { icon: '🤖', description: 'Configurar funcionalidade da IA' };
-                                            return (
-                                                <label key={code} className="relative flex items-center bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:border-indigo-300 transition-all cursor-pointer group">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={routingForm.capabilities.includes(code)}
-                                                        onChange={e => {
-                                                            const caps = e.target.checked
-                                                                ? [...routingForm.capabilities, code]
-                                                                : routingForm.capabilities.filter(c => c !== code);
-                                                            setRoutingForm({ ...routingForm, capabilities: caps });
-                                                        }}
-                                                        className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                                                    <div className="ml-3">
-                                                        <span className="text-sm font-bold text-slate-700 block gap-2 flex items-center">
-                                                            <span>{meta.icon}</span> {label}
-                                                        </span>
-                                                        <span className="text-[10px] text-slate-400 font-medium leading-tight block mt-0.5">{meta.description}</span>
-                                                    </div>
-                                                </label>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-end">
-                                    <button
-                                        onClick={() => activateRoutingMutation.mutate(routingForm)}
-                                        disabled={!routingForm.preferred_model || routingForm.capabilities.length === 0 || activateRoutingMutation.isPending}
-                                        className="px-10 py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-xl shadow-indigo-100 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100 flex items-center gap-3">
-                                        {activateRoutingMutation.isPending ? (
-                                            <><svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>Ativando...</>
-                                        ) : 'Ativar Roteamento'}
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </section>
-
-            {/* 3. PRIORITY GRID */}
-            <section className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div
-                    onClick={() => setPriorityCollapsed(!priorityCollapsed)}
-                    className="p-6 border-b border-slate-50 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition-colors">
-                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-3">
-                        <span className="p-2 bg-emerald-50 text-emerald-600 rounded-lg text-sm">⚡</span>
-                        Prioridades de Roteamento (Failover M:N)
-                    </h3>
-                    <motion.svg animate={{ rotate: priorityCollapsed ? 0 : 180 }} className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></motion.svg>
-                </div>
-
-                <AnimatePresence>
-                    {!priorityCollapsed && (
-                        <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
-                            <div className="p-8 bg-slate-50/50 space-y-8">
-                                <p className="text-sm text-slate-500 font-medium italic">
-                                    (ℹ) Arraste e solte os provedores para definir a ordem de tentativa. O sistema usará o primeiro online.
-                                </p>
-                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                                    {availableCapabilities && Object.entries(availableCapabilities).map(([cap, label]) => {
-                                        const keys = (capabilitiesGrid && capabilitiesGrid[cap]) || [];
-                                        return (
-                                            <div key={cap} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col">
-                                                <div className="bg-indigo-50/30 px-4 py-3 border-b border-indigo-100 flex justify-between items-center">
-                                                    <h4 className="font-bold text-indigo-900 text-sm flex items-center gap-2">
-                                                        <span className="text-indigo-400">⚡</span> {label}
-                                                    </h4>
-                                                    <span className="text-[10px] font-black bg-white border border-indigo-100 px-2 py-0.5 rounded text-indigo-400 uppercase">{cap}</span>
-                                                </div>
-                                                <div className="p-4 flex-1">
-                                                    {keys.length === 0 ? (
-                                                        <div className="py-10 text-center border-2 border-dashed border-slate-100 rounded-xl text-slate-400 text-xs italic">
-                                                            Nenhum provedor configurado.
-                                                        </div>
-                                                    ) : (
-                                                        <Reorder.Group axis="y" values={keys} onReorder={(newOrder) => handlePriorityReorder(cap, newOrder)} className="space-y-3">
-                                                            {keys.map((key, index) => (
-                                                                <Reorder.Item
-                                                                    key={key.pivot?.id || `key-${key.id}`}
-                                                                    value={key}
-                                                                    className={`p-3 bg-white border border-slate-100 rounded-xl shadow-sm flex items-center gap-3 cursor-grab active:cursor-grabbing hover:border-indigo-300 transition-all ${key.status === 'offline' ? 'bg-red-50/30 border-red-100' : 'bg-white'
-                                                                        }`}>
-                                                                    <div className="text-slate-300">
-                                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-                                                                    </div>
-                                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-[10px] ${index === 0 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100' : 'bg-slate-100 text-slate-500'}`}>
-                                                                        {index + 1}
-                                                                    </div>
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <div className="flex items-center gap-2 mb-0.5">
-                                                                            <span className="font-bold text-slate-800 text-sm truncate">{key.effective_provider}</span>
-                                                                            <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-slate-50 border border-slate-100 text-slate-400 whitespace-nowrap">
-                                                                                {key.vault?.nickname || 'Direto'}
-                                                                            </span>
-                                                                        </div>
-                                                                        <p className="text-[10px] font-mono text-slate-400 truncate">{key.preferred_model || 'Auto'}</p>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className={`w-2 h-2 rounded-full ${key.status === 'online' ? 'bg-emerald-500' : key.status === 'quota_exceeded' ? 'bg-amber-500' : 'bg-red-500'}`}></span>
-                                                                        <div className="flex divide-x divide-slate-100 border border-slate-100 rounded-lg overflow-hidden bg-slate-50/50">
-                                                                            <button type="button" onClick={() => retestMutation.mutate(key.id)} className="p-1.5 hover:bg-slate-100 text-amber-600">⚡</button>
-                                                                            <button type="button" onClick={() => key.pivot?.id && deleteApiKeyMutation.mutate(key.pivot.id)} className="p-1.5 hover:bg-red-50 text-red-500">✕</button>
-                                                                        </div>
-                                                                    </div>
-                                                                </Reorder.Item>
-                                                            ))}
-                                                        </Reorder.Group>
-                                                    )}
-                                                </div>
+                                    <div className="p-6 bg-slate-50/50 rounded-2xl border border-slate-100">
+                                        <div className="flex justify-between items-center mb-6">
+                                            <h4 className="text-sm font-bold text-slate-700">3. Atribuir Funcionalidades</h4>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => setRoutingForm({...routingForm, capabilities: Object.keys(availableCapabilities)})} className="text-[10px] font-black text-indigo-600 uppercase">Todas</button>
+                                                <button onClick={() => setRoutingForm({...routingForm, capabilities: []})} className="text-[10px] font-black text-slate-400 uppercase">Limpar</button>
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </section>
-
-            {/* 4. ACTIVITY LOGS - FULL WIDTH */}
-            <section className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-8">
-                <div className="p-6 border-b border-slate-50 flex justify-between items-center">
-                    <h3 className="font-bold text-slate-800 flex items-center gap-3">
-                        <span className="p-2 bg-slate-100 text-slate-600 rounded-lg text-xs">📊</span>
-                        Histórico de Uso (IA Logs)
-                    </h3>
-                    <button onClick={() => setHistoryCollapsed(!historyCollapsed)} className="text-slate-400">
-                        <motion.svg animate={{ rotate: historyCollapsed ? 0 : 180 }} className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></motion.svg>
-                    </button>
-                </div>
-                <AnimatePresence>
-                    {!historyCollapsed && (
-                        <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-x-auto">
-                            <table className="w-full text-left text-xs">
-                                <thead className="bg-slate-50 text-slate-400 uppercase font-bold">
-                                    <tr>
-                                        <th className="px-6 py-4">Usuário</th>
-                                        <th className="px-6 py-4">Módulo</th>
-                                        <th className="px-6 py-4">Horário</th>
-                                        <th className="px-6 py-4">Provedor/Modelo</th>
-                                        <th className="px-6 py-4">Tokens (I/O)</th>
-                                        <th className="px-6 py-4">Tempo</th>
-                                        <th className="px-6 py-4">Custo (R$)</th>
-                                        <th className="px-6 py-4 text-right">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {aiLogs.map(log => (
-                                        <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                                            <td className="px-6 py-4 font-bold text-slate-700">{log.user?.name || 'Sistema/Job'}</td>
-                                            <td className="px-6 py-4">
-                                                <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-md tracking-tighter ${log.module === 'embedding' ? 'bg-purple-100 text-purple-700' :
-                                                    log.module === 'search' ? 'bg-blue-100 text-blue-700' :
-                                                        log.module === 'triage' ? 'bg-amber-100 text-amber-700' :
-                                                            'bg-slate-100 text-slate-600'
-                                                    }`}>
-                                                    {log.module || 'Geral'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded-md uppercase tracking-tighter">
-                                                    {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <p className="font-bold text-slate-800">{log.provider}</p>
-                                                <p className="text-[10px] text-slate-400 font-mono">{log.model}</p>
-                                            </td>
-                                            <td className="px-6 py-4 font-mono">{log.tokens_used_input} / {log.tokens_used_output}</td>
-                                            <td className="px-6 py-4">{(Number(log.execution_time) || 0).toFixed(2)}s</td>
-                                            <td className="px-6 py-4 font-bold text-slate-700">{(Number(log.estimated_cost) || 0).toFixed(4)}</td>
-                                            <td className="px-6 py-4 text-right">
-                                                <button
-                                                    onClick={() => { setActiveLog(log); setShowLogModal(true); }}
-                                                    className="text-indigo-600 font-bold hover:underline">Detalhes</button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {aiLogs.length === 0 && <tr><td colSpan={8} className="text-center py-10 text-slate-400 italic">Nenhum log registrado.</td></tr>}
-                                </tbody>
-                            </table>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </section>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* 5. API Events List */}
-                <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                    <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-3">
-                        <span className="p-2 bg-amber-50 text-amber-600 rounded-lg text-xs">🔔</span>
-                        Logs de Eventos Recentes
-                    </h3>
-                    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-                        {events.map((e, idx) => (
-                            <div key={idx} className="flex items-start gap-4 p-3 bg-slate-50/50 rounded-xl border border-slate-100">
-                                <span className={`mt-0.5 text-lg ${e.type === 'success' ? 'text-emerald-500' : e.type === 'error' ? 'text-red-500' : 'text-amber-500'}`}>
-                                    {e.type === 'success' ? '✅' : e.type === 'error' ? '❌' : '⚠️'}
-                                </span>
-                                <div className="flex-1">
-                                    <div className="flex justify-between">
-                                        <p className="text-xs font-black uppercase text-slate-400 tracking-widest">{e.provider} • {new Date(e.created_at).toLocaleTimeString()}</p>
-                                        {e.status_code && <span className="text-[10px] px-1.5 rounded font-mono bg-white border border-slate-200">CODE: {e.status_code}</span>}
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                            {Object.entries(availableCapabilities).map(([cap, label]) => {
+                                                const isSelected = routingForm.capabilities.includes(cap);
+                                                return (
+                                                    <button key={cap} onClick={() => {
+                                                        const next = isSelected ? routingForm.capabilities.filter(c => c !== cap) : [...routingForm.capabilities, cap];
+                                                        setRoutingForm({...routingForm, capabilities: next});
+                                                    }} className={`p-4 rounded-xl border-2 text-left transition-all ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-white border-slate-100 text-slate-600'}`}>
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span>{capabilityMeta[cap]?.icon || '✨'}</span>
+                                                            <span className="text-[10px] font-black uppercase">{label}</span>
+                                                        </div>
+                                                        <p className={`text-[10px] leading-tight ${isSelected ? 'text-indigo-100' : 'text-slate-400'}`}>{capabilityMeta[cap]?.description}</p>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                    <p className="text-sm font-medium text-slate-600 mt-1">{e.message}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                                    <button onClick={() => activateRoutingMutation.mutate(routingForm)} disabled={activateRoutingMutation.isPending || !routingForm.vault_id || !routingForm.preferred_model || routingForm.capabilities.length === 0} className="w-full mt-8 py-4 bg-slate-900 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl">
+                                        {activateRoutingMutation.isPending ? 'Ativando...' : '⚡ Ativar Roteamento AI'}
+                                    </button>
+                                </section>
+                            )}
+                        </div>
+                    )}
 
-                {/* 6. RANKING */}
-                <section className="bg-slate-900 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden flex flex-col h-full min-h-[500px]">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-                    <h3 className="text-xl font-black mb-8 flex items-center gap-3">
-                        <span className="text-2xl">🏆</span> Maiores Consumidores
-                    </h3>
-                    <div className="space-y-8 flex-1 overflow-y-auto pr-2">
-                        {aiRanking.map((rank, idx) => (
-                            <div key={idx} className="flex items-center gap-5 group">
-                                <span className={`text-2xl font-black ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-slate-300' : idx === 2 ? 'text-amber-600' : 'text-slate-700'}`}>
-                                    {(idx + 1).toString().padStart(2, '0')}
-                                </span>
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-bold truncate text-indigo-50 group-hover:text-white transition-colors">{rank.user?.name || 'Anon'}</p>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400/60 mt-0.5">{rank.total_tokens.toLocaleString()} tokens</p>
+                    {activeTab === 'failover' && (
+                        <div className="space-y-6">
+                            <div className="bg-indigo-900 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl">
+                                <h3 className="text-2xl font-black mb-2">Failover M:N Dinâmico 🛡️</h3>
+                                <p className="text-indigo-200 text-sm font-medium">Arraste os provedores para definir a ordem de prioridade. O sistema usará o primeiro online disponível.</p>
+                            </div>
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                                {availableCapabilities && Object.entries(availableCapabilities).map(([cap, label]) => {
+                                    const keys = (capabilitiesGrid && capabilitiesGrid[cap]) || [];
+                                    return (
+                                        <div key={cap} className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+                                            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                                                <h4 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                                    <span>{capabilityMeta[cap]?.icon}</span> {label}
+                                                </h4>
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{cap}</span>
+                                            </div>
+                                            <div className="p-4 flex-1">
+                                                {keys.length === 0 ? <p className="text-center py-10 text-slate-400 text-xs italic">Nada configurado.</p> : (
+                                                    <Reorder.Group axis="y" values={keys} onReorder={(newOrder) => handlePriorityReorder(cap, newOrder)} className="space-y-2">
+                                                        {keys.map((key, idx) => (
+                                                            <Reorder.Item key={key.pivot?.id || key.id} value={key} className={`p-3 bg-white border border-slate-100 rounded-xl shadow-sm flex items-center gap-3 cursor-grab active:cursor-grabbing hover:border-indigo-300 transition-all ${key.status !== 'online' ? 'bg-red-50' : ''}`}>
+                                                                <div className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-[10px] ${idx === 0 ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>{idx + 1}</div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center gap-2">
+                                                                        {key.status === 'online' ? (
+                                                                            <span className="flex h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" title="Online"></span>
+                                                                        ) : (
+                                                                            <span className="flex h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" title="Offline"></span>
+                                                                        )}
+                                                                        <p className="font-bold text-slate-800 text-sm truncate">{key.effective_provider} ({key.vault?.nickname || 'Direto'})</p>
+                                                                    </div>
+                                                                    <p className="text-[10px] font-mono text-slate-400 truncate mt-0.5">{key.preferred_model || 'Auto'}</p>
+                                                                </div>
+                                                                <button onClick={() => retestMutation.mutate(key.id)} className="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg">⚡</button>
+                                                                <button onClick={() => key.pivot?.id && deleteApiKeyMutation.mutate(key.pivot.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg">✕</button>
+                                                            </Reorder.Item>
+                                                        ))}
+                                                    </Reorder.Group>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'audit' && (
+                        <div className="space-y-6">
+                            <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                                <div className="p-6 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
+                                    <h3 className="font-bold text-slate-800 flex items-center gap-3">
+                                        <span className="p-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs">📋</span>
+                                        Logs Auditados
+                                    </h3>
                                 </div>
-                                <div className="text-right">
-                                    <p className="font-black text-emerald-400 tracking-tighter text-lg">R$ {Number(rank.total_cost).toFixed(2)}</p>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-xs">
+                                        <thead className="bg-white text-slate-400 font-bold uppercase tracking-widest whitespace-nowrap">
+                                            <tr>
+                                                <th className="px-6 py-4">Usuário</th>
+                                                <th className="px-6 py-4">Módulo</th>
+                                                <th className="px-6 py-4">Horário</th>
+                                                <th className="px-6 py-4">Modelo</th>
+                                                <th className="px-6 py-4">Tokens</th>
+                                                <th className="px-6 py-4 text-right">Ação</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                            {aiLogs.map(log => (
+                                                <tr key={log.id} className="hover:bg-slate-50 transition-colors group">
+                                                    <td className="px-6 py-4 font-bold text-slate-700">{log.user?.name || 'Sistema'}</td>
+                                                    <td className="px-6 py-4 uppercase text-[9px] font-black text-slate-400">{log.module}</td>
+                                                    <td className="px-6 py-4">{new Date(log.created_at).toLocaleTimeString()}</td>
+                                                    <td className="px-6 py-4">
+                                                        <p className="font-bold text-slate-800">{log.provider}</p>
+                                                        <p className="text-[10px] text-slate-400 font-mono">{log.model}</p>
+                                                    </td>
+                                                    <td className="px-6 py-4 font-mono">{log.tokens_used_input + log.tokens_used_output}</td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <button onClick={() => { setActiveLog(log); setShowLogModal(true); }} className="text-indigo-600 font-bold hover:underline">Ver</button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
-                        ))}
-                        {aiRanking.length === 0 && <p className="text-center text-slate-500 py-10 font-medium italic">Ranking indisponível.</p>}
-                    </div>
-                </section>
-            </div>
+                        </div>
+                    )}
+                </motion.div>
+            </AnimatePresence>
 
             {/* MODALS */}
-
-            {/* Model Selection */}
             {showModelModal && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setShowModelModal(false)} />
                     <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100">
                         <div className="bg-indigo-600 p-6 flex justify-between items-center text-white">
-                            <h3 className="font-black flex items-center gap-2">🤖 Modelos Disponíveis</h3>
+                            <h3 className="font-black">🤖 Modelos Disponíveis</h3>
                             <button onClick={() => setShowModelModal(false)}>✕</button>
                         </div>
                         <div className="p-4 max-h-[60vh] overflow-y-auto space-y-2">
                             {(discoveredModels || []).map((m: any) => (
-                                <div
-                                    key={m?.id}
-                                    onClick={() => { m?.id && setRoutingForm({ ...routingForm, preferred_model: m.id }); setShowModelModal(false); }}
-                                    className="p-4 border rounded-2xl hover:bg-slate-50 cursor-pointer flex justify-between items-center group transition-all">
-                                    <div>
-                                        <p className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{m?.name || 'Modelo Sem Nome'}</p>
-                                        <p className="text-[10px] font-mono text-slate-400">{m?.id}</p>
+                                <div key={m.id} onClick={() => { setRoutingForm({...routingForm, preferred_model: m.id}); setShowModelModal(false); }} className="p-3 border rounded-xl hover:bg-slate-50 cursor-pointer flex justify-between items-center group transition-all">
+                                    <div className="min-w-0">
+                                        <p className="font-bold text-sm text-slate-800 truncate">{m.name}</p>
+                                        <p className="text-[10px] font-mono text-slate-400 truncate">{m.id}</p>
                                     </div>
-                                    <span className="text-indigo-600 font-bold opacity-0 group-hover:opacity-100 transition-all">Selecionar →</span>
+                                    <span className="text-indigo-600 font-bold opacity-0 group-hover:opacity-100 transition-all shrink-0">Selecionar</span>
                                 </div>
                             ))}
                             {(!discoveredModels || discoveredModels.length === 0) && (
@@ -1073,72 +951,37 @@ export default function AdminApiKeys() {
                 </div>
             )}
 
-            {/* Log Detail */}
             {showLogModal && activeLog && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-10">
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setShowLogModal(false)} />
-                    <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="relative bg-white rounded-3xl shadow-2xl w-full max-w-5xl h-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-100">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                            <h3 className="text-xl font-black text-slate-800">Detalhes da Transação IA</h3>
-                            <button onClick={() => setShowLogModal(false)} className="p-2 hover:bg-slate-100 rounded-full">✕</button>
+                    <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="relative bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-100">
+                        <div className="p-6 border-b flex justify-between items-center bg-slate-50">
+                            <h3 className="text-lg font-black text-slate-800">Detalhes Trasancionais IA</h3>
+                            <button onClick={() => setShowLogModal(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">✕</button>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-8 space-y-8 font-sans">
-                            <div className="grid grid-cols-2 md:grid-cols-6 gap-6">
-                                <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Usuário</p><p className="font-bold text-slate-800">{activeLog.user?.name || 'Sistema'}</p></div>
-                                <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Horário Exato</p><p className="font-bold text-slate-800">{new Date(activeLog.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p></div>
-                                <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Provedor / Modelo</p><p className="font-bold text-slate-800">{activeLog.provider} / {activeLog.model}</p></div>
-                                <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Tokens (I/O)</p><p className="font-bold text-slate-800">{activeLog.tokens_used_input} / {activeLog.tokens_used_output}</p></div>
-                                <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Tempo Execução</p><p className="font-bold text-slate-800">{(Number(activeLog.execution_time) || 0).toFixed(3)}s</p></div>
-                                <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Custo Est.</p><p className="font-bold text-indigo-600">R$ {(Number(activeLog.estimated_cost) || 0).toFixed(4)}</p></div>
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                                <div><p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Usuário</p><p className="font-bold">{activeLog.user?.name || 'Sistema'}</p></div>
+                                <div><p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Provedor</p><p className="font-bold">{activeLog.provider}</p></div>
+                                <div><p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Módulo</p><p className="font-bold">{activeLog.module}</p></div>
+                                <div><p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Custo Est.</p><p className="font-bold text-indigo-600 font-mono">R$ {Number(activeLog.estimated_cost).toFixed(4)}</p></div>
                             </div>
-                            <div className="space-y-6">
-                                <div className="space-y-2">
-                                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest pl-2 border-l-4 border-indigo-500">Prompt Enviado</h4>
-                                    <div className="bg-slate-900 p-6 rounded-2xl text-emerald-400 font-mono text-xs whitespace-pre-wrap overflow-x-auto shadow-inner border border-slate-800">
-                                        {activeLog.prompt_text}
-                                    </div>
+                            <div className="space-y-2">
+                                <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Prompt</p>
+                                <div className="bg-slate-900 p-4 rounded-xl text-emerald-400 font-mono text-[10px] whitespace-pre-wrap shadow-inner overflow-x-auto">{activeLog.prompt_text}</div>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Resposta</p>
+                                    <button onClick={() => setShowRawResponse(!showRawResponse)} className="text-[9px] font-black uppercase text-indigo-600 hover:underline">Toggle Visualização</button>
                                 </div>
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center">
-                                        <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest pl-2 border-l-4 border-purple-500">Resposta da IA</h4>
-                                        <div className="flex bg-slate-100 p-1 rounded-lg">
-                                            <button
-                                                onClick={() => setShowRawResponse(false)}
-                                                className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${!showRawResponse ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                                                Formatado
-                                            </button>
-                                            <button
-                                                onClick={() => setShowRawResponse(true)}
-                                                className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${showRawResponse ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                                                Bruto
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className={`p-6 rounded-2xl font-mono text-xs shadow-inner border transition-all ${showRawResponse
-                                        ? 'bg-slate-900 text-emerald-400 border-slate-800 whitespace-pre-wrap overflow-x-auto'
-                                        : 'bg-indigo-50/50 text-slate-700 border-indigo-100 whitespace-pre-wrap'
-                                        }`}>
-                                        {showRawResponse ? (
-                                            activeLog.response_text
-                                        ) : (
-                                            (() => {
-                                                try {
-                                                    // Tenta encontrar JSON em blocos markdown ou limpo
-                                                    let cleanText = activeLog.response_text.trim();
-                                                    if (cleanText.startsWith('```json')) {
-                                                        cleanText = cleanText.replace(/```json\n?|\n?```/g, '');
-                                                    } else if (cleanText.startsWith('```')) {
-                                                        cleanText = cleanText.replace(/```\n?|\n?```/g, '');
-                                                    }
-                                                    const parsed = JSON.parse(cleanText);
-                                                    return JSON.stringify(parsed, null, 2);
-                                                } catch (e) {
-                                                    // Fallback para texto original se não for JSON
-                                                    return activeLog.response_text;
-                                                }
-                                            })()
-                                        )}
-                                    </div>
+                                <div className={`p-4 rounded-xl font-mono text-[10px] whitespace-pre-wrap transition-colors shadow-inner ${showRawResponse ? 'bg-slate-900 text-emerald-400' : 'bg-slate-50 text-slate-700'}`}>
+                                    {showRawResponse ? activeLog.response_text : (() => {
+                                        try {
+                                            const clean = activeLog.response_text.replace(/```json\n?|\n?```/g, '').trim();
+                                            return JSON.stringify(JSON.parse(clean), null, 2);
+                                        } catch { return activeLog.response_text; }
+                                    })()}
                                 </div>
                             </div>
                         </div>
@@ -1148,3 +991,5 @@ export default function AdminApiKeys() {
         </div>
     );
 }
+
+export default AdminApiKeys;

@@ -210,6 +210,10 @@ details {
     @apply bg-white border border-slate-200 rounded-xl overflow-hidden transition-all duration-300 shadow-sm my-4 w-full;
 }
 
+.dark details {
+    @apply bg-slate-800 border-slate-700 shadow-none;
+}
+
 details[open] {
     @apply shadow-md border-indigo-200 ring-1 ring-indigo-50;
 }
@@ -219,8 +223,17 @@ summary {
     background: linear-gradient(to right, #f8fafc, #ffffff);
 }
 
+.dark summary {
+    @apply text-slate-200;
+    background: linear-gradient(to right, #1e293b, #1e293b);
+}
+
 summary:hover {
     @apply bg-slate-50 text-indigo-600;
+}
+
+.dark summary:hover {
+    @apply bg-slate-700/50 text-indigo-400;
 }
 
 summary::-webkit-details-marker {
@@ -239,6 +252,10 @@ details[open] summary::after {
 
 details[open] summary {
     @apply border-b border-slate-100 bg-white text-indigo-700;
+}
+
+.dark details[open] summary {
+    @apply border-slate-700 bg-slate-800 text-indigo-400;
 }
 
 /* Ensure content inside details has padding */

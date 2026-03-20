@@ -165,17 +165,27 @@ class SemanticDashboardController extends Controller
             'top_concepts' => Concept::whereNotNull('qdrant_indexed_at')
                 ->withCount('questions')
                 ->orderByDesc('questions_count')
-                ->limit(30)
+                ->limit(50)
                 ->get(['id', 'name'])
                 ->map(fn($c) => ['name' => $c->name, 'count' => $c->questions_count, 'type' => 'concept'])
                 ->concat(
                     \App\Models\Subject::whereNotNull('qdrant_indexed_at')
                         ->withCount('questions')
                         ->orderByDesc('questions_count')
-                        ->limit(10)
+                        ->limit(20)
                         ->get(['id', 'name'])
                         ->map(fn($s) => ['name' => $s->name, 'count' => $s->questions_count, 'type' => 'subject'])
-                ),
+                )
+                ->concat(
+                    \App\Models\Topic::whereNotNull('qdrant_indexed_at')
+                        ->withCount('questions')
+                        ->orderByDesc('questions_count')
+                        ->limit(30)
+                        ->get(['id', 'name'])
+                        ->map(fn($t) => ['name' => $t->name, 'count' => $t->questions_count, 'type' => 'topic'])
+                )
+                ->sortByDesc('count')
+                ->values(),
             'performance' => [
                 'total_searches'      => $totalLogSearches,
                 'l1_cache_hits'       => $l1CacheHits,
@@ -297,6 +307,8 @@ class SemanticDashboardController extends Controller
         $detectedConcepts = [];
         $extractedSubjects = [];
         $extractedTopics = [];
+        $extractedOrgs = [];
+        $extractedInsts = [];
         $extractedType = null;
 
         foreach ($conceptMatches as $match) {
@@ -311,6 +323,12 @@ class SemanticDashboardController extends Controller
             } elseif ($type === 'topic' && isset($payload['topic_id'])) {
                 $extractedTopics[] = $payload['topic_id'];
                 $logs[] = "INTENT DETECTED: Topic #{$payload['topic_id']} ({$payload['name']})";
+            } elseif ($type === 'organization' && isset($payload['organization'])) {
+                $extractedOrgs[] = $payload['organization'];
+                $logs[] = "INTENT DETECTED: Organization '{$payload['organization']}'";
+            } elseif ($type === 'institution' && isset($payload['institution'])) {
+                $extractedInsts[] = $payload['institution'];
+                $logs[] = "INTENT DETECTED: Institution '{$payload['institution']}'";
             }
         }
 
@@ -359,8 +377,24 @@ class SemanticDashboardController extends Controller
         
         // Ensure SQL fallback actually filters by the text if Qdrant is empty
         $sqlFilters = ['keyword' => $request->prompt];
+        $intentFilters = []; // Initialize intentFilters here
+        if ($extractedType) {
+            $intentFilters['type'] = [$extractedType];
+        }
+        if (!empty($extractedOrgs)) {
+            $intentFilters['organization'] = $extractedOrgs;
+        }
+        if (!empty($extractedInsts)) {
+            $intentFilters['institution'] = $extractedInsts;
+        }
         if ($extractedType) {
             $sqlFilters['type'] = $extractedType;
+        }
+        if (!empty($extractedOrgs)) {
+            $sqlFilters['organization'] = $extractedOrgs;
+        }
+        if (!empty($extractedInsts)) {
+            $sqlFilters['institution'] = $extractedInsts;
         }
         
         $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, $sqlFilters, $limit);

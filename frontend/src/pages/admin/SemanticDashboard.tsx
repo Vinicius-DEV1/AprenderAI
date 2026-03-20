@@ -543,35 +543,62 @@ const SemanticDashboard = () => {
                         </div>
                     </div>
                     
-                    <div className="flex flex-wrap gap-2">
-                        {stats.top_concepts.map((concept, i) => (
-                            <div 
-                                key={i}
-                                className={clsx(
-                                    "px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 transition-all hover:scale-105 border",
-                                    concept.type === 'subject' 
-                                        ? "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700" 
-                                        : "bg-slate-50 text-slate-700 border-slate-100 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600"
-                                )}
-                                title={concept.type === 'subject' ? 'Disciplina (Subject)' : 'Conceito'}
-                            >
-                                {concept.name}
-                                <span className={clsx(
-                                    "text-[10px] px-1.5 rounded font-bold",
-                                    concept.count > 10 
-                                        ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-400" 
-                                        : "bg-black/5 dark:bg-white/10 text-slate-500 dark:text-slate-400"
-                                )}>
-                                    {concept.count}
-                                    {concept.count > 10 && <Zap className="w-2.5 h-2.5 inline ml-0.5" />}
-                                </span>
-                            </div>
-                        ))}
+                    <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-6 p-4 bg-slate-50/50 dark:bg-slate-900/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                        {stats.top_concepts?.map((concept, i) => {
+                            // Calculate a relative size based on count
+                            // We use a log scale or simple thresholds to avoid massive extremes
+                            const maxCount = Math.max(...(stats.top_concepts?.map(c => c.count) || []), 1);
+                            const ratio = concept.count / maxCount;
+                            
+                            let sizeClass = "text-xs";
+                            if (ratio > 0.8) sizeClass = "text-2xl font-black";
+                            else if (ratio > 0.5) sizeClass = "text-xl font-extrabold";
+                            else if (ratio > 0.2) sizeClass = "text-lg font-bold";
+                            else if (ratio > 0.05) sizeClass = "text-sm font-semibold";
+
+                            return (
+                                <div 
+                                    key={i}
+                                    className={clsx(
+                                        "px-4 py-2 rounded-2xl flex items-center gap-2 transition-all hover:scale-110 hover:shadow-lg cursor-default border group",
+                                        sizeClass,
+                                        concept.type === 'subject' 
+                                            ? "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700 shadow-purple-100/50" 
+                                            : concept.type === 'topic'
+                                            ? "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700 shadow-blue-100/50"
+                                            : "bg-white text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600 shadow-sm"
+                                    )}
+                                    title={`${concept.type === 'subject' ? 'Disciplina' : concept.type === 'topic' ? 'Tópico' : 'Conceito'}: ${concept.count} questões`}
+                                >
+                                    {concept.type === 'subject' && <Database className="w-3 h-3 group-hover:animate-bounce" />}
+                                    {concept.type === 'topic' && <Hash className="w-3 h-3 group-hover:animate-rotate" />}
+                                    {concept.name}
+                                    <span className={clsx(
+                                        "text-[10px] px-1.5 py-0.5 rounded-full font-black ml-1",
+                                        concept.count > 100 
+                                            ? "bg-indigo-600 text-white" 
+                                            : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
+                                    )}>
+                                        {concept.count > 1000 ? `${(concept.count / 1000).toFixed(1)}k` : concept.count}
+                                    </span>
+                                </div>
+                            );
+                        })}
                     </div>
-                    <p className="mt-4 text-xs text-slate-400 italic flex items-center gap-1.5">
-                        <Lightbulb className="w-3.5 h-3.5" />
-                        Termos em <span className="text-purple-600 dark:text-purple-400 font-bold">roxo</span> são Disciplinas (Subjects). Quando detectados, forçam filtros de alta precisão na busca.
-                    </p>
+                    <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                        <p className="text-slate-500 italic flex items-center gap-1.5">
+                            <Database className="w-3.5 h-3.5 text-purple-500" />
+                            <span className="text-purple-600 dark:text-purple-400 font-bold">Roxo:</span> Disciplinas (Filtro Hard)
+                        </p>
+                        <p className="text-slate-500 italic flex items-center gap-1.5">
+                            <Hash className="w-3.5 h-3.5 text-blue-500" />
+                            <span className="text-blue-600 dark:text-blue-400 font-bold">Azul:</span> Tópicos (Aumento Precisão)
+                        </p>
+                        <p className="text-slate-500 italic flex items-center gap-1.5">
+                            <Lightbulb className="w-3.5 h-3.5 text-slate-400" />
+                            <span className="text-slate-700 dark:text-slate-300 font-bold">Branco:</span> Conceitos Semânticos
+                        </p>
+                    </div>
                 </div>
             )}
 

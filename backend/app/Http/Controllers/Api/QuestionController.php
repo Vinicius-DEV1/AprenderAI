@@ -562,9 +562,11 @@ class QuestionController extends Controller
         // - Concepts: Termos técnicos para expansão (grafo de conhecimento).
         // - Subjects: Disciplinas principais (ex: Inglês, Matemática).
         // - Topics: Assuntos específicos (ex: Verbos, Geometria).
-        $detectedConcepts = [];
         $extractedSubjects = [];
-        $extractedTopics = [];
+        $extractedTopics   = [];
+        $detectedConcepts  = [];
+        $extractedOrgs     = [];
+        $extractedInsts    = [];
         $searchPath = 'concept';
 
         try {
@@ -585,28 +587,38 @@ class QuestionController extends Controller
                 } elseif ($type === 'subject' && isset($payload['subject_id'])) {
                     // INTENÇÃO DE DISCIPLINA DETECTADA: Salva múltiplos hits que serão
                     // usados mais abaixo como bônus (boost) pelo ReRankService.
-                    $extractedSubjects[] = $payload['subject_id'];
-                    Log::info("[Xavier][Search] Intent detected: Subject #{$payload['subject_id']} ({$payload['name']})");
+                    $extractedSubjects[] = (int) $payload['subject_id'];
+                    Log::info("[Xavier][Search] INTENT DETECTED: Subject #{$payload['subject_id']} ({$payload['name']})");
                 } elseif ($type === 'topic' && isset($payload['topic_id'])) {
-                    $extractedTopics[] = $payload['topic_id'];
-                    Log::info("[Xavier][Search] Intent detected: Topic #{$payload['topic_id']} ({$payload['name']})");
+                    $extractedTopics[] = (int) $payload['topic_id'];
+                    Log::info("[Xavier][Search] INTENT DETECTED: Topic #{$payload['topic_id']} ({$payload['name']})");
+                } elseif ($type === 'organization' && isset($payload['organization'])) {
+                    $extractedOrgs[] = $payload['organization'];
+                    Log::info("[Xavier][Search] INTENT DETECTED: Organization '{$payload['organization']}'");
+                } elseif ($type === 'institution' && isset($payload['institution'])) {
+                    $extractedInsts[] = $payload['institution'];
+                    Log::info("[Xavier][Search] INTENT DETECTED: Institution '{$payload['institution']}'");
                 }
             }
             
             $detectedConcepts = array_values(array_unique($detectedConcepts));
             $extractedSubjects = array_values(array_unique($extractedSubjects));
             $extractedTopics = array_values(array_unique($extractedTopics));
-            Log::info('[Xavier][Search] Step 5 done: intent detection.', [
+            $extractedOrgs = array_values(array_unique($extractedOrgs));
+            $extractedInsts = array_values(array_unique($extractedInsts));
+            Log::info('[Xavier][Search] Step 5 done: intent & concept detection.', [
                 'concepts' => $detectedConcepts,
                 'subject_ids' => $extractedSubjects,
-                'topic_ids' => $extractedTopics
+                'topic_ids' => $extractedTopics,
+                'organizations' => $extractedOrgs,
+                'institutions'  => $extractedInsts,
             ]);
         } catch (\Exception $e) {
             Log::warning('[Xavier][Search] Step 5 FAILED: concept detection error.', ['err' => $e->getMessage()]);
         }
 
         // ── Step 5b: Fallback se nenhuma intenção ou conceito for encontrado ──
-        if (empty($detectedConcepts) && empty($extractedSubjects) && empty($extractedTopics)) {
+        if (empty($detectedConcepts) && empty($extractedSubjects) && empty($extractedTopics) && empty($extractedOrgs) && empty($extractedInsts)) {
             Log::info('[Xavier][Search] Step 5b: no intents found, proceeding with pure vector search.');
             $searchPath = 'vector_only';
         }
@@ -658,20 +670,32 @@ class QuestionController extends Controller
         // Contexto serializado para o RunVectorSearchJob — contém tudo necessário
         // para executar o Qdrant + ReRank sem precisar re-queryar o banco de dados.
         // Armazenado em Redis pelo GenerateQueryEmbeddingJob ao concluir.
+        $sqlFilters = ['keyword' => $request->prompt];
+        if ($extractedType) {
+            $sqlFilters['type'] = $extractedType;
+        }
+        
+        // Se detectamos uma banca ou órgão específico como intenção clara, filtramos no Qdrant
+        if (!empty($extractedOrgs)) {
+            $sqlFilters['organization'] = $extractedOrgs; 
+        }
+        if (!empty($extractedInsts)) {
+            $sqlFilters['institution'] = $extractedInsts;
+        }
+
         $searchContext = [
             'prompt'              => $request->prompt,
             'normalized_query'    => $normalizedQuery,
             'query_vector'        => $queryVector,          // Vetor genérico = fallback de slots null
             'expanded_concept_ids'=> $expandedConceptIds,
             'detected_concepts'   => $detectedConcepts,
-            'sql_filters'         => array_merge(
-                ['keyword' => $request->prompt],
-                $extractedType ? ['type' => $extractedType] : []
-            ),
+            'sql_filters'         => $sqlFilters,
             'intent_filters'      => array_filter([
-                'subject_id' => $extractedSubjects ?: null,
-                'topic_id'   => $extractedTopics   ?: null,
-                'type'       => $extractedType ? [$extractedType] : null,
+                'subject_id'   => $extractedSubjects ?: null,
+                'topic_id'     => $extractedTopics   ?: null,
+                'organization' => $extractedOrgs     ?: null,
+                'institution'  => $extractedInsts    ?: null,
+                'type'         => $extractedType ? [$extractedType] : null,
             ]),
             'search_path'         => $searchPath,
             'candidate_limit'     => (int) \App\Models\Configuration::get('xavier_qdrant_candidate_limit', config('xavier.search.qdrant_candidate_limit', 50)),
