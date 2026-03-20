@@ -7,6 +7,8 @@ use App\Models\AiSearchRequest;
 use App\Models\Question;
 use App\Models\QuestionInteraction;
 use App\Models\SearchInteractionLog;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 
 use App\Jobs\GenerateQueryEmbeddingJob;
 use App\Jobs\RespondToStandaloneChatJob;
