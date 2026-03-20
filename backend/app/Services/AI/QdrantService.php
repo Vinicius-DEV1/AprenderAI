@@ -53,22 +53,63 @@ class QdrantService
         // Check if already exists
         $response = $this->get("/collections/{$this->questionsCollection}");
         if ($response && isset($response['result'])) {
-            return true; // Already exists
+            $this->ensurePayloadIndexes(); // Ensure indexes on existing collections too
+            return true;
         }
 
         $payload = [
             'vectors' => [
-                'statement'   => ['size' => 3072, 'distance' => 'Cosine'],
-                'concept'     => ['size' => 3072, 'distance' => 'Cosine'],
-                'explanation' => ['size' => 3072, 'distance' => 'Cosine'],
+                // Original 3 vectors
+                'statement'    => ['size' => 3072, 'distance' => 'Cosine'],
+                'concept'      => ['size' => 3072, 'distance' => 'Cosine'],
+                'explanation'  => ['size' => 3072, 'distance' => 'Cosine'],
+                // V2: New vectors for richer semantic matching
+                'alternatives' => ['size' => 3072, 'distance' => 'Cosine'],
+                'skills'       => ['size' => 3072, 'distance' => 'Cosine'],
             ],
             'hnsw_config' => ['m' => 16, 'ef_construct' => 100],
         ];
 
         $result = $this->put("/collections/{$this->questionsCollection}", $payload);
-        Log::info('[Qdrant] Questions collection created.', ['result' => $result]);
+        Log::info('[Qdrant] Questions collection created (5 named vectors).', ['result' => $result]);
+
+        $this->ensurePayloadIndexes();
+
         return (bool) ($result['result'] ?? false);
     }
+
+    /**
+     * Creates payload indexes on the questions collection for O(log n) filtering.
+     * Safe to call multiple times (Qdrant ignores if index already exists).
+     */
+    public function ensurePayloadIndexes(): void
+    {
+        $indexes = [
+            'subject_id'   => 'keyword',
+            'subject_ids'  => 'keyword',
+            'topic_id'     => 'keyword',
+            'topic_ids'    => 'keyword',
+            'organization' => 'keyword',
+            'institution'  => 'keyword',
+            'type'         => 'keyword',
+            'is_active'    => 'bool',
+            'year'         => 'integer',
+            'difficulty'   => 'keyword',
+            'has_explanation' => 'bool',
+            'has_image'    => 'bool',
+        ];
+
+        foreach ($indexes as $field => $type) {
+            $this->put(
+                "/collections/{$this->questionsCollection}/index",
+                ['field_name' => $field, 'field_schema' => $type]
+            );
+        }
+
+        Log::info('[Qdrant] Payload indexes ensured for questions collection.');
+    }
+
+
 
     /**
      * Ensures the 'filters' collection (Subjects + Topics + Orgs) exists in Qdrant.

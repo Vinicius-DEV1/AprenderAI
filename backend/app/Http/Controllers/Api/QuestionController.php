@@ -520,13 +520,13 @@ class QuestionController extends Controller
 
         // ── Step 1b: Lexical Analysis (Xavier 2.0) ───────────────────────────
         // Identifica termos positivos, negativos (negação) e restrição.
-        $lexical   = app(QueryLexicalAnalyser::class);
+        $lexical   = app(\App\Services\AI\QueryLexicalAnalyser::class);
         $analysis  = $lexical->analyse($request->prompt);
         $positivePrompt = implode(' ', $analysis['positive_terms']);
         $negativePrompt = implode(' ', $analysis['negative_terms']);
 
         // ── Step 2: Normalização da Query ─────────────────────────────────────
-        $normalizedQuery = $this->normalizePrompt($positivePrompt);
+        $normalizedQuery = $textBuilder->buildForQuery($positivePrompt);
         Log::info('[Xavier][Search] Step 2 done: query normalized.', ['original' => $request->prompt, 'normalized' => $normalizedQuery, 'negative' => $negativePrompt]);
 
         // â”€â”€ Step 2: L1 Cache (exact hash) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -655,7 +655,7 @@ class QuestionController extends Controller
         if (!empty($negativePrompt)) {
             try {
                 $negVector = $aiService->generateEmbedding($negativePrompt, $user->id, 'RETRIEVAL_QUERY');
-                $negMatches = $qdrant->searchConcepts($negVector, 5, 0.70);
+                $negMatches = $qdrant->searchConcepts($negVector, 10, 0.55);
                 
                 foreach ($negMatches as $match) {
                     $payload = $match['payload'] ?? [];

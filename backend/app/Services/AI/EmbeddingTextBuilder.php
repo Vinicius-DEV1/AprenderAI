@@ -128,9 +128,13 @@ class EmbeddingTextBuilder
             $parts[] = 'concepts:';
             $parts[] = implode(', ', array_unique($allTerms));
         } else {
-            // Fallback: use statement trimmed for concept vector
+            // Fallback: use subject + topic + first 300 chars of statement
+            // This is richer than the raw statement alone because it anchors
+            // the concept vector to the educational domain metadata.
             $parts[] = '';
-            $parts[] = $this->cleanText(mb_substr($question->statement ?? '', 0, 300));
+            $parts[] = 'keywords:';
+            $fallback = trim(($subjectName ? $subjectName . ' ' : '') . ($topicName ? $topicName . ' ' : '') . $this->cleanText(mb_substr($question->statement ?? '', 0, 250)));
+            $parts[] = $fallback;
         }
 
         return implode("\n", $parts);
@@ -167,6 +171,81 @@ class EmbeddingTextBuilder
 
         return implode("\n", $parts);
     }
+
+    /**
+     * Builds the ALTERNATIVES embedding text. (V2)
+     *
+     * Vectorizes ALL answer choices (A-E), including wrong ones (distractors).
+     * Distractors contain valuable domain concepts that are absent from the statement/explanation.
+     * This vector helps surface questions when searched by conceptually related wrong-answer territory.
+     *
+     * Format:
+     *   subject: {name}  topic: {name}
+     *   alternatives:
+     *   a) ...
+     *   b) ...
+     *   c) ... (correct)
+     *   d) ...
+     */
+    public function buildAlternativesTextForQuestion(Question $question): string
+    {
+        $subjectName = $question->subjects->first()?->name ?? '';
+        $topicName   = $question->topics->first()?->name ?? '';
+
+        $parts = [];
+        if ($subjectName) $parts[] = "subject: {$subjectName}";
+        if ($topicName)   $parts[] = "topic: {$topicName}";
+
+        $parts[]  = '';
+        $parts[]  = 'alternatives:';
+
+        $letters = ['a', 'b', 'c', 'd', 'e'];
+        foreach ($question->alternatives->sortBy('order') as $idx => $alt) {
+            $letter  = $letters[$idx] ?? ($idx + 1);
+            $label   = $alt->is_correct ? " (correct)" : '';
+            $parts[] = "{$letter}) " . $this->cleanText($alt->content) . $label;
+        }
+
+        return implode("\n", $parts);
+    }
+
+    /**
+     * Builds the SKILLS embedding text. (V2)
+     *
+     * Captures the cognitive skill being assessed by the question.
+     * Derived from topic name + question type + first 200 chars of statement.
+     * Zero additional LLM cost — uses structured metadata only.
+     *
+     * Why this matters: A Portuguese-language question may test "graph interpretation"
+     * skill, not grammar. Without this vector, that signal is buried in the statement.
+     *
+     * Format:
+     *   skill: {topic_name}
+     *   subject: {subject_name}
+     *   type: {enem|concurso}
+     *   context: {first 200 chars of statement}
+     */
+    public function buildSkillsTextForQuestion(Question $question): string
+    {
+        $subjectName = $question->subjects->first()?->name ?? '';
+        $topicName   = $question->topics->first()?->name ?? '';
+
+        $parts = [];
+
+        if ($topicName)   $parts[] = "skill: {$topicName}";
+        if ($subjectName) $parts[] = "subject: {$subjectName}";
+        if (!empty($question->type)) $parts[] = "type: {$question->type}";
+
+        $context = $this->cleanText(mb_substr($question->statement ?? '', 0, 200));
+        if ($context) {
+            $parts[] = '';
+            $parts[] = 'context:';
+            $parts[] = $context;
+        }
+
+        return implode("\n", $parts);
+    }
+
 
     /**
      * Constrói o texto rico para os vetores de DISCIPLINAS (Subjects).

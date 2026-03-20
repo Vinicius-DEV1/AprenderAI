@@ -408,7 +408,7 @@ class SemanticDashboardController extends Controller
         if (!empty($negativePrompt)) {
             try {
                 $negVector = $aiService->generateEmbedding($negativePrompt, $user->id, 'RETRIEVAL_QUERY');
-                $negMatches = $qdrant->searchConcepts($negVector, 3, 0.80);
+                $negMatches = $qdrant->searchConcepts($negVector, 10, 0.55);
                 foreach ($negMatches as $match) {
                     $payload = $match['payload'] ?? [];
                     $type = $payload['entity_type'] ?? '';
@@ -573,6 +573,7 @@ class SemanticDashboardController extends Controller
                 'qdrant_score'  => $item['vector_score'] ?? 0,
                 'final_score'   => $item['composite_score'] ?? 0,
                 'source'        => $item['source'] ?? 'unknown',
+                'payload'       => $item['payload'] ?? [],
                 'score_details' => $item['details'] ?? [],
             ];
         }

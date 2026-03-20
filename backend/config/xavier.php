@@ -41,7 +41,8 @@ return [
         'batch_queue' => env('AI_BATCH_QUEUE', 'ai_triage'),
 
         // Pipeline version tag written to question_vectors.pipeline_version
-        'pipeline_version' => 'v7_lexical_analyser',
+        // Bump this string to force re-indexing of all questions on next job run.
+        'pipeline_version' => 'v8_qdrant_native',
 
         // Minimum cosine similarity score to accept a concept match
         'concept_detection_threshold' => env('CONCEPT_DETECTION_THRESHOLD', 0.45),
