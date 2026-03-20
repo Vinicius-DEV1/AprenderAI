@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../../api/axios';
 import { toast } from 'sonner';
 import {
     Database, Activity, Search, RefreshCw, Settings, Save, Server,
     Box, CheckCircle2, AlertCircle, PlayCircle, ChevronDown, Clock, Lightbulb,
-    Trash2, BarChart3, TrendingUp, Zap, Hash, ArrowRight, Layers, Target, Filter, Microscope, HelpCircle
+    Trash2, BarChart3, TrendingUp, Zap, Hash, ArrowRight, Layers, Target, Filter,
+    Microscope, HelpCircle, X, ChevronRight, Shield, Rocket, Boxes
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
-const TARGET_PIPELINE_VERSION = 'v7_lexical_analyser';
+const TARGET_PIPELINE_VERSION = 'v8_qdrant_native';
 
 interface DashboardStats {
     overview: {
@@ -149,6 +150,8 @@ const SemanticDashboard = () => {
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [resetConfirmText, setResetConfirmText] = useState('');
     const [wakingUp, setWakingUp] = useState(false);
+    const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
+    const actionsMenuRef = useRef<HTMLDivElement>(null);
 
     // Config form
     const [configState, setConfigState] = useState({
@@ -258,7 +261,15 @@ const SemanticDashboard = () => {
             }
         }, 10000);
 
-        return () => clearInterval(interval);
+        // Close actions menu on outside click
+        const handleClickOutside = (e: MouseEvent) => {
+            if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
+                setActionsMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+
+        return () => { clearInterval(interval); document.removeEventListener('mousedown', handleClickOutside); };
     }, []);
 
     const handleSaveConfig = async () => {
@@ -382,78 +393,101 @@ const SemanticDashboard = () => {
     return (
         <>
             <div className="p-6 max-w-7xl mx-auto space-y-8">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                            <Database className="w-6 h-6 text-indigo-500" />
-                            Xavier Semantic Engine
-                        </h1>
-                        <p className="text-slate-500 dark:text-slate-400 mt-1">
-                            Monitoramento, configuração e testes do motor de busca vetorial.
-                        </p>
-                    </div>
+                    {/* Header: Title + Pipeline Badge + Action Buttons */}
+                    <div className="flex flex-wrap justify-between items-center gap-3">
+                        <div>
+                            <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                <Database className="w-6 h-6 text-indigo-500" />
+                                Xavier Semantic Engine
+                            </h1>
+                            <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">
+                                Monitoramento, configuração e testes do motor de busca vetorial.
+                            </p>
+                        </div>
 
-                    {stats?.qdrant?.index_version_status && (
-                        (stats.qdrant.index_version_status.questions.status === 'outdated' ||
-                            stats.qdrant.index_version_status.concepts.status === 'outdated') && (
-                            <div className="hidden lg:flex items-center gap-2 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 px-4 py-2 rounded-lg border border-rose-200 dark:border-rose-800 animate-pulse">
-                                <AlertCircle className="w-5 h-5" />
-                                <span className="text-sm font-medium">Re-indexação Necessária</span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {/* Version outdated inline indicator */}
+                            {stats?.qdrant?.index_version_status &&
+                                (stats.qdrant.index_version_status.questions.status === 'outdated' ||
+                                    stats.qdrant.index_version_status.concepts.status === 'outdated') && (
+                                    <span className="hidden lg:flex items-center gap-1.5 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-800 text-xs font-bold animate-pulse">
+                                        <AlertCircle className="w-3.5 h-3.5" />
+                                        Re-indexação Necessária
+                                    </span>
+                                )}
+
+                            {/* Refresh */}
+                            <button
+                                onClick={loadStats}
+                                className="btn btn-secondary flex items-center gap-1.5 text-sm"
+                                title="Atualizar Dados"
+                            >
+                                <RefreshCw className={clsx("w-4 h-4", loading && "animate-spin")} />
+                                <span className="hidden sm:inline">Atualizar</span>
+                            </button>
+
+                            {/* ── Primary indexer buttons ── */}
+                            <button
+                                onClick={() => setIsIndexModalOpen(true)}
+                                disabled={reindexing}
+                                className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2"
+                            >
+                                {reindexing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Server className="w-4 h-4" />}
+                                Indexar Questões
+                            </button>
+                            <button
+                                onClick={() => setIsIntentModalOpen(true)}
+                                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-lg shadow-purple-500/25 transition-all active:scale-95"
+                            >
+                                {reindexingIntents ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Lightbulb className="w-4 h-4" />}
+                                Indexar Matérias/Assuntos
+                            </button>
+
+                            {/* ── Secondary/dangerous actions dropdown ── */}
+                            <div className="relative" ref={actionsMenuRef}>
+                                <button
+                                    onClick={() => setActionsMenuOpen(v => !v)}
+                                    className="btn btn-secondary flex items-center gap-1.5 text-sm"
+                                    title="Outras Ações"
+                                >
+                                    <Settings className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Ações</span>
+                                    <ChevronDown className={clsx("w-3.5 h-3.5 transition-transform", actionsMenuOpen && "rotate-180")} />
+                                </button>
+
+                                {actionsMenuOpen && (
+                                    <div className="absolute right-0 top-full mt-2 w-52 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-40 overflow-hidden">
+                                        <div className="p-1">
+                                            <button
+                                                onClick={() => { setActionsMenuOpen(false); handleClearCache(); }}
+                                                disabled={clearingCache}
+                                                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors text-left"
+                                            >
+                                                {clearingCache ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                                                Limpar Cache de Busca
+                                            </button>
+                                            <button
+                                                onClick={() => { setActionsMenuOpen(false); handleClearQueue(); }}
+                                                disabled={clearingQueue}
+                                                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left"
+                                            >
+                                                {clearingQueue ? <Trash2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                                Limpar Fila de Jobs
+                                            </button>
+                                            <div className="h-px bg-slate-100 dark:bg-slate-700 my-1" />
+                                            <button
+                                                onClick={() => { setActionsMenuOpen(false); setIsResetModalOpen(true); }}
+                                                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-bold text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors text-left"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                                Reset Completo ⚠️
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        )
-                    )}
-
-                    <div className="flex gap-3">
-                        <button
-                            onClick={loadStats}
-                            className="btn btn-secondary flex items-center gap-2"
-                            title="Atualizar Dados"
-                        >
-                            <RefreshCw className={clsx("w-4 h-4", loading && "animate-spin")} />
-                        </button>
-                        <button
-                            onClick={handleClearCache}
-                            disabled={clearingCache}
-                            className="btn btn-secondary text-amber-600 border-amber-200 hover:bg-amber-50 flex items-center gap-2"
-                            title="Limpar Cache de Busca (Não apaga vetores)"
-                        >
-                            {clearingCache ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                            Limpar Cache
-                        </button>
-                        <button
-                            onClick={handleClearQueue}
-                            disabled={clearingQueue}
-                            className="btn btn-secondary text-red-600 border-red-200 hover:bg-red-50 flex items-center gap-2"
-                            title="Limpar Fila de Jobs (Embeddings)"
-                        >
-                            {clearingQueue ? <Trash2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                            Limpar Fila
-                        </button>
-                        <button
-                            onClick={() => setIsResetModalOpen(true)}
-                            className="btn btn-secondary text-rose-700 bg-rose-100 border-rose-200 hover:bg-rose-200 flex items-center gap-2"
-                            title="Reset Completo (APAGA TUDO E RE-INDEXA)"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                            Reset Completo
-                        </button>
-                        <button
-                            onClick={() => setIsIndexModalOpen(true)}
-                            disabled={reindexing}
-                            className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2"
-                        >
-                            {reindexing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Server className="w-4 h-4" />}
-                            Indexar Questões
-                        </button>
-                        <button
-                            onClick={() => setIsIntentModalOpen(true)}
-                            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-lg shadow-purple-500/25 transition-all active:scale-95"
-                        >
-                            {reindexingIntents ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Lightbulb className="w-4 h-4" />}
-                            Indexar Matérias/Assuntos
-                        </button>
+                        </div>
                     </div>
-                </div>
 
                 {/* OVERVIEW STATS */}
                 {stats && (
@@ -601,6 +635,39 @@ const SemanticDashboard = () => {
                         </div>
                     )
                 )}
+
+                {/* V8 UPGRADE BANNER — shown when some questions use old pipeline */}
+                {stats && stats.config.pipeline_version === TARGET_PIPELINE_VERSION &&
+                    stats.overview.mysql_indexed_questions > 0 &&
+                    stats.qdrant.index_version_status?.questions.status === 'outdated' && (
+                        <div className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl p-5 shadow-xl shadow-indigo-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 bg-white/20 rounded-xl shrink-0">
+                                    <Rocket className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-base flex items-center gap-2">
+                                        Upgrade Disponível: Pipeline {TARGET_PIPELINE_VERSION}
+                                        <span className="bg-white/20 text-[10px] font-black px-2 py-0.5 rounded-full tracking-wider">NOVO</span>
+                                    </h3>
+                                    <p className="text-sm text-indigo-200 mt-1">
+                                        5 vetores por questão + payload rico (subject_ids[], topic_ids[], has_explanation, word_count…). As questões já indexadas usam o formato antigo — Re-indexação com force necessária.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setIndexForce(true);
+                                    setIndexBatchLimit(stats?.overview.mysql_published_questions || 9999);
+                                    setIsIndexModalOpen(true);
+                                }}
+                                className="shrink-0 bg-white text-indigo-700 hover:bg-indigo-50 font-bold px-5 py-2.5 rounded-xl text-sm shadow-lg transition-all active:scale-95 flex items-center gap-2"
+                            >
+                                <Zap className="w-4 h-4" />
+                                Forçar Re-indexação (v8)
+                            </button>
+                        </div>
+                    )}
 
                 {/* MAESTRO WAITING ROOM (CONGESTION MONITOR) */}
                 {stats && stats.jobs.waiting_list && stats.jobs.waiting_list.length > 0 && (
@@ -1077,23 +1144,38 @@ const SemanticDashboard = () => {
                                         </div>
                                     </PipelineStep>
 
-                                    {/* Step 3: Vector */}
                                     <PipelineStep
                                         icon={Layers}
-                                        title="Busca Vetorial"
+                                        title="Busca Vetorial (5 Vetores)"
                                         isActive={true}
                                         status={`${searchResults.results?.length || 0} candidatos`}
-                                        description="Captura de contexto no 'Cérebro' do Qdrant."
-                                        helpText="Terceira camada: o Qdrant vasculha o 'significado' da sua pergunta em milissegundos, trazendo as 50 candidatas mais próximas pelo sentido (vetores)."
+                                        description="Captura paralela de contexto nos 5 facets semânticos da questão."
+                                        helpText="Terceira camada: o Qdrant busca em paralelo nos 5 vetores (statement, concept, explanation, alternatives, skills) e funde com Reciprocal Rank Fusion."
                                     >
-                                        <div className="grid grid-cols-3 gap-1">
-                                            {['Statement', 'Concept', 'Expl'].map(slot => (
-                                                <div key={slot} className="flex flex-col items-center p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mb-1"></div>
-                                                    <span className="text-[8px] uppercase font-bold text-emerald-700 dark:text-emerald-400">{slot}</span>
+                                        <div className="grid grid-cols-5 gap-1">
+                                            {[
+                                                { label: 'Stmt', color: 'emerald' },
+                                                { label: 'Cncpt', color: 'emerald' },
+                                                { label: 'Expl', color: 'emerald' },
+                                                { label: 'Alts', color: 'blue' },
+                                                { label: 'Skills', color: 'violet' },
+                                            ].map(slot => (
+                                                <div key={slot.label} className={clsx(
+                                                    "flex flex-col items-center p-1.5 rounded-lg border",
+                                                    slot.color === 'blue' ? "bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800" :
+                                                    slot.color === 'violet' ? "bg-violet-50 dark:bg-violet-900/20 border-violet-100 dark:border-violet-800" :
+                                                    "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800"
+                                                )}>
+                                                    <div className={clsx("w-1.5 h-1.5 rounded-full mb-1",
+                                                        slot.color === 'blue' ? "bg-blue-500" : slot.color === 'violet' ? "bg-violet-500" : "bg-emerald-500"
+                                                    )} />
+                                                    <span className={clsx("text-[8px] uppercase font-bold",
+                                                        slot.color === 'blue' ? "text-blue-700 dark:text-blue-400" : slot.color === 'violet' ? "text-violet-700 dark:text-violet-400" : "text-emerald-700 dark:text-emerald-400"
+                                                    )}>{slot.label}</span>
                                                 </div>
                                             ))}
                                         </div>
+                                        <p className="text-[9px] text-slate-400 mt-2">🔵 V2: Alts + Skills são novos no v8_qdrant_native</p>
                                     </PipelineStep>
 
                                     <div className="p-4 bg-slate-900 rounded-2xl border border-slate-800 shadow-inner">
@@ -1372,6 +1454,19 @@ const SemanticDashboard = () => {
                                     Pipeline Ativo: {stats?.config.pipeline_version || TARGET_PIPELINE_VERSION}
                                 </span>
                             </p>
+
+                            {/* V8 upgrade tip */}
+                            {indexForce && (
+                                <div className="mb-4 flex items-start gap-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl p-3">
+                                    <Rocket className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-xs font-bold text-indigo-700 dark:text-indigo-400">Modo Forçado ativado — re-indexação completa (v8)</p>
+                                        <p className="text-[10px] text-indigo-600/70 dark:text-indigo-400/70 mt-0.5">
+                                            Cada questão gerará <strong>5 vetores</strong> (statement, concept, explanation, <span className="text-blue-600 dark:text-blue-400">alternatives</span>, <span className="text-violet-600 dark:text-violet-400">skills</span>) + payload rico com subject_ids[], topic_ids[], has_explanation, word_count.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl p-4 mb-6">
                                 <div className="flex justify-between items-center mb-1">
