@@ -840,11 +840,14 @@ class QuestionController extends Controller
             'final_limit'         => (int) \App\Models\Configuration::get('xavier_final_result_limit', config('xavier.search.final_result_limit', 100)),
         ];
 
-            'search_request_id' => $searchRequest->id,
-            'slots'             => ['statement', 'concept', 'explanation'],
-        ]);
+        Cache::put("xavier:qembed_ctx:{$searchRequest->id}", json_encode($searchContext), $ttl);
 
-        // Retorna imediatamente — frontend aguarda via polling leve no endpoint de status
+        // Dispatch the search runner to the high-priority queue
+        RunVectorSearchJob::dispatch($searchRequest->id, $user->id)
+            ->onQueue(config('xavier.search_embeddings.queue', 'search_embeddings'));
+
+        Log::info('[Xavier][Search] Search runner dispatched.', ['search_request_id' => $searchRequest->id]);
+
         return response()->json([
             'status'     => 'generating',
             'request_id' => $searchRequest->id,
