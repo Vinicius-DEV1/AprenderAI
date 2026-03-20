@@ -379,4 +379,63 @@ class EssayController extends Controller
             'max_lines' => $rule?->max_lines ?? 30,
         ]);
     }
+
+    /**
+     * POST /api/v1/essays/{essay}/notify-pending
+     *
+     * Creates a "Redação pendente" notification for the authenticated user
+     * when they leave an in-progress essay without submitting.
+     * Uses notifyUserOnce() to avoid duplicates.
+     */
+    public function notifyPending(Request $request, Essay $essay)
+    {
+        if ($essay->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        // Statuses that mean the essay was already completed/submitted — do NOT notify
+        $finalStatuses = ['evaluating', 'completed', 'corrigida', 'finished', 'error'];
+        if (in_array($essay->status, $finalStatuses)) {
+            return response()->json(['message' => 'Essay already completed.'], 422);
+        }
+
+        $user = $request->user();
+
+        // Use notifyEssayOnce() which stores the ID in related_essay_id
+        // (no FK to subscriptions — won't throw constraint violations)
+        \App\Models\UserNotification::notifyEssayOnce(
+            $user->id,
+            $essay->id,
+            [
+                'title'      => 'Redação pendente',
+                'body'       => 'Você tem uma redação em andamento. Volte para continuar de onde parou.',
+                'action_url' => null,
+                'meta'       => [
+                    'essay_id' => $essay->id,
+                    'theme'    => $essay->title !== 'Gerando tema...' ? ($essay->title ?? null) : null,
+                    'action'   => 'resume_essay',
+                ],
+            ]
+        );
+
+        return response()->json(['ok' => true]);
+    }
+
+    /**
+     * POST /api/v1/essays/{essay}/mark-pending-done
+     *
+     * Marks any "Redação pendente" notifications for this essay as read.
+     * Called when the student successfully submits the essay.
+     */
+    public function markPendingDone(Request $request, Essay $essay)
+    {
+        if ($essay->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        \App\Models\UserNotification::invalidateEssayNotifications($essay->id);
+
+        return response()->json(['ok' => true]);
+    }
 }
+

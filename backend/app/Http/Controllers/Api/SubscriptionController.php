@@ -668,17 +668,121 @@ class SubscriptionController extends Controller
     }
 
     /**
-     * Verifica se o plano do usuário foi atualizado.
+     * GET /api/v1/subscriptions/pending-pix
+     *
+     * Returns the latest pending Pix subscription for the authenticated user,
+     * including the QR Code data needed to display the recovery modal.
+     * Returns 404 when there is no pending Pix subscription.
      */
-    public function checkStatus(Request $request)
+    public function pendingPix(Request $request)
     {
         $user = $request->user();
-        $isActive = $user->plan_id && $user->plan_id != 1 && $user->plan_expires_at && $user->plan_expires_at->isFuture();
+
+        $subscription = Subscription::with('plan')
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->where('billing_type', 'pix')
+            ->whereNotNull('pix_expires_at')
+            ->latest()
+            ->first();
+
+        if (!$subscription) {
+            return response()->json(['pending' => false], 404);
+        }
+
+        $plan = $subscription->plan;
 
         return response()->json([
-            'active' => $isActive,
-            'plan' => $user->plan ? $user->plan->name : 'Grátis',
-            'plan_id' => $user->plan_id,
+            'pending'         => true,
+            'subscription_id' => $subscription->id,
+            'plan_name'       => $plan?->name,
+            'amount'          => (float) $subscription->amount,
+            'pix_payload'     => $subscription->pix_payload,
+            'pix_image'       => $subscription->pix_image,
+            'pix_expires_at'  => $subscription->pix_expires_at?->toISOString(),
+            'is_expired'      => $subscription->pix_expires_at?->isPast() ?? true,
         ]);
     }
+
+    /**
+     * POST /api/v1/subscriptions/{subscription}/regenerate-pix
+     *
+     * Creates a new Pix charge for an expired Pix subscription.
+     * - Validates ownership and that the subscription is actually expired.
+     * - Fetches the latest pending payment from Asaas and generates a new QR Code.
+     * - Updates the subscription with fresh Pix data.
+     * - Invalidates any "QR Code expirado" notifications for this subscription.
+     */
+    public function regeneratePix(Request $request, Subscription $subscription)
+    {
+        $user = $request->user();
+
+        if ($subscription->user_id !== $user->id) {
+            return response()->json(['message' => 'Acesso negado.'], 403);
+        }
+
+        if ($subscription->billing_type !== 'pix' || $subscription->status !== 'pending') {
+            return response()->json(['message' => 'Esta assinatura não está em estado pendente de Pix.'], 422);
+        }
+
+        if (!$subscription->pix_expires_at || $subscription->pix_expires_at->isFuture()) {
+            // QR Code is still valid — return it instead of regenerating
+            return response()->json([
+                'regenerated'     => false,
+                'subscription_id' => $subscription->id,
+                'pix_payload'     => $subscription->pix_payload,
+                'pix_image'       => $subscription->pix_image,
+                'pix_expires_at'  => $subscription->pix_expires_at?->toISOString(),
+                'is_expired'      => false,
+            ]);
+        }
+
+        try {
+            $payment = $this->asaasService->getFirstPendingPayment($subscription->gateway_id);
+
+            if (!$payment) {
+                return response()->json(['message' => 'Não foi possível localizar o pagamento pendente no gateway.'], 404);
+            }
+
+            $pixData = $this->asaasService->getPixQrCode($payment['id']);
+
+            if (!$pixData) {
+                return response()->json(['message' => 'Não foi possível gerar o QR Code Pix.'], 500);
+            }
+
+            $pixExpiresAt = now()->addMinutes(30);
+
+            $subscription->update([
+                'pix_payload'    => $pixData['payload'],
+                'pix_image'      => $pixData['encodedImage'],
+                'pix_expires_at' => $pixExpiresAt,
+            ]);
+
+            // Invalidate old "QR Code expirado" notifications for this subscription
+            \App\Models\UserNotification::invalidatePixNotifications($subscription->id);
+
+            Log::info('[API regeneratePix] Novo QR Code gerado com sucesso.', [
+                'user_id'         => $user->id,
+                'subscription_id' => $subscription->id,
+            ]);
+
+            return response()->json([
+                'regenerated'     => true,
+                'subscription_id' => $subscription->id,
+                'pix_payload'     => $pixData['payload'],
+                'pix_image'       => $pixData['encodedImage'],
+                'pix_expires_at'  => $pixExpiresAt->toISOString(),
+                'is_expired'      => false,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('[API regeneratePix] Erro ao regenerar QR Code Pix', [
+                'user_id'         => $user->id,
+                'subscription_id' => $subscription->id,
+                'error'           => $e->getMessage(),
+            ]);
+            return response()->json(['message' => 'Erro ao gerar novo QR Code: ' . $e->getMessage()], 500);
+        }
+    }
 }
+

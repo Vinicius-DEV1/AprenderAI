@@ -65,3 +65,14 @@ export const retryEssayEvaluation = async (id: number | string) => {
     return response.data;
 };
 
+/** Fire-and-forget: tells the backend to create a "Redação pendente" notification. */
+export const notifyEssayAbandoned = async (id: number | string) => {
+    const response = await api.post(`/api/v1/essays/${id}/notify-pending`);
+    return response.data;
+};
+
+/** Invalidates any pending essay notifications when the essay is submitted. */
+export const markEssayNotificationDone = async (id: number | string) => {
+    const response = await api.post(`/api/v1/essays/${id}/mark-pending-done`);
+    return response.data;
+};

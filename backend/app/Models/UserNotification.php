@@ -18,6 +18,9 @@ class UserNotification extends Model
         'body',
         'type',
         'action_url',
+        'related_payment_id',
+        'related_essay_id',
+        'meta',
         'read_at',
     ];
 
@@ -25,6 +28,7 @@ class UserNotification extends Model
     {
         return [
             'read_at' => 'datetime',
+            'meta'    => 'array',
         ];
     }
 
@@ -55,6 +59,144 @@ class UserNotification extends Model
     {
         if (!$this->read_at) {
             $this->update(['read_at' => now()]);
+        }
+    }
+
+    /**
+     * Create a notification for a user ONLY if there is no existing unread
+     * notification of the same type for the same subscription (deduplication).
+     *
+     * @param int         $userId
+     * @param string      $type            payment_pending | payment_expired
+     * @param int         $subscriptionId
+     * @param array       $data            title, body, action_url, meta
+     * @return self|null  The created notification, or null if already exists.
+     */
+    public static function notifyUserOnce(
+        int $userId,
+        string $type,
+        int $subscriptionId,
+        array $data
+    ): ?self {
+        try {
+            $exists = self::where('user_id', $userId)
+                ->where('type', $type)
+                ->where('related_payment_id', $subscriptionId)
+                ->whereNull('read_at')
+                ->exists();
+
+            if ($exists) {
+                return null;
+            }
+
+            return self::create(array_merge($data, [
+                'user_id'            => $userId,
+                'type'               => $type,
+                'related_payment_id' => $subscriptionId,
+            ]));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[Notifications] notifyUserOnce failed', [
+                'user_id'        => $userId,
+                'type'           => $type,
+                'subscription_id'=> $subscriptionId,
+                'error'          => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Create a notification for a user ONLY if there is no existing unread
+     * essay_pending notification for the same essay (deduplication via related_essay_id).
+     *
+     * Uses related_essay_id (no FK constraint) instead of related_payment_id.
+     *
+     * @param int   $userId
+     * @param int   $essayId
+     * @param array $data   title, body, action_url, meta
+     * @return self|null
+     */
+    public static function notifyEssayOnce(
+        int $userId,
+        int $essayId,
+        array $data
+    ): ?self {
+        try {
+            $exists = self::where('user_id', $userId)
+                ->where('type', 'essay_pending')
+                ->where('related_essay_id', $essayId)
+                ->whereNull('read_at')
+                ->exists();
+
+            if ($exists) {
+                return null;
+            }
+
+            return self::create(array_merge($data, [
+                'user_id'          => $userId,
+                'type'             => 'essay_pending',
+                'related_essay_id' => $essayId,
+            ]));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[Notifications] notifyEssayOnce failed', [
+                'user_id'  => $userId,
+                'essay_id' => $essayId,
+                'error'    => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Mark all Pix recovery notifications for a given subscription as read.
+     * Called when payment is confirmed to clean up pending/expired notices.
+     *
+     * @param int $subscriptionId
+     */
+    public static function invalidatePixNotifications(int $subscriptionId): void
+    {
+        static::invalidateByRelatedId($subscriptionId, ['payment_pending', 'payment_expired']);
+    }
+
+    /**
+     * Generic helper: mark all unread notifications of the given type(s)
+     * for the given related entity ID as read (uses related_payment_id).
+     *
+     * @param int          $relatedId
+     * @param string|array $types
+     */
+    public static function invalidateByRelatedId(int $relatedId, string|array $types): void
+    {
+        try {
+            self::where('related_payment_id', $relatedId)
+                ->whereIn('type', (array) $types)
+                ->whereNull('read_at')
+                ->update(['read_at' => now()]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[Notifications] invalidateByRelatedId failed', [
+                'related_id' => $relatedId,
+                'types'      => (array) $types,
+                'error'      => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Mark essay_pending notifications for a given essay as read.
+     * Uses related_essay_id (not related_payment_id).
+     */
+    public static function invalidateEssayNotifications(int $essayId): void
+    {
+        try {
+            self::where('related_essay_id', $essayId)
+                ->where('type', 'essay_pending')
+                ->whereNull('read_at')
+                ->update(['read_at' => now()]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[Notifications] invalidateEssayNotifications failed', [
+                'essay_id' => $essayId,
+                'error'    => $e->getMessage(),
+            ]);
         }
     }
 

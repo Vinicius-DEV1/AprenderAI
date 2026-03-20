@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     createEssayDraft, startTopicGeneration, getTopicStatus,
-    submitEssay, getEssayThemes, getEssayRule, getEssays, updateEssayDraft
+    submitEssay, getEssayThemes, getEssayRule, getEssays, updateEssayDraft,
+    notifyEssayAbandoned, markEssayNotificationDone,
 } from '../../api/essays';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -238,20 +239,22 @@ export default function EssayWrite({
     const isNearLimit = charCount >= rule.max_chars * 0.9;
 
     // Timer
+    // We store ELAPSED seconds (not a start timestamp) so the timer is truly
+    // paused when the tab is hidden / user navigates away.
+    // localStorage key: essay_timer_elapsed_${id}
     const [remainingSeconds, setRemainingSeconds] = useState(() => {
-        // Recover from localStorage if we already started the timer for this essay
         const id = resumeEssayId ?? (isSimulationMode ? simulationEssayId : null);
         if (id) {
-            const stored = localStorage.getItem(`essay_timer_start_${id}`);
+            const stored = localStorage.getItem(`essay_timer_elapsed_${id}`);
             if (stored) {
-                const startTs = parseInt(stored, 10);
-                const elapsed = Math.floor((Date.now() - startTs) / 1000);
-                const remaining = Math.max(0, timeLimit * 60 - elapsed);
-                return remaining;
+                const elapsed = parseInt(stored, 10);
+                return Math.max(0, timeLimit * 60 - elapsed);
             }
         }
         return timeLimit * 60;
     });
+    // Ref to track elapsed seconds so event listeners can read a stable value
+    const elapsedSecondsRef = useRef(0);
 
     // ── Essay Limit (how many submissions remain this month) ────────────────
     const { data: essayMeta } = useQuery({
@@ -343,8 +346,12 @@ export default function EssayWrite({
     const submitMutation = useMutation({
         mutationFn: (data: FormData) => submitEssay(essayId!, data),
         onSuccess: (data) => {
-            // Clear the persisted timer for this essay
-            if (essayId) localStorage.removeItem(`essay_timer_start_${essayId}`);
+            // Clear the persisted timer and invalidate essay notification
+            if (essayId) {
+                localStorage.removeItem(`essay_timer_elapsed_${essayId}`);
+                // Fire-and-forget: mark the "Redação pendente" notification as read
+                markEssayNotificationDone(essayId).catch(() => { /* silent */ });
+            }
             queryClient.invalidateQueries({ queryKey: ['essays'] });
             queryClient.invalidateQueries({ queryKey: ['essays-meta'] }); // Refetch limit
             navigate(data?.data?.id ? `/redacoes/correcao/${data.data.id}` : '/redacoes');
@@ -517,24 +524,81 @@ export default function EssayWrite({
     };
 
     // ── Timer Effect ──────────────────────────────────────────────────────
-    // Persist start timestamp to localStorage the first time we enter step 3.
+    // Uses elapsed-seconds approach so the timer is genuinely paused when the
+    // tab is hidden or the user navigates away, and resumes from where it stopped.
     useEffect(() => {
-        if (step === 3 && essayId) {
-            const storageKey = `essay_timer_start_${essayId}`;
-            if (!localStorage.getItem(storageKey)) {
-                localStorage.setItem(storageKey, String(Date.now() - (timeLimit * 60 - remainingSeconds) * 1000));
-            }
-        }
-    }, [step, essayId]);
+        if (step !== 3 || !essayId) return;
 
-    useEffect(() => {
-        if (step === 3 && remainingSeconds > 0) {
-            const timer = setInterval(() => {
-                setRemainingSeconds(prev => prev > 0 ? prev - 1 : 0);
+        // Initialise elapsedSecondsRef from localStorage on first mount at step 3
+        const storageKey = `essay_timer_elapsed_${essayId}`;
+        const storedElapsed = parseInt(localStorage.getItem(storageKey) ?? '0', 10);
+        elapsedSecondsRef.current = isNaN(storedElapsed) ? 0 : storedElapsed;
+
+        // Write elapsed to localStorage so pause events can read it
+        const persistElapsed = () => {
+            const key = `essay_timer_elapsed_${essayId}`;
+            localStorage.setItem(key, String(elapsedSecondsRef.current));
+        };
+
+        // Start the countdown
+        let intervalId: ReturnType<typeof setInterval> | null = null;
+
+        const startTick = () => {
+            if (intervalId) return; // already running
+            intervalId = setInterval(() => {
+                elapsedSecondsRef.current += 1;
+                setRemainingSeconds(prev => (prev > 0 ? prev - 1 : 0));
+                // Persist every tick so refresh also resumes correctly
+                localStorage.setItem(storageKey, String(elapsedSecondsRef.current));
             }, 1000);
-            return () => clearInterval(timer);
+        };
+
+        const pauseTick = () => {
+            if (intervalId) {
+                clearInterval(intervalId);
+                intervalId = null;
+            }
+            persistElapsed();
+        };
+
+        // ── Visibility change handler ────────────────────────────────────
+        const handleVisibility = () => {
+            if (document.hidden) {
+                pauseTick();
+                // Fire-and-forget: create "Redação pendente" notification
+                // Only when NOT in simulation mode and draft exists
+                if (!isSimulationMode && essayId) {
+                    notifyEssayAbandoned(essayId).catch(() => { /* silent */ });
+                }
+            } else {
+                startTick();
+            }
+        };
+
+        // ── beforeunload: save elapsed (sync, no fetch in beforeunload) ──
+        const handleBeforeUnload = () => {
+            pauseTick();
+        };
+
+        // Start ticking immediately if tab is visible
+        if (!document.hidden) {
+            startTick();
         }
-    }, [step, remainingSeconds]);
+
+        document.addEventListener('visibilitychange', handleVisibility);
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            // Cleanup on unmount (navigating away from the page)
+            pauseTick();
+            if (!isSimulationMode && essayId) {
+                notifyEssayAbandoned(essayId).catch(() => { /* silent */ });
+            }
+            document.removeEventListener('visibilitychange', handleVisibility);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [step, essayId, isSimulationMode]);
 
     const h = Math.floor(remainingSeconds / 3600).toString().padStart(2, '0');
     const m = Math.floor((remainingSeconds % 3600) / 60).toString().padStart(2, '0');
