@@ -231,6 +231,7 @@ const SemanticDashboard = () => {
 
     const loadStats = async () => {
         try {
+            isBusyRef.current = true;
             setLoading(true);
             const res = await api.get('/api/v1/admin/semantic');
             setStats(res.data);
@@ -248,15 +249,20 @@ const SemanticDashboard = () => {
             toast.error('Erro ao carregar os dados do dashboard.');
         } finally {
             setLoading(false);
+            isBusyRef.current = false;
         }
     };
+
+    // Ref to track if any background operation is running (avoids stale closure in setInterval)
+    const isBusyRef = React.useRef(false);
 
     useEffect(() => {
         loadStats();
 
-        // Auto-refresh every 10 seconds for real-time monitoring
+        // Auto-refresh every 10 seconds.
+        // Uses a ref instead of state to avoid stale closure — the interval always reads the latest value.
         const interval = setInterval(() => {
-            if (!testLoading && !loading && !reindexing && !reindexingIntents) {
+            if (!isBusyRef.current) {
                 loadStats();
             }
         }, 10000);
@@ -304,6 +310,7 @@ const SemanticDashboard = () => {
 
     const handleReindex = async () => {
         try {
+            isBusyRef.current = true;
             setReindexing(true);
             const res = await api.post('/api/v1/admin/semantic/reindex', {
                 limit: indexBatchLimit,
@@ -316,11 +323,13 @@ const SemanticDashboard = () => {
             toast.error('Erro ao disparar indexação de questões.');
         } finally {
             setReindexing(false);
+            isBusyRef.current = false;
         }
     };
 
     const handleReindexIntents = async () => {
         try {
+            isBusyRef.current = true;
             setReindexingIntents(true);
             const res = await api.post('/api/v1/admin/semantic/reindex-concepts', {
                 limit: intentBatchLimit,
@@ -333,6 +342,7 @@ const SemanticDashboard = () => {
             toast.error('Erro ao disparar indexação de intenções.');
         } finally {
             setReindexingIntents(false);
+            isBusyRef.current = false;
         }
     };
 
