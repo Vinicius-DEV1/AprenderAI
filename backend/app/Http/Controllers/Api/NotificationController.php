@@ -28,13 +28,15 @@ class NotificationController extends Controller
             ->limit(30)
             ->get()
             ->map(fn($n) => [
-                'id'         => $n->id,
-                'title'      => $n->title,
-                'body'       => $n->body,
-                'type'       => $n->type,
-                'action_url' => $n->action_url,
-                'is_read'    => $n->isRead(),
-                'created_at' => $n->created_at->toISOString(),
+                'id'                  => $n->id,
+                'title'               => $n->title,
+                'body'                => $n->body,
+                'type'                => $n->type,
+                'action_url'          => $n->action_url,
+                'related_payment_id'  => $n->related_payment_id,
+                'meta'                => $n->meta,
+                'is_read'             => $n->isRead(),
+                'created_at'          => $n->created_at->toISOString(),
             ]);
 
         $unreadCount = UserNotification::where('user_id', $userId)->unread()->count();

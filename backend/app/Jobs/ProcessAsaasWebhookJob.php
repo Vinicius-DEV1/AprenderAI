@@ -256,6 +256,9 @@ class ProcessAsaasWebhookJob implements ShouldQueue
 
                     PaymentLog::create(array_merge($auditData, ['status' => 'success']));
 
+                    // Invalidate any Pix recovery notifications for this subscription
+                    \App\Models\UserNotification::invalidatePixNotifications($subscription->id);
+
                     // Track deferred PIX or abandoned checkout conversions
                     if ($trackingService->convertIntention($user->id, $plan->id, $subscription->id)) {
                         $method = strtolower($subscription->billing_type ?? '') === 'pix' ? 'pix' : 'credit_card';

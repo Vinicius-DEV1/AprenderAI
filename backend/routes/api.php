@@ -127,6 +127,9 @@ Route::prefix('v1')->group(function () {
         Route::get('essays/{essay}/topic-status', [EssayController::class, 'getTopicStatus']);
         Route::post('essays/{essay}/submit', [EssayController::class, 'submit']);
         Route::post('essays/{essay}/retry', [EssayController::class, 'retryEvaluation']);
+        // Essay abandonment notifications
+        Route::post('essays/{essay}/notify-pending', [EssayController::class, 'notifyPending']);
+        Route::post('essays/{essay}/mark-pending-done', [EssayController::class, 'markPendingDone']);
 
         // Subscriptions
         Route::prefix('subscriptions')->group(function () {
@@ -136,6 +139,9 @@ Route::prefix('v1')->group(function () {
             Route::get('/{plan}/upgrade-preview', [SubscriptionController::class, 'upgradePreview']);
             Route::get('/check-status', [SubscriptionController::class, 'checkStatus']);
             Route::get('/{subscription}/receipt', [SubscriptionController::class, 'receiptUrl']);
+            // Pix payment recovery
+            Route::get('/pending-pix', [SubscriptionController::class, 'pendingPix']);
+            Route::post('/{subscription}/regenerate-pix', [SubscriptionController::class, 'regeneratePix']);
         });
 
         // Checkout Tracking (fire-and-forget events from the frontend)

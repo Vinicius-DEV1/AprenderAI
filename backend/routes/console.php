@@ -22,6 +22,9 @@ Schedule::command('simulations:manage-timers')->everyMinute();
 
 Schedule::command('subscriptions:notify-expiring')->dailyAt('08:00');
 
+// Pix payment recovery — check for pending/expired Pix payments every 5 minutes
+Schedule::command('pix:notify-pending')->everyFiveMinutes()->withoutOverlapping();
+
 // Sync Google Analytics 4 data
 Schedule::job(new \App\Jobs\SyncDailyAnalyticsJob())->dailyAt('01:00');
 
