@@ -42,7 +42,7 @@ return [
 
         // Pipeline version tag written to question_vectors.pipeline_version
         // Bump this string to force re-indexing of all questions on next job run.
-        'pipeline_version' => 'v8_qdrant_native',
+        'pipeline_version' => env('PIPELINE_VERSION', 'v8.1.0'),
 
         // Minimum cosine similarity score to accept a concept match
         'concept_detection_threshold' => env('CONCEPT_DETECTION_THRESHOLD', 0.45),
