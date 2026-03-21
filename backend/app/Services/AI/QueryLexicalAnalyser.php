@@ -54,9 +54,9 @@ class QueryLexicalAnalyser
 
         $analysis = $this->detectDifficulty($prompt, $analysis);
         $analysis = $this->detectTemporal($prompt, $analysis);
-        $analysis = $this->detectEntities($prompt, $analysis);
         $analysis = $this->detectRestriction($prompt, $analysis);
         $analysis = $this->detectNegation($prompt, $analysis);
+        $analysis = $this->detectEntities($prompt, $analysis);
 
         $analysis['clean_prompt'] = $this->cleanPrompt($prompt, $analysis);
 
