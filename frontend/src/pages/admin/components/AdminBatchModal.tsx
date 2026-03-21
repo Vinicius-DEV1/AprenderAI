@@ -187,7 +187,7 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                             setChunkElapsed(Math.floor((Date.now() - startedAt) / 1000));
                         }, 1000);
                     }
-                } else if (chunkStatus.phase === 'delay') {
+                } else if (chunkStatus.phase === 'delay' || chunkStatus.phase === 'quota') {
                     // Clear chunk timer
                     if (chunkTimerRef.current) { clearInterval(chunkTimerRef.current); chunkTimerRef.current = null; }
                     // Start or update delay countdown
@@ -664,6 +664,17 @@ export default function AdminBatchModal({ isOpen, onClose, pendingCount, onBatch
                                                             <span className="text-[10px] text-amber-400 font-bold">Chunk {progress.chunk_status.chunk_index + 1} em breve...</span>
                                                         </div>
                                                         <span className="text-lg font-mono font-black text-amber-700 bg-white px-4 py-1 rounded-full border border-amber-100 shadow-sm min-w-[3.5rem] text-center">
+                                                             {delayCountdown ?? 0}s
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {progress.chunk_status.phase === 'quota' && (
+                                                    <div className="bg-red-50 border border-red-100 rounded-2xl px-5 py-3 flex items-center justify-between gap-3 animate-pulse">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-xs font-black text-red-600">🛑 Cota de IA Esgotada</span>
+                                                            <span className="text-[10px] text-red-400 font-bold italic">Pausado para evitar bloqueio...</span>
+                                                        </div>
+                                                        <span className="text-lg font-mono font-black text-red-700 bg-white px-4 py-1 rounded-full border border-red-100 shadow-sm min-w-[3.5rem] text-center">
                                                             {delayCountdown ?? 0}s
                                                         </span>
                                                     </div>

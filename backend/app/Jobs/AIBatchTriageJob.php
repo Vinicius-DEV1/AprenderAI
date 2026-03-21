@@ -170,7 +170,13 @@ class AIBatchTriageJob implements ShouldQueue
             if ($isQuota) {
                 Log::warning("[AIBATCH] Quota limit hit for batch #{$this->batchId} chunk #{$this->chunkIndex}. Releasing for 5m to wait for quota reset. Error: {$msg}");
                 app(\App\Services\AI\AIService::class)->registerCongestion('AIBatchTriageJob', "Batch: {$this->batchId} | Chunk: {$this->chunkIndex}");
-                $this->writeChunkPhase('idle'); // Just idle, do NOT updateProgress as failed
+                
+                // Signal "quota" phase with a 5-minute (300s) delay for the frontend
+                $this->writeChunkPhase('quota', [
+                    'delay_seconds' => 300,
+                    'delay_ends_at' => now()->addSeconds(300)->toIso8601String()
+                ]);
+                
                 $this->release(300);
                 return;
             }
