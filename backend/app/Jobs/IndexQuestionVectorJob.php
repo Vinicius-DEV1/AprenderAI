@@ -148,9 +148,9 @@ class IndexQuestionVectorJob implements ShouldQueue
                        str_contains(strtolower($msg), 'full failover failure');
 
             if ($isQuota) {
-                Log::warning("[IndexQuestionVectorJob] Quota limit hit for #{$this->questionId}. Releasing for 2m. Error: {$msg}");
+                Log::warning("[IndexQuestionVectorJob] Quota limit hit for #{$this->questionId}. Releasing for 5m. Error: {$msg}");
                 $aiService->registerCongestion('IndexQuestionVectorJob', $this->questionId);
-                $this->release(120);
+                $this->release(300);
                 return;
             }
 

@@ -91,7 +91,7 @@ return [
         'max_embeddings' => (int) env('XAVIER_MAX_CONCURRENT_EMBEDDINGS', 5),
 
         // Max simultaneous AI triage/classification batches
-        'max_triage'     => (int) env('XAVIER_MAX_CONCURRENT_TRIAGE', 2),
+        'max_triage'     => (int) env('XAVIER_MAX_CONCURRENT_TRIAGE', 5),
 
         // Max simultaneous ZIP import orchestrations (sequential-safe)
         'max_import'     => (int) env('XAVIER_MAX_CONCURRENT_IMPORT', 1),
