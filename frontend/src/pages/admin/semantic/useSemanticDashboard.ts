@@ -18,6 +18,7 @@ export const useSemanticDashboard = () => {
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [resetConfirmText, setResetConfirmText] = useState('');
     const [wakingUp, setWakingUp] = useState(false);
+    const [activeTab, setActiveTab] = useState('monitor');
     
     // Actions menu state (dropdown in header)
     const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
@@ -411,6 +412,8 @@ export const useSemanticDashboard = () => {
         handleClearTriageQueue,
         clearingTriage,
         handleResetEmbeddings,
-        handleClearCongestion
+        handleClearCongestion,
+        activeTab,
+        setActiveTab
     };
 };

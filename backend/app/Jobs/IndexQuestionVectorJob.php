@@ -128,7 +128,8 @@ class IndexQuestionVectorJob implements ShouldQueue
             $vectors = $aiService->generateEmbeddingsBatch($texts, $userId, 'RETRIEVAL_DOCUMENT');
 
             if (!$vectors || count($vectors) !== 5) {
-                throw new \RuntimeException('Batch embedding failed or returned incomplete results.');
+                $actualCount = $vectors ? count($vectors) : 0;
+                throw new \RuntimeException("Batch embedding failed or returned incomplete results for question #{$this->questionId} (Expected 5, Got {$actualCount}).");
             }
 
             [$statementVector, $conceptVector, $explanationVector, $alternativesVector, $skillsVector] = $vectors;

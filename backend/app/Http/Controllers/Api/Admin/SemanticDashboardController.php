@@ -14,9 +14,11 @@ use App\Models\SearchInteractionLog;
 use App\Models\AiSearchCache;
 use App\Models\AiSearchRequest;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 
 class SemanticDashboardController extends Controller
@@ -133,6 +135,33 @@ class SemanticDashboardController extends Controller
             ->orderBy('date')
             ->get();
 
+        // 7.5. Sucessos Recentes de Indexação (Embeddings)
+        $recentSuccesses = DB::table('question_vectors')
+            ->join('questions', 'questions.id', '=', 'question_vectors.question_id')
+            ->select([
+                'questions.id', 
+                'questions.statement', 
+                'questions.organization',
+                'questions.year',
+                'question_vectors.pipeline_version', 
+                'question_vectors.indexed_at',
+                DB::raw("(SELECT name FROM subjects INNER JOIN question_subject ON subjects.id = question_subject.subject_id WHERE question_subject.question_id = questions.id LIMIT 1) as subject_name")
+            ])
+            ->orderByDesc('question_vectors.indexed_at')
+            ->limit(10)
+            ->get()
+            ->map(function($q) {
+                return [
+                    'id' => $q->id,
+                    'statement' => Str::limit(strip_tags($q->statement), 120),
+                    'organization' => $q->organization,
+                    'year' => $q->year,
+                    'subject' => $q->subject_name,
+                    'pipeline_version' => $q->pipeline_version,
+                    'indexed_at' => $q->indexed_at,
+                ];
+            });
+
         // 8. Checar versão do Índice do Qdrant (Garante que as coleções existem antes)
         $qdrant->ensureQuestionsCollection();
         $qdrant->ensureConceptsCollection();
@@ -187,6 +216,7 @@ class SemanticDashboardController extends Controller
                 'pending' => $pendingJobs,
                 'failed'  => $failedJobs,
                 'recent_failures' => $failedJobsDetails,
+                'recent_successes' => $recentSuccesses,
                 'waiting_list'    => app(\App\Services\AI\AIService::class)->getCongestionList()['items'] ?? [],
                 'waiting_total'   => app(\App\Services\AI\AIService::class)->getCongestionList()['total'] ?? 0,
             ],

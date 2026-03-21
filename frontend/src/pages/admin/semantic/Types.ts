@@ -9,6 +9,16 @@ export const TARGET_PIPELINE_VERSION = 'v8.1.0';
  * Core interface representing all metrics and system health data 
  * returned by the Semantic Dashboard API.
  */
+export interface RecentSuccess {
+    id: number;
+    statement: string;
+    organization?: string;
+    year?: number;
+    subject?: string;
+    pipeline_version: string;
+    indexed_at: string;
+}
+
 export interface DashboardStats {
     overview: {
         mysql_published_questions: number;
@@ -45,6 +55,7 @@ export interface DashboardStats {
             payload: string;
             error_preview: string;
         }>;
+        recent_successes?: RecentSuccess[];
         waiting_list?: Array<{
             job: string;
             id: string | number;
