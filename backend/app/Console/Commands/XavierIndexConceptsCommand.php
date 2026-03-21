@@ -22,7 +22,7 @@ class XavierIndexConceptsCommand extends Command
 {
     protected $signature = 'xavier:index-concepts
                             {--sync    : Processa sincronamente em vez de enfileirar}
-                            {--limit=  : Máximo total de entidades a serem indexadas (global)}
+                            {--limit=  : Máximo de entidades POR TIPO (Subject, Topic, Organization, etc)}
                             {--force   : Re-indexa mesmo entidades já marcadas como indexadas}';
 
     protected $description = 'Indexa Disciplinas, Tópicos e Conceitos no Qdrant para Detecção de Intenção';
@@ -40,68 +40,58 @@ class XavierIndexConceptsCommand extends Command
         $isSync = (bool) $this->option('sync');
         $mode = $isSync ? 'síncrono (bloqueante)' : 'assíncrono (fila: embeddings)';
         $limit = $this->option('limit') ? (int) $this->option('limit') : null;
-        $remaining = $limit;
 
         $this->info("📋 Modo: {$mode}");
         if ($limit) {
-            $this->info("🔢 Limite Global: {$limit} entidades no total.");
+            $this->info("🔢 Limite: {$limit} entidades POR CATEGORIA.");
         }
         $this->newLine();
 
         // 1. Indexas as Disciplinas como "Âncoras" primárias de busca
-        $remaining = $this->indexEntityType(Subject::class, 'subject', $isSync, $remaining);
+        $this->indexEntityType(Subject::class, 'subject', $isSync, $limit);
 
         // 2. Indexa os Tópicos (Assuntos)
-        $remaining = $this->indexEntityType(Topic::class, 'topic', $isSync, $remaining);
+        $this->indexEntityType(Topic::class, 'topic', $isSync, $limit);
 
         // 3. Indexa os Conceitos Atômicos (para expansão e recall granular)
-        $remaining = $this->indexEntityType(Concept::class, 'concept', $isSync, $remaining);
+        $this->indexEntityType(Concept::class, 'concept', $isSync, $limit);
 
         // 4. Indexa Bancas (Organizations) extraídas das questões
-        $remaining = $this->indexUniqueMetadata('organization', 'organization', $isSync, $remaining);
+        $this->indexUniqueMetadata('organization', 'organization', $isSync, $limit);
 
         // 5. Indexa Órgãos (Institutions) extraídos das questões
-        $remaining = $this->indexUniqueMetadata('institution', 'institution', $isSync, $remaining);
+        $this->indexUniqueMetadata('institution', 'institution', $isSync, $limit);
 
         $this->newLine();
         $this->info('✅ Todos os jobs de indexação foram disparados com sucesso.');
         return 0;
     }
 
-    private function indexEntityType(string $modelClass, string $type, bool $isSync, ?int $limit): int
+    private function indexEntityType(string $modelClass, string $type, bool $isSync, ?int $limit): void
     {
-        if ($limit !== null && $limit <= 0) return 0;
-
         $query = $modelClass::query()
             ->when(!$this->option('force'), function ($query) {
                 return $query->whereNull('qdrant_indexed_at');
             });
 
         $count = $query->count();
-        $processCount = $limit !== null ? min($count, $limit) : $count;
-        
-        $this->info("🔢 Found {$count} {$type}s. Will process: {$processCount}.");
+        $this->info("🔢 Found {$count} {$type}s. " . ($limit ? "Indexing up to {$limit}." : "Indexing all."));
 
-        if ($processCount === 0) return $limit ?? 0;
+        if ($count === 0) return;
 
-        $processed = 0;
-        $this->withProgressBar($query->limit($processCount)->cursor(), function ($entity) use ($isSync, $type, &$processed) {
+        $this->withProgressBar($query->limit($limit)->cursor(), function ($entity) use ($isSync, $type) {
             if ($isSync) {
                 \App\Jobs\IndexSemanticEntityJob::dispatchSync((string)$entity->id, $type);
             } else {
                 \App\Jobs\IndexSemanticEntityJob::dispatch((string)$entity->id, $type);
             }
-            $processed++;
         });
 
         $this->newLine();
-        return $limit !== null ? $limit - $processed : 0;
     }
 
-    private function indexUniqueMetadata(string $column, string $type, bool $isSync, ?int $limit): int
+    private function indexUniqueMetadata(string $column, string $type, bool $isSync, ?int $limit): void
     {
-        if ($limit !== null && $limit <= 0) return 0;
-
         // Junk metadata to exclude from indexing (unacceptable to show in UI)
         $exclusions = [
             'N/A', 'NA', 'N/D', 'ND', 'NOME DA INSTITUIÇÃO', 'ÓRGÃO', '-', '.', 'NULL', 'UNDEFINED', 'TESTE', 'NI'
@@ -114,13 +104,11 @@ class XavierIndexConceptsCommand extends Command
             ->pluck($column);
 
         $count = $names->count();
-        $processCount = $limit !== null ? min($count, $limit) : $count;
+        $this->info("🔢 Found {$count} unique {$type}s. " . ($limit ? "Indexing up to {$limit}." : "Indexing all."));
 
-        $this->info("🔢 Found {$count} unique {$type}s. Will process: {$processCount}.");
+        if ($count === 0) return;
 
-        if ($processCount === 0) return $limit ?? 0;
-
-        $bar = $this->output->createProgressBar($processCount);
+        $bar = $this->output->createProgressBar($limit ? min($count, $limit) : $count);
         $processed = 0;
         foreach ($names as $name) {
             if ($limit !== null && $processed >= $limit) break;
@@ -135,7 +123,5 @@ class XavierIndexConceptsCommand extends Command
         }
         $bar->finish();
         $this->newLine();
-
-        return $limit !== null ? $limit - $processed : 0;
     }
 }
