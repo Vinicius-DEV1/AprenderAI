@@ -341,7 +341,7 @@ export const ResetModal = ({
                         </button>
                         <button
                             onClick={onConfirm}
-                            disabled={resetting || confirmText !== 'RESET'}
+                            disabled={resetting || confirmText.toUpperCase() !== 'RESET'}
                             className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 transition-all disabled:opacity-50 disabled:shadow-none"
                         >
                             {resetting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
