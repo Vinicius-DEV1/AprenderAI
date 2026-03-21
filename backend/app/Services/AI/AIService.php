@@ -1601,13 +1601,13 @@ EOT;
         // Background workers (CLI) should back off quickly (2s) to Level 2 (Queue Backoff)
         // while interactive users (Web) get more endurance (15s) to acquire a key.
         $isBackground = app()->runningInConsole();
-        $timeout = $isBackground ? 2.0 : 15.0; 
+        $timeout = 15.0; // Now 15s for everyone as requested
 
         while ((microtime(true) - $startTime) < $timeout) {
             // NEW: Jitter moved BEFORE picking a key and BEFORE locking.
             // This prevents workers from holding onto keys while they are sleeping.
             if ($isBackground) {
-                $jitterMicro = random_int(1000000, 5000000); // 1s to 5s for CLI
+                $jitterMicro = random_int(1000000, 2000000); // 1s to 2s for CLI as requested
                 Log::info("[AIService][executeWithFailover] Worker pausing for " . ($jitterMicro/1000000) . "s (jitter) BEFORE lock.");
                 usleep($jitterMicro);
             }
