@@ -14,6 +14,10 @@ class SemanticCacheService
      */
     public function findExactMatch(string $prompt): ?array
     {
+        if (\App\Models\Configuration::get('xavier_search_cache_enabled', '1') !== '1') {
+            return null;
+        }
+
         $hash = md5(trim(strtolower($prompt)));
         $cache = AiSearchCache::where('prompt_hash', $hash)->first();
 
@@ -39,6 +43,10 @@ class SemanticCacheService
      */
     public function findSimilarMatch(array $embeddingVector, float $threshold = 0.94): ?array
     {
+        if (\App\Models\Configuration::get('xavier_search_cache_enabled', '1') !== '1') {
+            return null;
+        }
+
         if (empty($embeddingVector)) {
             return null;
         }
@@ -106,6 +114,10 @@ class SemanticCacheService
      */
     public function storeInCache(string $prompt, array $embeddingVector, array $filtersResult, array $conceptIds = []): void
     {
+        if (\App\Models\Configuration::get('xavier_search_cache_enabled', '1') !== '1') {
+            return;
+        }
+
         try {
             $hash = md5(trim(strtolower($prompt)));
 

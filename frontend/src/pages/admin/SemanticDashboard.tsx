@@ -1,11 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import api from '../../api/axios';
-import { toast } from 'sonner';
-import {
-    Database, Activity, Search, RefreshCw, Settings, Save, Server,
-    Box, CheckCircle2, AlertCircle, PlayCircle, ChevronDown, Clock, Lightbulb,
     Trash2, BarChart3, TrendingUp, Zap, Hash, ArrowRight, Layers, Target, Filter,
-    Microscope, HelpCircle, X, ChevronRight, Shield, Rocket, Boxes
+    Microscope, HelpCircle, X, ChevronRight, Shield, Rocket, Boxes, Eye, Code, AlertTriangle, Info, ChevronUp
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -66,6 +60,18 @@ interface DashboardStats {
         status: string;
         created_at: string;
         similarity_threshold: number;
+        filters?: any;
+        error?: string;
+    }>;
+    search_cache?: Array<{
+        id: number;
+        prompt_text: string;
+        prompt_hash: string;
+        filters_result: any;
+        concept_ids: number[];
+        last_used_at: string | null;
+        created_at: string;
+        vector_preview: number[];
     }>;
     top_concepts?: Array<{ name: string; count: number; type?: 'concept' | 'subject' | 'topic' }>;
     config: {
@@ -75,6 +81,7 @@ interface DashboardStats {
         final_result_limit: number;
         rerank_weights: Record<string, number>;
         pipeline_version?: string;
+        search_cache_enabled: boolean;
     };
 }
 
@@ -137,6 +144,298 @@ const PipelineStep = ({ icon: Icon, title, status, description, children, isActi
     </div>
 );
 
+const SearchRow = ({ search, onReplay }: { search: any, onReplay: (prompt: string) => void }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    const filters = search.filters ? (typeof search.filters === 'string' ? JSON.parse(search.filters) : search.filters) : null;
+
+    return (
+        <>
+            <tr className={clsx(
+                "hover:bg-slate-50 dark:hover:bg-slate-700/20 transition-colors cursor-pointer group",
+                isExpanded && "bg-slate-50/80 dark:bg-slate-700/40"
+            )} onClick={() => setIsExpanded(!isExpanded)}>
+                <td className="px-4 py-3 text-xs text-slate-500">
+                    <div className="flex items-center gap-1.5 flex-nowrap shrink-0">
+                        <Clock className="w-3.5 h-3.5" />
+                        {search.created_at}
+                    </div>
+                </td>
+                <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400 flex items-center justify-center text-xs font-bold shrink-0">
+                            {search.user_name.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="truncate max-w-[120px]">{search.user_name}</span>
+                    </div>
+                </td>
+                <td className="px-4 py-3 font-medium text-slate-800 dark:text-white whitespace-normal break-words max-w-sm">
+                    “{search.prompt}”
+                </td>
+                <td className="px-4 py-3">
+                    <div className="flex items-center justify-between gap-4">
+                        <span className={clsx(
+                            "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase border",
+                            search.status === 'completed' ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800/50" :
+                                search.status === 'failed' ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50" :
+                                    "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50"
+                        )}>
+                            {search.status}
+                        </span>
+                        
+                        <div className="flex items-center gap-2">
+                             <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onReplay(search.prompt);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-all"
+                                title="Replay Search"
+                            >
+                                <PlayCircle className="w-4 h-4" />
+                            </button>
+                            {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {isExpanded && (
+                <tr className="bg-slate-50/50 dark:bg-slate-700/20">
+                    <td colSpan={4} className="px-4 py-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                            {/* PATH & STRATEGY */}
+                            <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                                <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
+                                    <Target className="w-3 h-3 text-indigo-500" />
+                                    Caminho e Estratégia
+                                </h5>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-slate-500">Path:</span>
+                                        <span className="font-mono bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 px-1.5 py-0.5 rounded">
+                                            {filters?.search_path || 'standard_sql'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-slate-500">Modo:</span>
+                                        <span className="font-medium text-slate-700 dark:text-slate-200">
+                                            {filters?.search_mode === 'vector' ? 'Vetor (Híbrido)' : 'Lexical (SQL)'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-slate-500">Threshold:</span>
+                                        <span className="font-medium text-slate-700 dark:text-slate-200">
+                                            {search.similarity_threshold || 'N/A'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* APPLIED FILTERS */}
+                            <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                                <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
+                                    <Filter className="w-3 h-3 text-emerald-500" />
+                                    Filtros Extraídos
+                                </h5>
+                                <div className="space-y-1.5">
+                                    {filters?.organization && (
+                                        <div className="flex flex-wrap gap-1 items-center">
+                                            <span className="text-[10px] text-slate-400">Banca:</span>
+                                            {(Array.isArray(filters.organization) ? filters.organization : [filters.organization]).map((org: string) => (
+                                                <span key={org} className="text-[10px] bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-800/50">{org}</span>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {filters?.institution && (
+                                        <div className="flex flex-wrap gap-1 items-center">
+                                            <span className="text-[10px] text-slate-400">Inst:</span>
+                                            {(Array.isArray(filters.institution) ? filters.institution : [filters.institution]).map((inst: string) => (
+                                                <span key={inst} className="text-[10px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-800/50">{inst}</span>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {(filters?.year || filters?.difficulty) && (
+                                        <div className="flex gap-2 items-center">
+                                            {filters.year && (
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-[10px] text-slate-400">Ano:</span>
+                                                    <span className="text-[10px] font-medium text-slate-700 dark:text-slate-200">{filters.year_operator || '='} {filters.year}</span>
+                                                </div>
+                                            )}
+                                            {filters.difficulty && (
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-[10px] text-slate-400">Dif:</span>
+                                                    <span className="text-[10px] font-medium text-slate-700 dark:text-slate-200">{filters.difficulty}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    {!filters?.organization && !filters?.institution && !filters?.year && !filters?.difficulty && (
+                                        <span className="text-xs text-slate-400 italic">Nenhum filtro estrito aplicado.</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* ERROR OR CONCEPTS */}
+                            <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
+                                {search.status === 'failed' ? (
+                                    <>
+                                        <div className="absolute top-0 right-0 w-1 h-full bg-red-500"></div>
+                                        <h5 className="text-[10px] font-bold uppercase tracking-wider text-red-500 mb-2 flex items-center gap-1.5">
+                                            <AlertTriangle className="w-3 h-3" />
+                                            Erro de Execução
+                                        </h5>
+                                        <p className="text-xs text-red-600 dark:text-red-400 font-mono leading-relaxed truncate-2-lines">
+                                            {search.error || 'Erro desconhecido durante o pipeline.'}
+                                        </p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
+                                            <Box className="w-3 h-3 text-amber-500" />
+                                            Conceitos & Objetos
+                                        </h5>
+                                        <div className="flex flex-wrap gap-1">
+                                            {filters?.concepts?.length > 0 ? filters.concepts.map((c: any) => (
+                                                <span key={c.id || c.name} className="text-[10px] bg-amber-50 dark:bg-amber-900/30 text-amber-600 px-1.5 py-0.5 rounded border border-amber-100 dark:border-amber-800/50">
+                                                    {c.name || c}
+                                                </span>
+                                            )) : (
+                                                <span className="text-xs text-slate-400 italic">Busca puramente semântica.</span>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                        
+                        {/* MORE JSON DATA */}
+                        <details className="mt-3 group/details">
+                            <summary className="text-[10px] font-bold text-slate-400 hover:text-indigo-500 cursor-pointer list-none flex items-center gap-1 transition-colors">
+                                <Code className="w-3.5 h-3.5" />
+                                RAW DEBUG DATA
+                            </summary>
+                            <div className="mt-2 p-3 bg-slate-900 rounded-lg text-[10px] font-mono text-emerald-400 overflow-x-auto border border-slate-800">
+                                <pre>{JSON.stringify(filters, null, 2)}</pre>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+            )}
+        </>
+    );
+};
+
+const CacheRow = ({ item }: { item: any }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [showVector, setShowVector] = useState(false);
+
+    return (
+        <>
+            <tr className={clsx(
+                "hover:bg-slate-50 dark:hover:bg-slate-700/20 transition-colors cursor-pointer group",
+                isExpanded && "bg-slate-50/80 dark:bg-slate-700/40"
+            )} onClick={() => setIsExpanded(!isExpanded)}>
+                <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                         <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500">
+                            <Database className="w-3.5 h-3.5" />
+                        </div>
+                        <span className="font-mono text-[10px] text-slate-400">{item.prompt_hash.substring(0, 8)}...</span>
+                    </div>
+                </td>
+                <td className="px-4 py-3 font-medium text-slate-800 dark:text-white max-w-sm truncate">
+                    “{item.prompt_text}”
+                </td>
+                <td className="px-4 py-3 text-xs text-slate-500">
+                    <div className="flex flex-col">
+                        <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {item.last_used_at || 'Nunca usado'}
+                        </span>
+                        <span className="text-[10px] opacity-60">Criado em: {item.created_at}</span>
+                    </div>
+                </td>
+                <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-2">
+                        <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                            {item.filters_result?.question_ids?.length || 0} IDs
+                        </span>
+                        {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                    </div>
+                </td>
+            </tr>
+            {isExpanded && (
+                <tr className="bg-slate-50/50 dark:bg-slate-700/20">
+                    <td colSpan={4} className="px-4 py-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                                <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
+                                    <Box className="w-3 h-3 text-amber-500" />
+                                    Conteúdo Cacheado
+                                </h5>
+                                <div className="space-y-3">
+                                    <div>
+                                        <span className="text-[10px] text-slate-400 block mb-1">IDs de Conceito Detectados:</span>
+                                        <div className="flex flex-wrap gap-1">
+                                            {item.concept_ids?.length > 0 ? item.concept_ids.map((id: number) => (
+                                                <span key={id} className="text-[10px] bg-amber-50 dark:bg-amber-900/30 text-amber-600 px-1.5 py-0.5 rounded border border-amber-100 dark:border-amber-800/50">#{id}</span>
+                                            )) : <span className="text-[10px] text-slate-400 italic">Nenhum</span>}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] text-slate-400 block mb-1">Questões Resultantes ({item.filters_result?.question_ids?.length || 0}):</span>
+                                        <div className="font-mono text-[9px] bg-slate-100 dark:bg-slate-900 p-1.5 rounded max-h-20 overflow-y-auto text-slate-600 dark:text-slate-400 break-all">
+                                            {item.filters_result?.question_ids?.join(', ') || 'Nenhum ID'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                                <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5">
+                                        <Layers className="w-3 h-3 text-indigo-500" />
+                                        Metadados do Vetor
+                                    </div>
+                                    <button 
+                                        onClick={() => setShowVector(!showVector)}
+                                        className="text-indigo-500 hover:text-indigo-600 flex items-center gap-1"
+                                    >
+                                        <Eye className="w-3 h-3" />
+                                        {showVector ? 'Esconder' : 'Ver Debug'}
+                                    </button>
+                                </h5>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-slate-500">Prompt Hash (MD5):</span>
+                                        <span className="font-mono text-slate-400">{item.prompt_hash}</span>
+                                    </div>
+                                    {showVector && (
+                                        <div className="animate-in zoom-in-95 duration-200">
+                                            <span className="text-[10px] text-slate-400 block mb-1">Vetor (Primeiras 5 dimensões):</span>
+                                            <div className="grid grid-cols-5 gap-1">
+                                                {item.vector_preview.map((val: number, idx: number) => (
+                                                    <div key={idx} className="bg-indigo-50 dark:bg-indigo-900/30 text-[9px] font-mono p-1 rounded text-center text-indigo-600">
+                                                        {val.toFixed(4)}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <p className="mt-2 text-[9px] text-slate-400 leading-tight">
+                                                O vetor completo possui 1536 dimensões (OpenAI text-embedding-3-small).
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            )}
+        </>
+    );
+};
+
 const SemanticDashboard = () => {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
@@ -162,7 +461,8 @@ const SemanticDashboard = () => {
             popularity: 0.15,
             quality: 0.15,
             recency: 0.10
-        }
+        },
+        search_cache_enabled: true,
     });
 
     // Index Modal (Questions)
@@ -229,6 +529,16 @@ const SemanticDashboard = () => {
         return steps;
     };
 
+    const handleReplay = (prompt: string) => {
+        setSearchPrompt(prompt);
+        const element = document.getElementById('maestro-search-input');
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+            element.focus();
+        }
+        toast.info(`Prompt "${prompt}" carregado no Maestro.`);
+    };
+
     const loadStats = async () => {
         try {
             isBusyRef.current = true;
@@ -238,12 +548,10 @@ const SemanticDashboard = () => {
             setConfigState({
                 vector_search_enabled: res.data.config.vector_search_enabled == 1 || res.data.config.vector_search_enabled == true,
                 concept_detection_threshold: parseFloat(res.data.config.concept_detection_threshold) || 0.45,
-                rerank_weights: res.data.config.rerank_weights || {
-                    vector: 0.60,
-                    popularity: 0.15,
                     quality: 0.15,
                     recency: 0.10
-                }
+                },
+                search_cache_enabled: res.data.config.search_cache_enabled || false
             });
         } catch (error) {
             toast.error('Erro ao carregar os dados do dashboard.');
@@ -864,6 +1172,34 @@ const SemanticDashboard = () => {
                             <hr className="border-slate-100 dark:border-slate-700" />
 
                             <div>
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <div className="relative">
+                                        <input
+                                            type="checkbox"
+                                            className="sr-only"
+                                            checked={configState.search_cache_enabled}
+                                            onChange={(e) => setConfigState({ ...configState, search_cache_enabled: e.target.checked })}
+                                        />
+                                        <div className={clsx("block w-14 h-8 rounded-full transition-colors", configState.search_cache_enabled ? "bg-indigo-500" : "bg-slate-300 dark:bg-slate-600")}></div>
+                                        <div className={clsx("dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform", configState.search_cache_enabled && "transform translate-x-6")}></div>
+                                    </div>
+                                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700/50">
+                                        <div>
+                                            <span className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-1">
+                                                Cache de Busca (L2)
+                                                <div className="cursor-help text-slate-400" title="Quando ativado, economiza custos e melhora a velocidade ao reutilizar resultados de buscas idênticas ou muito próximas.">
+                                                    <HelpCircle className="w-3.5 h-3.5" />
+                                                </div>
+                                            </span>
+                                            <p className="text-[10px] text-slate-500">Persistência em MySQL (Xavier Cache)</p>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <hr className="border-slate-100 dark:border-slate-700" />
+
+                            <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                                     Tolerância Semântica (Concept Threshold)
                                 </label>
@@ -1055,6 +1391,7 @@ const SemanticDashboard = () => {
                             <div className="flex-1 relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                                 <input
+                                    id="maestro-search-input"
                                     type="text"
                                     value={searchPrompt}
                                     onChange={(e) => setSearchPrompt(e.target.value)}
@@ -1381,51 +1718,31 @@ const SemanticDashboard = () => {
                     {/* RECENT SEARCHES PANEL */}
                     {stats && stats.recent_searches && (
                         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm overflow-hidden">
-                            <h2 className="text-lg font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                                <Activity className="w-5 h-5 text-emerald-500" />
-                                Buscas Recentes (Ao Vivo)
+                            <h2 className="text-lg font-semibold text-slate-800 dark:text-white mb-4 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Activity className="w-5 h-5 text-emerald-500" />
+                                    Buscas Recentes (Ao Vivo)
+                                </div>
+                                <span className={clsx(
+                                    "text-[10px] font-bold px-2 py-0.5 rounded-full border",
+                                    "bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800"
+                                )}>
+                                    Últimas 10
+                                </span>
                             </h2>
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm whitespace-nowrap border-collapse">
+                                <table className="w-full text-left text-sm whitespace-nowrap border-separate border-spacing-0">
                                     <thead>
                                         <tr className="border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
-                                            <th className="font-medium px-4 py-3 bg-slate-50 dark:bg-slate-800/50">Data</th>
-                                            <th className="font-medium px-4 py-3 bg-slate-50 dark:bg-slate-800/50">Usuário</th>
-                                            <th className="font-medium px-4 py-3 bg-slate-50 dark:bg-slate-800/50">Prompt Buscado</th>
-                                            <th className="font-medium px-4 py-3 bg-slate-50 dark:bg-slate-800/50">Status</th>
+                                            <th className="font-bold text-[10px] uppercase tracking-widest px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700">Data</th>
+                                            <th className="font-bold text-[10px] uppercase tracking-widest px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700">Usuário</th>
+                                            <th className="font-bold text-[10px] uppercase tracking-widest px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700">Prompt Buscado</th>
+                                            <th className="font-bold text-[10px] uppercase tracking-widest px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700 text-right">Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-200">
                                         {stats.recent_searches.map((search) => (
-                                            <tr key={search.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/20 transition-colors">
-                                                <td className="px-4 py-3 text-xs text-slate-500">
-                                                    <div className="flex items-center gap-1.5 flex-nowrap shrink-0">
-                                                        <Clock className="w-3.5 h-3.5" />
-                                                        {search.created_at}
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400 flex items-center justify-center text-xs font-bold shrink-0">
-                                                            {search.user_name.charAt(0).toUpperCase()}
-                                                        </div>
-                                                        <span className="truncate max-w-[120px]">{search.user_name}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3 font-medium text-slate-800 dark:text-white whitespace-normal break-words max-w-sm">
-                                                    “{search.prompt}”
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <span className={clsx(
-                                                        "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase border",
-                                                        search.status === 'completed' ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800/50" :
-                                                            search.status === 'failed' ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50" :
-                                                                "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50"
-                                                    )}>
-                                                        {search.status}
-                                                    </span>
-                                                </td>
-                                            </tr>
+                                            <SearchRow key={search.id} search={search} onReplay={handleReplay} />
                                         ))}
                                         {stats.recent_searches.length === 0 && (
                                             <tr>
@@ -1439,6 +1756,68 @@ const SemanticDashboard = () => {
                             </div>
                         </div>
                     )}
+
+                    {/* SEARCH CACHE PANEL (L2) */}
+                    {stats && stats.search_cache && (
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm overflow-hidden">
+                            <h2 className="text-lg font-semibold text-slate-800 dark:text-white mb-4 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Database className="w-5 h-5 text-indigo-500" />
+                                    Cache Semântico (L2)
+                                </div>
+                                <div className="flex items-center gap-2">
+                                     <button 
+                                        onClick={async () => {
+                                            setClearingCache(true);
+                                            try {
+                                                await api.post('/api/v1/admin/semantic/clear-cache');
+                                                toast.success('Cache semântico limpo com sucesso.');
+                                                loadStats();
+                                            } catch (e) {
+                                                toast.error('Erro ao limpar cache.');
+                                            } finally {
+                                                setClearingCache(false);
+                                            }
+                                        }}
+                                        disabled={clearingCache}
+                                        className="text-[10px] font-bold text-slate-400 hover:text-red-500 flex items-center gap-1 transition-colors"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        LIMPAR CACHE
+                                    </button>
+                                </div>
+                            </h2>
+                            <p className="text-xs text-slate-500 mb-6 flex items-center gap-1.5">
+                                <Info className="w-3.5 h-3.5" />
+                                O cache L2 armazena os embeddings e resultados finais para acelerar buscas repetidas ou semanticamente próximas.
+                            </p>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm whitespace-nowrap border-separate border-spacing-0">
+                                    <thead>
+                                        <tr className="border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
+                                            <th className="font-bold text-[10px] uppercase tracking-widest px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700">Hash (Key)</th>
+                                            <th className="font-bold text-[10px] uppercase tracking-widest px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700">Prompt Original</th>
+                                            <th className="font-bold text-[10px] uppercase tracking-widest px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700">Último Uso</th>
+                                            <th className="font-bold text-[10px] uppercase tracking-widest px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700 text-right">Payload</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-200">
+                                        {stats.search_cache.map((item) => (
+                                            <CacheRow key={item.id} item={item} />
+                                        ))}
+                                        {stats.search_cache.length === 0 && (
+                                            <tr>
+                                                <td colSpan={4} className="px-4 py-8 text-center text-slate-500 italic">
+                                                    Cache semântico está limpo no momento.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
                 </div>
             </div>
 

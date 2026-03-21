@@ -103,6 +103,8 @@ class SemanticDashboardController extends Controller
                     'status' => $req->status,
                     'created_at' => \Carbon\Carbon::parse($req->created_at)->format('d/m/Y H:i:s'),
                     'similarity_threshold' => $req->similarity_threshold,
+                    'filters' => $req->filters,
+                    'error' => $req->error,
                 ];
             });
 
@@ -194,6 +196,21 @@ class SemanticDashboardController extends Controller
                 'chart_data'        => $chartData,
             ],
             'recent_searches' => $recentSearches,
+            'search_cache' => \App\Models\AiSearchCache::orderBy('created_at', 'desc')
+                ->limit(20)
+                ->get()
+                ->map(function($c) {
+                    return [
+                        'id' => $c->id,
+                        'prompt_text' => $c->prompt_text,
+                        'prompt_hash' => $c->prompt_hash,
+                        'filters_result' => $c->filters_result,
+                        'concept_ids' => $c->concept_ids,
+                        'last_used_at' => $c->last_used_at ? $c->last_used_at->format('d/m/Y H:i:s') : null,
+                        'created_at' => $c->created_at->format('d/m/Y H:i:s'),
+                        'vector_preview' => array_slice($c->embedding ?? [], 0, 5),
+                    ];
+                }),
             'config' => [
                 'vector_search_enabled'       => \App\Models\Configuration::get('xavier_vector_search_enabled', config('xavier.vector_search_enabled')),
                 'concept_detection_threshold' => \App\Models\Configuration::get('xavier_concept_detection_threshold', config('xavier.embeddings.concept_detection_threshold')),
@@ -202,6 +219,7 @@ class SemanticDashboardController extends Controller
                 'final_result_limit'          => \App\Models\Configuration::get('xavier_final_result_limit', config('xavier.search.final_result_limit')),
                 'rerank_weights'              => json_decode(\App\Models\Configuration::get('xavier_rerank_weights', json_encode(config('xavier.search.rerank_weights'))), true),
                 'pipeline_version'            => config('xavier.embeddings.pipeline_version'),
+                'search_cache_enabled'        => \App\Models\Configuration::get('xavier_search_cache_enabled', '1') === '1',
             ]
         ]);
     }
@@ -223,6 +241,7 @@ class SemanticDashboardController extends Controller
             'rerank_weights.popularity'   => 'numeric|min:0|max:1',
             'rerank_weights.quality'      => 'numeric|min:0|max:1',
             'rerank_weights.recency'      => 'numeric|min:0|max:1',
+            'search_cache_enabled'        => 'boolean',
         ]);
 
         if ($request->has('vector_search_enabled')) {
@@ -247,6 +266,10 @@ class SemanticDashboardController extends Controller
 
         if ($request->has('rerank_weights')) {
             \App\Models\Configuration::set('xavier_rerank_weights', json_encode($validated['rerank_weights']));
+        }
+
+        if ($request->has('search_cache_enabled')) {
+            \App\Models\Configuration::set('xavier_search_cache_enabled', $request->boolean('search_cache_enabled') ? '1' : '0');
         }
 
         // Clear config cache to ensure changes take effect immediately
