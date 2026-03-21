@@ -93,7 +93,7 @@ services:
       - /proc:/host_proc:ro
     env_file: ./backend/.env
     # Queue priority: high > default
-    command: php artisan queue:work --queue=high,default --sleep=3 --tries=3 --max-time=3600
+    command: php artisan queue:work --queue=high,ai_triage,default --sleep=3 --tries=3 --max-time=3600
     deploy:
       replicas: 24
       resources:
@@ -142,10 +142,10 @@ services:
     env_file: ./backend/.env
     command: >
       php artisan queue:work
-      --queue=high,search_embeddings,default,embeddings,low
+      --queue=high,search_embeddings,ai_triage,default,embeddings,low
       --sleep=3
       --tries=3
-      --timeout=700
+      --timeout=900
       --max-time=3600
     deploy:
       replicas: 20

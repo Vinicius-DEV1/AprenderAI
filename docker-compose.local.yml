@@ -92,7 +92,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.local
-    command: ["php", "artisan", "queue:work", "--queue=search_embeddings,embeddings,essays,import,default", "--tries=3", "--timeout=90"]
+    command: ["php", "artisan", "queue:work", "--queue=search_embeddings,ai_triage,embeddings,essays,import,default", "--tries=3", "--timeout=900"]
     deploy:
       replicas: 7
     volumes:
