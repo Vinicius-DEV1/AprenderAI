@@ -689,7 +689,7 @@ class QuestionController extends Controller
             try {
                 foreach ($analysis['restricted_terms'] as $term) {
                     $mustVector = $aiService->generateEmbedding($term, $user->id, 'RETRIEVAL_QUERY');
-                    $mustMatches = $qdrant->searchConcepts($mustVector, 3, 0.85); // Threshold ALTO para restrição ser precisa
+                    $mustMatches = $qdrant->searchConcepts($mustVector, 3, 0.70); // Threshold ajustado para melhor recall de siglas (ex: IBFC)
                     
                     foreach ($mustMatches as $match) {
                         $payload = $match['payload'] ?? [];
