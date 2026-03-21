@@ -506,7 +506,7 @@ export default function SimulationView() {
                                         <img
                                             src={question.image_path.startsWith('http') ? question.image_path : `${apiUrl}/storage/${question.image_path.replace(/^\//, '')}`.replace(/([^:])\/\//g, '$1/')}
                                             alt="Imagem da questão"
-                                            className="max-w-full h-auto rounded-lg border border-gray-100 dark:border-slate-800 mx-auto block shadow-sm"
+                                            className="qb-question-image shadow-sm border border-gray-100 dark:border-slate-800"
                                         />
                                     </div>
                                 )}
@@ -532,7 +532,7 @@ export default function SimulationView() {
                                                     <img
                                                         src={alt.image_path.startsWith('http') ? alt.image_path : `${apiUrl}/storage/${alt.image_path.replace(/^\//, '')}`.replace(/([^:])\/\//g, '$1/')}
                                                         alt={`Alternativa ${alt.label}`}
-                                                        className="max-w-full h-auto rounded object-contain mt-2"
+                                                        className="qb-alt-image"
                                                     />
                                                 )}
                                             </div>

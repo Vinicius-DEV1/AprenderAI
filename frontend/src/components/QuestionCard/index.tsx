@@ -555,7 +555,7 @@ const QuestionCard = memo(({
                     <img
                         src={q.image_path.startsWith('http') ? q.image_path : `${apiUrl}/storage/${q.image_path.replace(/^\//, '').replace(/^storage\//, '')}`.replace(/([^:])\/\//g, '$1/')}
                         alt="Imagem da questão"
-                        className="max-w-full h-auto rounded-lg border border-gray-100 dark:border-slate-800 mx-auto block shadow-sm"
+                        className="qb-question-image shadow-sm border border-gray-100 dark:border-slate-800"
                     />
                 </div>
             )}
@@ -585,7 +585,7 @@ const QuestionCard = memo(({
                                     <img
                                         src={alt.image_path.startsWith('http') ? alt.image_path : `${apiUrl}/storage/${alt.image_path.replace(/^\//, '').replace(/^storage\//, '')}`.replace(/([^:])\/\//g, '$1/')}
                                         alt={alt.label}
-                                        className="max-w-full h-auto rounded-lg"
+                                        className="qb-alt-image"
                                     />
                                 )}
                             </div>
