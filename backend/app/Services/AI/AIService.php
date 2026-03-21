@@ -1596,6 +1596,12 @@ EOT;
         $lastException = null;
         $keysLockedCount = 0;
         $startTime = microtime(true);
+        $poolStatus = [
+            'total' => $apiKeys->count(),
+            'online' => 0,
+            'blacklisted' => 0,
+            'busy' => 0
+        ];
         
         // Priority System: 
         // Background workers (CLI) should back off quickly (2s) to Level 2 (Queue Backoff)
@@ -1613,6 +1619,8 @@ EOT;
             foreach ($apiKeys as $apiKey) {
                 // Ignore keys that are currently in the Quota Blacklist (Level 3)
                 if (in_array($apiKey->id, $blacklist)) {
+                    $poolStatus['blacklisted']++;
+                    Log::debug("[AIService][executeWithFailover] Skipping Key #{$apiKey->id} ({$apiKey->provider}): In Blacklist.");
                     continue;
                 }
 
@@ -1621,27 +1629,49 @@ EOT;
 
                 if ($isLocked) {
                     $keysLockedCount++;
-                    // Key is occupied by another worker. Skip to the next one.
+                    $poolStatus['busy']++;
+                    Log::debug("[AIService][executeWithFailover] Skipping Key #{$apiKey->id} ({$apiKey->provider}): Locked in Redis.");
                     continue;
                 }
 
+                $poolStatus['online']++;
+
                 // Acquire distributed lock (1 min safety TTL)
+                Log::debug("[AIService][executeWithFailover] Attempting to acquire lock for Key #{$apiKey->id}...");
                 $lockAcquired = \Illuminate\Support\Facades\Redis::set($lockKey, '1', 'EX', 60, 'NX');
                 if (!$lockAcquired) {
                     $keysLockedCount++;
+                    Log::debug("[AIService][executeWithFailover] Lock acquisition FAILED for Key #{$apiKey->id}.");
                     continue;
                 }
+
+                Log::debug("[AIService][executeWithFailover] Lock ACQUIRED for Key #{$apiKey->id}.");
 
                 try {
                     $attempts = 0;
                     $maxAttempts = 3;
 
+                    Log::info("[AIService][executeWithFailover] -> POOL STATUS Leg : [Total: {$poolStatus['total']}] [BL: {$poolStatus['blacklisted']}] [Busy: {$poolStatus['busy']}] [Testing: Key #{$apiKey->id}]");
+
                     while ($attempts < $maxAttempts) {
                         try {
-                            return $closure($apiKey);
+                            $reqStart = microtime(true);
+                            $result = $closure($apiKey);
+                            $duration = round((microtime(true) - $reqStart) * 1000);
+                            
+                            Log::info("[AIService][executeWithFailover] -> SUCCESS on Key #{$apiKey->id} ({$apiKey->provider}) [Duration: {$duration}ms]");
+                            
+                            return $result;
                         } catch (\Exception $e) {
                             $attempts++;
                             $lastException = $e;
+                            $duration = round((microtime(true) - $reqStart) * 1000);
+                            $errorBody = method_exists($e, 'getResponse') && $e->getResponse() ? (string)$e->getResponse()->getBody() : $e->getMessage();
+
+                            Log::warning("[AIService][executeWithFailover] -> FAILURE on Key #{$apiKey->id} ({$apiKey->provider}) [Duration: {$duration}ms] [Attempt: {$attempts}]", [
+                                'error' => $e->getMessage(),
+                                'body' => substr($errorBody, 0, 1000)
+                            ]);
 
                             if ($this->isRetriableError($e)) {
                                 $isQuota = str_contains(strtolower($e->getMessage()), '429') || 
@@ -1664,6 +1694,7 @@ EOT;
                         }
                     }
                 } finally {
+                    Log::debug("[AIService][executeWithFailover] Releasing lock for Key #{$apiKey->id}.");
                     // Always release the lock for Level 1 workers to pounce.
                     \Illuminate\Support\Facades\Redis::del($lockKey);
                 }
