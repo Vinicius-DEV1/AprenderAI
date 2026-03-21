@@ -731,10 +731,7 @@ EOT;
                     'taskType' => $taskType,
                 ];
 
-                // Tactical Rate Limit Control: Random delay (jitter) to prevent synchronization between workers
-                $jitterMicro = random_int(500000, 2000000); // 0.5s to 2s
-                \Illuminate\Support\Facades\Log::info("[AIBATCH] Embedding worker pausing for " . ($jitterMicro/1000000) . "s (jitter) before request.");
-                usleep($jitterMicro);
+                // Jitter moved to executeWithFailover to avoid holding locks while sleeping.
 
                 $response = Http::timeout(10)->post($url, $payload);
                 $executionTime = microtime(true) - $startTime;
@@ -1188,10 +1185,7 @@ EOT;
                 $payload = ['requests' => $requests];
 
                 // Jitter to prevent worker synchronization
-                $jitterMicro = random_int(500000, 2000000); 
-                if (app()->runningInConsole()) {
-                    usleep($jitterMicro);
-                }
+                // Jitter moved to executeWithFailover.
 
                 $response = Http::timeout(30)->post($url, $payload);
                 $executionTime = microtime(true) - $startTime;
@@ -1610,6 +1604,14 @@ EOT;
         $timeout = $isBackground ? 2.0 : 15.0; 
 
         while ((microtime(true) - $startTime) < $timeout) {
+            // NEW: Jitter moved BEFORE picking a key and BEFORE locking.
+            // This prevents workers from holding onto keys while they are sleeping.
+            if ($isBackground) {
+                $jitterMicro = random_int(1000000, 5000000); // 1s to 5s for CLI
+                Log::info("[AIService][executeWithFailover] Worker pausing for " . ($jitterMicro/1000000) . "s (jitter) BEFORE lock.");
+                usleep($jitterMicro);
+            }
+
             $keysLockedCount = 0;
             
             // Read the latest quota blacklist from cache (Level 3). 

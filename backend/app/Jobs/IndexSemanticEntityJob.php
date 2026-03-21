@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\HasConcurrencyLimit;
 use App\Models\Subject;
 use App\Models\Topic;
 use App\Services\AI\AIService;
@@ -26,6 +27,7 @@ use Illuminate\Support\Facades\Log;
 class IndexSemanticEntityJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use HasConcurrencyLimit;
 
     public int $tries   = 20; // 20 tries * 5 min = 1.6 hours of resilience for entities
     public int $timeout = 60;
@@ -47,6 +49,14 @@ class IndexSemanticEntityJob implements ShouldQueue
         QdrantService        $qdrant
     ): void {
         Log::info("[Xavier][IndexEntity] Starting indexing for {$this->entityType} #{$this->entityId}...");
+
+        // Concurrency Semaphore: limit to max N simultaneous embedding API calls cluster-wide
+        $maxConcurrent = (int) \App\Models\Configuration::get('xavier_max_concurrent_embeddings', config('xavier.concurrency.max_embeddings', 3));
+        if (!$this->acquireSlot('embeddings', $maxConcurrent, retryIn: 20)) {
+            return; // Released back to queue automatically
+        }
+
+        try {
 
         $model = $this->resolveModel();
         if (!$model) {
@@ -135,6 +145,10 @@ class IndexSemanticEntityJob implements ShouldQueue
             Log::info("[Xavier][IndexEntity] {$this->entityType} '{$this->entityId}' indexed successfully.");
         } else {
             throw new \RuntimeException("Qdrant upsert failed");
+        }
+        
+        } finally {
+            $this->releaseSlot('embeddings');
         }
     }
 
