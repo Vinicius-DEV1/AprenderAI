@@ -1,4 +1,8 @@
-import React from 'react';
+/**
+ * ApiPricing
+ * Main entry point for AI Model Pricing management.
+ * Allows defining and updating Input/Output costs for different LLM providers.
+ */
 import { useApiPricing } from './api-pricing/useApiPricing';
 import ApiPricingHeader from './api-pricing/ApiPricingHeader';
 import WarningBanner from './api-pricing/WarningBanner';

@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { DashboardStats, ConfigState } from './Types';
 
 export const useSemanticDashboard = () => {
+    // --- UI & Loading States ---
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [configLoading, setConfigLoading] = useState(false);
@@ -16,10 +17,15 @@ export const useSemanticDashboard = () => {
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [resetConfirmText, setResetConfirmText] = useState('');
     const [wakingUp, setWakingUp] = useState(false);
+    
+    // Actions menu state (dropdown in header)
     const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
     const actionsMenuRef = useRef<HTMLDivElement>(null);
 
-    // Config form
+    /**
+     * Semantic Engine Configuration
+     * Controls vector search, thresholds, and rerank weights
+     */
     const [configState, setConfigState] = useState<ConfigState>({
         vector_search_enabled: true,
         concept_detection_threshold: 0.45,
@@ -32,20 +38,25 @@ export const useSemanticDashboard = () => {
         search_cache_enabled: true,
     });
 
-    // Index Modal (Questions)
+    // Modal control for question reindexing
     const [isIndexModalOpen, setIsIndexModalOpen] = useState(false);
     const [indexBatchLimit, setIndexBatchLimit] = useState(500);
     const [indexForce, setIndexForce] = useState(false);
 
-    // Intent Index Modal (Subjects/Topics)
+    // Modal control for subject/intent reindexing
     const [isIntentModalOpen, setIsIntentModalOpen] = useState(false);
     const [intentBatchLimit, setIntentBatchLimit] = useState(1000);
     const [intentForce, setIntentForce] = useState(false);
 
-    // Test search
+    // Maestro Tester (simulation) state
     const [searchPrompt, setSearchPrompt] = useState('');
     const [searchResults, setSearchResults] = useState<any>(null);
 
+    /**
+     * parsePipelineSteps
+     * Parses the raw debug logs from the Semantic Engine into a structured object
+     * used for visualizing the search pipeline (Maestro Pipeline).
+     */
     const parsePipelineSteps = (logs: string[]) => {
         const steps = {
             lexical: { positive: [] as string[], negative: [] as string[] },
@@ -96,6 +107,10 @@ export const useSemanticDashboard = () => {
         return steps;
     };
 
+    /**
+     * handleReplay
+     * Loads a previous search query into the Maestro tester input and scrolls to it.
+     */
     const handleReplay = (prompt: string) => {
         setSearchPrompt(prompt);
         const element = document.getElementById('maestro-search-input');
@@ -106,6 +121,10 @@ export const useSemanticDashboard = () => {
         toast.info(`Prompt "${prompt}" carregado no Maestro.`);
     };
 
+    /**
+     * loadStats
+     * Fetches current semantic health, stats, and active config from the server.
+     */
     const loadStats = async () => {
         try {
             isBusyRef.current = true;
@@ -136,12 +155,19 @@ export const useSemanticDashboard = () => {
     useEffect(() => {
         loadStats();
 
+        /**
+         * Real-time polling
+         * Refreshes stats every 10 seconds if no other heavy operation is running.
+         */
         const interval = setInterval(() => {
             if (!isBusyRef.current) {
                 loadStats();
             }
         }, 10000);
 
+        /**
+         * Click outside listener for the Actions Menu
+         */
         const handleClickOutside = (e: MouseEvent) => {
             if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
                 setActionsMenuOpen(false);
@@ -152,6 +178,10 @@ export const useSemanticDashboard = () => {
         return () => { clearInterval(interval); document.removeEventListener('mousedown', handleClickOutside); };
     }, []);
 
+    /**
+     * handleSaveConfig
+     * Persists the current semantic engine configuration to the database.
+     */
     const handleSaveConfig = async () => {
         try {
             setConfigLoading(true);
@@ -165,6 +195,10 @@ export const useSemanticDashboard = () => {
         }
     };
 
+    /**
+     * handleTestSearch
+     * Executes a search simulation via Maestro to test current filters and weights.
+     */
     const handleTestSearch = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         if (!searchPrompt) return;
@@ -182,6 +216,10 @@ export const useSemanticDashboard = () => {
         }
     };
 
+    /**
+     * handleReindex
+     * Triggers a job to reindex questions into the Qdrant vector database.
+     */
     const handleReindex = async () => {
         try {
             isBusyRef.current = true;
@@ -201,6 +239,10 @@ export const useSemanticDashboard = () => {
         }
     };
 
+    /**
+     * handleReindexIntents
+     * Triggers a job to reindex subjects and topics (concepts) into the vector engine.
+     */
     const handleReindexIntents = async () => {
         try {
             isBusyRef.current = true;
@@ -220,6 +262,10 @@ export const useSemanticDashboard = () => {
         }
     };
 
+    /**
+     * handleClearCache
+     * Clears all semantic search caches (L1 and L2).
+     */
     const handleClearCache = async () => {
         if (!confirm('Isso apagará todo o histórico de buscas otimizadas (L1/L2 Cache). Próximas buscas podem demorar mais para processar. Deseja continuar?')) {
             return;
@@ -237,6 +283,10 @@ export const useSemanticDashboard = () => {
         }
     };
 
+    /**
+     * handleClearQueue
+     * Flushes the embedding job queue. Use with caution.
+     */
     const handleClearQueue = async () => {
         if (!confirm('Isso removerá TODOS os jobs pendentes da fila de embeddings. Use se a fila estiver travada ou com muitos erros. Deseja continuar?')) {
             return;
@@ -254,6 +304,10 @@ export const useSemanticDashboard = () => {
         }
     };
 
+    /**
+     * handleResetEmbeddings
+     * Complete reset of the semantic system. Deletes all embeddings and vectors.
+     */
     const handleResetEmbeddings = async () => {
         if (resetConfirmText !== 'RESET') return;
         try {
@@ -270,6 +324,10 @@ export const useSemanticDashboard = () => {
         }
     };
 
+    /**
+     * handleClearCongestion
+     * "Wakes up" stalled jobs in the embedding queue.
+     */
     const handleClearCongestion = async () => {
         setWakingUp(true);
         try {
