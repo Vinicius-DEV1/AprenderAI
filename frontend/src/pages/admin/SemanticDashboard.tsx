@@ -1,15 +1,55 @@
-    Trash2, BarChart3, TrendingUp, Zap, Hash, ArrowRight, Layers, Target, Filter,
-    Microscope, HelpCircle, X, ChevronRight, Shield, Rocket, Boxes, Eye, Code, AlertTriangle, Info, ChevronUp
-} from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import api from '../../api/axios';
+import { toast } from 'sonner';
 import { clsx } from 'clsx';
+import { 
+    Activity,
+    AlertCircle,
+    ArrowRight,
+    BarChart3,
+    Box,
+    CheckCircle2,
+    ChevronDown,
+    Clock,
+    Database,
+    Filter,
+    Hash,
+    Info,
+    Layers,
+    Lightbulb,
+    Microscope,
+    RefreshCw,
+    Rocket,
+    Save,
+    Search,
+    Server,
+    Settings,
+    Target,
+    TrendingUp,
+    Zap,
+    Trash2,
+    HelpCircle,
+    X,
+    ChevronUp,
+    PlayCircle,
+    Code,
+    Eye
+} from 'lucide-react';
 
-const TARGET_PIPELINE_VERSION = 'v8_qdrant_native';
+// Components
+import StatCard from './semantic/StatCard';
+import PipelineStep from './semantic/PipelineStep';
+import SearchRow from './semantic/SearchRow';
+import CacheRow from './semantic/CacheRow';
+import { IndexModal, IntentModal, ResetModal } from './semantic/SemanticModals';
+import SearchResultItem from './semantic/SearchResultItem';
+
+const TARGET_PIPELINE_VERSION = 'v8.1.0';
 
 interface DashboardStats {
     overview: {
         mysql_published_questions: number;
         mysql_indexed_questions: number;
-        mysql_total_vectors: number;
         mysql_total_subjects: number;
         mysql_indexed_subjects: number;
         mysql_total_topics: number;
@@ -17,7 +57,8 @@ interface DashboardStats {
     };
     qdrant: {
         status: string;
-        questions_points: number;
+        collections: Array<{ name: string; count: number }>;
+        vectors_count: number;
         concepts_points: number;
         index_version_status?: {
             expected: string;
@@ -85,357 +126,6 @@ interface DashboardStats {
         search_cache_enabled: boolean;
     };
 }
-
-const StatCard = ({ title, value, subtitle, icon: Icon, colorClass, helpText }: any) => (
-    <div className="bg-white dark:bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-700/50 p-5 flex flex-col items-start shadow-xl hover:shadow-indigo-500/10 transition-all hover:-translate-y-1 group relative">
-        {helpText && (
-            <div className="absolute top-4 right-4 text-slate-300 hover:text-indigo-500 cursor-help transition-all group/tip">
-                <HelpCircle className="w-4 h-4" />
-                <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded-lg shadow-xl opacity-0 group-hover/tip:opacity-100 pointer-events-none transition-opacity z-50 border border-slate-700">
-                    {helpText}
-                </div>
-            </div>
-        )}
-        <div className={clsx("p-3 rounded-xl mb-4 shadow-inner", colorClass)}>
-            <Icon className="w-6 h-6" />
-        </div>
-        <div className="flex flex-col">
-            <h3 className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">{title}</h3>
-            <span className="text-2xl font-black text-slate-800 dark:text-white">{value}</span>
-            {subtitle && <span className="text-[10px] text-slate-400 mt-1 font-medium">{subtitle}</span>}
-        </div>
-    </div>
-);
-
-const PipelineStep = ({ icon: Icon, title, status, description, children, isActive, helpText }: any) => (
-    <div className={clsx(
-        "relative pl-8 pb-8 border-l-2 last:pb-0 transition-all duration-500",
-        isActive ? "border-indigo-500" : "border-slate-200 dark:border-slate-800"
-    )}>
-        <div className={clsx(
-            "absolute -left-[11px] top-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
-            isActive ? "bg-indigo-600 border-indigo-600 shadow-lg shadow-indigo-500/50" : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
-        )}>
-            <div className={clsx("w-1.5 h-1.5 rounded-full", isActive ? "bg-white" : "bg-slate-300 dark:bg-slate-700")}></div>
-        </div>
-        <div className={clsx(
-            "p-4 rounded-xl border transition-all",
-            isActive
-                ? "bg-white dark:bg-slate-800/80 shadow-lg border-indigo-100 dark:border-indigo-900/30"
-                : "bg-slate-50/50 dark:bg-slate-900/30 border-transparent opacity-60"
-        )}>
-            <div className="flex items-center gap-2 mb-1">
-                <Icon className={clsx("w-4 h-4", isActive ? "text-indigo-500" : "text-slate-400")} />
-                <h4 className={clsx("text-sm font-bold flex items-center gap-1", isActive ? "text-slate-800 dark:text-white" : "text-slate-500")}>
-                    {title}
-                    {helpText && (
-                        <div className="cursor-help text-slate-400 font-normal group/ptip relative">
-                            <HelpCircle className="w-3 h-3" />
-                            <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded-lg shadow-xl opacity-0 group-hover/ptip:opacity-100 pointer-events-none transition-opacity z-50 border border-slate-700 font-normal">
-                                {helpText}
-                            </div>
-                        </div>
-                    )}
-                </h4>
-                {status && <span className="ml-auto text-[10px] font-mono bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 px-1.5 py-0.5 rounded">{status}</span>}
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{description}</p>
-            {children}
-        </div>
-    </div>
-);
-
-const SearchRow = ({ search, onReplay }: { search: any, onReplay: (prompt: string) => void }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
-
-    const filters = search.filters ? (typeof search.filters === 'string' ? JSON.parse(search.filters) : search.filters) : null;
-
-    return (
-        <>
-            <tr className={clsx(
-                "hover:bg-slate-50 dark:hover:bg-slate-700/20 transition-colors cursor-pointer group",
-                isExpanded && "bg-slate-50/80 dark:bg-slate-700/40"
-            )} onClick={() => setIsExpanded(!isExpanded)}>
-                <td className="px-4 py-3 text-xs text-slate-500">
-                    <div className="flex items-center gap-1.5 flex-nowrap shrink-0">
-                        <Clock className="w-3.5 h-3.5" />
-                        {search.created_at}
-                    </div>
-                </td>
-                <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400 flex items-center justify-center text-xs font-bold shrink-0">
-                            {search.user_name.charAt(0).toUpperCase()}
-                        </div>
-                        <span className="truncate max-w-[120px]">{search.user_name}</span>
-                    </div>
-                </td>
-                <td className="px-4 py-3 font-medium text-slate-800 dark:text-white whitespace-normal break-words max-w-sm">
-                    “{search.prompt}”
-                </td>
-                <td className="px-4 py-3">
-                    <div className="flex items-center justify-between gap-4">
-                        <span className={clsx(
-                            "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase border",
-                            search.status === 'completed' ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800/50" :
-                                search.status === 'failed' ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50" :
-                                    "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50"
-                        )}>
-                            {search.status}
-                        </span>
-                        
-                        <div className="flex items-center gap-2">
-                             <button 
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onReplay(search.prompt);
-                                }}
-                                className="p-1.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-all"
-                                title="Replay Search"
-                            >
-                                <PlayCircle className="w-4 h-4" />
-                            </button>
-                            {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-                        </div>
-                    </div>
-                </td>
-            </tr>
-            {isExpanded && (
-                <tr className="bg-slate-50/50 dark:bg-slate-700/20">
-                    <td colSpan={4} className="px-4 py-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
-                            {/* PATH & STRATEGY */}
-                            <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-                                <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
-                                    <Target className="w-3 h-3 text-indigo-500" />
-                                    Caminho e Estratégia
-                                </h5>
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-center text-xs">
-                                        <span className="text-slate-500">Path:</span>
-                                        <span className="font-mono bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 px-1.5 py-0.5 rounded">
-                                            {filters?.search_path || 'standard_sql'}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-xs">
-                                        <span className="text-slate-500">Modo:</span>
-                                        <span className="font-medium text-slate-700 dark:text-slate-200">
-                                            {filters?.search_mode === 'vector' ? 'Vetor (Híbrido)' : 'Lexical (SQL)'}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-xs">
-                                        <span className="text-slate-500">Threshold:</span>
-                                        <span className="font-medium text-slate-700 dark:text-slate-200">
-                                            {search.similarity_threshold || 'N/A'}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* APPLIED FILTERS */}
-                            <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-                                <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
-                                    <Filter className="w-3 h-3 text-emerald-500" />
-                                    Filtros Extraídos
-                                </h5>
-                                <div className="space-y-1.5">
-                                    {filters?.organization && (
-                                        <div className="flex flex-wrap gap-1 items-center">
-                                            <span className="text-[10px] text-slate-400">Banca:</span>
-                                            {(Array.isArray(filters.organization) ? filters.organization : [filters.organization]).map((org: string) => (
-                                                <span key={org} className="text-[10px] bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-800/50">{org}</span>
-                                            ))}
-                                        </div>
-                                    )}
-                                    {filters?.institution && (
-                                        <div className="flex flex-wrap gap-1 items-center">
-                                            <span className="text-[10px] text-slate-400">Inst:</span>
-                                            {(Array.isArray(filters.institution) ? filters.institution : [filters.institution]).map((inst: string) => (
-                                                <span key={inst} className="text-[10px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-800/50">{inst}</span>
-                                            ))}
-                                        </div>
-                                    )}
-                                    {(filters?.year || filters?.difficulty) && (
-                                        <div className="flex gap-2 items-center">
-                                            {filters.year && (
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-[10px] text-slate-400">Ano:</span>
-                                                    <span className="text-[10px] font-medium text-slate-700 dark:text-slate-200">{filters.year_operator || '='} {filters.year}</span>
-                                                </div>
-                                            )}
-                                            {filters.difficulty && (
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-[10px] text-slate-400">Dif:</span>
-                                                    <span className="text-[10px] font-medium text-slate-700 dark:text-slate-200">{filters.difficulty}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                    {!filters?.organization && !filters?.institution && !filters?.year && !filters?.difficulty && (
-                                        <span className="text-xs text-slate-400 italic">Nenhum filtro estrito aplicado.</span>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* ERROR OR CONCEPTS */}
-                            <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
-                                {search.status === 'failed' ? (
-                                    <>
-                                        <div className="absolute top-0 right-0 w-1 h-full bg-red-500"></div>
-                                        <h5 className="text-[10px] font-bold uppercase tracking-wider text-red-500 mb-2 flex items-center gap-1.5">
-                                            <AlertTriangle className="w-3 h-3" />
-                                            Erro de Execução
-                                        </h5>
-                                        <p className="text-xs text-red-600 dark:text-red-400 font-mono leading-relaxed truncate-2-lines">
-                                            {search.error || 'Erro desconhecido durante o pipeline.'}
-                                        </p>
-                                    </>
-                                ) : (
-                                    <>
-                                        <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
-                                            <Box className="w-3 h-3 text-amber-500" />
-                                            Conceitos & Objetos
-                                        </h5>
-                                        <div className="flex flex-wrap gap-1">
-                                            {filters?.concepts?.length > 0 ? filters.concepts.map((c: any) => (
-                                                <span key={c.id || c.name} className="text-[10px] bg-amber-50 dark:bg-amber-900/30 text-amber-600 px-1.5 py-0.5 rounded border border-amber-100 dark:border-amber-800/50">
-                                                    {c.name || c}
-                                                </span>
-                                            )) : (
-                                                <span className="text-xs text-slate-400 italic">Busca puramente semântica.</span>
-                                            )}
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                        
-                        {/* MORE JSON DATA */}
-                        <details className="mt-3 group/details">
-                            <summary className="text-[10px] font-bold text-slate-400 hover:text-indigo-500 cursor-pointer list-none flex items-center gap-1 transition-colors">
-                                <Code className="w-3.5 h-3.5" />
-                                RAW DEBUG DATA
-                            </summary>
-                            <div className="mt-2 p-3 bg-slate-900 rounded-lg text-[10px] font-mono text-emerald-400 overflow-x-auto border border-slate-800">
-                                <pre>{JSON.stringify(filters, null, 2)}</pre>
-                            </div>
-                        </details>
-                    </td>
-                </tr>
-            )}
-        </>
-    );
-};
-
-const CacheRow = ({ item }: { item: any }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
-    const [showVector, setShowVector] = useState(false);
-
-    return (
-        <>
-            <tr className={clsx(
-                "hover:bg-slate-50 dark:hover:bg-slate-700/20 transition-colors cursor-pointer group",
-                isExpanded && "bg-slate-50/80 dark:bg-slate-700/40"
-            )} onClick={() => setIsExpanded(!isExpanded)}>
-                <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                         <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500">
-                            <Database className="w-3.5 h-3.5" />
-                        </div>
-                        <span className="font-mono text-[10px] text-slate-400">{item.prompt_hash.substring(0, 8)}...</span>
-                    </div>
-                </td>
-                <td className="px-4 py-3 font-medium text-slate-800 dark:text-white max-w-sm truncate">
-                    “{item.prompt_text}”
-                </td>
-                <td className="px-4 py-3 text-xs text-slate-500">
-                    <div className="flex flex-col">
-                        <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {item.last_used_at || 'Nunca usado'}
-                        </span>
-                        <span className="text-[10px] opacity-60">Criado em: {item.created_at}</span>
-                    </div>
-                </td>
-                <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-2">
-                        <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-                            {item.filters_result?.question_ids?.length || 0} IDs
-                        </span>
-                        {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-                    </div>
-                </td>
-            </tr>
-            {isExpanded && (
-                <tr className="bg-slate-50/50 dark:bg-slate-700/20">
-                    <td colSpan={4} className="px-4 py-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
-                            <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-                                <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
-                                    <Box className="w-3 h-3 text-amber-500" />
-                                    Conteúdo Cacheado
-                                </h5>
-                                <div className="space-y-3">
-                                    <div>
-                                        <span className="text-[10px] text-slate-400 block mb-1">IDs de Conceito Detectados:</span>
-                                        <div className="flex flex-wrap gap-1">
-                                            {item.concept_ids?.length > 0 ? item.concept_ids.map((id: number) => (
-                                                <span key={id} className="text-[10px] bg-amber-50 dark:bg-amber-900/30 text-amber-600 px-1.5 py-0.5 rounded border border-amber-100 dark:border-amber-800/50">#{id}</span>
-                                            )) : <span className="text-[10px] text-slate-400 italic">Nenhum</span>}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <span className="text-[10px] text-slate-400 block mb-1">Questões Resultantes ({item.filters_result?.question_ids?.length || 0}):</span>
-                                        <div className="font-mono text-[9px] bg-slate-100 dark:bg-slate-900 p-1.5 rounded max-h-20 overflow-y-auto text-slate-600 dark:text-slate-400 break-all">
-                                            {item.filters_result?.question_ids?.join(', ') || 'Nenhum ID'}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-                                <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center justify-between">
-                                    <div className="flex items-center gap-1.5">
-                                        <Layers className="w-3 h-3 text-indigo-500" />
-                                        Metadados do Vetor
-                                    </div>
-                                    <button 
-                                        onClick={() => setShowVector(!showVector)}
-                                        className="text-indigo-500 hover:text-indigo-600 flex items-center gap-1"
-                                    >
-                                        <Eye className="w-3 h-3" />
-                                        {showVector ? 'Esconder' : 'Ver Debug'}
-                                    </button>
-                                </h5>
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-center text-xs">
-                                        <span className="text-slate-500">Prompt Hash (MD5):</span>
-                                        <span className="font-mono text-slate-400">{item.prompt_hash}</span>
-                                    </div>
-                                    {showVector && (
-                                        <div className="animate-in zoom-in-95 duration-200">
-                                            <span className="text-[10px] text-slate-400 block mb-1">Vetor (Primeiras 5 dimensões):</span>
-                                            <div className="grid grid-cols-5 gap-1">
-                                                {item.vector_preview.map((val: number, idx: number) => (
-                                                    <div key={idx} className="bg-indigo-50 dark:bg-indigo-900/30 text-[9px] font-mono p-1 rounded text-center text-indigo-600">
-                                                        {val.toFixed(4)}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <p className="mt-2 text-[9px] text-slate-400 leading-tight">
-                                                O vetor completo possui 1536 dimensões (OpenAI text-embedding-3-small).
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-            )}
-        </>
-    );
-};
 
 const SemanticDashboard = () => {
     const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -549,8 +239,11 @@ const SemanticDashboard = () => {
             setConfigState({
                 vector_search_enabled: res.data.config.vector_search_enabled == 1 || res.data.config.vector_search_enabled == true,
                 concept_detection_threshold: parseFloat(res.data.config.concept_detection_threshold) || 0.45,
-                    quality: 0.15,
-                    recency: 0.10
+                rerank_weights: {
+                    vector: res.data.config.rerank_weights?.vector || 0.60,
+                    popularity: res.data.config.rerank_weights?.popularity || 0.15,
+                    quality: res.data.config.rerank_weights?.quality || 0.15,
+                    recency: res.data.config.rerank_weights?.recency || 0.10
                 },
                 search_cache_enabled: res.data.config.search_cache_enabled || false
             });
@@ -1554,162 +1247,11 @@ const SemanticDashboard = () => {
 
                                     <div className="overflow-y-auto pr-2 custom-scrollbar space-y-4 pb-20">
                                         {searchResults.results?.map((res: any) => (
-                                            <details key={res.question_id} className="group mb-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm hover:border-indigo-300 transition-colors overflow-hidden">
-                                                <summary className="flex justify-between items-start p-3 cursor-pointer list-none">
-                                                    <div className="flex flex-col gap-1 flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="flex items-center justify-center min-w-[24px] h-6 rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300">
-                                                                #{res.rank}
-                                                            </span>
-                                                            <span className="text-sm font-bold text-slate-800 dark:text-white">Questão #{res.question_id}</span>
-                                                            <div className="flex gap-1 flex-wrap">
-                                                                {res.subjects?.map((s: string) => (
-                                                                    <span key={s} className="text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 px-1.5 py-0.5 rounded">{s}</span>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                        <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 group-open:hidden pr-4">
-                                                            {res.statement.replace(/<[^>]*>?/gm, '')}
-                                                        </p>
-                                                    </div>
-                                                    <div className="flex gap-2 shrink-0">
-                                                        <div className="flex flex-col items-end gap-1">
-                                                            {res.source === 'sql_fallback' && (
-                                                                <span className="text-[10px] uppercase font-black tracking-widest px-2 py-0.5 rounded bg-rose-500 text-white border border-rose-600 animate-pulse shadow-lg shadow-rose-500/20 mb-1">
-                                                                    SQL FALLBACK
-                                                                </span>
-                                                            )}
-                                                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
-                                                                {res.source === 'sql_fallback' ? 'SQL' : 'VEC'}: {res.qdrant_score.toFixed(3)}
-                                                            </span>
-                                                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800">
-                                                                Final: {res.final_score.toFixed(3)}
-                                                            </span>
-                                                            {res.payload?.pipeline_version && res.payload.pipeline_version !== TARGET_PIPELINE_VERSION && (
-                                                                <div className="group/vtip relative">
-                                                                    <span className="text-[9px] uppercase font-black tracking-tighter px-1.5 py-0.5 rounded bg-amber-500 text-white animate-pulse cursor-help">
-                                                                        OUTDATED
-                                                                    </span>
-                                                                    <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded-lg shadow-xl opacity-0 group-hover/vtip:opacity-100 pointer-events-none transition-opacity z-50 border border-slate-700 font-normal">
-                                                                        Este vetor pertence à versão anterior ({res.payload.pipeline_version}). Recomenda-se re-indexar para obter a precisão do {TARGET_PIPELINE_VERSION}.
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <ChevronDown className="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform mt-1" />
-                                                    </div>
-                                                </summary>
-
-                                                <div className="p-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 space-y-4">
-                                                    {/* New Debug Metadata Section */}
-                                                    <div className="flex flex-wrap gap-4 p-2.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700/50">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[8px] uppercase font-bold text-slate-400">Origem</span>
-                                                            <span className={clsx(
-                                                                "text-[10px] font-mono font-bold",
-                                                                res.source === 'sql_fallback' ? "text-rose-500" : "text-indigo-500"
-                                                            )}>
-                                                                {res.source === 'sql_fallback' ? 'SQL_FALLBACK' : 'QDRANT_VECTOR'}
-                                                            </span>
-                                                        </div>
-                                                        <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 self-center"></div>
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[8px] uppercase font-bold text-slate-400">Pipeline</span>
-                                                            <span className="text-[10px] font-mono text-slate-600 dark:text-slate-300">
-                                                                {res.payload?.pipeline_version || 'N/A'}
-                                                            </span>
-                                                        </div>
-                                                        <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 self-center"></div>
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[8px] uppercase font-bold text-slate-400">Banca / Org</span>
-                                                            <span className="text-[10px] text-slate-600 dark:text-slate-300 font-medium">
-                                                                {res.payload?.organization || 'N/A'}
-                                                            </span>
-                                                        </div>
-                                                        <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 self-center"></div>
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[8px] uppercase font-bold text-slate-400">Instituição</span>
-                                                            <span className="text-[10px] text-slate-600 dark:text-slate-300 font-medium shrink-0">
-                                                                {res.payload?.institution || 'N/A'}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    {res.score_details && Object.keys(res.score_details).length > 0 && (
-                                                        <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
-                                                            <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 border-b border-slate-200 dark:border-slate-700 pb-1 flex justify-between items-center">
-                                                                <span className="flex items-center gap-1">
-                                                                    📊 Anatomia do Score (Re-Ranking)
-                                                                    <span className="text-[9px] text-slate-400 font-normal ml-2">Explicando por que esta questão venceu</span>
-                                                                </span>
-                                                                <span className="font-mono text-emerald-600 dark:text-emerald-400 font-black px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/30 rounded">Bscore: {res.final_score.toFixed(4)}</span>
-                                                            </h5>
-                                                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mt-2">
-                                                                <div className="flex flex-col bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700/50">
-                                                                    <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Semântica VEC</span>
-                                                                    <span className="text-sm font-mono text-indigo-600 dark:text-indigo-400 font-bold">+{res.score_details.vector.weighted.toFixed(4)}</span>
-                                                                    <span className="text-[9px] text-slate-400 mt-0.5">Raw: {res.score_details.vector.raw.toFixed(4)}</span>
-                                                                </div>
-                                                                <div className="flex flex-col bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700/50">
-                                                                    <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Popularidade</span>
-                                                                    <span className="text-sm font-mono text-sky-600 dark:text-sky-400 font-bold">+{res.score_details.popularity.weighted.toFixed(4)}</span>
-                                                                    <span className="text-[9px] text-slate-400 mt-0.5">Raw: {res.score_details.popularity.raw.toFixed(4)}</span>
-                                                                </div>
-                                                                <div className="flex flex-col bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700/50">
-                                                                    <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Qualidade Ped.</span>
-                                                                    <span className="text-sm font-mono text-amber-600 dark:text-amber-400 font-bold">+{res.score_details.quality.weighted.toFixed(4)}</span>
-                                                                    <span className="text-[9px] text-slate-400 mt-0.5">Raw: {res.score_details.quality.raw.toFixed(4)}</span>
-                                                                </div>
-                                                                <div className="flex flex-col bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700/50">
-                                                                    <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Recência Ano</span>
-                                                                    <span className="text-sm font-mono text-emerald-600 dark:text-emerald-400 font-bold">+{res.score_details.recency.weighted.toFixed(4)}</span>
-                                                                    <span className="text-[9px] text-slate-400 mt-0.5">Raw: {res.score_details.recency.raw.toFixed(4)}</span>
-                                                                </div>
-                                                                <div className="flex flex-col bg-indigo-50 dark:bg-indigo-900/20 p-2 rounded shadow-sm border border-indigo-100 dark:border-indigo-800">
-                                                                    <span className="text-[9px] text-indigo-500 dark:text-indigo-400 uppercase tracking-widest font-bold">Intent Boost</span>
-                                                                    <span className="text-sm font-mono text-purple-600 dark:text-purple-400 font-bold">+{res.score_details.intent.weighted.toFixed(4)}</span>
-                                                                    <span className="text-[9px] text-slate-400 mt-0.5">Raw: {res.score_details.intent.raw.toFixed(4)}</span>
-                                                                </div>
-                                                                <div className="flex flex-col bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded shadow-sm border border-emerald-100 dark:border-emerald-800">
-                                                                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400 uppercase tracking-widest font-bold">Proficiency</span>
-                                                                    <span className="text-sm font-mono text-emerald-700 dark:text-emerald-300 font-bold">+{res.score_details.proficiency?.weighted.toFixed(4) || '0.0000'}</span>
-                                                                    <span className="text-[9px] text-slate-400 mt-0.5">Raw: {res.score_details.proficiency?.raw.toFixed(4) || '0.0000'}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    <div className="prose prose-sm dark:prose-invert max-w-none mt-2">
-                                                        <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Enunciado / Contexto</h5>
-                                                        <div className="text-sm text-slate-800 dark:text-slate-200" dangerouslySetInnerHTML={{ __html: res.statement }} />
-                                                    </div>
-
-                                                    {res.alternatives?.length > 0 && (
-                                                        <div className="space-y-2">
-                                                            <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Alternativas</h5>
-                                                            <div className="grid gap-2">
-                                                                {res.alternatives.map((alt: any) => (
-                                                                    <div key={alt.label} className={clsx(
-                                                                        "p-2.5 rounded border text-sm flex gap-3",
-                                                                        alt.is_correct
-                                                                            ? "bg-emerald-50/50 border-emerald-200 dark:bg-emerald-900/10 dark:border-emerald-800/50"
-                                                                            : "bg-slate-50/50 border-slate-100 dark:bg-slate-900/20 dark:border-slate-800"
-                                                                    )}>
-                                                                        <span className={clsx("font-bold", alt.is_correct ? "text-emerald-600" : "text-slate-400")}>{alt.label})</span>
-                                                                        <div dangerouslySetInnerHTML={{ __html: alt.content }} />
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {res.explanation && (
-                                                        <div className="bg-amber-50/30 dark:bg-amber-900/10 border border-amber-100/50 dark:border-amber-800/30 p-3 rounded-lg">
-                                                            <h5 className="text-xs font-bold text-amber-600/70 dark:text-amber-500/70 uppercase tracking-widest mb-1">Explicação / Resolução</h5>
-                                                            <div className="text-xs text-slate-700 dark:text-slate-300" dangerouslySetInnerHTML={{ __html: res.explanation }} />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </details>
+                                            <SearchResultItem 
+                                                key={res.question_id} 
+                                                res={res} 
+                                                targetPipelineVersion={TARGET_PIPELINE_VERSION} 
+                                            />
                                         ))}
                                     </div>
                                 </div>
@@ -1829,303 +1371,44 @@ const SemanticDashboard = () => {
             </div>
 
 
-            {/* INDEX MODAL */}
-            {isIndexModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="p-6">
-                            <div className="flex justify-between items-start mb-4">
-                                <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                                    <Server className="w-6 h-6 text-indigo-500" />
-                                    Batch Indexer Xavier
-                                </h3>
-                                <button onClick={() => setIsIndexModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                                    <RefreshCw className="w-5 h-5" style={{ transform: 'rotate(45deg)' }} />
-                                </button>
-                            </div>
+            {/* MODALS */}
+            <IndexModal
+                isOpen={isIndexModalOpen}
+                onClose={() => setIsIndexModalOpen(false)}
+                stats={stats}
+                indexBatchLimit={indexBatchLimit}
+                setIndexBatchLimit={setIndexBatchLimit}
+                indexForce={indexForce}
+                setIndexForce={setIndexForce}
+                reindexing={reindexing}
+                onReindex={handleReindex}
+                targetPipelineVersion={TARGET_PIPELINE_VERSION}
+            />
 
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                                Dispare jobs de vetorização controlada para economizar nos custos de API.
-                                <span className="block mt-1 text-[11px] font-mono text-indigo-500 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20 w-fit px-1.5 py-0.5 rounded">
-                                    Pipeline Ativo: {stats?.config.pipeline_version || TARGET_PIPELINE_VERSION}
-                                </span>
-                            </p>
+            <IntentModal
+                isOpen={isIntentModalOpen}
+                onClose={() => setIsIntentModalOpen(false)}
+                stats={stats}
+                intentBatchLimit={intentBatchLimit}
+                setIntentBatchLimit={setIntentBatchLimit}
+                intentForce={intentForce}
+                setIntentForce={setIntentForce}
+                reindexingIntents={reindexingIntents}
+                onReindexIntents={handleReindexIntents}
+                targetPipelineVersion={TARGET_PIPELINE_VERSION}
+            />
 
-                            {/* V8 upgrade tip */}
-                            {indexForce && (
-                                <div className="mb-4 flex items-start gap-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl p-3">
-                                    <Rocket className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
-                                    <div>
-                                        <p className="text-xs font-bold text-indigo-700 dark:text-indigo-400">Modo Forçado ativado — re-indexação completa (v8)</p>
-                                        <p className="text-[10px] text-indigo-600/70 dark:text-indigo-400/70 mt-0.5">
-                                            Cada questão gerará <strong>5 vetores</strong> (statement, concept, explanation, <span className="text-blue-600 dark:text-blue-400">alternatives</span>, <span className="text-violet-600 dark:text-violet-400">skills</span>) + payload rico com subject_ids[], topic_ids[], has_explanation, word_count.
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl p-4 mb-6">
-                                <div className="flex justify-between items-center mb-1">
-                                    <span className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wider">
-                                        {indexForce ? 'Total de Questões para Re-indexar' : 'Pendentes de Indexação'}
-                                    </span>
-                                    <span className={clsx("text-lg font-bold", indexForce ? "text-indigo-600 dark:text-indigo-400" : "text-amber-800 dark:text-amber-200")}>
-                                        {stats ? (
-                                            indexForce
-                                                ? stats.overview.mysql_published_questions
-                                                : stats.overview.mysql_published_questions - stats.overview.mysql_indexed_questions
-                                        ) : '...'}
-                                    </span>
-                                </div>
-                                <p className="text-[10px] text-amber-600 dark:text-amber-500">
-                                    {indexForce
-                                        ? "Modo FORÇAR ativado: Todas as questões publicadas no banco serão processadas novamente."
-                                        : "Questões publicadas (exceto redações) que ainda não possuem vetores sincronizados."}
-                                </p>
-                            </div>
-
-                            <div className="space-y-2 mb-8">
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                                    Quantas questões deseja indexar nesta leva?
-                                </label>
-                                <input
-                                    type="number"
-                                    min="1" max="100000"
-                                    value={indexBatchLimit}
-                                    onChange={(e) => setIndexBatchLimit(parseInt(e.target.value) || 0)}
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white"
-                                />
-                                <div className="flex justify-between items-center">
-                                    <p className="text-[10px] text-slate-400">
-                                        Custo estimado: aprox. ${(indexBatchLimit * 0.0001).toFixed(4)} USD (estimativa baseada em texto médio).
-                                    </p>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            const pending = stats ? (indexForce ? stats.overview.mysql_published_questions : stats.overview.mysql_published_questions - stats.overview.mysql_indexed_questions) : 0;
-                                            setIndexBatchLimit(pending);
-                                        }}
-                                        className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 underline"
-                                    >
-                                        Indexar Tudo Pendente
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="mb-6">
-                                <label className="flex items-center gap-3 cursor-pointer group">
-                                    <div className="relative">
-                                        <input
-                                            type="checkbox"
-                                            className="sr-only"
-                                            checked={indexForce}
-                                            onChange={(e) => setIndexForce(e.target.checked)}
-                                        />
-                                        <div className={clsx("block w-10 h-6 rounded-full transition-colors", indexForce ? "bg-amber-500" : "bg-slate-300 dark:bg-slate-600")}></div>
-                                        <div className={clsx("dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform", indexForce && "transform translate-x-4")}></div>
-                                    </div>
-                                    <div>
-                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Forçar Re-indexação</span>
-                                        <p className="text-[10px] text-slate-500">Ignora se a questão já possui vetores e atualiza com a nova lógica.</p>
-                                    </div>
-                                </label>
-                            </div>
-
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => setIsIndexModalOpen(false)}
-                                    className="flex-1 px-4 py-2.5 rounded-xl font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={handleReindex}
-                                    disabled={reindexing || indexBatchLimit <= 0}
-                                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:shadow-none"
-                                >
-                                    {reindexing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
-                                    Iniciar Batch
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* INTENT INDEX MODAL */}
-            {isIntentModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="p-6">
-                            <div className="flex justify-between items-start mb-4">
-                                <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                                    <Lightbulb className="w-6 h-6 text-purple-500" />
-                                    Indexar Matérias & Assuntos
-                                </h3>
-                                <button onClick={() => setIsIntentModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                                    <RefreshCw className="w-5 h-5" style={{ transform: 'rotate(45deg)' }} />
-                                </button>
-                            </div>
-
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                                Vetorize Matérias e Assuntos no Qdrant para a Detecção de Intenção da busca semântica.
-                                <span className="block mt-1 text-[11px] font-mono text-purple-500 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-900/20 w-fit px-1.5 py-0.5 rounded">
-                                    Pipeline Ativo: {stats?.config.pipeline_version || TARGET_PIPELINE_VERSION}
-                                </span>
-                            </p>
-
-                            <div className="grid grid-cols-1 gap-3 mb-6">
-                                <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-xl p-3">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-medium text-purple-700 dark:text-purple-400 uppercase tracking-wider">Matérias/Disciplinas Pendentes</span>
-                                        <span className="text-sm font-bold text-purple-800 dark:text-purple-200">
-                                            {stats ? (intentForce ? stats.overview.mysql_total_subjects : stats.overview.mysql_total_subjects - stats.overview.mysql_indexed_subjects) : '...'}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-3">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-medium text-blue-700 dark:text-blue-400 uppercase tracking-wider">Assuntos Pendentes</span>
-                                        <span className="text-sm font-bold text-blue-800 dark:text-blue-200">
-                                            {stats ? (intentForce ? stats.overview.mysql_total_topics : stats.overview.mysql_total_topics - stats.overview.mysql_indexed_topics) : '...'}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2 mb-8">
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                                    Quantos itens indexar nesta leva?
-                                </label>
-                                <input
-                                    type="number"
-                                    min="1" max="100000"
-                                    value={intentBatchLimit}
-                                    onChange={(e) => setIntentBatchLimit(parseInt(e.target.value) || 0)}
-                                    className="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 focus:ring-2 focus:ring-purple-500 outline-none text-slate-800 dark:text-white"
-                                />
-                                <div className="flex justify-end">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            const pending = stats ? (intentForce
-                                                ? stats.overview.mysql_total_subjects + stats.overview.mysql_total_topics
-                                                : (stats.overview.mysql_total_subjects - stats.overview.mysql_indexed_subjects) +
-                                                (stats.overview.mysql_total_topics - stats.overview.mysql_indexed_topics)
-                                            ) : 0;
-                                            setIntentBatchLimit(pending);
-                                        }}
-                                        className="text-[10px] font-bold text-purple-600 hover:text-purple-700 underline"
-                                    >
-                                        Indexar Tudo Pendente (Global)
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="mb-6">
-                                <label className="flex items-center gap-3 cursor-pointer group">
-                                    <div className="relative">
-                                        <input
-                                            type="checkbox"
-                                            className="sr-only"
-                                            checked={intentForce}
-                                            onChange={(e) => setIntentForce(e.target.checked)}
-                                        />
-                                        <div className={clsx("block w-10 h-6 rounded-full transition-colors", intentForce ? "bg-purple-500" : "bg-slate-300 dark:bg-slate-600")}></div>
-                                        <div className={clsx("dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform", intentForce && "transform translate-x-4")}></div>
-                                    </div>
-                                    <div>
-                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Forçar Re-indexação</span>
-                                        <p className="text-[10px] text-slate-500">Re-indexa com novos IDs SHA-256 e formato de embedding atualizado.</p>
-                                    </div>
-                                </label>
-                            </div>
-
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => setIsIntentModalOpen(false)}
-                                    className="flex-1 px-4 py-2.5 rounded-xl font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={handleReindexIntents}
-                                    disabled={reindexingIntents || intentBatchLimit <= 0}
-                                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 transition-all disabled:opacity-50 disabled:shadow-none"
-                                >
-                                    {reindexingIntents ? <RefreshCw className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
-                                    Iniciar Batch
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* RESET EMBEDDINGS MODAL */}
-            {isResetModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-red-200 dark:border-red-900/50 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="bg-red-600 p-6 text-white">
-                            <h3 className="text-xl font-bold flex items-center gap-2">
-                                <Trash2 className="w-6 h-6" />
-                                Reset Completo da Busca
-                            </h3>
-                            <p className="text-red-100 text-sm mt-2">
-                                Esta é uma ação destrutiva irreversível.
-                            </p>
-                        </div>
-
-                        <div className="p-6">
-                            <div className="space-y-4 mb-6">
-                                <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg text-sm border border-red-100 dark:border-red-800">
-                                    <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                                    <ul className="list-disc pl-4 space-y-1">
-                                        <li>Apagará TODAS as coleções do Qdrant.</li>
-                                        <li>Limpará as tabelas question_vectors e ai_search_cache no MySQL.</li>
-                                        <li>Zerar o status de indexação de todas as matérias e assuntos.</li>
-                                        <li><strong>Você terá que rodar "Indexar Questões" e "Indexar Matérias/Assuntos" novamente do zero.</strong></li>
-                                    </ul>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                        Para confirmar, digite <strong>RESET</strong> no campo abaixo:
-                                    </label>
-                                    <input
-                                        type="text"
-                                        placeholder="Digite RESET"
-                                        value={resetConfirmText}
-                                        onChange={(e) => setResetConfirmText(e.target.value)}
-                                        className="w-full rounded-lg border-red-300 dark:border-red-700/50 bg-white dark:bg-slate-900 px-4 py-2 focus:ring-2 focus:ring-red-500 outline-none text-red-600 dark:text-red-400 font-bold uppercase"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => {
-                                        setIsResetModalOpen(false);
-                                        setResetConfirmText('');
-                                    }}
-                                    className="flex-1 px-4 py-2.5 rounded-xl font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={handleResetEmbeddings}
-                                    disabled={resetting || resetConfirmText !== 'RESET'}
-                                    className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 transition-all disabled:opacity-50 disabled:shadow-none"
-                                >
-                                    {resetting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                                    Executar Reset
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ResetModal
+                isOpen={isResetModalOpen}
+                onClose={() => {
+                    setIsResetModalOpen(false);
+                    setResetConfirmText('');
+                }}
+                resetting={resetting}
+                resetConfirmText={resetConfirmText}
+                setResetConfirmText={setResetConfirmText}
+                onReset={handleResetEmbeddings}
+            />
         </>
     );
 };
