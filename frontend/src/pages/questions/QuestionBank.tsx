@@ -10,7 +10,7 @@ import SearchableSelect from '../../components/SearchableSelect';
 import GoalSettingsModal from './components/GoalSettingsModal';
 import { motion, AnimatePresence } from 'framer-motion';
 // @ts-ignore
-import html2pdf from 'html2pdf.js';
+import html2pdf from 'html2pdf.js/dist/html2pdf.bundle.min.js';
 import '../../styles/question-bank.css';
 
 interface FilterOptions {
@@ -163,7 +163,7 @@ export default function QuestionBank() {
     const { data: questionsData, isLoading: questionsLoading } = useQuery({
         queryKey: ['questions', user?.id, page, filters],
         queryFn: async () => {
-            const res = await api.get('/api/v1/questions', { params: { ...filters, page } });
+            const res = await api.get('/api/v1/questions', { params: { ...filters, page, per_page: 20 } });
             return res.data;
         },
         enabled: !!user?.id
@@ -521,23 +521,41 @@ export default function QuestionBank() {
 
         html += `</div>`;
         container.innerHTML = html;
+        
+        // Append to DOM (hidden) to ensure html2canvas has context
+        container.style.position = 'fixed';
+        container.style.left = '-9999px';
+        container.style.top = '0';
+        container.style.width = '190mm'; // Specify width for better rendering
+        document.body.appendChild(container);
 
         const opt = {
-            margin:       15,
+            margin:       10,
             filename:     `questoes-aprenderai-${new Date().toISOString().split('T')[0]}.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, logging: false },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            image:        { type: 'jpeg', quality: 0.95 },
+            html2canvas:  { 
+                scale: 1, // Safer scale to avoid canvas limits
+                useCORS: true, 
+                logging: false,
+                letterRendering: true,
+                allowTaint: false
+            },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
+            pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
         };
 
         setToastMessage("⏳ Gerando PDF... Aguarde um instante.");
         setShowToast(true);
 
         html2pdf().set(opt).from(container).save().then(() => {
+            document.body.removeChild(container);
             setToastMessage("✅ PDF gerado com sucesso!");
             setTimeout(() => setShowToast(false), 3000);
         }).catch((err: any) => {
             console.error("PDF generation failed", err);
+            if (document.body.contains(container)) {
+                document.body.removeChild(container);
+            }
             setToastMessage("❌ Erro ao gerar o PDF.");
             setTimeout(() => setShowToast(false), 3000);
         });

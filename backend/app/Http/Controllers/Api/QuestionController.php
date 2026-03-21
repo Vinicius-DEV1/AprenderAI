@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
 
 use App\Jobs\GenerateQueryEmbeddingJob;
+use App\Jobs\RunVectorSearchJob;
 use App\Jobs\RespondToStandaloneChatJob;
 use App\Http\Resources\QuestionResource;
 use App\Services\AI\AIService;
@@ -124,11 +125,11 @@ class QuestionController extends Controller
                 });
             }
 
-            // Sort by newest by default
-            $query->orderBy('created_at', 'desc');
+            // Sort by year and newest ID by default
+            $query->orderBy('year', 'desc')->orderBy('id', 'desc');
         }
 
-        $questions = $query->paginate($request->get('per_page', 15));
+        $questions = $query->paginate($request->get('per_page', 20));
 
         return QuestionResource::collection($questions);
     }

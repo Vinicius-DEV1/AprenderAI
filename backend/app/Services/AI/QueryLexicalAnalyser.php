@@ -141,6 +141,12 @@ class QueryLexicalAnalyser
             'vunesp'     => ['vunesp'],
             'idecan'     => ['idecan'],
             'cesgranrio' => ['cesgranrio'],
+            'ibfc'       => ['ibfc'],
+            'ibam'       => ['ibam'],
+            'quadrix'    => ['quadrix'],
+            'faperp'     => ['faperp'],
+            'fundatec'   => ['fundatec'],
+            'consulplan' => ['consulplan'],
         ];
 
         foreach ($orgs as $key => $synonyms) {
