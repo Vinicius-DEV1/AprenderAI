@@ -66,3 +66,10 @@ export interface AnalyticsModule {
     requests: number;
     cost: number;
 }
+
+export const capabilityMeta: Record<string, { icon: string, description: string }> = {
+    chat_tutor: { icon: '💬', description: 'Responde dúvidas dos alunos sobre questões resolvidas.' },
+    questions: { icon: '✍️', description: 'Gera questões inéditas, explicações e gabaritos comentados.' },
+    triage: { icon: '⚙️', description: 'Classifica e modera questões durante o processamento em lote.' },
+    search: { icon: '🔍', description: 'Interpreta buscas em linguagem natural na barra de pesquisa.' }
+};
