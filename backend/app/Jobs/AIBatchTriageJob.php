@@ -19,7 +19,12 @@ class AIBatchTriageJob implements ShouldQueue
     use HasConcurrencyLimit;
 
     public $timeout = 600; // 10 minutes timeout for larger batches
-    public $tries = 1;    // Do not retry automatically — manual retry available in the dashboard
+    
+    /**
+     * Tries limit.
+     * With a 5-minute (300s) backoff, 576 tries = 48 hours (2 days) of resilience.
+     */
+    public int $tries = 576;
 
     protected $batchId;
     protected $questionIds;
@@ -70,44 +75,42 @@ class AIBatchTriageJob implements ShouldQueue
         }
 
         try {
+            // Circuit Breaker: If no API keys are available for triage, release the job back to the queue
+            // to wait for quota reset or manual intervention, preventing mass failures.
+            $aiService = app(\App\Services\AI\AIService::class);
+            if (!$aiService->hasActiveKey(\App\Models\ApiKey::CAPABILITY_TRIAGE)) {
+                Log::info("[AIBATCH] No active keys for triage. Releasing batch #{$this->batchId} chunk #{$this->chunkIndex} to retry in 5 minutes.");
+                $this->release(300); // 5 minutes backoff
+                return;
+            }
 
-        // Circuit Breaker: If no API keys are available for triage, release the job back to the queue
-        // to wait for quota reset or manual intervention, preventing mass failures.
-        $aiService = app(\App\Services\AI\AIService::class);
-        if (!$aiService->hasActiveKey(\App\Models\ApiKey::CAPABILITY_TRIAGE)) {
-            Log::info("[AIBATCH] No active keys for triage. Releasing batch #{$this->batchId} chunk #{$this->chunkIndex} to retry in 5 minutes.");
-            $this->release(300); // 5 minutes backoff
-            return;
-        }
+            // Check if batch was cancelled or failed before starting
+            $batch = \App\Models\AiProcessingBatch::where('batch_id', $this->batchId)->first();
+            if ($batch && in_array($batch->status, ['cancelled', 'failed'])) {
+                Log::info("[AIBATCH] Batch job skipped ({$batch->status})", ['batch_id' => $this->batchId]);
+                $this->writeChunkPhase('skipped');
+                return;
+            }
 
-        // Check if batch was cancelled or failed before starting
-        $batch = \App\Models\AiProcessingBatch::where('batch_id', $this->batchId)->first();
-        if ($batch && in_array($batch->status, ['cancelled', 'failed'])) {
-            Log::info("[AIBATCH] Batch job skipped ({$batch->status})", ['batch_id' => $this->batchId]);
-            $this->writeChunkPhase('skipped');
-            return;
-        }
+            // If this is not the first chunk and we have a delay, signal the delay phase
+            if ($this->chunkIndex > 0 && $this->delaySeconds > 0) {
+                $delayEndsAt = now()->addSeconds($this->delaySeconds)->toIso8601String();
+                $this->writeChunkPhase('delay', [
+                    'delay_ends_at' => $delayEndsAt,
+                    'delay_seconds' => $this->delaySeconds,
+                ]);
+                sleep($this->delaySeconds);
+            }
 
-        // If this is not the first chunk and we have a delay, signal the delay phase
-        if ($this->chunkIndex > 0 && $this->delaySeconds > 0) {
-            $delayEndsAt = now()->addSeconds($this->delaySeconds)->toIso8601String();
-            $this->writeChunkPhase('delay', [
-                'delay_ends_at' => $delayEndsAt,
-                'delay_seconds' => $this->delaySeconds,
+            // Signal that this chunk is now processing
+            $this->writeChunkPhase('processing', [
+                'chunk_index' => $this->chunkIndex + 1,
+                'chunk_started_at' => now()->toIso8601String(),
+                'chunk_size' => count($this->questionIds),
             ]);
-            sleep($this->delaySeconds);
-        }
 
-        // Signal that this chunk is now processing
-        $this->writeChunkPhase('processing', [
-            'chunk_index' => $this->chunkIndex + 1,
-            'chunk_started_at' => now()->toIso8601String(),
-            'chunk_size' => count($this->questionIds),
-        ]);
+            $questions = Question::with('images')->whereIn('id', $this->questionIds)->get();
 
-        $questions = Question::with('images')->whereIn('id', $this->questionIds)->get();
-
-        try {
             Log::info("[AIBATCH] Starting batch job", [
                 'batch_id' => $this->batchId,
                 'chunk_index' => $this->chunkIndex,
@@ -150,12 +153,29 @@ class AIBatchTriageJob implements ShouldQueue
             // POOL BUSY: The dedicated AI keys for triage are currently locked or blacklisted.
             // We release the job back to the queue for a retry in 5 minutes.
             Log::info("[AIBATCH] AI key pool busy for batch #{$this->batchId}. Releasing chunk #{$this->chunkIndex}.");
-            $aiService->registerCongestion('AIBatchTriageJob', "Batch: {$this->batchId} | Chunk: {$this->chunkIndex}");
+            app(\App\Services\AI\AIService::class)->registerCongestion('AIBatchTriageJob', "Batch: {$this->batchId} | Chunk: {$this->chunkIndex}");
             $this->writeChunkPhase('idle');
             $this->release(300);
             return;
         } catch (\Throwable $e) {
-            Log::error("[AIBATCH] Batch job failed", [
+            $msg = $e->getMessage();
+            $msgLower = strtolower($msg);
+            
+            $isQuota = str_contains($msgLower, '429') || 
+                       str_contains($msgLower, 'quota') || 
+                       str_contains($msgLower, 'full failover failure') ||
+                       str_contains($msgLower, 'limite de uso da api atingido') ||
+                       str_contains($msgLower, 'rate limit');
+
+            if ($isQuota) {
+                Log::warning("[AIBATCH] Quota limit hit for batch #{$this->batchId} chunk #{$this->chunkIndex}. Releasing for 5m to wait for quota reset. Error: {$msg}");
+                app(\App\Services\AI\AIService::class)->registerCongestion('AIBatchTriageJob', "Batch: {$this->batchId} | Chunk: {$this->chunkIndex}");
+                $this->writeChunkPhase('idle'); // Just idle, do NOT updateProgress as failed
+                $this->release(300);
+                return;
+            }
+
+            Log::error("[AIBATCH] Batch job failed permanently for this chunk", [
                 'batch_id' => $this->batchId,
                 'chunk_index' => $this->chunkIndex,
                 'error' => $e->getMessage(),
