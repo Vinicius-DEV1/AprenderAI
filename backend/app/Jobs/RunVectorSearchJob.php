@@ -13,7 +13,9 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+
 
 /**
  * RunVectorSearchJob
@@ -136,17 +138,27 @@ class RunVectorSearchJob implements ShouldQueue
         ]);
 
         // ── Registra SearchInteractionLog para rastreamento de posição ────────
-        foreach ($rankedItems as $idx => $item) {
-            SearchInteractionLog::create([
-                'ai_search_id'         => $this->searchRequestId,
-                'user_id'              => $this->userId,
-                'question_id'          => $item['question_id'],
-                'rank_position'        => $idx + 1,
-                'was_clicked'          => false,
-                'expanded_concept_ids' => $expandedConceptIds,
-                'search_path'          => $searchPath,
-            ]);
+        // Bulk insert em vez de N INSERTs individuais — evita gargalo de latência MySQL
+        // quando a busca retorna 80-100 questões rankeadas.
+        if (!empty($rankedItems)) {
+            $now = now();
+            $logs = array_map(function ($item, $idx) use ($expandedConceptIds, $searchPath, $now) {
+                return [
+                    'ai_search_id'         => $this->searchRequestId,
+                    'user_id'              => $this->userId,
+                    'question_id'          => $item['question_id'],
+                    'rank_position'        => $idx + 1,
+                    'was_clicked'          => false,
+                    'expanded_concept_ids' => json_encode($expandedConceptIds),
+                    'search_path'          => $searchPath,
+                    'created_at'           => $now,
+                    'updated_at'           => $now,
+                ];
+            }, $rankedItems, array_keys($rankedItems));
+
+            \Illuminate\Support\Facades\DB::table('search_interaction_logs')->insert($logs);
         }
+
 
         // ── Armazena no L2 Semantic Cache para buscas similares futuras ───────
         $originalPrompt = $ctx['prompt'] ?? ''; // <--- USAR PROMPT COMPLETO AQUI
