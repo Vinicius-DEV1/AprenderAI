@@ -152,7 +152,6 @@ class RunVectorSearchJob implements ShouldQueue
                     'expanded_concept_ids' => json_encode($expandedConceptIds),
                     'search_path'          => $searchPath,
                     'created_at'           => $now,
-                    'updated_at'           => $now,
                 ];
             }, $rankedItems, array_keys($rankedItems));
 
