@@ -10,7 +10,7 @@ import SearchableSelect from '../../components/SearchableSelect';
 import GoalSettingsModal from './components/GoalSettingsModal';
 import { motion, AnimatePresence } from 'framer-motion';
 // @ts-ignore
-import html2pdf from 'html2pdf.js/dist/html2pdf.bundle.min.js';
+import html2pdf from 'html2pdf.js';
 import '../../styles/question-bank.css';
 
 interface FilterOptions {
@@ -483,8 +483,8 @@ export default function QuestionBank() {
                 q.alternatives.forEach((alt: any) => {
                     html += `
                         <div style="margin-bottom: 10px; font-size: 14px; color: #334155; display: flex;">
-                            <strong style="margin-right: 8px;">${alt.letter})</strong> 
-                            <div>${alt.text}</div>
+                            <strong style="margin-right: 8px;">${alt.label})</strong> 
+                            <div>${alt.content}</div>
                         </div>
                     `;
                 });
@@ -504,7 +504,7 @@ export default function QuestionBank() {
         questions.forEach((q: any, idx: number) => {
             const correctAlt = q.alternatives?.find((a: any) => a.is_correct);
             const explanation = correctAlt?.explanation || q.explanation || 'Nenhuma explicação detalhada disponível.';
-            const answerText = correctAlt ? `Letra ${correctAlt.letter}` : 'Discursiva';
+            const answerText = correctAlt ? `Letra ${correctAlt.label}` : 'Discursiva';
 
             html += `
                 <div style="margin-bottom: 24px; page-break-inside: avoid; background: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
