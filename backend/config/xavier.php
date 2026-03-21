@@ -38,7 +38,7 @@ return [
         'queue' => env('EMBEDDINGS_QUEUE', 'low'),
 
         // Queue for bulk processing (triage, classification, etc.)
-        'batch_queue' => env('AI_BATCH_QUEUE', 'embeddings'),
+        'batch_queue' => env('AI_BATCH_QUEUE', 'ai_triage'),
 
         // Pipeline version tag written to question_vectors.pipeline_version
         // Bump this string to force re-indexing of all questions on next job run.
