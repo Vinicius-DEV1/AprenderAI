@@ -178,7 +178,7 @@ class ApiKey extends Model
         //   2. Calcula o offset inicial: contador % total_de_chaves.
         //   3. Reordena a Collection para começar a partir desse offset.
         // -------------------------------------------------------------------
-        if ($keys->count() > 1 && $capability === self::CAPABILITY_EMBEDDING) {
+        if ($keys->count() > 1) {
             // Chave Redis única por capability para evitar interferência entre rotas
             $redisKey = "ai_key_rotation_index_{$capability}";
 
