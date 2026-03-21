@@ -191,7 +191,7 @@ const MaestroTester: React.FC<MaestroTesterProps> = ({
                                         </div>
                                     ))}
                                 </div>
-                                <p className="text-[9px] text-slate-400 mt-2">🔵 V2: Alts + Skills são novos no v8_qdrant_native</p>
+                                <p className="text-[9px] text-slate-400 mt-2">🔵 V2: Alts + Skills são novos no v8.1.0 (Xavier 2.0)</p>
                             </PipelineStep>
 
                             <div className="p-4 bg-slate-900 rounded-2xl border border-slate-800 shadow-inner">
