@@ -236,26 +236,26 @@ const SemanticDashboard = () => {
                 isOpen={isIndexModalOpen}
                 onClose={() => setIsIndexModalOpen(false)}
                 stats={stats}
-                indexBatchLimit={indexBatchLimit}
-                setIndexBatchLimit={setIndexBatchLimit}
-                indexForce={indexForce}
-                setIndexForce={setIndexForce}
+                batchLimit={indexBatchLimit}
+                setBatchLimit={setIndexBatchLimit}
+                force={indexForce}
+                setForce={setIndexForce}
                 reindexing={reindexing}
-                onReindex={handleReindex}
-                targetPipelineVersion={TARGET_PIPELINE_VERSION}
+                onStart={handleReindex}
+                targetVersion={TARGET_PIPELINE_VERSION}
             />
 
             <IntentModal
                 isOpen={isIntentModalOpen}
                 onClose={() => setIsIntentModalOpen(false)}
                 stats={stats}
-                intentBatchLimit={intentBatchLimit}
-                setIntentBatchLimit={setIntentBatchLimit}
-                intentForce={intentForce}
-                setIntentForce={setIntentForce}
-                reindexingIntents={reindexingIntents}
-                onReindexIntents={handleReindexIntents}
-                targetPipelineVersion={TARGET_PIPELINE_VERSION}
+                batchLimit={intentBatchLimit}
+                setBatchLimit={setIntentBatchLimit}
+                force={intentForce}
+                setForce={setIntentForce}
+                reindexing={reindexingIntents}
+                onStart={handleReindexIntents}
+                targetVersion={TARGET_PIPELINE_VERSION}
             />
 
             <ResetModal
