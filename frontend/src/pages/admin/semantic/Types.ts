@@ -78,6 +78,7 @@ export interface DashboardStats {
         rate_limit_ends_in: number | null;
         total_requests: number;
         error_rate: number;
+        capabilities?: string[];
     }>;
     search_cache?: Array<{
         id: number;

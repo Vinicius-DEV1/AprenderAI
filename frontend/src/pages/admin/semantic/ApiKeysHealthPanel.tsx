@@ -75,9 +75,20 @@ const ApiKeysHealthPanel: React.FC<ApiKeysHealthPanelProps> = ({ stats, loading 
                                         <div className="text-[10px] font-mono text-gray-400 mt-0.5">{apiKey.model || 'Padrão'}</div>
                                     </td>
                                     <td className="py-3 px-2">
-                                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-gray-100 text-gray-600">
-                                            {apiKey.provider}
-                                        </span>
+                                        <div className="flex flex-col gap-1">
+                                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-gray-100 text-gray-600 w-fit">
+                                                {apiKey.provider}
+                                            </span>
+                                            {apiKey.capabilities && apiKey.capabilities.length > 0 && (
+                                                <div className="flex flex-wrap gap-1">
+                                                    {apiKey.capabilities.map(cap => (
+                                                        <span key={cap} className="px-1.5 py-0.5 rounded-[4px] text-[8px] font-black uppercase bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm">
+                                                            {cap}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="py-3 px-2">
                                         {apiKey.status === 'active' || apiKey.status === 'online' ? (
