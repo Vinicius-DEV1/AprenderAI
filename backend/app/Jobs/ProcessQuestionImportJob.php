@@ -125,14 +125,13 @@ class ProcessQuestionImportJob implements ShouldQueue
                 );
             }
 
-            // Despacha o job de finalização com delay para aguardar os chunks
-            // O delay é estimado: CHUNK_SIZE questões ~= 30s de processamento.
-            // O FinalizeImportJob vai verificar se todos os chunks foram processados.
-            $estimatedDelaySeconds = max(60, $totalChunks * 5);
+            // Despacha o job de finalização com delay reduzido para maior agilidade.
+            // Com 44 workers, o processamento é muito rápido.
+            $initialDelay = 30; // 30 segundos iniciais
             FinalizeImportJob::dispatch($this->import, $tmpDir, $this->zipPath)
-                ->delay(now()->addSeconds($estimatedDelaySeconds));
+                ->delay(now()->addSeconds($initialDelay));
 
-            Log::info("[ProcessQuestionImportJob] {$totalChunks} chunks despachados para o lote #{$this->import->id}. Finalização em ~{$estimatedDelaySeconds}s.");
+            Log::info("[ProcessQuestionImportJob] {$totalChunks} chunks despachados para o lote #{$this->import->id}. Finalização estimada em ~{$initialDelay}s.");
 
         } catch (\Throwable $e) {
             // Falha crítica na extração ou na leitura do SQLite
