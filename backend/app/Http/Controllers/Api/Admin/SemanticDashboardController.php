@@ -197,19 +197,34 @@ class SemanticDashboardController extends Controller
                 'chart_data'        => $chartData,
             ],
             'recent_searches' => $recentSearches,
-            'api_keys' => \App\Models\ApiKey::with('vault')
+            'api_keys' => \App\Models\ApiKey::with(['vault', 'capabilitiesList'])
+                ->whereHas('capabilitiesList', function ($q) {
+                    $q->whereIn('capability', [
+                        \App\Models\ApiKey::CAPABILITY_SEARCH,
+                        \App\Models\ApiKey::CAPABILITY_EMBEDDING,
+                        \App\Models\ApiKey::CAPABILITY_QUERY_EMBEDDING
+                    ]);
+                })
                 ->get()
                 ->map(function ($key) {
                     $isRateLimited = $key->last_error_at && str_contains(strtolower($key->last_error_message), 'rate limit') && now()->lt($key->last_error_at->addMinutes(1));
+                    
+                    // Labeling capabilities for clarity in the dashboard
+                    $caps = $key->capabilitiesList->pluck('capability')->toArray();
+                    $displayCaps = [];
+                    if (in_array(\App\Models\ApiKey::CAPABILITY_EMBEDDING, $caps)) $displayCaps[] = 'Indexação';
+                    if (in_array(\App\Models\ApiKey::CAPABILITY_SEARCH, $caps) || in_array(\App\Models\ApiKey::CAPABILITY_QUERY_EMBEDDING, $caps)) $displayCaps[] = 'Busca';
+
                     return [
                         'id' => $key->id,
                         'name' => $key->vault ? $key->vault->nickname : ($key->provider . ' (Direct)'),
                         'provider' => current(explode('_', $key->provider)), // 'openai', 'groq', 'azure' etc
                         'model' => $key->preferred_model ?? 'N/A',
                         'status' => $isRateLimited ? 'rate_limit' : $key->status,
+                        'capabilities' => $displayCaps,
                         'rate_limit_ends_in' => $isRateLimited ? now()->diffInSeconds($key->last_error_at->addMinutes(1)) : null,
                         'total_requests' => $key->requests_count,
-                        'error_rate' => $key->requests_count > 0 ? 0 : 0, // Simplified for now as error_count doesn't exist
+                        'error_rate' => $key->requests_count > 0 ? 0 : 0, 
                     ];
                 }),
             'search_cache' => \App\Models\AiSearchCache::orderBy('created_at', 'desc')->limit(10)->get(),
