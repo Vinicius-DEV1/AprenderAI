@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import api from '../../api/axios';
+import api from '../../../api/axios';
 import { toast } from 'sonner';
 import { DashboardStats, ConfigState } from './Types';
 
@@ -13,6 +13,7 @@ export const useSemanticDashboard = () => {
     const [reindexingIntents, setReindexingIntents] = useState(false);
     const [clearingCache, setClearingCache] = useState(false);
     const [clearingQueue, setClearingQueue] = useState(false);
+    const [clearingTriage, setClearingTriage] = useState(false);
     const [resetting, setResetting] = useState(false);
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [resetConfirmText, setResetConfirmText] = useState('');
@@ -323,6 +324,27 @@ export const useSemanticDashboard = () => {
             setResetting(false);
         }
     };
+    
+    /**
+     * handleClearTriageQueue
+     * Flushes the AI Triage job queue.
+     */
+    const handleClearTriageQueue = async () => {
+        if (!confirm('Isso removerá TODOS os jobs de TRIAGEM pendentes (AIBatchTriageJob). Deseja continuar?')) {
+            return;
+        }
+
+        try {
+            setClearingTriage(true);
+            const res = await api.delete('/api/v1/admin/monitor/pending-triage');
+            toast.success(res.data.message);
+            loadStats();
+        } catch (error) {
+            toast.error('Erro ao limpar a fila de triagem.');
+        } finally {
+            setClearingTriage(false);
+        }
+    };
 
     /**
      * handleClearCongestion
@@ -386,6 +408,8 @@ export const useSemanticDashboard = () => {
         handleReindexIntents,
         handleClearCache,
         handleClearQueue,
+        handleClearTriageQueue,
+        clearingTriage,
         handleResetEmbeddings,
         handleClearCongestion
     };

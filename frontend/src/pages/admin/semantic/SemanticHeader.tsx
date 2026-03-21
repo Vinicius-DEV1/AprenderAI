@@ -28,6 +28,8 @@ interface SemanticHeaderProps {
     clearingCache: boolean;
     handleClearQueue: () => Promise<void>;
     clearingQueue: boolean;
+    handleClearTriageQueue: () => Promise<void>;
+    clearingTriage: boolean;
     setIsResetModalOpen: (open: boolean) => void;
 }
 
@@ -46,6 +48,8 @@ const SemanticHeader: React.FC<SemanticHeaderProps> = ({
     clearingCache,
     handleClearQueue,
     clearingQueue,
+    handleClearTriageQueue,
+    clearingTriage,
     setIsResetModalOpen
 }) => {
     return (
@@ -127,7 +131,15 @@ const SemanticHeader: React.FC<SemanticHeaderProps> = ({
                                     className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left"
                                 >
                                     {clearingQueue ? <Trash2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                                    Limpar Fila de Jobs
+                                    Limpar Fila de Embeddings
+                                </button>
+                                <button
+                                    onClick={() => { setActionsMenuOpen(false); handleClearTriageQueue(); }}
+                                    disabled={clearingTriage}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors text-left"
+                                >
+                                    {clearingTriage ? <Trash2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                    Limpar Fila de Triagem
                                 </button>
                                 <div className="h-px bg-slate-100 dark:bg-slate-700 my-1" />
                                 <button
