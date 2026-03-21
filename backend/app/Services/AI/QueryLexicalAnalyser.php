@@ -27,12 +27,23 @@ class QueryLexicalAnalyser
     protected array $difficultyMap = [
         'fácil'    => 'easy',
         'facil'    => 'easy',
+        'fáceis'   => 'easy',
+        'faceis'   => 'easy',
         'médio'    => 'medium',
         'medio'    => 'medium',
+        'médios'   => 'medium',
+        'medios'   => 'medium',
+        'média'    => 'medium',
+        'media'    => 'medium',
+        'médias'   => 'medium',
+        'medias'   => 'medium',
         'difícil'  => 'hard',
         'dificil'  => 'hard',
+        'difíceis' => 'hard',
+        'dificeis' => 'hard',
         'hard'     => 'hard',
         'complexa' => 'hard',
+        'complexas'=> 'hard',
     ];
 
     public function analyse(string $prompt): array
@@ -80,10 +91,11 @@ class QueryLexicalAnalyser
     {
         // 0. Detecção de Dificuldade
         foreach ($this->difficultyMap as $keyword => $level) {
-            if (str_contains($prompt, $keyword)) {
+            // Usa word boundaries \b para não dar match em "médios" quando procura "médio" e deixar o "s"
+            if (preg_match('/\b' . preg_quote($keyword, '/') . '\b/iu', $prompt)) {
                 $analysis['difficulty'] = $level;
-                // Remove a palavra do prompt para não confundir outros analisadores
-                $prompt = str_replace($keyword, '', $prompt);
+                // Remove a palavra exata do prompt via regex
+                $prompt = preg_replace('/\b' . preg_quote($keyword, '/') . '\b/iu', '', $prompt);
                 break;
             }
         }
