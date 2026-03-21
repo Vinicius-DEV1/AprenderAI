@@ -182,8 +182,8 @@ class GenerateQueryEmbeddingJob implements ShouldQueue
             Redis::expire($counterKey, $ttl);
         }
 
-        // Exatamente quando os 3 slots completam (independente da ordem), dispara a busca
-        if ($done >= 3) {
+        // Exatamente quando os 5 slots completam (independente da ordem), dispara a busca
+        if ($done >= 5) {
             Log::info("[Xavier][QueryEmbed] Todos os 3 slots concluídos para busca #{$this->searchRequestId}. Disparando RunVectorSearchJob.");
             RunVectorSearchJob::dispatch($this->searchRequestId, $this->userId);
         }

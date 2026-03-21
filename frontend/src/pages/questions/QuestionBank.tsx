@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
 import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -9,6 +9,8 @@ import StatsSlideOver from './StatsSlideOver';
 import SearchableSelect from '../../components/SearchableSelect';
 import GoalSettingsModal from './components/GoalSettingsModal';
 import { motion, AnimatePresence } from 'framer-motion';
+// @ts-ignore
+import html2pdf from 'html2pdf.js/dist/html2pdf.bundle.min.js';
 import '../../styles/question-bank.css';
 
 interface FilterOptions {
@@ -88,13 +90,26 @@ const ENABLE_DISCURSIVAS_FILTER = false;
 
 export default function QuestionBank() {
     const location = useLocation();
-    const queryParams = new URLSearchParams(location.search);
-    const initialNotebookId = queryParams.get('notebook_id') || '';
-    const initialQuestionId = queryParams.get('id') || '';
+    const [searchParams, setSearchParams] = useSearchParams();
+    const initialNotebookId = searchParams.get('notebook_id') || '';
+    const initialQuestionId = searchParams.get('id') || searchParams.get('question_id') || '';
 
     const { aiName } = useConfigStore();
     const { user } = useAuthStore();
-    const [page, setPage] = useState(1);
+    
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const setPage = (newPage: number) => {
+        setSearchParams((prev) => {
+            const params = new URLSearchParams(prev);
+            if (newPage > 1) {
+                params.set('page', newPage.toString());
+            } else {
+                params.delete('page');
+            }
+            return params;
+        }, { replace: true });
+    };
+
     const [filters, setFilters] = useState<FilterOptions>({
         type: '',
         subject: '',
@@ -148,7 +163,7 @@ export default function QuestionBank() {
     const { data: questionsData, isLoading: questionsLoading } = useQuery({
         queryKey: ['questions', user?.id, page, filters],
         queryFn: async () => {
-            const res = await api.get('/api/v1/questions', { params: { ...filters, page } });
+            const res = await api.get('/api/v1/questions', { params: { ...filters, page, per_page: 20 } });
             return res.data;
         },
         enabled: !!user?.id
@@ -429,6 +444,121 @@ export default function QuestionBank() {
     const handlePageChange = (newPage: number) => {
         setPage(newPage);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleExportPdf = () => {
+        if (!questions || questions.length === 0) {
+            setToastMessage("Não há questões visíveis para exportar.");
+            setShowToast(true);
+            setTimeout(() => setShowToast(false), 3000);
+            return;
+        }
+
+        const container = document.createElement('div');
+        container.style.fontFamily = 'Arial, sans-serif';
+        container.style.padding = '20px';
+        container.style.color = '#333';
+
+        let html = `
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h2 style="font-size: 24px; color: #1e293b; margin: 0;">Caderno de Questões</h2>
+                <p style="color: #64748b; margin-top: 5px;">AprenderAI | Gerado em ${new Date().toLocaleDateString('pt-BR')}</p>
+            </div>
+        `;
+
+        // Section 1: Questions
+        questions.forEach((q: any, idx: number) => {
+            html += `
+                <div style="margin-bottom: 40px; page-break-inside: avoid;">
+                    <div style="font-weight: bold; font-size: 16px; margin-bottom: 12px; color: #4f46e5; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">
+                        Questão ${idx + 1} (Ref: ${q.id})
+                    </div>
+                    <div style="font-size: 14px; line-height: 1.6; color: #1e293b; margin-bottom: 16px;">
+                        ${q.statement}
+                    </div>
+            `;
+            
+            if (q.alternatives && q.alternatives.length > 0) {
+                html += `<div style="margin-left: 20px;">`;
+                q.alternatives.forEach((alt: any) => {
+                    html += `
+                        <div style="margin-bottom: 10px; font-size: 14px; color: #334155; display: flex;">
+                            <strong style="margin-right: 8px;">${alt.letter})</strong> 
+                            <div>${alt.text}</div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+            html += `</div>`;
+        });
+
+        // Section 2: Answer Key (Gabarito)
+        html += `
+            <div style="page-break-before: always; padding-top: 20px;">
+                <h3 style="font-size: 20px; color: #1e293b; margin-bottom: 20px; text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+                    Gabarito e Explicações
+                </h3>
+        `;
+
+        questions.forEach((q: any, idx: number) => {
+            const correctAlt = q.alternatives?.find((a: any) => a.is_correct);
+            const explanation = correctAlt?.explanation || q.explanation || 'Nenhuma explicação detalhada disponível.';
+            const answerText = correctAlt ? `Letra ${correctAlt.letter}` : 'Discursiva';
+
+            html += `
+                <div style="margin-bottom: 24px; page-break-inside: avoid; background: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
+                    <div style="font-weight: bold; font-size: 15px; margin-bottom: 8px; color: #1e293b;">
+                        Questão ${idx + 1} <span style="color: #10b981; margin-left: 10px;">✅ Resposta: ${answerText}</span>
+                    </div>
+                    <div style="font-size: 13px; color: #475569; line-height: 1.5;">
+                        <strong style="color: #334155;">Explicação:</strong><br/>
+                        <div style="margin-top: 5px;">${explanation}</div>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `</div>`;
+        container.innerHTML = html;
+        
+        // Append to DOM (hidden) to ensure html2canvas has context
+        container.style.position = 'fixed';
+        container.style.left = '-9999px';
+        container.style.top = '0';
+        container.style.width = '190mm'; // Specify width for better rendering
+        document.body.appendChild(container);
+
+        const opt = {
+            margin:       10,
+            filename:     `questoes-aprenderai-${new Date().toISOString().split('T')[0]}.pdf`,
+            image:        { type: 'jpeg', quality: 0.95 },
+            html2canvas:  { 
+                scale: 1, // Safer scale to avoid canvas limits
+                useCORS: true, 
+                logging: false,
+                letterRendering: true,
+                allowTaint: false
+            },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
+            pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+        };
+
+        setToastMessage("⏳ Gerando PDF... Aguarde um instante.");
+        setShowToast(true);
+
+        html2pdf().set(opt).from(container).save().then(() => {
+            document.body.removeChild(container);
+            setToastMessage("✅ PDF gerado com sucesso!");
+            setTimeout(() => setShowToast(false), 3000);
+        }).catch((err: any) => {
+            console.error("PDF generation failed", err);
+            if (document.body.contains(container)) {
+                document.body.removeChild(container);
+            }
+            setToastMessage("❌ Erro ao gerar o PDF.");
+            setTimeout(() => setShowToast(false), 3000);
+        });
     };
 
     // ── Determine if we should show concurso-specific filters ──
@@ -744,6 +874,9 @@ export default function QuestionBank() {
                     <div className="qb-filter-actions">
                         <button className="qb-btn qb-btn-primary" onClick={() => setPage(1)}>🔍 Filtrar</button>
                         <button className="qb-btn qb-btn-ghost" onClick={clearFilters}>✕ Limpar</button>
+                        <button className="qb-btn qb-btn-ghost" onClick={handleExportPdf} disabled={!questions || questions.length === 0}>
+                            📄 Exportar PDF
+                        </button>
                         <span className="qb-result-count">
                             {meta.total || 0} questões encontradas
                         </span>

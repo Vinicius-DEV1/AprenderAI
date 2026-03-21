@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\HasConcurrencyLimit;
 use App\Models\Question;
 use App\Services\AI\AIBatchService;
 use Illuminate\Bus\Queueable;
@@ -15,9 +16,15 @@ use Illuminate\Support\Facades\Log;
 class AIBatchTriageJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use HasConcurrencyLimit;
 
     public $timeout = 600; // 10 minutes timeout for larger batches
-    public $tries = 1;    // Não retentar automaticamente — retry manual disponível no painel
+    
+    /**
+     * Tries limit.
+     * With a 5-minute (300s) backoff, 576 tries = 48 hours (2 days) of resilience.
+     */
+    public int $tries = 576;
 
     protected $batchId;
     protected $questionIds;
@@ -53,7 +60,6 @@ class AIBatchTriageJob implements ShouldQueue
      */
     public function handle(AIBatchService $batchService): void
     {
-        // Safety check for old/corrupted jobs in queue
         if (empty($this->batchId) || empty($this->questionIds)) {
             Log::warning("[AIBATCH] Skipping job: missing batchId or questionIds. If this is an old job retried after a deploy, it cannot be recovered.", [
                 'batch_id' => $this->batchId ?? 'NULL',
@@ -62,43 +68,49 @@ class AIBatchTriageJob implements ShouldQueue
             return;
         }
 
-        // Circuit Breaker: If no API keys are available for triage, release the job back to the queue
-        // to wait for quota reset or manual intervention, preventing mass failures.
-        $aiService = app(\App\Services\AI\AIService::class);
-        if (!$aiService->hasActiveKey(\App\Models\ApiKey::CAPABILITY_TRIAGE)) {
-            Log::info("[AIBATCH] No active keys for triage. Releasing batch #{$this->batchId} chunk #{$this->chunkIndex} to retry in 5 minutes.");
-            $this->release(300); // 5 minutes backoff
-            return;
+        // Concurrency Semaphore: limit max simultaneous triage jobs cluster-wide
+        $maxConcurrent = config('xavier.concurrency.max_triage', 2);
+        if (!$this->acquireSlot('ai_triage', $maxConcurrent, 30)) {
+            return; // Released back to queue automatically
         }
-
-        // Check if batch was cancelled or failed before starting
-        $batch = \App\Models\AiProcessingBatch::where('batch_id', $this->batchId)->first();
-        if ($batch && in_array($batch->status, ['cancelled', 'failed'])) {
-            Log::info("[AIBATCH] Batch job skipped ({$batch->status})", ['batch_id' => $this->batchId]);
-            $this->writeChunkPhase('skipped');
-            return;
-        }
-
-        // If this is not the first chunk and we have a delay, signal the delay phase
-        if ($this->chunkIndex > 0 && $this->delaySeconds > 0) {
-            $delayEndsAt = now()->addSeconds($this->delaySeconds)->toIso8601String();
-            $this->writeChunkPhase('delay', [
-                'delay_ends_at' => $delayEndsAt,
-                'delay_seconds' => $this->delaySeconds,
-            ]);
-            sleep($this->delaySeconds);
-        }
-
-        // Signal that this chunk is now processing
-        $this->writeChunkPhase('processing', [
-            'chunk_index' => $this->chunkIndex + 1,
-            'chunk_started_at' => now()->toIso8601String(),
-            'chunk_size' => count($this->questionIds),
-        ]);
-
-        $questions = Question::with('images')->whereIn('id', $this->questionIds)->get();
 
         try {
+            // Circuit Breaker: If no API keys are available for triage, release the job back to the queue
+            // to wait for quota reset or manual intervention, preventing mass failures.
+            $aiService = app(\App\Services\AI\AIService::class);
+            if (!$aiService->hasActiveKey(\App\Models\ApiKey::CAPABILITY_TRIAGE)) {
+                Log::info("[AIBATCH] No active keys for triage. Releasing batch #{$this->batchId} chunk #{$this->chunkIndex} to retry in 5 minutes.");
+                $this->release(300); // 5 minutes backoff
+                return;
+            }
+
+            // Check if batch was cancelled or failed before starting
+            $batch = \App\Models\AiProcessingBatch::where('batch_id', $this->batchId)->first();
+            if ($batch && in_array($batch->status, ['cancelled', 'failed'])) {
+                Log::info("[AIBATCH] Batch job skipped ({$batch->status})", ['batch_id' => $this->batchId]);
+                $this->writeChunkPhase('skipped');
+                return;
+            }
+
+            // If this is not the first chunk and we have a delay, signal the delay phase
+            if ($this->chunkIndex > 0 && $this->delaySeconds > 0) {
+                $delayEndsAt = \Illuminate\Support\Carbon::now()->addSeconds($this->delaySeconds)->toIso8601String();
+                $this->writeChunkPhase('delay', [
+                    'delay_ends_at' => $delayEndsAt,
+                    'delay_seconds' => $this->delaySeconds,
+                ]);
+                sleep($this->delaySeconds);
+            }
+
+            // Signal that this chunk is now processing
+            $this->writeChunkPhase('processing', [
+                'chunk_index' => $this->chunkIndex + 1,
+                'chunk_started_at' => \Illuminate\Support\Carbon::now()->toIso8601String(),
+                'chunk_size' => count($this->questionIds),
+            ]);
+
+            $questions = Question::with('images')->whereIn('id', $this->questionIds)->get();
+
             Log::info("[AIBATCH] Starting batch job", [
                 'batch_id' => $this->batchId,
                 'chunk_index' => $this->chunkIndex,
@@ -137,8 +149,39 @@ class AIBatchTriageJob implements ShouldQueue
 
             $this->writeChunkPhase('idle');
 
+        } catch (\App\Exceptions\AIServiceBusyException $e) {
+            // POOL BUSY: The dedicated AI keys for triage are currently locked or blacklisted.
+            // We release the job back to the queue for a retry in 5 minutes.
+            Log::info("[AIBATCH] AI key pool busy for batch #{$this->batchId}. Releasing chunk #{$this->chunkIndex}.");
+            app(\App\Services\AI\AIService::class)->registerCongestion('AIBatchTriageJob', "Batch: {$this->batchId} | Chunk: {$this->chunkIndex}");
+            $this->writeChunkPhase('idle');
+            $this->release(300);
+            return;
         } catch (\Throwable $e) {
-            Log::error("[AIBATCH] Batch job failed", [
+            $msg = $e->getMessage();
+            $msgLower = strtolower($msg);
+            
+            $isQuota = str_contains($msgLower, '429') || 
+                       str_contains($msgLower, 'quota') || 
+                       str_contains($msgLower, 'full failover failure') ||
+                       str_contains($msgLower, 'limite de uso da api atingido') ||
+                       str_contains($msgLower, 'rate limit');
+
+            if ($isQuota) {
+                Log::warning("[AIBATCH] Quota limit hit for batch #{$this->batchId} chunk #{$this->chunkIndex}. Releasing for 5m to wait for quota reset. Error: {$msg}");
+                app(\App\Services\AI\AIService::class)->registerCongestion('AIBatchTriageJob', "Batch: {$this->batchId} | Chunk: {$this->chunkIndex}");
+                
+                // Signal "quota" phase with a 5-minute (300s) delay for the frontend
+                $this->writeChunkPhase('quota', [
+                    'delay_seconds' => 300,
+                    'delay_ends_at' => \Illuminate\Support\Carbon::now()->addSeconds(300)->toIso8601String()
+                ]);
+                
+                $this->release(300);
+                return;
+            }
+
+            Log::error("[AIBATCH] Batch job failed permanently for this chunk", [
                 'batch_id' => $this->batchId,
                 'chunk_index' => $this->chunkIndex,
                 'error' => $e->getMessage(),
@@ -147,6 +190,8 @@ class AIBatchTriageJob implements ShouldQueue
 
             $this->writeChunkPhase('idle');
             $this->updateProgress(0, count($this->questionIds), $e->getMessage());
+        } finally {
+            $this->releaseSlot('ai_triage');
         }
     }
 

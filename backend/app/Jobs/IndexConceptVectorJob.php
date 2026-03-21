@@ -27,7 +27,7 @@ class IndexConceptVectorJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries   = 2;
+    public int $tries   = 20;
     public int $timeout = 60;
 
     public function __construct(protected string $conceptId)
@@ -46,17 +46,10 @@ class IndexConceptVectorJob implements ShouldQueue
         if (!$concept) {
             $msg = "[Xavier][IndexConcept] Concept '{$this->conceptId}' NOT FOUND in MySQL database.";
             Log::error($msg);
-            throw new \RuntimeException($msg);
-        }
-
-        // Circuit Breaker: If no API keys are available for embedding, release the job back to the queue
-        // to wait for quota reset or manual intervention, preventing mass failures.
-        if (!$aiService->hasActiveKey(\App\Models\ApiKey::CAPABILITY_EMBEDDING)) {
-            Log::info("[Xavier][IndexConcept] No active keys for embedding. Releasing concept #{$concept->id} to retry in 5 minutes.");
-            $this->release(300); // 5 minutes backoff
+            // Permanent error, no retry
             return;
         }
-        
+
         Log::info("[Xavier][IndexConcept] Found concept #{$concept->id} ({$concept->name}). Starting indexing...");
 
         // Gather related concept names for richer embedding context
@@ -75,12 +68,35 @@ class IndexConceptVectorJob implements ShouldQueue
         // para ser encontrado por queries de busca (RETRIEVAL_QUERY).
         Log::info("[Xavier][IndexConcept] Generating vector for concept '{$this->conceptId}'...");
         $text   = $textBuilder->buildForConcept($concept, $relatedNames);
-        $vector = $aiService->generateEmbedding($text, null, 'RETRIEVAL_DOCUMENT');
+        
+        try {
+            $vector = $aiService->generateEmbedding($text, null, 'RETRIEVAL_DOCUMENT');
 
-        if (!$vector) {
-            $msg = "[Xavier][IndexConcept] Embedding FAILED for concept '{$this->conceptId}'. Check Gemini API/Quota.";
-            Log::error($msg);
-            throw new \RuntimeException($msg);
+            if (!$vector) {
+                throw new \RuntimeException("Vetor retornado vazio.");
+            }
+        } catch (\App\Exceptions\AIServiceBusyException $e) {
+            // POOL BUSY OR LOCKED: Use 5-minute backoff to avoid aggressive key contention.
+            Log::info("[IndexConceptVectorJob] AI pool busy for concept #{$this->conceptId}. Releasing for 5m backoff.");
+            $this->release(300);
+            return;
+        } catch (\Exception $e) {
+            $msg = $e->getMessage();
+            
+            // Check for Quota limit or other retriable failover failures
+            $isQuota = str_contains(strtolower($msg), '429') || 
+                       str_contains(strtolower($msg), 'quota') || 
+                       str_contains(strtolower($msg), 'full failover failure');
+
+            if ($isQuota) {
+                Log::warning("[IndexConceptVectorJob] Quota limit hit or no keys available for concept #{$this->conceptId}. Releasing for 5m. Error: {$msg}");
+                $this->release(300);
+                return;
+            }
+
+            // Permanent failure: Log and fail the job definitively.
+            Log::error("[IndexConceptVectorJob] Permanent error indexing concept #{$this->conceptId}: " . $msg);
+            $this->fail($e);
         }
 
         Log::debug("[Xavier][IndexConcept] #{$this->conceptId} vector generated successfully.");
@@ -92,7 +108,7 @@ class IndexConceptVectorJob implements ShouldQueue
             'subject_id'       => $concept->subject_id,
             'topic_id'         => $concept->topic_id,
             'aliases'          => $concept->aliases ?? [],
-            'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v6_intent_unification'),
+            'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v7_lexical_analyser'),
         ];
 
         $success = $qdrant->upsertConcept($this->conceptId, $vector, $payload);

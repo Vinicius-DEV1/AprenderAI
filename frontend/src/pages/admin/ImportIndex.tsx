@@ -50,9 +50,14 @@ export default function ImportIndex() {
 
                     if (data?.status === 'processing' || data?.status === 'completed' || data?.status === 'pending') {
                         if (data.total > 0) {
-                            const pct = Math.round((data.processed / data.total) * 100);
+                             const pct = Math.round((data.processed / data.total) * 100);
                             setProgressPercent(pct);
-                            setStatusText(`Inserindo via Job: ${data.processed} de ${data.total} questões (${pct}%).`);
+                            
+                            if (pct === 100 && data.status === 'processing') {
+                                setStatusText('🏁 Quase lá! Finalizando o lote e limpando arquivos temporários...');
+                            } else {
+                                setStatusText(`Inserindo via Job: ${data.processed} de ${data.total} questões (${pct}%).`);
+                            }
                         } else {
                             setStatusText('Extraindo o ZIP e aguardando processamento inicial...');
                         }

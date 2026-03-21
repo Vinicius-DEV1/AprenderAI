@@ -860,6 +860,35 @@
     border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 
+.qb-question-image {
+    max-width: 100% !important;
+    max-height: 500px !important;
+    height: auto !important;
+    object-fit: contain;
+    border-radius: 8px;
+    display: block;
+    margin: 12px auto;
+}
+
+.qb-alt-image {
+    max-width: 100% !important;
+    max-height: 200px !important;
+    height: auto !important;
+    object-fit: contain;
+    border-radius: 6px;
+    margin-top: 8px;
+}
+
+.markdown-content img {
+    max-width: 100% !important;
+    max-height: 400px !important;
+    height: auto !important;
+    object-fit: contain;
+    border-radius: 8px;
+    margin: 12px auto;
+    display: block;
+}
+
 .qb-alt {
     display: flex;
     align-items: flex-start;

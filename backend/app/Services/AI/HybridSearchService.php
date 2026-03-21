@@ -23,9 +23,9 @@ class HybridSearchService
     /**
      * Perform hybrid search.
      *
-     * @param  array  $queryVectors      ['statement'=>[...], 'concept'=>[...], 'explanation'=>[...]]
+     * @param  array  $queryVectors      ['statement'=>[...], 'concept'=>[...], 'explanation'=>[...], 'alternatives'=>[...], 'skills'=>[...]]
      * @param  string[] $expandedConceptIds  Concept slugs from QueryExpansionService
-     * @param  array  $sqlFilters        Optional SQL filters: subject, topic, type, difficulty, year
+     * @param  array  $sqlFilters        Optional SQL filters: subject, topic, type, difficulty, year, has_explanation, word_count_max
      * @param  int    $limit             Candidate limit for Qdrant (pre-ReRank)
      * @return array  [{question_id, score, source, payload}]
      */
@@ -33,10 +33,11 @@ class HybridSearchService
         array  $queryVectors,
         array  $expandedConceptIds = [],
         array  $sqlFilters = [],
-        int    $limit = 50
+        int    $limit = 50,
+        array  $excludedConceptIds = []
     ): array {
         // Build Qdrant filter from expanded concept IDs + SQL filters
-        $qdrantFilter = $this->buildQdrantFilter($expandedConceptIds, $sqlFilters);
+        $qdrantFilter = $this->buildQdrantFilter($expandedConceptIds, $sqlFilters, $excludedConceptIds);
 
         // Try Qdrant multi-vector search
         try {
@@ -66,23 +67,30 @@ class HybridSearchService
     /**
      * Build the Qdrant filter clause from concept IDs and SQL-style metadata filters.
      */
-    private function buildQdrantFilter(array $conceptIds, array $sqlFilters): array
+    private function buildQdrantFilter(array $conceptIds, array $sqlFilters, array $excludedConceptIds = []): array
     {
         $must = [];
 
-        // Filter by subject
+        // Filter by subject — use subject_ids (array) for multi-discipline support
+        // Falls back to subject_id for backward compatibility with legacy-indexed points.
         if (!empty($sqlFilters['subject'])) {
+            $ids = is_array($sqlFilters['subject'])
+                ? array_map('intval', $sqlFilters['subject'])
+                : [(int) $sqlFilters['subject']];
             $must[] = [
-                'key'   => 'subject_id',
-                'match' => ['value' => (int) $sqlFilters['subject']],
+                'key'   => 'subject_ids',
+                'match' => ['any' => $ids],
             ];
         }
 
-        // Filter by topic
+        // Filter by topic — use topic_ids (array) for multi-topic support
         if (!empty($sqlFilters['topic'])) {
+            $ids = is_array($sqlFilters['topic'])
+                ? array_map('intval', $sqlFilters['topic'])
+                : [(int) $sqlFilters['topic']];
             $must[] = [
-                'key'   => 'topic_id',
-                'match' => ['value' => (int) $sqlFilters['topic']],
+                'key'   => 'topic_ids',
+                'match' => ['any' => $ids],
             ];
         }
 
@@ -115,6 +123,23 @@ class HybridSearchService
             ];
         }
 
+        // Filter by Year (Range support)
+        if (!empty($sqlFilters['year'])) {
+            $year = (int) $sqlFilters['year'];
+            $op   = $sqlFilters['year_operator'] ?? '=';
+
+            if ($op === '=') {
+                $must[] = ['key' => 'year', 'match' => ['value' => $year]];
+            } else {
+                $range = ['key' => 'year', 'range' => []];
+                if ($op === '>=') $range['range']['gte'] = $year;
+                if ($op === '<=') $range['range']['lte'] = $year;
+                if ($op === '>')  $range['range']['gt']  = $year;
+                if ($op === '<')  $range['range']['lt']  = $year;
+                $must[] = $range;
+            }
+        }
+
         // Filter by organization (Banca)
         if (!empty($sqlFilters['organization'])) {
             if (is_array($sqlFilters['organization'])) {
@@ -145,6 +170,89 @@ class HybridSearchService
             }
         }
 
+        // --- EXCLUSION FILTERS (must_not) ---
+        $mustNot = [];
+
+        // Exclude by organization
+        if (!empty($sqlFilters['exclude_organization'])) {
+            if (is_array($sqlFilters['exclude_organization'])) {
+                $mustNot[] = [
+                    'key'   => 'organization',
+                    'match' => ['any' => $sqlFilters['exclude_organization']],
+                ];
+            } else {
+                $mustNot[] = [
+                    'key'   => 'organization',
+                    'match' => ['value' => $sqlFilters['exclude_organization']],
+                ];
+            }
+        }
+
+        // Exclude by institution
+        if (!empty($sqlFilters['exclude_institution'])) {
+            if (is_array($sqlFilters['exclude_institution'])) {
+                $mustNot[] = [
+                    'key'   => 'institution',
+                    'match' => ['any' => $sqlFilters['exclude_institution']],
+                ];
+            } else {
+                $mustNot[] = [
+                    'key'   => 'institution',
+                    'match' => ['value' => $sqlFilters['exclude_institution']],
+                ];
+            }
+        }
+
+        // Exclude by Type (ENEM/Concurso)
+        if (!empty($sqlFilters['exclude_type'])) {
+            $mustNot[] = [
+                'key'   => 'type',
+                'match' => ['value' => $sqlFilters['exclude_type']],
+            ];
+        }
+
+        // Exclude by Subject ID — match against subject_ids array for V2 multi-subject support
+        if (!empty($sqlFilters['exclude_subject_id'])) {
+            $mustNot[] = [
+                'key'   => 'subject_ids',
+                'match' => ['any' => array_map('intval', (array) $sqlFilters['exclude_subject_id'])],
+            ];
+        }
+
+        // Exclude by Topic ID — match against topic_ids array for V2 multi-topic support
+        if (!empty($sqlFilters['exclude_topic_id'])) {
+            $mustNot[] = [
+                'key'   => 'topic_ids',
+                'match' => ['any' => array_map('intval', (array) $sqlFilters['exclude_topic_id'])],
+            ];
+        }
+
+        // Filter: only questions with explanation/resolution (V2 field)
+        if (!empty($sqlFilters['has_explanation'])) {
+            $must[] = [
+                'key'   => 'has_explanation',
+                'match' => ['value' => true],
+            ];
+        }
+
+        // Filter: word count ceiling — avoids very long-winded questions (V2 field)
+        if (!empty($sqlFilters['word_count_max'])) {
+            $must[] = [
+                'key'   => 'word_count',
+                'range' => ['lte' => (int) $sqlFilters['word_count_max']],
+            ];
+        }
+
+        // Exclude by Concepts (Negative Semantic Intent)
+        if (!empty($excludedConceptIds)) {
+            foreach ($excludedConceptIds as $slug) {
+                $mustNot[] = [
+                    'key'   => 'concepts',
+                    'match' => ['value' => $slug]
+                ];
+            }
+        }
+
         // Only active, approved questions -- always
         $must[] = [
             'key'   => 'is_active',
@@ -152,8 +260,9 @@ class HybridSearchService
         ];
 
         $filter = [];
-        if (!empty($must)) $filter['must'] = $must;
-        if (!empty($should)) $filter['should'] = $should;
+        if (!empty($must))    $filter['must'] = $must;
+        if (!empty($should))  $filter['should'] = $should;
+        if (!empty($mustNot)) $filter['must_not'] = $mustNot;
 
         return $filter;
     }
@@ -192,6 +301,40 @@ class HybridSearchService
         }
         if (!empty($sqlFilters['difficulty'])) {
             $query->where('difficulty', $sqlFilters['difficulty']);
+        }
+        if (!empty($sqlFilters['year'])) {
+            $year = (int) $sqlFilters['year'];
+            $op   = $sqlFilters['year_operator'] ?? '=';
+            $query->where('year', $op, $year);
+        }
+        if (!empty($sqlFilters['organization'])) {
+            $orgs = (array) $sqlFilters['organization'];
+            $query->whereIn('organization', $orgs);
+        }
+        if (!empty($sqlFilters['institution'])) {
+            $insts = (array) $sqlFilters['institution'];
+            $query->whereIn('institution', $insts);
+        }
+
+        // --- Exclusions ---
+        if (!empty($sqlFilters['exclude_subject_id'])) {
+            $query->whereDoesntHave('subjects', function ($q) use ($sqlFilters) {
+                $q->whereIn('subjects.id', (array) $sqlFilters['exclude_subject_id']);
+            });
+        }
+        if (!empty($sqlFilters['exclude_topic_id'])) {
+            $query->whereDoesntHave('topics', function ($q) use ($sqlFilters) {
+                $q->whereIn('topics.id', (array) $sqlFilters['exclude_topic_id']);
+            });
+        }
+        if (!empty($sqlFilters['exclude_org'])) {
+            $query->whereNotIn('organization', (array) $sqlFilters['exclude_org']);
+        }
+        if (!empty($sqlFilters['exclude_inst'])) {
+            $query->whereNotIn('institution', (array) $sqlFilters['exclude_inst']);
+        }
+        if (!empty($sqlFilters['exclude_type'])) {
+            $query->where('tipo_concurso', '!=', $sqlFilters['exclude_type']);
         }
         if (!empty($sqlFilters['keyword'])) {
             $query->where(function ($q) use ($sqlFilters) {

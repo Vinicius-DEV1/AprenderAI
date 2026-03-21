@@ -7,8 +7,11 @@ use App\Models\AiSearchRequest;
 use App\Models\Question;
 use App\Models\QuestionInteraction;
 use App\Models\SearchInteractionLog;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 
 use App\Jobs\GenerateQueryEmbeddingJob;
+use App\Jobs\RunVectorSearchJob;
 use App\Jobs\RespondToStandaloneChatJob;
 use App\Http\Resources\QuestionResource;
 use App\Services\AI\AIService;
@@ -122,11 +125,11 @@ class QuestionController extends Controller
                 });
             }
 
-            // Sort by newest by default
-            $query->orderBy('created_at', 'desc');
+            // Sort by year and newest ID by default
+            $query->orderBy('year', 'desc')->orderBy('id', 'desc');
         }
 
-        $questions = $query->paginate($request->get('per_page', 15));
+        $questions = $query->paginate($request->get('per_page', 20));
 
         return QuestionResource::collection($questions);
     }
@@ -518,9 +521,16 @@ class QuestionController extends Controller
         $hybridSearch  = app(HybridSearchService::class);
         $reranker      = app(ReRankService::class);
 
-        // ── Step 1: Query Normalization ──────────────────────────────────────
-        $normalizedQuery = $textBuilder->buildForQuery($request->prompt);
-        Log::info('[Xavier][Search] Step 1 done: normalized query.', ['q' => $normalizedQuery]);
+        // ── Step 1b: Lexical Analysis (Xavier 2.0) ───────────────────────────
+        // Identifica termos positivos, negativos (negação) e restrição.
+        $lexical   = app(\App\Services\AI\QueryLexicalAnalyser::class);
+        $analysis  = $lexical->analyse($request->prompt);
+        $positivePrompt = implode(' ', $analysis['positive_terms']);
+        $negativePrompt = implode(' ', $analysis['negative_terms']);
+
+        // ── Step 2: Normalização da Query ─────────────────────────────────────
+        $normalizedQuery = $textBuilder->buildForQuery($positivePrompt);
+        Log::info('[Xavier][Search] Step 2 done: query normalized.', ['original' => $request->prompt, 'normalized' => $normalizedQuery, 'negative' => $negativePrompt]);
 
         // â”€â”€ Step 2: L1 Cache (exact hash) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         $cachedFilters = $cacheService->findExactMatch($normalizedQuery);
@@ -535,25 +545,40 @@ class QuestionController extends Controller
         // e limitando os resultados artificialmente. Agora confiamos 100% nos vetores.
         $extractedSubjectId = null;
         $extractedTopicId = null;
-        // ── Step 3: Generic Query Embedding (for cache + concept detection) ────
-        // Este embedding genérico é usado para:
-        //   - L2 Semantic Cache (busca por similaridade em queries anteriores)
-        //   - Concept Detection (busca de conceitos no Qdrant)
-        // Usa RETRIEVAL_QUERY para otimizar o vetor como busca, não como documento.
-        $queryVector = $aiService->generateEmbedding($normalizedQuery, $user->id, 'RETRIEVAL_QUERY');
-
-        if (!$queryVector) {
-            Log::warning('[Xavier][Search] Step 3 FAILED: embedding null. Falling back to legacy.');
+        // ── Step 3: Geração de Embedding Genérico ──────────────────────────────
+        // Usamos o prompt POSITIVO para a busca semântica principal.
+        try {
+            $queryVector = $aiService->generateEmbedding($normalizedQuery, $user->id, 'RETRIEVAL_QUERY');
+            
+            if (!$queryVector) {
+                throw new \Exception("Embedding returned null");
+            }
+        } catch (\Exception $e) {
+            Log::warning('[Xavier][Search] Step 3 FAILED: embedding exception. Falling back to legacy.', [
+                'error' => $e->getMessage()
+            ]);
             return $this->legacyAiSearch($request, $user, $cacheService);
         }
 
         Log::info('[Xavier][Search] Step 3 done: generic query embedding generated.');
 
         // ── Step 4: L2 Semantic Cache ─────────────────────────────────────────
-        $l2CachedFilters = $cacheService->findSimilarMatch($queryVector, 0.88);
-        if ($l2CachedFilters) {
-            Log::info('[Xavier][Search] Step 4 HIT: L2 semantic cache.');
-            return $this->buildVectorSearchResponse($l2CachedFilters, $user, $request->prompt, 'l2_cache', []);
+        // Bypass L2 cache if explicit filters exist to prevent semantic collisions
+        // (e.g. "somente ibfc" and "somente aocp" are >95% mathematically similar but logically opposite)
+        $hasFilters = $analysis['is_restricted'] 
+            || !empty($analysis['negative_terms']) 
+            || !empty($analysis['organizations']) 
+            || !empty($analysis['years']) 
+            || $analysis['difficulty'] !== null;
+            
+        if (!$hasFilters) {
+            $l2CachedFilters = $cacheService->findSimilarMatch($queryVector, 0.88);
+            if ($l2CachedFilters) {
+                Log::info('[Xavier][Search] Step 4 HIT: L2 semantic cache.');
+                return $this->buildVectorSearchResponse($l2CachedFilters, $user, $request->prompt, 'l2_cache', []);
+            }
+        } else {
+            Log::info('[Xavier][Search] Step 4 BYPASS: L2 semantic cache skipped due to explicit filters.');
         }
 
         // ── Step 5: Busca de Intenção e Conceitos via Qdrant ───────────────────────
@@ -564,132 +589,260 @@ class QuestionController extends Controller
         // - Topics: Assuntos específicos (ex: Verbos, Geometria).
         $extractedSubjects = [];
         $extractedTopics   = [];
-        $detectedConcepts  = [];
         $extractedOrgs     = [];
         $extractedInsts    = [];
-        $searchPath = 'concept';
+        $searchPath = 'intent_match';
 
         try {
-            // Obtém o threshold de detecção de conceito do banco de dados (default 0.75)
-            $conceptThreshold = (float) \App\Models\Configuration::get('xavier_concept_detection_threshold', config('xavier.embeddings.concept_detection_threshold', 0.75));
-            
-            // Busca na coleção 'concepts_vectors' as 5 entidades mais similares à query do usuário
-            $conceptMatches = $qdrant->searchConcepts($queryVector, 5, $conceptThreshold);
-            
-            foreach ($conceptMatches as $match) {
+            // Obtém o threshold de detecção de intenção do banco de dados (default 0.75)
+            $intentThreshold = (float) \App\Models\Configuration::get('xavier_concept_detection_threshold', config('xavier.embeddings.concept_detection_threshold', 0.75));
+
+            // Busca na coleção de filtros semânticos as 5 entidades mais similares à query
+            $intentMatches = $qdrant->searchIntents($queryVector, 5, $intentThreshold);
+
+            foreach ($intentMatches as $match) {
                 $payload = $match['payload'] ?? [];
-                $type = $payload['entity_type'] ?? 'concept';
-                
-                // Distribui os resultados conforme o tipo de entidade detectada
-                if ($type === 'concept' && isset($payload['concept_slug'])) {
-                    // Conceitos alimentam a expansão por Grafo (KG)
-                    $detectedConcepts[] = $payload['concept_slug'];
-                } elseif ($type === 'subject' && isset($payload['subject_id'])) {
-                    // INTENÇÃO DE DISCIPLINA DETECTADA: Salva múltiplos hits que serão
-                    // usados mais abaixo como bônus (boost) pelo ReRankService.
+                $type = $payload['entity_type'] ?? '';
+
+                if ($type === 'subject' && isset($payload['subject_id'])) {
                     $extractedSubjects[] = (int) $payload['subject_id'];
-                    Log::info("[Xavier][Search] INTENT DETECTED: Subject #{$payload['subject_id']} ({$payload['name']})");
+                    Log::info("[Xavier][Search] INTENT: Subject #{$payload['subject_id']} ({$payload['name']})");
                 } elseif ($type === 'topic' && isset($payload['topic_id'])) {
                     $extractedTopics[] = (int) $payload['topic_id'];
-                    Log::info("[Xavier][Search] INTENT DETECTED: Topic #{$payload['topic_id']} ({$payload['name']})");
+                    Log::info("[Xavier][Search] INTENT: Topic #{$payload['topic_id']} ({$payload['name']})");
                 } elseif ($type === 'organization' && isset($payload['organization'])) {
                     $extractedOrgs[] = $payload['organization'];
-                    Log::info("[Xavier][Search] INTENT DETECTED: Organization '{$payload['organization']}'");
+                    Log::info("[Xavier][Search] INTENT: Org '{$payload['organization']}'");
                 } elseif ($type === 'institution' && isset($payload['institution'])) {
                     $extractedInsts[] = $payload['institution'];
-                    Log::info("[Xavier][Search] INTENT DETECTED: Institution '{$payload['institution']}'");
+                    Log::info("[Xavier][Search] INTENT: Inst '{$payload['institution']}'");
                 }
             }
-            
-            $detectedConcepts = array_values(array_unique($detectedConcepts));
+
             $extractedSubjects = array_values(array_unique($extractedSubjects));
-            $extractedTopics = array_values(array_unique($extractedTopics));
-            $extractedOrgs = array_values(array_unique($extractedOrgs));
-            $extractedInsts = array_values(array_unique($extractedInsts));
-            Log::info('[Xavier][Search] Step 5 done: intent & concept detection.', [
-                'concepts' => $detectedConcepts,
-                'subject_ids' => $extractedSubjects,
-                'topic_ids' => $extractedTopics,
+            $extractedTopics   = array_values(array_unique($extractedTopics));
+            $extractedOrgs     = array_values(array_unique($extractedOrgs));
+            $extractedInsts    = array_values(array_unique($extractedInsts));
+
+            Log::info('[Xavier][Search] Step 5 done: intent detection.', [
+                'subject_ids'   => $extractedSubjects,
+                'topic_ids'     => $extractedTopics,
                 'organizations' => $extractedOrgs,
                 'institutions'  => $extractedInsts,
             ]);
         } catch (\Exception $e) {
-            Log::warning('[Xavier][Search] Step 5 FAILED: concept detection error.', ['err' => $e->getMessage()]);
+            Log::warning('[Xavier][Search] Step 5 FAILED: intent detection error.', ['err' => $e->getMessage()]);
         }
 
-        // ── Step 5b: Fallback se nenhuma intenção ou conceito for encontrado ──
-        if (empty($detectedConcepts) && empty($extractedSubjects) && empty($extractedTopics) && empty($extractedOrgs) && empty($extractedInsts)) {
+        // ── 5.1: Mesclar Detecções Léxicas (Fase 4) ───────────────────────────
+        // Adicionamos o que o Analista Léxico detectou via Regex (ex: "FGV", "ENEM")
+        // às detecções semânticas para garantir que nada passe despercebido.
+        if (!empty($analysis['organizations'])) {
+            $extractedOrgs = array_merge($extractedOrgs, $analysis['organizations']);
+        }
+        if (!empty($analysis['institutions'])) {
+            $extractedInsts = array_merge($extractedInsts, $analysis['institutions']);
+        }
+
+        $extractedOrgs  = array_values(array_unique($extractedOrgs));
+        $extractedInsts = array_values(array_unique($extractedInsts));
+
+        // ── Step 5b: Fallback se nenhuma intenção for encontrada ───────────────
+        if (empty($extractedSubjects) && empty($extractedTopics) && empty($extractedOrgs) && empty($extractedInsts)) {
             Log::info('[Xavier][Search] Step 5b: no intents found, proceeding with pure vector search.');
             $searchPath = 'vector_only';
         }
 
+        // ── Step 5d: Detecção de Intenções Negativas e Restrições (Xavier 2.0) ──
+        $excludedOrgs       = [];
+        $excludedInsts      = [];
+        $excludedSubjects   = [];
+        $excludedTopics     = [];
+        $excludedType       = null;
+        
+        // Entidades obrigatórias (MUST) vindas de "apenas / somente"
+        $mustOrgs           = [];
+        $mustInsts          = [];
+        $mustSubjects       = [];
+        $mustTopics         = [];
+
+        // 1. Processar NEGAÇÕES (O que remover)
+        if (!empty($negativePrompt)) {
+            try {
+                $negVector = $aiService->generateEmbedding($negativePrompt, $user->id, 'RETRIEVAL_QUERY');
+                $negMatches = $qdrant->searchConcepts($negVector, 10, 0.55);
+                
+                foreach ($negMatches as $match) {
+                    $payload = $match['payload'] ?? [];
+                    $type = $payload['entity_type'] ?? '';
+                    
+                    if ($type === 'organization' && isset($payload['organization'])) {
+                        $excludedOrgs[] = $payload['organization'];
+                    } elseif ($type === 'institution' && isset($payload['institution'])) {
+                        $excludedInsts[] = $payload['institution'];
+                    } elseif ($type === 'subject' && isset($payload['subject_id'])) {
+                        $excludedSubjects[] = (int) $payload['subject_id'];
+                    } elseif ($type === 'topic' && isset($payload['topic_id'])) {
+                        $excludedTopics[] = (int) $payload['topic_id'];
+                    }
+                }
+
+                $lowerNeg = mb_strtolower($negativePrompt);
+                if (str_contains($lowerNeg, 'concurso')) $excludedType = 'concurso';
+                if (str_contains($lowerNeg, 'enem')) $excludedType = 'enem';
+
+            } catch (\Exception $e) {
+                Log::warning('[Xavier][Search] Negative intent detection error.', ['err' => $e->getMessage()]);
+            }
+        }
+
+        // 2. Processar RESTRIÇÕES (O que travar como MUST)
+        if ($analysis['is_restricted'] && !empty($analysis['restricted_terms'])) {
+            try {
+                foreach ($analysis['restricted_terms'] as $term) {
+                    $mustVector = $aiService->generateEmbedding($term, $user->id, 'RETRIEVAL_QUERY');
+                    $mustMatches = $qdrant->searchConcepts($mustVector, 3, 0.70); // Threshold ajustado para melhor recall de siglas (ex: IBFC)
+                    
+                    foreach ($mustMatches as $match) {
+                        $payload = $match['payload'] ?? [];
+                        $type = $payload['entity_type'] ?? '';
+                        
+                        if ($type === 'organization' && isset($payload['organization'])) {
+                            $mustOrgs[] = $payload['organization'];
+                        } elseif ($type === 'institution' && isset($payload['institution'])) {
+                            $mustInsts[] = $payload['institution'];
+                        } elseif ($type === 'subject' && isset($payload['subject_id'])) {
+                            $mustSubjects[] = (int) $payload['subject_id'];
+                        } elseif ($type === 'topic' && isset($payload['topic_id'])) {
+                            $mustTopics[] = (int) $payload['topic_id'];
+                        }
+                    }
+
+                    // Detecção de tipo via keyword no termo restrito
+                    $lowerTerm = mb_strtolower($term);
+                    if (str_contains($lowerTerm, 'concurso')) $sqlFilters['type'] = 'concurso';
+                    if (str_contains($lowerTerm, 'enem')) $sqlFilters['type'] = 'enem';
+                }
+            } catch (\Exception $e) {
+                Log::warning('[Xavier][Search] Restriction intent detection error.', ['err' => $e->getMessage()]);
+            }
+        }
+
+        Log::info('[Xavier][Search] Intent Analysis Finalized.', [
+            'exclusions'   => count($excludedOrgs) + count($excludedInsts) + count($excludedSubjects) + count($excludedTopics),
+            'restrictions' => count($mustOrgs) + count($mustInsts) + count($mustSubjects) + count($mustTopics)
+        ]);
+
+        // ── Step 6: Expansão de Query via Co-ocorrência de Subjects/Topics ─────
+        // Se detectamos Subjects ou Topics via Qdrant, expandimos para entidades
+        // correlacionadas (e.g. Subject de Biologia → Topics como Genética, Citologia)
+        // baseado em co-ocorrências reais nas questões do banco de dados.
+        $expandedSubjectIds = $extractedSubjects;
+        $expandedTopicIds   = $extractedTopics;
+        
+        if (!empty($extractedSubjects) || !empty($extractedTopics)) {
+            $expanded = $expansion->expand($extractedSubjects, $extractedTopics);
+            $expandedSubjectIds = $expanded['subject_ids'];
+            $expandedTopicIds   = $expanded['topic_ids'];
+        }
+
+        Log::info('[Xavier][Search] Step 6 done: co-occurrence expansion.', [
+            'original_subjects' => $extractedSubjects,
+            'original_topics'   => $extractedTopics,
+            'expanded_subjects' => $expandedSubjectIds,
+            'expanded_topics' => $expandedTopicIds,
+        ]);
+
+        // Atualiza as intenções com os valores expandidos para uso no ReRank
+        // (os expanded IDs substituem os originais no intent_filters)
+        $extractedSubjects = $expandedSubjectIds;
+        $extractedTopics   = $expandedTopicIds;
+
         // ── Step 5c: Detecção de Tipo (ENEM/Concurso) via Keywords ─────────────
-        // Se o usuário digitar "questões de concurso", ativamos o filtro de tipo.
+        // Usamos o prompt POSITIVO para detectar o tipo desejado.
         $extractedType = null;
-        $lowerPrompt = mb_strtolower($request->prompt);
+        $lowerPrompt = mb_strtolower($positivePrompt);
         if (str_contains($lowerPrompt, 'concurso')) {
             $extractedType = 'concurso';
         } elseif (str_contains($lowerPrompt, 'enem')) {
             $extractedType = 'enem';
         }
 
-        // ── Step 6: Expansão de Query via Grafo de Conhecimento ─────────────────
-        // Se detectamos conceitos (ex: "fotossíntese"), expandimos para termos
-        // relacionados (ex: "clorofila") para aumentar o recall da busca vetorial lateral.
-        $expandedConceptIds = !empty($detectedConcepts) ? $expansion->expand($detectedConcepts, depth: 1) : [];
-        Log::info('[Xavier][Search] Step 6 done: query expansion.', ['expanded' => $expandedConceptIds]);
+        // Xavier 2.0 (v8) — Generate all 5 query-side vectors in a single BATCH call
+        // This is 5x faster than sequential and eliminates queue wait times for query generation.
+        $statementQueryText   = $textBuilder->buildStatementQuery($positivePrompt);
+        $conceptQueryText     = $textBuilder->buildConceptQuery($positivePrompt);
+        $explanationQueryText = $textBuilder->buildExplanationQuery($positivePrompt);
+        $alternativesQueryText = $textBuilder->buildAlternativesQuery($positivePrompt);
+        $skillsQueryText       = $textBuilder->buildSkillsQuery($positivePrompt);
 
-        // ── Step 6.5: Despacha os 3 Embeddings Format-Aligned em PARALELO (Job Workers) ──
-        //
-        // ANTES: 3 chamadas HTTP sequenciais ao Gemini (~500ms × 3 = ~1.5s)
-        //   $statementVector   = $aiService->generateEmbedding($statementQueryText, ...);
-        //   $conceptVectorQ    = $aiService->generateEmbedding($conceptQueryText, ...);
-        //   $explanationVector = $aiService->generateEmbedding($explanationQueryText, ...);
-        //
-        // AGORA: 3 jobs independentes disparados simultaneamente.
-        //   - Cada job é processado por um worker diferente do pool 'search_embeddings'.
-        //   - Os workers são os mesmos 40 'default', mas com search_embeddings na frente
-        //     da lista de filas, garantindo prioridade máxima e zero custo de infra.
-        //   - O GenerateQueryEmbeddingJob usa CAPABILITY_QUERY_EMBEDDING (isolada de
-        //     CAPABILITY_EMBEDDING usada pela indexação batch) — sem contenção de chaves.
-        //   - Um contador atômico Redis garante que o RunVectorSearchJob só é disparado
-        //     quando os 3 slots terminam (é atômico — sem race-condition).
+        // Prepare texts for batch
+        $texts = [$statementQueryText, $conceptQueryText, $explanationQueryText, $alternativesQueryText, $skillsQueryText];
+        $slots = ['statement', 'concept', 'explanation', 'alternatives', 'skills'];
 
-        $statementQueryText   = $textBuilder->buildStatementQuery($request->prompt);
-        $conceptQueryText     = $textBuilder->buildConceptQuery($request->prompt);
-        $explanationQueryText = $textBuilder->buildExplanationQuery($request->prompt);
-
-        // Cria o registro de busca com status 'generating' — será atualizado para
-        // 'completed' pelo RunVectorSearchJob ao finalizar a busca no Qdrant.
+        // Create the search request record
         $searchRequest = AiSearchRequest::create([
             'user_id' => $user->id,
             'prompt'  => $request->prompt,
             'status'  => 'generating',
         ]);
 
-        // Contexto serializado para o RunVectorSearchJob — contém tudo necessário
-        // para executar o Qdrant + ReRank sem precisar re-queryar o banco de dados.
-        // Armazenado em Redis pelo GenerateQueryEmbeddingJob ao concluir.
+        $ttl = config('xavier.search_embeddings.ttl', 300);
+
+        try {
+            $vectors = $aiService->generateEmbeddingsBatch($texts, $user->id, 'RETRIEVAL_QUERY');
+
+            if ($vectors && count($vectors) === 5) {
+                // Store all vectors in Redis for RunVectorSearchJob to consume
+                foreach ($slots as $idx => $slot) {
+                    \Cache::put("xavier:qembed:{$searchRequest->id}:{$slot}", $vectors[$idx], $ttl);
+                }
+                
+                // Mark all 5 slots as "done" to trigger/satisfy the counter
+                \Illuminate\Support\Facades\Redis::set("xavier:qembed_done:{$searchRequest->id}", 5);
+                \Illuminate\Support\Facades\Redis::expire("xavier:qembed_done:{$searchRequest->id}", $ttl);
+                
+                Log::info("[Xavier][Search] Batch embeddings generated (5 vectors). Proceeding to Qdrant search.");
+            } else {
+                throw new \Exception("Batch embedding failed or returned incomplete results.");
+            }
+        } catch (\Exception $e) {
+            Log::warning("[Xavier][Search] Batch embedding failed, search will use generic fallback. Error: " . $e->getMessage());
+            // Counter must be 1 to trigger fallback in some logic or just handled by RunVectorSearchJob
+            \Illuminate\Support\Facades\Redis::set("xavier:qembed_done:{$searchRequest->id}", 5); 
+        }
+
+        // Build search context for the runner
         $sqlFilters = ['keyword' => $request->prompt];
-        if ($extractedType) {
-            $sqlFilters['type'] = $extractedType;
-        }
+        if ($extractedType) $sqlFilters['type'] = $extractedType;
+        if (!empty($extractedOrgs)) $sqlFilters['organization'] = $extractedOrgs;
+        if (!empty($extractedInsts)) $sqlFilters['institution'] = $extractedInsts;
         
-        // Se detectamos uma banca ou órgão específico como intenção clara, filtramos no Qdrant
-        if (!empty($extractedOrgs)) {
-            $sqlFilters['organization'] = $extractedOrgs; 
-        }
-        if (!empty($extractedInsts)) {
-            $sqlFilters['institution'] = $extractedInsts;
+        // Exclusions/Restrictions (Xavier 2.0)
+        if (!empty($mustOrgs))     $sqlFilters['organization'] = $mustOrgs;
+        if (!empty($mustInsts))    $sqlFilters['institution']  = $mustInsts;
+        if (!empty($mustSubjects)) $sqlFilters['subject']     = $mustSubjects[0];
+        if (!empty($mustTopics))   $sqlFilters['topic']       = $mustTopics[0];
+        
+        if (!empty($excludedOrgs))     $sqlFilters['exclude_organization'] = $excludedOrgs;
+        if (!empty($excludedInsts))    $sqlFilters['exclude_institution']  = $excludedInsts;
+        if ($excludedType)             $sqlFilters['exclude_type']         = $excludedType;
+        if (!empty($excludedSubjects)) $sqlFilters['exclude_subject_id']   = $excludedSubjects;
+        if (!empty($excludedTopics))   $sqlFilters['exclude_topic_id']     = $excludedTopics;
+
+        if ($analysis['difficulty']) $sqlFilters['difficulty'] = $analysis['difficulty'];
+        if (!empty($analysis['years'])) {
+            $sqlFilters['year'] = $analysis['years'][0];
+            $sqlFilters['year_operator'] = $analysis['year_operator'];
         }
 
         $searchContext = [
             'prompt'              => $request->prompt,
             'normalized_query'    => $normalizedQuery,
-            'query_vector'        => $queryVector,          // Vetor genérico = fallback de slots null
-            'expanded_concept_ids'=> $expandedConceptIds,
-            'detected_concepts'   => $detectedConcepts,
+            'query_vector'        => $queryVector,
             'sql_filters'         => $sqlFilters,
+            'is_restricted'       => $analysis['is_restricted'],
+            'restricted_terms'    => $analysis['restricted_terms'],
             'intent_filters'      => array_filter([
                 'subject_id'   => $extractedSubjects ?: null,
                 'topic_id'     => $extractedTopics   ?: null,
@@ -702,17 +855,14 @@ class QuestionController extends Controller
             'final_limit'         => (int) \App\Models\Configuration::get('xavier_final_result_limit', config('xavier.search.final_result_limit', 100)),
         ];
 
-        // Despacha os 3 jobs — cada um processa um slot de embedding independentemente
-        GenerateQueryEmbeddingJob::dispatch($searchRequest->id, 'statement',   $statementQueryText,   $user->id, $searchContext);
-        GenerateQueryEmbeddingJob::dispatch($searchRequest->id, 'concept',     $conceptQueryText,     $user->id, $searchContext);
-        GenerateQueryEmbeddingJob::dispatch($searchRequest->id, 'explanation', $explanationQueryText, $user->id, $searchContext);
+        \Cache::put("xavier:qembed_ctx:{$searchRequest->id}", json_encode($searchContext), $ttl);
 
-        Log::info('[Xavier][Search] Step 6.5 done: 3 embedding jobs dispatched in parallel.', [
-            'search_request_id' => $searchRequest->id,
-            'slots'             => ['statement', 'concept', 'explanation'],
-        ]);
+        // Dispatch the search runner to the high-priority queue
+        RunVectorSearchJob::dispatch($searchRequest->id, $user->id)
+            ->onQueue(config('xavier.search_embeddings.queue', 'search_embeddings'));
 
-        // Retorna imediatamente — frontend aguarda via polling leve no endpoint de status
+        Log::info('[Xavier][Search] Search runner dispatched.', ['search_request_id' => $searchRequest->id]);
+
         return response()->json([
             'status'     => 'generating',
             'request_id' => $searchRequest->id,
