@@ -1964,10 +1964,13 @@ EOT;
     public function getCongestionList(): array
     {
         try {
-            // Merging both for transition, but primarily using the active Hash
             $hashKey = "xavier:ai:active_congestion";
             $items = Redis::hvals($hashKey);
+            $total = count($items);
             
+            // Limit to 50 items to avoid crashing the dashboard
+            $items = array_slice($items, 0, 50);
+
             $results = array_map(function($item) {
                 $data = json_decode($item, true);
                 if (isset($data['timestamp'])) {
@@ -1979,9 +1982,12 @@ EOT;
             // Sort by timestamp desc to show newest first
             usort($results, fn($a, $b) => strcmp($b['timestamp'] ?? '', $a['timestamp'] ?? ''));
 
-            return $results;
+            return [
+                'items' => $results,
+                'total' => $total,
+            ];
         } catch (\Exception $e) {
-            return [];
+            return ['items' => [], 'total' => 0];
         }
     }
 

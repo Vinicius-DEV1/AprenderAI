@@ -404,6 +404,7 @@ Route::prefix('v1')->group(function () {
                 Route::post('/reindex-concepts', [SemanticDashboardController::class, 'reindexConcepts']);
                 Route::post('/clear-cache', [SemanticDashboardController::class, 'clearCache']);
                 Route::post('/clear-queue', [SemanticDashboardController::class, 'clearQueue']);
+                Route::post('/clear-congestion', [SemanticDashboardController::class, 'clearCongestion']);
                 Route::post('/reset-embeddings', [SemanticDashboardController::class, 'resetEmbeddings']);
             });
 

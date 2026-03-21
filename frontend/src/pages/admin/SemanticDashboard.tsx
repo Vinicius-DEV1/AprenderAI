@@ -46,6 +46,7 @@ interface DashboardStats {
             timestamp: string;
             ago: string;
         }>;
+        waiting_total?: number;
     };
     analytics: {
         total_ai_requests: number;
@@ -1006,10 +1007,16 @@ const SemanticDashboard = () => {
                                 </p>
                             </div>
                             <div className="bg-amber-100 dark:bg-amber-900/40 px-4 py-2 rounded-xl border border-amber-200 dark:border-amber-700 font-black text-amber-700 dark:text-amber-300 flex items-center gap-3 shadow-inner">
-                                <span className="text-2xl">{stats.jobs.waiting_list.length}</span>
+                                <span className="text-2xl">{stats.jobs.waiting_total || stats.jobs.waiting_list.length}</span>
                                 <span className="text-[10px] uppercase tracking-widest leading-tight">Jobs em<br />Recuperação</span>
                             </div>
                         </div>
+
+                        {stats.jobs.waiting_total > stats.jobs.waiting_list.length && (
+                             <div className="mb-4 text-[10px] font-bold text-amber-600 bg-amber-100/30 px-3 py-1 rounded border border-amber-200/50 w-fit">
+                                 Exibindo apenas os primeiros 50 jobs de um total de {stats.jobs.waiting_total}.
+                             </div>
+                        )}
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                             {stats.jobs.waiting_list.map((item, idx) => (
@@ -1040,9 +1047,9 @@ const SemanticDashboard = () => {
                                 onClick={async () => {
                                     setWakingUp(true);
                                     try {
-                                        await api.post('/api/v1/admin/semantic/clear-cache');
+                                        await api.post('/api/v1/admin/semantic/clear-congestion');
                                         toast.success('Jobs acordados! O sistema vai retentar imediatamente.');
-                                        fetchStats();
+                                        loadStats();
                                     } catch { toast.error('Falha ao acordar os jobs.'); }
                                     finally { setWakingUp(false); }
                                 }}
