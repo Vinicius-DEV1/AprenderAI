@@ -782,12 +782,12 @@ class QuestionController extends Controller
             if ($vectors && count($vectors) === 5) {
                 // Store all vectors in Redis for RunVectorSearchJob to consume
                 foreach ($slots as $idx => $slot) {
-                    Cache::put("xavier:qembed:{$searchRequest->id}:{$slot}", $vectors[$idx], $ttl);
+                    \Cache::put("xavier:qembed:{$searchRequest->id}:{$slot}", $vectors[$idx], $ttl);
                 }
                 
                 // Mark all 5 slots as "done" to trigger/satisfy the counter
-                Redis::set("xavier:qembed_done:{$searchRequest->id}", 5);
-                Redis::expire("xavier:qembed_done:{$searchRequest->id}", $ttl);
+                \Illuminate\Support\Facades\Redis::set("xavier:qembed_done:{$searchRequest->id}", 5);
+                \Illuminate\Support\Facades\Redis::expire("xavier:qembed_done:{$searchRequest->id}", $ttl);
                 
                 Log::info("[Xavier][Search] Batch embeddings generated (5 vectors). Proceeding to Qdrant search.");
             } else {
@@ -796,7 +796,7 @@ class QuestionController extends Controller
         } catch (\Exception $e) {
             Log::warning("[Xavier][Search] Batch embedding failed, search will use generic fallback. Error: " . $e->getMessage());
             // Counter must be 1 to trigger fallback in some logic or just handled by RunVectorSearchJob
-            Redis::set("xavier:qembed_done:{$searchRequest->id}", 5); 
+            \Illuminate\Support\Facades\Redis::set("xavier:qembed_done:{$searchRequest->id}", 5); 
         }
 
         // Build search context for the runner
@@ -842,7 +842,7 @@ class QuestionController extends Controller
             'final_limit'         => (int) \App\Models\Configuration::get('xavier_final_result_limit', config('xavier.search.final_result_limit', 100)),
         ];
 
-        Cache::put("xavier:qembed_ctx:{$searchRequest->id}", json_encode($searchContext), $ttl);
+        \Cache::put("xavier:qembed_ctx:{$searchRequest->id}", json_encode($searchContext), $ttl);
 
         // Dispatch the search runner to the high-priority queue
         RunVectorSearchJob::dispatch($searchRequest->id, $user->id)
