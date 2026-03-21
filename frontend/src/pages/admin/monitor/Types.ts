@@ -1,3 +1,7 @@
+/**
+ * TopProcess
+ * Represents a system process on the host machine.
+ */
 export interface TopProcess {
     pid: string;
     name: string;
@@ -5,6 +9,10 @@ export interface TopProcess {
     mem_bytes: number;
 }
 
+/**
+ * ServiceHealth
+ * Status of core system dependencies.
+ */
 export interface ServiceHealth {
     database: boolean;
     redis: boolean;
@@ -12,17 +20,29 @@ export interface ServiceHealth {
     webserver: boolean;
 }
 
+/**
+ * QueueStats
+ * High-level counts for background job processing.
+ */
 export interface QueueStats {
     pending: number;
     failed: number;
     workers: string;
 }
 
+/**
+ * PerformanceMetric
+ * Throughput and latency metrics for queue workers.
+ */
 export interface PerformanceMetric {
     jobs_per_minute: number;
     avg_duration_seconds: number;
 }
 
+/**
+ * RealtimeData
+ * Snapshot of current system resource usage and service health.
+ */
 export interface RealtimeData {
     cpu_usage: number;
     ram_usage: number;
@@ -40,6 +60,10 @@ export interface RealtimeData {
     top_processes?: TopProcess[];
 }
 
+/**
+ * QueueJob
+ * Basic information for a pending or processing job in a Laravel queue.
+ */
 export interface QueueJob {
     id: number;
     queue: string;
@@ -49,6 +73,10 @@ export interface QueueJob {
     created_at: string;
 }
 
+/**
+ * FailedJob
+ * Details for a job that has moved to the failed_jobs table.
+ */
 export interface FailedJob {
     id: number;
     queue: string;
@@ -57,6 +85,10 @@ export interface FailedJob {
     failed_at: string;
 }
 
+/**
+ * CompletedBatch
+ * Statistics for a Laravel job batch that has finished execution.
+ */
 export interface CompletedBatch {
     id: string;
     name: string;
@@ -65,6 +97,10 @@ export interface CompletedBatch {
     finished_at: string;
 }
 
+/**
+ * QueuesData
+ * Collection of all queue-related data for the Monitor UI.
+ */
 export interface QueuesData {
     jobs: QueueJob[];
     failed: FailedJob[];

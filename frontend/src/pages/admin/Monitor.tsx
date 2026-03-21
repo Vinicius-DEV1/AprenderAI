@@ -1,3 +1,8 @@
+/**
+ * Monitor
+ * Main entry point for the System Monitor dashboard.
+ * Displays real-time resource usage, service health, and background queue status.
+ */
 import { useMonitor } from './monitor/useMonitor';
 import MonitorHeader from './monitor/MonitorHeader';
 import ServiceStatusGrid from './monitor/ServiceStatusGrid';

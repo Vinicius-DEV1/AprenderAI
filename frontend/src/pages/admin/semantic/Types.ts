@@ -1,7 +1,14 @@
-import React from 'react';
-
+/**
+ * Target Pipeline Version
+ * Used for compatibility checks between the UI and the Backend Semantic Engine.
+ */
 export const TARGET_PIPELINE_VERSION = 'v8.1.0';
 
+/**
+ * DashboardStats
+ * Core interface representing all metrics and system health data 
+ * returned by the Semantic Dashboard API.
+ */
 export interface DashboardStats {
     overview: {
         mysql_published_questions: number;
@@ -14,7 +21,7 @@ export interface DashboardStats {
     qdrant: {
         status: string;
         collections: Array<{ name: string; count: number }>;
-        questions_points: number; // Added since it's used in StatCard
+        questions_points: number;
         vectors_count: number;
         concepts_points: number;
         index_version_status?: {
@@ -84,6 +91,10 @@ export interface DashboardStats {
     };
 }
 
+/**
+ * ConfigState
+ * Represents the mutable configuration for the Semantic Engine.
+ */
 export interface ConfigState {
     vector_search_enabled: boolean;
     concept_detection_threshold: number;

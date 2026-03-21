@@ -14,14 +14,14 @@ import {
 export const useApiPricing = () => {
     const queryClient = useQueryClient();
 
-    // States for Editing
+    // --- State: Editing ---
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editForm, setEditForm] = useState<EditForm>({ input_price_per_1m: '', output_price_per_1m: '' });
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [pendingUpdate, setPendingUpdate] = useState<{ id: number; form: EditForm } | null>(null);
     const [logsOpen, setLogsOpen] = useState<number | null>(null);
 
-    // States for Creating
+    // --- State: Creating ---
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [createTab, setCreateTab] = useState<'manual' | 'api'>('manual');
     const [createForm, setCreateForm] = useState<CreateForm>({
@@ -31,14 +31,14 @@ export const useApiPricing = () => {
         output_price_per_1m: ''
     });
 
-    // States for API Discovery
+    // --- State: API Discovery ---
     const [selectedVaultId, setSelectedVaultId] = useState<string>('');
     const [isDiscovering, setIsDiscovering] = useState(false);
     const [discoveredModels, setDiscoveredModels] = useState<DiscoveredModel[]>([]);
 
-    // ----------------------------------------------------
-    // Queries
-    // ----------------------------------------------------
+    // --- Queries ---
+
+    // Fetch all model pricing entries
     const { data: pricing = [], isLoading } = useQuery({
         queryKey: ['admin-api-pricing'],
         queryFn: async () => {
@@ -47,6 +47,7 @@ export const useApiPricing = () => {
         }
     });
 
+    // Fetch audit logs for a specific model price entry
     const { data: logsData, isLoading: logsLoading } = useQuery({
         queryKey: ['admin-api-pricing-logs', logsOpen],
         queryFn: async () => {
@@ -57,6 +58,7 @@ export const useApiPricing = () => {
         enabled: !!logsOpen,
     });
 
+    // Fetch available keys from the vault for API discovery
     const { data: vaultsData } = useQuery({
         queryKey: ['admin-api-pricing-vaults'],
         queryFn: async () => {
@@ -66,9 +68,9 @@ export const useApiPricing = () => {
         enabled: createModalOpen && createTab === 'api'
     });
 
-    // ----------------------------------------------------
-    // Mutations
-    // ----------------------------------------------------
+    // --- Mutations ---
+
+    // Update an existing price entry
     const updateMutation = useMutation({
         mutationFn: async ({ id, form }: { id: number; form: EditForm }) => {
             const res = await api.put(`/api/v1/admin/api-pricing/${id}`, {
@@ -80,17 +82,18 @@ export const useApiPricing = () => {
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['admin-api-pricing'] });
             queryClient.invalidateQueries({ queryKey: ['admin-api-pricing-logs'] });
-            toast.success(data.message || 'Preço atualizado com sucesso!');
+            toast.success(data.message || 'Price updated successfully!');
             setEditingId(null);
             setConfirmOpen(false);
             setPendingUpdate(null);
         },
         onError: (err: any) => {
-            const msg = err.response?.data?.message || err.message || 'Erro ao atualizar preço.';
+            const msg = err.response?.data?.message || err.message || 'Error updating price.';
             toast.error(msg);
         }
     });
 
+    // Create a new price entry
     const createMutation = useMutation({
         mutationFn: async (form: CreateForm) => {
             const res = await api.post('/api/v1/admin/api-pricing', {
@@ -103,19 +106,22 @@ export const useApiPricing = () => {
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['admin-api-pricing'] });
-            toast.success(data.message || 'Preço cadastrado com sucesso!');
+            toast.success(data.message || 'Price created successfully!');
             setCreateModalOpen(false);
             resetCreateForm();
         },
         onError: (err: any) => {
-            const msg = err.response?.data?.message || err.message || 'Erro ao cadastrar preço.';
+            const msg = err.response?.data?.message || err.message || 'Error creating price.';
             toast.error(msg);
         }
     });
 
-    // ----------------------------------------------------
-    // Actions
-    // ----------------------------------------------------
+    // --- Actions ---
+
+    /**
+     * openEdit
+     * Prepares the edit form for a specific pricing entry.
+     */
     const openEdit = (entry: ApiPricingEntry) => {
         setEditingId(entry.id);
         setEditForm({
@@ -124,24 +130,36 @@ export const useApiPricing = () => {
         });
     };
 
+    /**
+     * requestSave
+     * Opens the confirmation modal after basic validation.
+     */
     const requestSave = () => {
         if (!editingId) return;
         const inputVal = parseFloat(editForm.input_price_per_1m);
         const outputVal = parseFloat(editForm.output_price_per_1m);
         if (isNaN(inputVal) || inputVal < 0 || isNaN(outputVal) || outputVal < 0) {
-            toast.error('Valores devem ser números não-negativos.');
+            toast.error('Values must be non-negative numbers.');
             return;
         }
         setPendingUpdate({ id: editingId, form: editForm });
         setConfirmOpen(true);
     };
 
+    /**
+     * confirmSave
+     * Triggers the update mutation after user confirmation.
+     */
     const confirmSave = () => {
         if (pendingUpdate) {
             updateMutation.mutate(pendingUpdate);
         }
     };
 
+    /**
+     * resetCreateForm
+     * Resets the creation modal state.
+     */
     const resetCreateForm = () => {
         setCreateForm({
             api_name: '',
@@ -153,23 +171,31 @@ export const useApiPricing = () => {
         setDiscoveredModels([]);
     };
 
+    /**
+     * handleCreateSubmit
+     * Submits the new price entry form.
+     */
     const handleCreateSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const inputVal = parseFloat(createForm.input_price_per_1m);
         const outputVal = parseFloat(createForm.output_price_per_1m);
 
         if (!createForm.api_name || !createForm.model_key) {
-            toast.error('Provedor e Modelo são obrigatórios.');
+            toast.error('Provider and Model are required.');
             return;
         }
         if (isNaN(inputVal) || inputVal < 0 || isNaN(outputVal) || outputVal < 0) {
-            toast.error('Os preços devem ser números positivos.');
+            toast.error('Prices must be positive numbers.');
             return;
         }
 
         createMutation.mutate(createForm);
     };
 
+    /**
+     * discoverModelsFromVault
+     * Calls the backend to fetch available models from a specific API key (Vault).
+     */
     const discoverModelsFromVault = async () => {
         if (!selectedVaultId) return;
         setIsDiscovering(true);
@@ -178,17 +204,21 @@ export const useApiPricing = () => {
             const res = await api.post('/api/v1/admin/api-keys/discover', { vault_id: selectedVaultId });
             if (res.data.is_valid && res.data.models) {
                 setDiscoveredModels(res.data.models);
-                toast.success(`${res.data.models.length} modelos encontrados!`);
+                toast.success(`${res.data.models.length} models found!`);
             } else {
-                toast.error(res.data.error || 'Nenhum modelo retornado ou chave inválida.');
+                toast.error(res.data.error || 'No models returned or invalid key.');
             }
         } catch (err: any) {
-            toast.error(err.response?.data?.error || 'Erro ao buscar modelos na API.');
+            toast.error(err.response?.data?.error || 'Error fetching models from API.');
         } finally {
             setIsDiscovering(false);
         }
     };
 
+    /**
+     * handleSelectDiscoveredModel
+     * Fills the form when a model is selected from the discovery list.
+     */
     const handleSelectDiscoveredModel = (modelId: string) => {
         const vault = vaultsData?.find(v => v.id.toString() === selectedVaultId);
         if (vault) {
