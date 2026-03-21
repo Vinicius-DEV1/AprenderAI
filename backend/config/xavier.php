@@ -34,14 +34,15 @@ return [
     |--------------------------------------------------------------------------
     */
     'embeddings' => [
-        // Queue name for all indexing jobs
-        'queue' => env('EMBEDDINGS_QUEUE', 'embeddings'),
+        // Default queue for background indexing tasks (low priority)
+        'queue' => env('EMBEDDINGS_QUEUE', 'low'),
 
-        // Queue name for AI batch processing (triage, classification, etc.)
+        // Queue for bulk processing (triage, classification, etc.)
         'batch_queue' => env('AI_BATCH_QUEUE', 'ai_triage'),
 
         // Pipeline version tag written to question_vectors.pipeline_version
-        'pipeline_version' => 'v6_intent_unification',
+        // Bump this string to force re-indexing of all questions on next job run.
+        'pipeline_version' => 'v8_qdrant_native',
 
         // Minimum cosine similarity score to accept a concept match
         'concept_detection_threshold' => env('CONCEPT_DETECTION_THRESHOLD', 0.45),
@@ -68,6 +69,31 @@ return [
             'popularity' => 0.15,
             'quality'    => 0.15,
             'recency'    => 0.10,
+
+            // Xavier 2.0: Pedagogical & User Context Boosts
+            'user_profile' => [
+                'proficiency_boost' => 0.25, // For Weak Themes
+                'intent_boost'      => 0.30, // For Subject/Organization Match
+            ],
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Concurrency Limits (Worker Unification Semaphores)
+    |--------------------------------------------------------------------------
+    | These values control how many concurrent executions of each job type
+    | are allowed cluster-wide, enforced via Redis distributed semaphores.
+    | Adjustable at runtime via .env — no rebuild needed.
+    */
+    'concurrency' => [
+        // Max simultaneous AI embedding generation calls (protects Gemini API quota)
+        'max_embeddings' => (int) env('XAVIER_MAX_CONCURRENT_EMBEDDINGS', 5),
+
+        // Max simultaneous AI triage/classification batches
+        'max_triage'     => (int) env('XAVIER_MAX_CONCURRENT_TRIAGE', 5),
+
+        // Max simultaneous ZIP import orchestrations (sequential-safe)
+        'max_import'     => (int) env('XAVIER_MAX_CONCURRENT_IMPORT', 1),
     ],
 ];

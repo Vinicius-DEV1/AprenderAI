@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\HasConcurrencyLimit;
 use App\Models\Question;
 use App\Models\QuestionVector;
 use App\Services\AI\AIService;
@@ -29,6 +30,7 @@ use Illuminate\Support\Facades\Log;
 class IndexQuestionVectorJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use HasConcurrencyLimit;
 
     /**
      * Tries limit.
@@ -56,11 +58,20 @@ class IndexQuestionVectorJob implements ShouldQueue
             return;
         }
 
+        // Concurrency Semaphore: limit to max N simultaneous embedding API calls cluster-wide
+        $maxConcurrent = config('xavier.concurrency.max_embeddings', 5);
+        if (!$this->acquireSlot('embeddings', $maxConcurrent, retryIn: 20)) {
+            return; // Released back to queue automatically
+        }
+
+        try {
+
         // Circuit Breaker: If no API keys are available for embedding, release the job back to the queue
         // to wait for quota reset or manual intervention, preventing mass failures.
         if (!$aiService->hasActiveKey(\App\Models\ApiKey::CAPABILITY_EMBEDDING)) {
-            Log::info("[Xavier][IndexQuestion] No active keys for embedding. Releasing question #{$this->questionId} to retry in 5 minutes.");
-            $this->release(300); // 5 minutes backoff
+            Log::info("[Xavier][IndexQuestion] No active keys for embedding. Releasing question #{$this->questionId} to retry in 1 minute.");
+            $aiService->registerCongestion('IndexQuestionVectorJob', $this->questionId);
+            $this->release(60); // 1 minute backoff for global empty pool
             return;
         }
 
@@ -73,17 +84,21 @@ class IndexQuestionVectorJob implements ShouldQueue
             }
         }
 
-        // Build the 3 structured texts
+        // ── Build the 5 structured embedding texts ───────────────────────────
+        // Each text is formatted to match a specific named vector in Qdrant,
+        // capturing a different semantic facet of the question.
         $statementText    = $textBuilder->buildForQuestion($question);
         $conceptText      = $textBuilder->buildConceptTextForQuestion($question);
         $explanationText  = $textBuilder->buildExplanationTextForQuestion($question);
+        $alternativesText = $textBuilder->buildAlternativesTextForQuestion($question);
+        $skillsText       = $textBuilder->buildSkillsTextForQuestion($question);
 
-        // Compute hash of all 3 texts combined to detect content changes
-        $combinedHash = hash('sha256', $statementText . $conceptText . $explanationText);
+        // Compute hash of all 5 texts combined to detect content changes
+        $combinedHash = hash('sha256', $statementText . $conceptText . $explanationText . $alternativesText . $skillsText);
 
         // Check if already indexed with same content AND same pipeline version
         $vectorRecord = QuestionVector::find($this->questionId);
-        $currentPipeline = config('xavier.embeddings.pipeline_version', 'v6_intent_unification');
+        $currentPipeline = config('xavier.embeddings.pipeline_version', 'v7_lexical_analyser');
         
         if ($vectorRecord && 
             !$vectorRecord->hasContentChanged($combinedHash) && 
@@ -92,42 +107,71 @@ class IndexQuestionVectorJob implements ShouldQueue
             return;
         }
 
-        // Ensure Qdrant collection exists
+        // Ensure Qdrant collection exists (with 5 named vectors + payload indexes)
         $qdrant->ensureQuestionsCollection();
 
-        // Gerar 3 embeddings — um para cada named vector no Qdrant.
-        // Cada um é formatado de forma diferente pelo EmbeddingTextBuilder para capturar
-        // facetas semânticas distintas (enunciado completo, conceitos, explicação).
-        // Usa taskType='RETRIEVAL_DOCUMENT' para que o Gemini otimize os vetores
-        // para serem encontrados (não para encontrar documentos).
+        // ── Generate 5 embeddings (one per named vector) ─────────────────────
+        // taskType='RETRIEVAL_DOCUMENT' tells Gemini to optimize vectors for
+        // being found (i.e. document-side), matching RETRIEVAL_QUERY on search-side.
         $userId = null; // System job, no user attribution
-        Log::info("[Xavier][IndexQuestion] Generating 3 vectors for #{$this->questionId}...");
+        Log::info("[Xavier][IndexQuestion] Generating 5 vectors for #{$this->questionId}...");
         
-        $statementVector   = $aiService->generateEmbedding($statementText,   $userId, 'RETRIEVAL_DOCUMENT');
-        Log::debug("[Xavier][IndexQuestion] #{$this->questionId} statement vector: " . ($statementVector ? 'OK' : 'FAILED'));
-        
-        $conceptVector     = $aiService->generateEmbedding($conceptText,     $userId, 'RETRIEVAL_DOCUMENT');
-        Log::debug("[Xavier][IndexQuestion] #{$this->questionId} concept vector: " . ($conceptVector ? 'OK' : 'FAILED'));
-        
-        $explanationVector = $aiService->generateEmbedding($explanationText, $userId, 'RETRIEVAL_DOCUMENT');
-        Log::debug("[Xavier][IndexQuestion] #{$this->questionId} explanation vector: " . ($explanationVector ? 'OK' : 'FAILED'));
+        try {
+            $texts = [
+                $statementText,
+                $conceptText,
+                $explanationText,
+                $alternativesText,
+                $skillsText
+            ];
 
-        if (!$statementVector || !$conceptVector || !$explanationVector) {
-            Log::error("[Xavier][IndexQuestion] FAILED for question #{$this->questionId}. Vectors status: S:".($statementVector?'OK':'FAIL')." C:".($conceptVector?'OK':'FAIL')." E:".($explanationVector?'OK':'FAIL'));
-            $this->fail(new \RuntimeException('Embedding generation failed'));
+            $vectors = $aiService->generateEmbeddingsBatch($texts, $userId, 'RETRIEVAL_DOCUMENT');
+
+            if (!$vectors || count($vectors) !== 5) {
+                throw new \RuntimeException('Batch embedding failed or returned incomplete results.');
+            }
+
+            [$statementVector, $conceptVector, $explanationVector, $alternativesVector, $skillsVector] = $vectors;
+
+            Log::debug("[Xavier][IndexQuestion] #{$this->questionId} batch embeddings: OK");
+
+        } catch (\App\Exceptions\AIServiceBusyException $e) {
+            Log::info("[IndexQuestionVectorJob] AI Key pool busy for question #{$this->questionId}. Releasing for 30s backoff.");
+            $aiService->registerCongestion('IndexQuestionVectorJob', $this->questionId);
+            $this->release(30);
             return;
+        } catch (\Exception $e) {
+            $msg = $e->getMessage();
+            
+            $isQuota = str_contains(strtolower($msg), '429') || 
+                       str_contains(strtolower($msg), 'quota') || 
+                       str_contains(strtolower($msg), 'full failover failure');
+
+            if ($isQuota) {
+                Log::warning("[IndexQuestionVectorJob] Quota limit hit for #{$this->questionId}. Releasing for 5m. Error: {$msg}");
+                $aiService->registerCongestion('IndexQuestionVectorJob', $this->questionId);
+                $this->release(300);
+                return;
+            }
+
+            Log::error("[IndexQuestionVectorJob] Permanent error indexing question #{$this->questionId}: " . $msg);
+            $this->fail($e);
         }
+
+
 
         // Build Qdrant payload for filtering
         $payload = $this->buildPayload($question);
 
-        // Upsert to Qdrant
+        // Upsert to Qdrant with all 5 named vectors + rich payload
         $success = $qdrant->upsertQuestion(
             $this->questionId,
             [
-                'statement'   => $statementVector,
-                'concept'     => $conceptVector,
-                'explanation' => $explanationVector,
+                'statement'    => $statementVector,
+                'concept'      => $conceptVector,
+                'explanation'  => $explanationVector,
+                'alternatives' => $alternativesVector,
+                'skills'       => $skillsVector,
             ],
             $payload
         );
@@ -147,40 +191,90 @@ class IndexQuestionVectorJob implements ShouldQueue
                 'qdrant_id'        => (string) $this->questionId,
                 'embedding_hash'   => $combinedHash,
                 'index_version'    => $newVersion,
-                'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v6_intent_unification'),
+                'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v7_lexical_analyser'),
                 'indexed_at'       => now(),
             ]
         );
 
         Log::info("[Xavier][IndexQuestion] Question #{$this->questionId} indexed successfully (v{$newVersion}).");
+        $aiService->removeCongestion('IndexQuestionVectorJob', $this->questionId);
+
+        } finally {
+            $this->releaseSlot('embeddings');
+        }
     }
 
     /**
-     * Build the Qdrant payload used for server-side filtering.
+     * Build the rich Qdrant payload used for server-side filtering and ReRank scoring.
+     *
+     * Key design decisions:
+     * - subject_ids / topic_ids are stored as arrays so multi-discipline questions
+     *   benefit from Qdrant match.any filtering.
+     * - subject_names / topic_names enable subject_name fallback detection
+     *   when the Filters Collection is empty (e.g. right after a reset).
+     * - answer_count is stored here so ReRankService needs zero MySQL queries.
+     * - has_explanation and other boolean flags enable precise payload filters.
      */
     private function buildPayload(Question $question): array
     {
+        // Primary (first) subject and topic — kept for backward compatibility
         $subjectId   = $question->subjects->first()?->id;
         $subjectName = $question->subjects->first()?->name;
         $topicId     = $question->topics->first()?->id;
+        $topicName   = $question->topics->first()?->name;
+
+        // Correct alternative letter (A-E)
+        $correctAlternative = $question->alternatives->where('is_correct', true)->first();
+        $correctLetter = null;
+        if ($correctAlternative) {
+            $sorted = $question->alternatives->sortBy('order')->values();
+            $idx = $sorted->search(fn($a) => $a->id === $correctAlternative->id);
+            $letters = ['A', 'B', 'C', 'D', 'E'];
+            $correctLetter = $letters[$idx] ?? null;
+        }
+
+        // Plain-text word count (approximated from statement)
+        $wordCount = $question->statement
+            ? str_word_count(strip_tags($question->statement))
+            : 0;
 
         return [
+            // ── Identity ──────────────────────────────────────────────────
             'question_id'   => $question->id,
+            'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v7_lexical_analyser'),
+
+            // ── Taxonomy (legacy single values + V2 arrays) ───────────────
             'subject_id'    => $subjectId,
             'subject_name'  => $subjectName,
+            'subject_ids'   => $question->subjects->pluck('id')->toArray(),
+            'subject_names' => $question->subjects->pluck('name')->toArray(),
             'topic_id'      => $topicId,
-            'tipo_questao'  => $question->tipo_questao,
-            'type'          => $question->type,
-            'difficulty'    => $question->difficulty,
-            'year'          => (int) ($question->year ?? 0),
-            'organization'  => $question->organization,
-            'institution'   => $question->institution,
-            'is_active'     => (bool) $question->is_active,
-            'review_status' => $question->review_status,
-            'concepts'      => $question->concepts->pluck('id')->toArray(),
-            // Popularity signal for ReRankService
-            'answer_count'     => $question->userAnswers()->count(),
-            'pipeline_version' => config('xavier.embeddings.pipeline_version', 'v6_intent_unification'),
+            'topic_name'    => $topicName,
+            'topic_ids'     => $question->topics->pluck('id')->toArray(),
+            'topic_names'   => $question->topics->pluck('name')->toArray(),
+
+            // ── Classification ───────────────────────────────────────────
+            'tipo_questao'      => $question->tipo_questao,
+            'type'              => $question->type,
+            'difficulty'        => $question->difficulty,
+            'year'              => (int) ($question->year ?? 0),
+            'organization'      => $question->organization,
+            'institution'       => $question->institution,
+            'is_active'         => (bool) $question->is_active,
+            'review_status'     => $question->review_status,
+
+            // ── Question Properties (V2 payload fields) ──────────────────
+            'has_explanation'   => !empty($question->explanation),
+            'has_image'         => str_contains($question->statement ?? '', '<img'),
+            'word_count'        => $wordCount,
+            'alternatives_count'=> $question->alternatives->count(),
+            'correct_letter'    => $correctLetter,
+
+            // ── Concepts (legacy) ─────────────────────────────────────────
+            'concepts'          => $question->concepts->pluck('id')->toArray(),
+
+            // ── Popularity signal (used by ReRankService, zero MySQL needed) ──
+            'answer_count'      => $question->userAnswers()->count(),
         ];
     }
 }

@@ -32,10 +32,10 @@ class FinalizeImportJob implements ShouldQueue
      */
     private const MAX_RETRIES = 600;
 
-    /**
+     /**
      * Delay em segundos entre verificações de progresso.
      */
-    private const RETRY_DELAY_SECONDS = 30;
+    private const RETRY_DELAY_SECONDS = 15;
 
     /**
      * Cria um novo job de finalização.

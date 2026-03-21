@@ -232,6 +232,15 @@ const QuestionCard = memo(({
         }
     };
 
+    const handleShareLink = () => {
+        const url = `${window.location.origin}/questoes?id=${q.id}`;
+        navigator.clipboard.writeText(url).then(() => {
+            toast.success('Link copiado!');
+        }).catch(() => {
+            toast.error('Erro ao copiar link.');
+        });
+    };
+
     const selectAnswer = (letter: string) => {
         if (!answered && !isDiscursive && !struckLabels.includes(letter)) setSelectedAnswer(letter);
     };
@@ -517,6 +526,7 @@ const QuestionCard = memo(({
                     <button onClick={handleToggleFavorite} disabled={favLoading} className={`p-1.5 rounded-md transition-colors ${isFavorite ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'}`}>{isFavorite ? '⭐' : '☆'}</button>
                     <button onClick={() => setShowNotebookModal(true)} className={`p-1.5 rounded-md transition-colors ${notebookIds.length > 0 ? 'bg-indigo-100 text-indigo-700' : 'text-gray-400 hover:bg-gray-100'}`}>📁</button>
                     <button onClick={() => setShowReportModal(true)} className="p-1.5 rounded-md text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors">🚩</button>
+                    <button onClick={handleShareLink} className="p-1.5 rounded-md text-gray-400 hover:bg-sky-50 hover:text-sky-500 transition-colors" title="Compartilhar Link">🔗</button>
                     {user?.role === 'admin' && <button onClick={() => setShowStatsModal(true)} className="p-1.5 rounded-md text-gray-400 hover:bg-gray-100 transition-colors" title="Estatísticas">📊</button>}
                     {isAdmin && (
                         <>
@@ -555,7 +565,7 @@ const QuestionCard = memo(({
                     <img
                         src={q.image_path.startsWith('http') ? q.image_path : `${apiUrl}/storage/${q.image_path.replace(/^\//, '').replace(/^storage\//, '')}`.replace(/([^:])\/\//g, '$1/')}
                         alt="Imagem da questão"
-                        className="max-w-full h-auto rounded-lg border border-gray-100 dark:border-slate-800 mx-auto block shadow-sm"
+                        className="qb-question-image shadow-sm border border-gray-100 dark:border-slate-800"
                     />
                 </div>
             )}
@@ -585,7 +595,7 @@ const QuestionCard = memo(({
                                     <img
                                         src={alt.image_path.startsWith('http') ? alt.image_path : `${apiUrl}/storage/${alt.image_path.replace(/^\//, '').replace(/^storage\//, '')}`.replace(/([^:])\/\//g, '$1/')}
                                         alt={alt.label}
-                                        className="max-w-full h-auto rounded-lg"
+                                        className="qb-alt-image"
                                     />
                                 )}
                             </div>

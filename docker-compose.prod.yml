@@ -76,10 +76,14 @@ services:
       - ./certbot/www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     networks:
-      - production-network
+      - produ  # ── Consolidate Production Workers (Total: 30) ─────────────────────────
+  # We unify all worker types into a prioritized hybrid model.
+  # All 30 workers will listen to the 'high' priority queue (emails, results)
+  # while specific groups handle background tasks with concurrency limits.
 
-  # PHP Queue Worker
-  worker:
+  # Group: General Purpose (24 replicas)
+  # Focal point for transactional logic and standard tasks.
+  worker-general:
     image: aprender-ai-app
     restart: always
     working_dir: /var/www
@@ -88,28 +92,46 @@ services:
       - ./qdrant-data:/var/www/qdrant-backup:ro
       - /proc:/host_proc:ro
     env_file: ./backend/.env
-    # Prioriza explicitamente a fila 'default' (Simulados/Chats), 'essays' (Redações) e depois a 'import'.
-    command: php artisan queue:work --queue=search_embeddings,default,essays --sleep=3 --tries=3 --max-time=3600
+    # Queue priority: high > default
+    command: php artisan queue:work --queue=high,ai_triage,default --sleep=3 --tries=3 --max-time=3600
     deploy:
-      replicas: 40
+      replicas: 24
       resources:
         limits:
-          memory: 512M # Mantido em 512M conforme solicitado
+          memory: 512M
     depends_on:
       app:
         condition: service_started
       db:
         condition: service_healthy
       redis:
-        condition: service_started
-      qdrant:
         condition: service_started
     networks:
       - production-network
 
-  # AI Triage Worker (Para processamento de lotes e classificações LLM)
-  # ESCALA: 1 réplica (Sequential processing for stability)
-  ai-triage-worker:
+  # ─────────────────────────────────────────────────────────────────────────
+  # Unified Worker Pool (20 replicas)
+  #
+  # Replaces worker-general (24), worker-embeddings (4), worker-triage (1),
+  # and worker-import (1). Concurrency limits per job type are enforced
+  # internally via Redis distributed semaphores (HasConcurrencyLimit trait):
+  #
+  #   Embeddings  → max 5 simultaneous (xavier.concurrency.max_embeddings)
+  #   AI Triage   → max 2 simultaneous (xavier.concurrency.max_triage)
+  #   Import ZIP  → max 1 simultaneous (xavier.concurrency.max_import)
+  #
+  # Queue priority order:
+  #   high            → emails, payment, simulation results (always first)
+  #   search_embeddings → user searches (latency-critical UX)
+  #   default         → general operations
+  #   embeddings      → background vector indexing (can wait)
+  #   low             → low-priority tasks
+  #
+  # Timeout of 700s covers the heaviest non-import job (AIBatchTriageJob).
+  # Import ZIP extraction runs in 'default' with its own timeout controlled
+  # by the job's public $timeout = 3600 property.
+  # ─────────────────────────────────────────────────────────────────────────
+  worker-default:
     image: aprender-ai-app
     restart: always
     working_dir: /var/www
@@ -118,50 +140,24 @@ services:
       - ./qdrant-data:/var/www/qdrant-backup:ro
       - /proc:/host_proc:ro
     env_file: ./backend/.env
-    # Queue 'ai_triage' handle batches and 'import' handles ZIP extractions
-    command: php artisan queue:work --queue=ai_triage,import --sleep=3 --tries=3 --timeout=700 --max-time=3600
+    command: >
+      php artisan queue:work
+      --queue=high,search_embeddings,ai_triage,default,embeddings,low
+      --sleep=3
+      --tries=3
+      --timeout=900
+      --max-time=3600
     deploy:
-      replicas: 1
+      replicas: 20
       resources:
         limits:
-          memory: 1G
+          memory: 768M
     depends_on:
       app:
-        condition: service_started
+        condition: service_healthy
       db:
         condition: service_healthy
       redis:
-        condition: service_started
-      qdrant:
-        condition: service_started
-    networks:
-      - production-network
-
-  # AI Embeddings Worker (Para indexação e geração de vetores)
-  # ESCALA: 3 réplicas
-  ai-embeddings-worker:
-    image: aprender-ai-app
-    restart: always
-    working_dir: /var/www
-    volumes:
-      - ./backend/storage/app/public:/var/www/storage/app/public
-      - ./qdrant-data:/var/www/qdrant-backup:ro
-      - /proc:/host_proc:ro
-    env_file: ./backend/.env
-    command: php artisan queue:work --queue=embeddings --sleep=10 --tries=3 --timeout=120 --max-time=3600
-    deploy:
-      replicas: 3
-      resources:
-        limits:
-          memory: 1G
-    depends_on:
-      app:
-        condition: service_started
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      qdrant:
         condition: service_started
     networks:
       - production-network
