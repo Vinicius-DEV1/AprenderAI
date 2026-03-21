@@ -60,8 +60,9 @@ class ProcessImportQuestionChunkJob implements ShouldQueue
         public readonly int $limit,
         public readonly int $chunkIndex = 0,
     ) {
-        // Usa a fila 'import' dedicada para não competir com filas de usuários reais
-        $this->onQueue('import');
+        // Chunks run in the standard 'default' queue.
+        // Concurrency is controlled by the semaphore in ProcessQuestionImportJob.
+        $this->onQueue('default');
     }
 
     /**

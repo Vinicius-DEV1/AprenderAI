@@ -109,9 +109,29 @@ services:
     networks:
       - production-network
 
-  # Group: Embeddings (4 replicas)
-  # Strictly limited to 4 concurrent processes to manage API capacity safely.
-  worker-embeddings:
+  # ─────────────────────────────────────────────────────────────────────────
+  # Unified Worker Pool (20 replicas)
+  #
+  # Replaces worker-general (24), worker-embeddings (4), worker-triage (1),
+  # and worker-import (1). Concurrency limits per job type are enforced
+  # internally via Redis distributed semaphores (HasConcurrencyLimit trait):
+  #
+  #   Embeddings  → max 5 simultaneous (xavier.concurrency.max_embeddings)
+  #   AI Triage   → max 2 simultaneous (xavier.concurrency.max_triage)
+  #   Import ZIP  → max 1 simultaneous (xavier.concurrency.max_import)
+  #
+  # Queue priority order:
+  #   high            → emails, payment, simulation results (always first)
+  #   search_embeddings → user searches (latency-critical UX)
+  #   default         → general operations
+  #   embeddings      → background vector indexing (can wait)
+  #   low             → low-priority tasks
+  #
+  # Timeout of 700s covers the heaviest non-import job (AIBatchTriageJob).
+  # Import ZIP extraction runs in 'default' with its own timeout controlled
+  # by the job's public $timeout = 3600 property.
+  # ─────────────────────────────────────────────────────────────────────────
+  worker-default:
     image: aprender-ai-app
     restart: always
     working_dir: /var/www
@@ -120,74 +140,25 @@ services:
       - ./qdrant-data:/var/www/qdrant-backup:ro
       - /proc:/host_proc:ro
     env_file: ./backend/.env
-    # Queue priority: high > low (embeddings) > default
-    command: php artisan queue:work --queue=high,low,default --sleep=10 --tries=3 --timeout=120 --max-time=3600
+    command: >
+      php artisan queue:work
+      --queue=high,search_embeddings,default,embeddings,low
+      --sleep=3
+      --tries=3
+      --timeout=700
+      --max-time=3600
     deploy:
-      replicas: 4
+      replicas: 20
       resources:
         limits:
-          memory: 1G
+          memory: 768M
     depends_on:
       app:
-        condition: service_started
+        condition: service_healthy
       db:
         condition: service_healthy
       redis:
         condition: service_started
-    networks:
-      - production-network
-
-  # Group: Triage & Batch (1 replica)
-  # Handles AI classifications and long-running batch logic sequentially.
-  worker-triage:
-    image: aprender-ai-app
-    restart: always
-    working_dir: /var/www
-    volumes:
-      - ./backend/storage/app/public:/var/www/storage/app/public
-      - ./qdrant-data:/var/www/qdrant-backup:ro
-      - /proc:/host_proc:ro
-    env_file: ./backend/.env
-    # Queue priority: high > ai_triage > default
-    command: php artisan queue:work --queue=high,ai_triage,default --sleep=3 --tries=3 --timeout=700 --max-time=3600
-    deploy:
-      replicas: 1
-      resources:
-        limits:
-          memory: 1G
-    depends_on:
-      app:
-        condition: service_started
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    networks:
-      - production-network
-
-  # Group: Import (1 replica)
-  # Handles heavy ZIP extractions and file imports.
-  worker-import:
-    image: aprender-ai-app
-    restart: always
-    working_dir: /var/www
-    volumes:
-      - ./backend/storage/app/public:/var/www/storage/app/public
-      - ./qdrant-data:/var/www/qdrant-backup:ro
-      - /proc:/host_proc:ro
-    env_file: ./backend/.env
-    # Queue priority: high > import > default
-    command: php artisan queue:work --queue=high,import,default --sleep=3 --tries=3 --timeout=1200 --max-time=3600
-    deploy:
-      replicas: 1
-      resources:
-        limits:
-          memory: 1G
-    depends_on:
-      app:
-        condition: service_healthy
-      db:
-        condition: service_healthy
     networks:
       - production-network
 

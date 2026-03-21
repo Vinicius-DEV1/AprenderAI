@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\HasConcurrencyLimit;
 use App\Models\Question;
 use App\Models\QuestionVector;
 use App\Services\AI\AIService;
@@ -29,6 +30,7 @@ use Illuminate\Support\Facades\Log;
 class IndexQuestionVectorJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use HasConcurrencyLimit;
 
     /**
      * Tries limit.
@@ -55,6 +57,14 @@ class IndexQuestionVectorJob implements ShouldQueue
             Log::warning("[Xavier][IndexQuestion] Question #{$this->questionId} not found.");
             return;
         }
+
+        // Concurrency Semaphore: limit to max N simultaneous embedding API calls cluster-wide
+        $maxConcurrent = config('xavier.concurrency.max_embeddings', 5);
+        if (!$this->acquireSlot('embeddings', $maxConcurrent, retryIn: 20)) {
+            return; // Released back to queue automatically
+        }
+
+        try {
 
         // Circuit Breaker: If no API keys are available for embedding, release the job back to the queue
         // to wait for quota reset or manual intervention, preventing mass failures.
@@ -188,6 +198,10 @@ class IndexQuestionVectorJob implements ShouldQueue
 
         Log::info("[Xavier][IndexQuestion] Question #{$this->questionId} indexed successfully (v{$newVersion}).");
         $aiService->removeCongestion('IndexQuestionVectorJob', $this->questionId);
+
+        } finally {
+            $this->releaseSlot('embeddings');
+        }
     }
 
     /**

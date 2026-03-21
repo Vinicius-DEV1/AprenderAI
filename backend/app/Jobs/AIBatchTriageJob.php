@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\HasConcurrencyLimit;
 use App\Models\Question;
 use App\Services\AI\AIBatchService;
 use Illuminate\Bus\Queueable;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 class AIBatchTriageJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use HasConcurrencyLimit;
 
     public $timeout = 600; // 10 minutes timeout for larger batches
     public $tries = 1;    // Do not retry automatically — manual retry available in the dashboard
@@ -60,6 +62,14 @@ class AIBatchTriageJob implements ShouldQueue
             ]);
             return;
         }
+
+        // Concurrency Semaphore: limit max simultaneous triage jobs cluster-wide
+        $maxConcurrent = config('xavier.concurrency.max_triage', 2);
+        if (!$this->acquireSlot('ai_triage', $maxConcurrent, retryIn: 30)) {
+            return; // Released back to queue automatically
+        }
+
+        try {
 
         // Circuit Breaker: If no API keys are available for triage, release the job back to the queue
         // to wait for quota reset or manual intervention, preventing mass failures.
@@ -154,6 +164,8 @@ class AIBatchTriageJob implements ShouldQueue
 
             $this->writeChunkPhase('idle');
             $this->updateProgress(0, count($this->questionIds), $e->getMessage());
+        } finally {
+            $this->releaseSlot('ai_triage');
         }
     }
 
