@@ -180,7 +180,7 @@ Route::prefix('v1')->group(function () {
                 Route::post('/retry-all', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'retryAllFailedJobs']);
                 Route::post('/{id}/retry', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'retryFailedJob']);
             });
-            Route::delete('/pending-triage', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'clearPendingTriage']);
+
             // Legacy/existing routes
             Route::get('/realtime', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'realtime']);
             Route::get('/history', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'history']);
@@ -342,6 +342,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('/queues', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'queues']);
                 Route::get('/logs', [\App\Http\Controllers\Api\Admin\SystemLogController::class, 'index']);
                 Route::delete('/logs', [\App\Http\Controllers\Api\Admin\SystemLogController::class, 'clear']);
+                Route::delete('/pending-triage', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'clearPendingTriage']);
 
             });
 
@@ -428,7 +429,6 @@ Route::prefix('v1')->group(function () {
                 Route::post('/clear-cache', [SemanticActionController::class, 'clearCache']);
                 Route::post('/clear-queue', [SemanticActionController::class, 'clearQueue']);
                 Route::post('/clear-congestion', [SemanticActionController::class, 'clearCongestion']);
-                Route::post('/clear-triage', [SemanticDashboardController::class, 'clearTriageQueue']);
                 Route::post('/reset-embeddings', [SemanticActionController::class, 'resetEmbeddings']);
             });
 
