@@ -7,33 +7,17 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axios';
 import AdminBatchModal from '../pages/admin/components/AdminBatchModal';
 import NotificationBell from '../components/NotificationBell';
+import { useGlobalFailedJobs } from '../hooks/useGlobalFailedJobs';
 
 export default function AdminLayout() {
+    useGlobalFailedJobs(); // Activate global polling for failed jobs spike
     const config = useConfigStore();
     const location = useLocation();
     const ui = useUIStore();
     const queryClient = useQueryClient();
     const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
     const { user, isAuthenticated, isLoading } = useAuthStore();
-
-    // BUG FIX: Aguardando carregamento da sessão antes de decidir redirecionamento.
-    // Sem este guard, no reload o componente tentava verificar auth quando
-    // isAuthenticated=false ainda (estado inicial), causando redirect prematuro e tela branca.
-    if (isLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
-            </div>
-        );
-    }
-
-    // Redireciona se não for admin (só após saber o estado real de auth)
-    if (isAuthenticated && user && user.role !== 'admin') {
-        return <Navigate to="/dashboard" replace />;
-    }
-
 
     // Handle toast timeout
     useEffect(() => {
@@ -42,6 +26,16 @@ export default function AdminLayout() {
             return () => clearTimeout(timer);
         }
     }, [toastMessage]);
+
+    // Global AI Batch Polling
+    const { data: activeBatchData } = useQuery({
+        queryKey: ['admin-triage-active'],
+        queryFn: async () => {
+            const res = await api.get('/api/v1/admin/triage/active');
+            return res.data;
+        },
+        refetchInterval: ui.isBatchModalOpen ? false : 30000
+    });
 
     const isRouteActive = (pattern: string) => {
         return location.pathname.startsWith(pattern);
@@ -53,15 +47,19 @@ export default function AdminLayout() {
             }`;
     };
 
-    // Global AI Batch Polling
-    const { data: activeBatchData } = useQuery({
-        queryKey: ['admin-triage-active'],
-        queryFn: async () => {
-            const res = await api.get('/api/v1/admin/triage/active');
-            return res.data;
-        },
-        refetchInterval: ui.isBatchModalOpen ? false : 30000
-    });
+    // BUG FIX: Aguardando carregamento da sessão antes de decidir redirecionamento.
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+            </div>
+        );
+    }
+
+    // Redireciona se não for admin
+    if (isAuthenticated && user && user.role !== 'admin') {
+        return <Navigate to="/dashboard" replace />;
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 text-slate-800 font-sans antialiased flex flex-col lg:flex-row h-full">
@@ -255,7 +253,7 @@ export default function AdminLayout() {
 
                                     <NavLink to="/admin/monitor" className={getNavLinkClass('/admin/monitor')}>
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
-                                        Monitoramento
+                                        Cluster de Workers
                                     </NavLink>
 
                                     <NavLink to="/admin/api-keys" className={getNavLinkClass('/admin/api-keys')}>

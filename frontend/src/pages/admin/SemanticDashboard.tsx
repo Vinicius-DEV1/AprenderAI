@@ -28,6 +28,7 @@ import RankingPriorities from './semantic/RankingPriorities';
 import MaestroTester from './semantic/MaestroTester';
 import LogsAndCache from './semantic/LogsAndCache';
 import RecentFailures from './semantic/RecentFailures';
+import ApiKeysHealthPanel from './semantic/ApiKeysHealthPanel';
 
 const SemanticDashboard = () => {
     const {
@@ -76,7 +77,9 @@ const SemanticDashboard = () => {
         handleClearCache,
         handleClearQueue,
         handleResetEmbeddings,
-        handleClearCongestion
+        handleClearCongestion,
+        handleClearTriageQueue,
+        clearingTriage
     } = useSemanticDashboard();
 
     if (loading && !stats) {
@@ -102,6 +105,8 @@ const SemanticDashboard = () => {
                     clearingCache={clearingCache}
                     handleClearQueue={handleClearQueue}
                     clearingQueue={clearingQueue}
+                    handleClearTriageQueue={handleClearTriageQueue}
+                    clearingTriage={clearingTriage}
                     setIsResetModalOpen={setIsResetModalOpen}
                 />
 
@@ -110,6 +115,8 @@ const SemanticDashboard = () => {
                         <MonitoringCenter stats={stats} />
                         
                         <PerformanceAnalytics stats={stats} />
+
+                        <ApiKeysHealthPanel stats={stats} loading={loading} />
 
                         {/* QDRANT INDEX HEALTH ALERTS (Inlined for importance) */}
                         {stats.qdrant?.index_version_status && (
@@ -258,9 +265,9 @@ const SemanticDashboard = () => {
                     setResetConfirmText('');
                 }}
                 resetting={resetting}
-                resetConfirmText={resetConfirmText}
-                setResetConfirmText={setResetConfirmText}
-                onReset={handleResetEmbeddings}
+                confirmText={resetConfirmText}
+                setConfirmText={setResetConfirmText}
+                onConfirm={handleResetEmbeddings}
             />
         </>
     );

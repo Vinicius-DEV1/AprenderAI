@@ -26,7 +26,8 @@ use App\Http\Controllers\Api\Admin\CouponController as AdminCouponController;
 use App\Http\Controllers\Api\Admin\SystemPromptController as AdminSystemPromptController;
 use App\Http\Controllers\Api\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Api\Admin\ApiKeyController as AdminApiKeyController;
-use App\Http\Controllers\Api\Admin\AIBatchTriageController as AdminAIBatchTriageController;
+use App\Http\Controllers\Api\Admin\AIBatchJobController as AdminAIBatchJobController;
+use App\Http\Controllers\Api\Admin\AIBatchAnalyticsController as AdminAIBatchAnalyticsController;
 use App\Http\Controllers\Api\Admin\EnemImportController as AdminEnemImportController;
 use App\Http\Controllers\Api\Admin\AdminEssayController;
 use App\Http\Controllers\Api\Admin\AdminQuestionImportController;
@@ -37,10 +38,14 @@ use App\Http\Controllers\Api\Admin\PaymentSettingsController;
 use App\Http\Controllers\Api\Admin\ExamController;
 use App\Http\Controllers\Api\Admin\BackupController;
 use App\Http\Controllers\Api\Admin\SemanticDashboardController;
+use App\Http\Controllers\Api\Admin\SemanticTestController;
+use App\Http\Controllers\Api\Admin\SemanticActionController;
 use App\Http\Controllers\Api\CheckoutTrackingController;
 use App\Http\Controllers\Api\Admin\CheckoutAnalyticsController;
 use App\Http\Controllers\Api\PlatformTrackingController;
 use App\Http\Controllers\Api\Admin\AdminPlatformMonitorController;
+use App\Http\Controllers\Api\Admin\PlatformEngagementController;
+use App\Http\Controllers\Api\Admin\UserSessionMonitorController;
 use App\Http\Controllers\Api\HealthController;
 
 // Engagement System
@@ -166,6 +171,22 @@ Route::prefix('v1')->group(function () {
         Route::delete('notebooks/{notebook}/questions/{question}', [NotebookController::class, 'removeQuestion']);
         Route::post('questions/{question}/sync-notebooks', [NotebookController::class, 'syncQuestion']);
 
+        // Monitor Dashboard (Worker & System Health)
+        Route::prefix('monitor')->group(function () {
+            Route::get('/overview', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'overview']);
+            Route::prefix('failed-jobs')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'listFailedJobs']);
+                Route::delete('/', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'clearFailedJobs']);
+                Route::post('/retry-all', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'retryAllFailedJobs']);
+                Route::post('/{id}/retry', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'retryFailedJob']);
+            });
+            Route::delete('/pending-triage', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'clearPendingTriage']);
+            // Legacy/existing routes
+            Route::get('/realtime', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'realtime']);
+            Route::get('/history', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'history']);
+            Route::get('/queues', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'queues']);
+        });
+
         // Question Bank
         Route::prefix('questions')->group(function () {
             Route::get('/essay-themes', [QuestionController::class, 'essayThemes']);
@@ -173,8 +194,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/subjects', [QuestionController::class, 'subjects']);
             Route::get('/topics', [QuestionController::class, 'topics']);
             Route::get('/filter-options', [QuestionController::class, 'filterOptions']);
-            Route::get('/stats', [QuestionController::class, 'stats']);
-            Route::get('/{question}/history', [QuestionController::class, 'history']);
+            Route::get('/stats', [\App\Http\Controllers\Api\QuestionStatsController::class, 'stats']);
+            Route::get('/{question}/history', [\App\Http\Controllers\Api\QuestionStatsController::class, 'history']);
             Route::post('/{question}/view', [QuestionController::class, 'logView']);
             Route::post('/{question}/answer', [QuestionController::class, 'answer'])
                 ->middleware('check.plan.limits:daily_question');
@@ -182,23 +203,23 @@ Route::prefix('v1')->group(function () {
             // Notes, Favorites, Reports, and Stats
             Route::post('/{question}/favorite', [FavoriteController::class, 'toggle']);
             Route::post('/{question}/report', [QuestionReportController::class, 'store']);
-            Route::get('/{question}/stats', [QuestionController::class, 'questionStats']);
+            Route::get('/{question}/stats', [\App\Http\Controllers\Api\QuestionStatsController::class, 'questionStats']);
             Route::get('/{question}/notes', [QuestionNoteController::class, 'index']);
             Route::post('/{question}/notes', [QuestionNoteController::class, 'store']);
             Route::put('/notes/{note}', [QuestionNoteController::class, 'update']);
             Route::delete('/notes/{note}', [QuestionNoteController::class, 'destroy']);
 
             // Xavier AI Search
-            Route::post('/ai-search', [QuestionController::class, 'aiSearch'])->name('questions.ai-search');
-            Route::get('/ai-search/{aiSearchRequest}/status', [QuestionController::class, 'aiSearchStatus'])->name('questions.ai-search.status');
+            Route::post('/ai-search', [\App\Http\Controllers\Api\XavierSearchController::class, 'aiSearch'])->name('questions.ai-search');
+            Route::get('/ai-search/{aiSearchRequest}/status', [\App\Http\Controllers\Api\XavierSearchController::class, 'aiSearchStatus'])->name('questions.ai-search.status');
 
             // Xavier Chat
-            Route::get('/{question}/chat', [QuestionController::class, 'chat'])->name('questions.chat.index');
-            Route::post('/{question}/chat', [QuestionController::class, 'sendChat'])->name('questions.chat.store');
+            Route::get('/{question}/chat', [\App\Http\Controllers\Api\QuestionChatController::class, 'chat'])->name('questions.chat.index');
+            Route::post('/{question}/chat', [\App\Http\Controllers\Api\QuestionChatController::class, 'sendChat'])->name('questions.chat.store');
 
             // Engagement & Goals
-            Route::get('/engagement', [QuestionController::class, 'engagement']);
-            Route::post('/goal', [QuestionController::class, 'updateGoal']);
+            Route::get('/engagement', [\App\Http\Controllers\Api\QuestionGoalController::class, 'engagement']);
+            Route::post('/goal', [\App\Http\Controllers\Api\QuestionGoalController::class, 'updateGoal']);
         });
 
         // Profile
@@ -320,6 +341,8 @@ Route::prefix('v1')->group(function () {
                 Route::get('/history', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'history']);
                 Route::get('/queues', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'queues']);
                 Route::get('/logs', [\App\Http\Controllers\Api\Admin\SystemLogController::class, 'index']);
+                Route::delete('/logs', [\App\Http\Controllers\Api\Admin\SystemLogController::class, 'clear']);
+
             });
 
 
@@ -345,22 +368,22 @@ Route::prefix('v1')->group(function () {
 
             // AI Batch Triage
             Route::prefix('triage')->group(function () {
-                Route::post('/preview', [AdminAIBatchTriageController::class, 'preview']);
-                Route::post('/start', [AdminAIBatchTriageController::class, 'start']);
-                Route::get('/active', [AdminAIBatchTriageController::class, 'active']);
-                Route::get('/active-keys', [AdminAIBatchTriageController::class, 'activeKeys']);
-                Route::get('/{batchId}/status', [AdminAIBatchTriageController::class, 'status']);
-                Route::get('/{batchId}/details', [AdminAIBatchTriageController::class, 'details']); // Moved here
-                Route::post('/{batchId}/cancel', [AdminAIBatchTriageController::class, 'cancel']);
-                Route::post('/{batchId}/cancel-and-revert', [AdminAIBatchTriageController::class, 'cancelAndRevert']);
+                Route::post('/preview', [AdminAIBatchJobController::class, 'preview']);
+                Route::post('/start', [AdminAIBatchJobController::class, 'start']);
+                Route::get('/active', [AdminAIBatchAnalyticsController::class, 'active']);
+                Route::get('/active-keys', [AdminAIBatchAnalyticsController::class, 'activeKeys']);
+                Route::get('/{batchId}/status', [AdminAIBatchAnalyticsController::class, 'status']);
+                Route::get('/{batchId}/details', [AdminAIBatchAnalyticsController::class, 'details']);
+                Route::post('/{batchId}/cancel', [AdminAIBatchJobController::class, 'cancel']);
+                Route::post('/{batchId}/cancel-and-revert', [AdminAIBatchJobController::class, 'cancelAndRevert']);
             });
 
             Route::prefix('questions-batch')->group(function () {
-                Route::get('/history', [AdminAIBatchTriageController::class, 'history']);
-                Route::get('/details/{batchId}', [AdminAIBatchTriageController::class, 'details']);
-                Route::post('/undo-batch/{batchId}', [AdminAIBatchTriageController::class, 'undoBatch']);
-                Route::post('/undo-item/{itemId}', [AdminAIBatchTriageController::class, 'undoItem']);
-                Route::post('/retry/{batchId}', [AdminAIBatchTriageController::class, 'retry']);
+                Route::get('/history', [AdminAIBatchAnalyticsController::class, 'history']);
+                Route::get('/details/{batchId}', [AdminAIBatchAnalyticsController::class, 'details']);
+                Route::post('/undo-batch/{batchId}', [AdminAIBatchJobController::class, 'undoBatch']);
+                Route::post('/undo-item/{itemId}', [AdminAIBatchJobController::class, 'undoItem']);
+                Route::post('/retry/{batchId}', [AdminAIBatchJobController::class, 'retry']);
             });
 
             // Simulation Builder
@@ -399,13 +422,14 @@ Route::prefix('v1')->group(function () {
             Route::prefix('semantic')->group(function () {
                 Route::get('/', [SemanticDashboardController::class, 'index']);
                 Route::post('/config', [SemanticDashboardController::class, 'updateConfig']);
-                Route::post('/test-search', [SemanticDashboardController::class, 'testSearch']);
-                Route::post('/reindex', [SemanticDashboardController::class, 'reindexAll']);
-                Route::post('/reindex-concepts', [SemanticDashboardController::class, 'reindexConcepts']);
-                Route::post('/clear-cache', [SemanticDashboardController::class, 'clearCache']);
-                Route::post('/clear-queue', [SemanticDashboardController::class, 'clearQueue']);
-                Route::post('/clear-congestion', [SemanticDashboardController::class, 'clearCongestion']);
-                Route::post('/reset-embeddings', [SemanticDashboardController::class, 'resetEmbeddings']);
+                Route::post('/test-search', [SemanticTestController::class, 'testSearch']);
+                Route::post('/reindex', [SemanticActionController::class, 'reindexAll']);
+                Route::post('/reindex-concepts', [SemanticActionController::class, 'reindexConcepts']);
+                Route::post('/clear-cache', [SemanticActionController::class, 'clearCache']);
+                Route::post('/clear-queue', [SemanticActionController::class, 'clearQueue']);
+                Route::post('/clear-congestion', [SemanticActionController::class, 'clearCongestion']);
+                Route::post('/clear-triage', [SemanticDashboardController::class, 'clearTriageQueue']);
+                Route::post('/reset-embeddings', [SemanticActionController::class, 'resetEmbeddings']);
             });
 
             // Admin Question Import
@@ -419,14 +443,14 @@ Route::prefix('v1')->group(function () {
 
             // Checkout Observability Dashboard
             Route::prefix('checkout')->group(function () {
-                Route::get('/overview', [CheckoutAnalyticsController::class, 'overview']);
-                Route::get('/funnel', [CheckoutAnalyticsController::class, 'funnel']);
-                Route::get('/plans-ranking', [CheckoutAnalyticsController::class, 'plansRanking']);
-                Route::get('/errors', [CheckoutAnalyticsController::class, 'errors']);
-                Route::get('/user-timeline/{userId}', [CheckoutAnalyticsController::class, 'userTimeline']);
-                Route::get('/abandonments', [CheckoutAnalyticsController::class, 'abandonments']);
-                Route::get('/alerts', [CheckoutAnalyticsController::class, 'alerts']);
-                Route::get('/timeline', [CheckoutAnalyticsController::class, 'timeline']);
+                Route::get('/overview', [\App\Http\Controllers\Api\Admin\CheckoutAnalyticsController::class, 'overview']);
+                Route::get('/funnel', [\App\Http\Controllers\Api\Admin\CheckoutFunnelController::class, 'funnel']);
+                Route::get('/plans-ranking', [\App\Http\Controllers\Api\Admin\CheckoutFunnelController::class, 'plansRanking']);
+                Route::get('/errors', [\App\Http\Controllers\Api\Admin\CheckoutObservabilityController::class, 'errors']);
+                Route::get('/user-timeline/{userId}', [\App\Http\Controllers\Api\Admin\CheckoutObservabilityController::class, 'userTimeline']);
+                Route::get('/abandonments', [\App\Http\Controllers\Api\Admin\CheckoutObservabilityController::class, 'abandonments']);
+                Route::get('/alerts', [\App\Http\Controllers\Api\Admin\CheckoutObservabilityController::class, 'alerts']);
+                Route::get('/timeline', [\App\Http\Controllers\Api\Admin\CheckoutObservabilityController::class, 'timeline']);
             });
 
             // Database Backups
@@ -475,13 +499,13 @@ Route::prefix('v1')->group(function () {
             // Platform Monitor Dashboard (native internal analytics)
             Route::prefix('platform-monitor')->group(function () {
                 Route::get('/overview', [AdminPlatformMonitorController::class, 'overview']);
-                Route::get('/online', [AdminPlatformMonitorController::class, 'online']);
-                Route::get('/logins', [AdminPlatformMonitorController::class, 'logins']);
-                Route::get('/questions', [AdminPlatformMonitorController::class, 'questions']);
-                Route::get('/simulations', [AdminPlatformMonitorController::class, 'simulations']);
-                Route::get('/essays', [AdminPlatformMonitorController::class, 'essays']);
-                Route::get('/activity', [AdminPlatformMonitorController::class, 'activity']);
-                Route::get('/user/{id}', [AdminPlatformMonitorController::class, 'userDetail']);
+                Route::get('/online', [UserSessionMonitorController::class, 'online']);
+                Route::get('/logins', [UserSessionMonitorController::class, 'logins']);
+                Route::get('/questions', [PlatformEngagementController::class, 'questions']);
+                Route::get('/simulations', [PlatformEngagementController::class, 'simulations']);
+                Route::get('/essays', [PlatformEngagementController::class, 'essays']);
+                Route::get('/activity', [UserSessionMonitorController::class, 'activity']);
+                Route::get('/user/{id}', [UserSessionMonitorController::class, 'userDetail']);
             });
         });
     });

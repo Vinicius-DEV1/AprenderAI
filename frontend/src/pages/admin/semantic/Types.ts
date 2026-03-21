@@ -69,6 +69,16 @@ export interface DashboardStats {
         filters?: any;
         error?: string;
     }>;
+    api_keys: Array<{
+        id: number;
+        name: string;
+        provider: string;
+        model: string;
+        status: string;
+        rate_limit_ends_in: number | null;
+        total_requests: number;
+        error_rate: number;
+    }>;
     search_cache?: Array<{
         id: number;
         prompt_text: string;
