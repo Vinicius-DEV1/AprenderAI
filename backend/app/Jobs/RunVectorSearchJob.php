@@ -4,6 +4,8 @@ namespace App\Jobs;
 
 use App\Models\AiSearchRequest;
 use App\Models\SearchInteractionLog;
+use App\Models\User;
+use App\Notifications\SemanticSearchErrorNotification;
 use App\Services\AI\HybridSearchService;
 use App\Services\AI\ReRankService;
 use App\Services\AI\SemanticCacheService;
@@ -199,6 +201,21 @@ class RunVectorSearchJob implements ShouldQueue
             'status' => 'failed',
             'error'  => $reason,
         ]);
+
+        // Notify admins
+        try {
+            $searchRequest = AiSearchRequest::find($this->searchRequestId);
+            $admins = User::where('role', 'admin')->get();
+            $userName = $searchRequest->user ? $searchRequest->user->name : 'System/Guest';
+            
+            \Illuminate\Support\Facades\Notification::send($admins, new SemanticSearchErrorNotification(
+                $searchRequest->prompt ?? 'Unknown',
+                $reason,
+                $userName
+            ));
+        } catch (\Exception $e) {
+            Log::warning("[Xavier][RunVectorSearch] Failed to notify admins of search error: " . $e->getMessage());
+        }
     }
 
     /**
