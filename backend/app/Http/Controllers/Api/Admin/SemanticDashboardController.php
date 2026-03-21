@@ -187,7 +187,8 @@ class SemanticDashboardController extends Controller
                 'pending' => $pendingJobs,
                 'failed'  => $failedJobs,
                 'recent_failures' => $failedJobsDetails,
-                'waiting_list'    => app(\App\Services\AI\AIService::class)->getCongestionList(),
+                'waiting_list'    => app(\App\Services\AI\AIService::class)->getCongestionList()['items'] ?? [],
+                'waiting_total'   => app(\App\Services\AI\AIService::class)->getCongestionList()['total'] ?? 0,
             ],
             'analytics' => [
                 'total_ai_requests' => $totalAiRequests,
@@ -785,15 +786,32 @@ class SemanticDashboardController extends Controller
         try {
             $deleted = DB::table('jobs')->where('queue', $queue)->delete();
             $deletedFailed = DB::table('failed_jobs')->where('queue', $queue)->delete();
+            // Also clear the 'concepts' queue if it's separate
+            $deletedConcepts = DB::table('jobs')->where('queue', 'concepts')->delete();
+            $deletedFailedConcepts = DB::table('failed_jobs')->where('queue', 'concepts')->delete();
 
-            Log::info("[Xavier][Queue] Queue '{$queue}' cleared by admin. Jobs: {$deleted}, Failed: {$deletedFailed}.");
+
+            Log::info("[Xavier][Queue] Queue '{$queue}' cleared by admin. Jobs: {$deleted}, Failed: {$deletedFailed}. Concepts Jobs: {$deletedConcepts}, Concepts Failed: {$deletedFailedConcepts}.");
 
             return response()->json([
-                'message' => "Fila '{$queue}' limpa com sucesso. Jobs removidos: {$deleted}. Falhas removidas: {$deletedFailed}."
+                'message' => "Fila '{$queue}' e 'concepts' limpas com sucesso. Jobs removidos: {$deleted} (embeddings), {$deletedConcepts} (concepts). Falhas removidas: {$deletedFailed} (embeddings), {$deletedFailedConcepts} (concepts)."
             ]);
         } catch (\Exception $e) {
             Log::error("[Xavier][Queue] Failed to clear queue: " . $e->getMessage());
             return response()->json(['error' => 'Falha ao limpar fila.'], 500);
+        }
+    }
+
+    /**
+     * Clear all congestion tracking in Redis.
+     */
+    public function clearCongestion()
+    {
+        try {
+            app(\App\Services\AI\AIService::class)->clearCongestionList();
+            return response()->json(['message' => 'Lista de congestionamento limpa com sucesso. Todos os jobs foram acordados para retentar.']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Falha ao limpar lista de congestionamento.'], 500);
         }
     }
 
