@@ -318,10 +318,14 @@ class HybridSearchService
 
         // --- Exclusions ---
         if (!empty($sqlFilters['exclude_subject_id'])) {
-            $query->whereNotIn('subject_id', (array) $sqlFilters['exclude_subject_id']);
+            $query->whereDoesntHave('subjects', function ($q) use ($sqlFilters) {
+                $q->whereIn('subjects.id', (array) $sqlFilters['exclude_subject_id']);
+            });
         }
         if (!empty($sqlFilters['exclude_topic_id'])) {
-            $query->whereNotIn('topic_id', (array) $sqlFilters['exclude_topic_id']);
+            $query->whereDoesntHave('topics', function ($q) use ($sqlFilters) {
+                $q->whereIn('topics.id', (array) $sqlFilters['exclude_topic_id']);
+            });
         }
         if (!empty($sqlFilters['exclude_org'])) {
             $query->whereNotIn('organization', (array) $sqlFilters['exclude_org']);
