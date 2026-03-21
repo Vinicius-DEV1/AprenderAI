@@ -11,6 +11,9 @@ use App\Models\Concerns\FiltersAdmins;
  * Populated by the frontend's beforeunload event or by the backend detecting
  * a checkout_opened event with no subsequent payment_success within a session.
  */
+/**
+ * @method static \Illuminate\Database\Eloquent\Builder withoutAdmins()
+ */
 class CheckoutAbandonment extends Model
 {
     use FiltersAdmins;

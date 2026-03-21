@@ -62,9 +62,19 @@ class ServerMetricService
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Calcula o uso da CPU em %.
-     * Linux: lê /proc/stat duas vezes com 1s de intervalo para calcular delta.
-     * Windows: usa WMIC (apenas para desenvolvimento local).
+     * Returns the current CPU usage percentage (non-blocking).
+     *
+     * Linux strategy (non-blocking):
+     *   - Reads /proc/stat and stores the snapshot in the Laravel cache with a 2s TTL.
+     *   - On the next call (after 2s), computes the delta between the current and
+     *     cached snapshot to derive CPU %.
+     *   - First call returns 0.0 (no previous baseline available yet).
+     *   This avoids blocking a PHP-FPM thread with sleep(1) on every request.
+     *
+     * Windows strategy (dev/local only):
+     *   - Uses WMIC’s LoadPercentage (blocking but only used locally).
+     *
+     * @return float CPU usage percentage (0–100), rounded to 1 decimal place.
      */
     public function getCpuUsage(): float
     {
@@ -72,27 +82,43 @@ class ServerMetricService
             try {
                 $check = shell_exec('wmic cpu get loadpercentage');
                 return (float) preg_replace('/[^0-9.]/', '', $check);
-            } catch (\Exception $e) {
+            } catch (\Exception) {
                 return 0.0;
             }
         }
 
         try {
-            $path = file_exists('/host_proc/stat') ? '/host_proc/stat' : '/proc/stat';
-            $stat1 = file_get_contents($path);
-            sleep(1);
-            $stat2 = file_get_contents($path);
+            $path       = file_exists('/host_proc/stat') ? '/host_proc/stat' : '/proc/stat';
+            $cacheKey   = 'server_metric_cpu_snapshot';
+            $previous   = Cache::get($cacheKey);
+            $statNow    = file_get_contents($path);
+            $infoNow    = $this->parseProcStat($statNow);
+            $capturedAt = microtime(true);
 
-            $info1 = $this->parseProcStat($stat1);
-            $info2 = $this->parseProcStat($stat2);
+            // Always persist the latest snapshot for the next call (TTL: 10s).
+            Cache::put($cacheKey, [
+                'total'      => $infoNow['total'],
+                'idle'       => $infoNow['idle'],
+                'captured_at' => $capturedAt,
+            ], now()->addSeconds(10));
 
-            $totalDelta = $info2['total'] - $info1['total'];
-            $idleDelta = $info2['idle'] - $info1['idle'];
+            // First call: no baseline available yet.
+            if (!$previous) {
+                return 0.0;
+            }
 
-            // CPU % = (1 - idle/total) * 100
-            return $totalDelta > 0 ? round((1 - ($idleDelta / $totalDelta)) * 100, 1) : 0.0;
-        } catch (\Exception $e) {
-            // Fallback: load average do sistema (aproximação, não é %)
+            $totalDelta = $infoNow['total'] - $previous['total'];
+            $idleDelta  = $infoNow['idle']  - $previous['idle'];
+
+            if ($totalDelta <= 0) {
+                return 0.0;
+            }
+
+            return round((1 - ($idleDelta / $totalDelta)) * 100, 1);
+
+        } catch (\Exception) {
+            // Emergency fallback: load average is not a strict percentage,
+            // but gives a rough indication of system load.
             return round(sys_getloadavg()[0] * 10, 1);
         }
     }

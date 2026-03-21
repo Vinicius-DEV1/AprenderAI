@@ -37,7 +37,11 @@ class AITelemetryService
             $safeQuestionId = $questionId !== null ? (int) $questionId : null;
 
             if ($safeUserId === null) {
-                Log::warning("AITelemetryService: logRequest called without user_id.", ['provider' => $apiKey->provider, 'prompt' => substr($prompt, 0, 50)]);
+                // If we are in CLI or Job context, we don't expect a user_id. 
+                // Only warn if it's an UNKNOWN context or if we want to track system requests as ID 0 (future).
+                if (!app()->runningInConsole()) {
+                    Log::warning("AITelemetryService: logRequest called without user_id in HTTP context.", ['provider' => $apiKey->provider, 'prompt' => substr($prompt, 0, 50)]);
+                }
             }
 
             $log = AiRequestLog::create([

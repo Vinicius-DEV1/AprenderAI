@@ -69,7 +69,7 @@ class AIBatchTriageJob implements ShouldQueue
         }
 
         // Concurrency Semaphore: limit max simultaneous triage jobs cluster-wide
-        $maxConcurrent = config('xavier.concurrency.max_triage', 2);
+        $maxConcurrent = (int) \App\Models\Configuration::get('xavier_max_concurrent_triage', config('xavier.concurrency.max_triage', 5));
         if (!$this->acquireSlot('ai_triage', $maxConcurrent, 30)) {
             return; // Released back to queue automatically
         }

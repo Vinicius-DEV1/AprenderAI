@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Concerns\FiltersAdmins;
 
 
+/**
+ * @method static \Illuminate\Database\Eloquent\Builder withoutAdmins()
+ */
 class Essay extends Model
 {
     use HasFactory, FiltersAdmins;

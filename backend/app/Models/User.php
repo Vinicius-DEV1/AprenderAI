@@ -25,6 +25,9 @@ use App\Models\Concerns\FiltersAdmins;
  *  2. Plan Default (plan->simulations_limit, plan->essays_limit)
  *  3. Zero / Blocked — if no plan or plan limit is 0
  */
+/**
+ * @method static \Illuminate\Database\Eloquent\Builder withoutAdmins()
+ */
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */

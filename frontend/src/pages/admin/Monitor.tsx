@@ -13,6 +13,7 @@ import QueueStatsPanel from './monitor/QueueStatsPanel';
 import WorkerPerformance from './monitor/WorkerPerformance';
 import QueueTabs from './monitor/QueueTabs';
 import SystemLogs from './monitor/SystemLogs';
+import WorkerMonitorPanel from './monitor/WorkerMonitorPanel';
 
 export default function Monitor() {
     const {
@@ -27,7 +28,8 @@ export default function Monitor() {
         formatBytes,
         fmtGb,
         resourceChartData,
-        networkChartData
+        networkChartData,
+        clearLogs
     } = useMonitor();
 
     return (
@@ -68,7 +70,11 @@ export default function Monitor() {
                 queuesData={queuesData} 
             />
 
-            <SystemLogs logsData={logsData} />
+            <SystemLogs logsData={logsData} onClear={clearLogs} />
+
+            <div className="mt-12">
+                <WorkerMonitorPanel />
+            </div>
         </div>
     );
 }

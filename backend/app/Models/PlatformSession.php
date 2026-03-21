@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Concerns\FiltersAdmins;
 
 
+/**
+ * @method static \Illuminate\Database\Eloquent\Builder withoutAdmins()
+ */
 class PlatformSession extends Model
 {
     use FiltersAdmins;

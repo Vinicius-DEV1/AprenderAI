@@ -4,72 +4,101 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Redis;
 
+/**
+ * QueueTrackerService
+ *
+ * Records per-queue job completion events and exposes rolling performance metrics.
+ *
+ * Metrics are stored in Redis sorted sets and integer counters with short TTLs
+ * to provide a live "last 60 seconds" view without expensive database queries.
+ *
+ * Usage:
+ *   - Call recordJob() from any job's handle() method after processing completes.
+ *   - Call getMetrics() from the admin monitor endpoint for the dashboard.
+ */
 class QueueTrackerService
 {
+    /** Redis key prefix for all tracker keys. */
     private const PREFIX = 'monitor:queue:';
+
+    /** Rolling window in seconds for throughput calculation. */
     private const WINDOW_SECONDS = 60;
 
     /**
-     * Records a job's completion and its duration.
+     * Records a job completion event and its processing duration.
+     *
+     * Stores two Redis structures per queue:
+     *   - A sorted set for throughput (timestamps as score + member)
+     *   - INCRBYFLOAT/INCR counters for average duration per 1-minute bucket
+     *
+     * @param string $queue           Queue name (e.g. 'high', 'embeddings')
+     * @param float  $durationSeconds Wall-clock seconds the job took to process
      */
     public function recordJob(string $queue, float $durationSeconds): void
     {
-        $now = microtime(true);
+        $now   = microtime(true);
         $redis = Redis::connection();
 
-        // 1. Throughput: Store timestamp in a sorted set (Rolling Window)
+        // ── Throughput tracking (rolling sorted set) ───────────────────────────
+        // Each entry: score = timestamp (float), member = timestamp string.
+        // Entries older than WINDOW_SECONDS are pruned on every write.
         $redis->zadd(self::PREFIX . "throughput:{$queue}", $now, $now);
-
-        // Cleanup old entries (> 60s) occasionally or every time
         $redis->zremrangebyscore(self::PREFIX . "throughput:{$queue}", 0, $now - self::WINDOW_SECONDS);
 
-        // 2. Average Duration: Store sum and count for the last 5 minutes (approx)
-        // We use a simple INCR/INCRBYFLOAT and reset it every 5 minutes OR use a rolling avg
-        // To keep it simple and accurate for "current" state, we'll use a fixed-window of 1 minute.
-        $minute = floor($now / 60);
-        $keySum = self::PREFIX . "duration_sum:{$queue}:{$minute}";
+        // ── Average duration tracking (fixed 1-minute bucket) ─────────────────
+        // We keep a sum + count per integer minute bucket (TTL: 5 min).
+        // getMetrics() falls back to the previous minute if the current is empty.
+        $minute   = (int) floor($now / 60);
+        $keySum   = self::PREFIX . "duration_sum:{$queue}:{$minute}";
         $keyCount = self::PREFIX . "duration_count:{$queue}:{$minute}";
 
         $redis->incrbyfloat($keySum, $durationSeconds);
         $redis->incr($keyCount);
-
-        // TTL for cleanup
         $redis->expire($keySum, 300);
         $redis->expire($keyCount, 300);
     }
 
     /**
-     * Gets performance metrics for all relevant queues.
+     * Returns performance metrics for all active production queues.
+     *
+     * Metrics per queue:
+     *   - jobs_per_minute  : count of jobs completed in the last 60 seconds
+     *   - avg_duration_seconds : rolling average processing time (1-min bucket)
+     *
+     * @return array<string, array{jobs_per_minute: int, avg_duration_seconds: float}>
      */
     public function getMetrics(): array
     {
-        $queues = ['default', 'essays', 'ai-batches', 'import'];
-        $now = microtime(true);
-        $currentMinute = floor($now / 60);
-        $redis = Redis::connection();
+        // All queues handled by worker-default in priority order.
+        $queues = ['high', 'search_embeddings', 'ai_triage', 'default', 'embeddings', 'low'];
+
+        $now           = microtime(true);
+        $currentMinute = (int) floor($now / 60);
+        $redis         = Redis::connection();
 
         $metrics = [];
 
         foreach ($queues as $queue) {
-            // Count jobs in the last 60 seconds
-            $throughput = $redis->zcount(self::PREFIX . "throughput:{$queue}", $now - 60, $now);
+            // Count jobs completed in the last 60 seconds via the sorted set.
+            $throughput = $redis->zcount(
+                self::PREFIX . "throughput:{$queue}",
+                $now - self::WINDOW_SECONDS,
+                $now
+            );
 
-            // Get duration from current or previous minute if current is empty
-            $sum = (float) $redis->get(self::PREFIX . "duration_sum:{$queue}:{$currentMinute}") ?: 0;
-            $count = (int) $redis->get(self::PREFIX . "duration_count:{$queue}:{$currentMinute}") ?: 0;
+            // Try the current minute bucket first; fall back to the previous if empty.
+            $sum   = (float) ($redis->get(self::PREFIX . "duration_sum:{$queue}:{$currentMinute}") ?: 0);
+            $count = (int)   ($redis->get(self::PREFIX . "duration_count:{$queue}:{$currentMinute}") ?: 0);
 
             if ($count === 0) {
-                // Try previous minute
-                $prevMinute = $currentMinute - 1;
-                $sum = (float) $redis->get(self::PREFIX . "duration_sum:{$queue}:{$prevMinute}") ?: 0;
-                $count = (int) $redis->get(self::PREFIX . "duration_count:{$queue}:{$prevMinute}") ?: 0;
+                $prev  = $currentMinute - 1;
+                $sum   = (float) ($redis->get(self::PREFIX . "duration_sum:{$queue}:{$prev}") ?: 0);
+                $count = (int)   ($redis->get(self::PREFIX . "duration_count:{$queue}:{$prev}") ?: 0);
             }
 
-            $avgDuration = $count > 0 ? ($sum / $count) : 0;
-
             $metrics[$queue] = [
-                'jobs_per_minute' => $throughput,
-                'avg_duration_seconds' => round($avgDuration, 3),
+                'jobs_per_minute'      => $throughput,
+                'avg_duration_seconds' => $count > 0 ? round($sum / $count, 3) : 0,
             ];
         }
 

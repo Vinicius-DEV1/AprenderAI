@@ -11,6 +11,9 @@ use App\Models\Concerns\FiltersAdmins;
  * Events: prices_viewed, plan_clicked, checkout_opened, payment_initiated,
  *         payment_success, payment_failed, pix_generated, pix_expired
  */
+/**
+ * @method static \Illuminate\Database\Eloquent\Builder withoutAdmins()
+ */
 class CheckoutEvent extends Model
 {
     use FiltersAdmins;
