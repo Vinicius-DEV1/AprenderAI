@@ -70,7 +70,7 @@ class AIBatchTriageJob implements ShouldQueue
 
         // Concurrency Semaphore: limit max simultaneous triage jobs cluster-wide
         $maxConcurrent = config('xavier.concurrency.max_triage', 2);
-        if (!$this->acquireSlot('ai_triage', $maxConcurrent, retryIn: 30)) {
+        if (!$this->acquireSlot('ai_triage', $maxConcurrent, 30)) {
             return; // Released back to queue automatically
         }
 
@@ -94,7 +94,7 @@ class AIBatchTriageJob implements ShouldQueue
 
             // If this is not the first chunk and we have a delay, signal the delay phase
             if ($this->chunkIndex > 0 && $this->delaySeconds > 0) {
-                $delayEndsAt = now()->addSeconds($this->delaySeconds)->toIso8601String();
+                $delayEndsAt = \Illuminate\Support\Carbon::now()->addSeconds($this->delaySeconds)->toIso8601String();
                 $this->writeChunkPhase('delay', [
                     'delay_ends_at' => $delayEndsAt,
                     'delay_seconds' => $this->delaySeconds,
@@ -105,7 +105,7 @@ class AIBatchTriageJob implements ShouldQueue
             // Signal that this chunk is now processing
             $this->writeChunkPhase('processing', [
                 'chunk_index' => $this->chunkIndex + 1,
-                'chunk_started_at' => now()->toIso8601String(),
+                'chunk_started_at' => \Illuminate\Support\Carbon::now()->toIso8601String(),
                 'chunk_size' => count($this->questionIds),
             ]);
 
@@ -174,7 +174,7 @@ class AIBatchTriageJob implements ShouldQueue
                 // Signal "quota" phase with a 5-minute (300s) delay for the frontend
                 $this->writeChunkPhase('quota', [
                     'delay_seconds' => 300,
-                    'delay_ends_at' => now()->addSeconds(300)->toIso8601String()
+                    'delay_ends_at' => \Illuminate\Support\Carbon::now()->addSeconds(300)->toIso8601String()
                 ]);
                 
                 $this->release(300);
