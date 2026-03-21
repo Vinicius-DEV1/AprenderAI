@@ -399,12 +399,18 @@ class SemanticDashboardController extends Controller
             $extractedType = 'enem';
         }
 
-        // ── Step 3.6: Detecção de Intenções Negativas (Excluir) ───────────────
+        // ── Step 3.6: Detecção de Intenções Negativas e Restrições (Xavier 2.0) ──
         $excludedOrgs = [];
         $excludedInsts = [];
         $excludedSubjectIds = [];
         $excludedTopicIds = [];
         $excludedType = null;
+        
+        $mustOrgs = [];
+        $mustInsts = [];
+        $mustSubjectIds = [];
+        $mustTopicIds = [];
+
         if (!empty($negativePrompt)) {
             try {
                 $negVector = $aiService->generateEmbedding($negativePrompt, $user->id, 'RETRIEVAL_QUERY');
@@ -432,6 +438,46 @@ class SemanticDashboardController extends Controller
             $lowerNeg = mb_strtolower($negativePrompt);
             if (str_contains($lowerNeg, 'concurso')) $excludedType = 'concurso';
             if (str_contains($lowerNeg, 'enem')) $excludedType = 'enem';
+        }
+
+        // 2. Processar RESTRIÇÕES (O que travar como MUST)
+        if ($analysis['is_restricted'] && !empty($analysis['restricted_terms'])) {
+            try {
+                foreach ($analysis['restricted_terms'] as $term) {
+                    $mustVector = $aiService->generateEmbedding($term, $user->id, 'RETRIEVAL_QUERY');
+                    $mustMatches = $qdrant->searchConcepts($mustVector, 3, 0.70); // Threshold 0.70
+                    
+                    foreach ($mustMatches as $match) {
+                        $payload = $match['payload'] ?? [];
+                        $type = $payload['entity_type'] ?? '';
+                        
+                        if ($type === 'organization' && isset($payload['organization'])) {
+                            $mustOrgs[] = $payload['organization'];
+                            $logs[] = "MUST DETECTED: Organization '{$payload['organization']}'";
+                        } elseif ($type === 'institution' && isset($payload['institution'])) {
+                            $mustInsts[] = $payload['institution'];
+                            $logs[] = "MUST DETECTED: Institution '{$payload['institution']}'";
+                        } elseif ($type === 'subject' && isset($payload['subject_id'])) {
+                            $mustSubjectIds[] = (int) $payload['subject_id'];
+                            $logs[] = "MUST DETECTED: Subject #{$payload['subject_id']}";
+                        } elseif ($type === 'topic' && isset($payload['topic_id'])) {
+                            $mustTopicIds[] = (int) $payload['topic_id'];
+                            $logs[] = "MUST DETECTED: Topic #{$payload['topic_id']}";
+                        }
+                    }
+
+                    // Detecção de tipo via keyword no termo restrito
+                    $lowerTerm = mb_strtolower($term);
+                    if (str_contains($lowerTerm, 'concurso')) {
+                        $sqlFilters['type'] = 'concurso';
+                    }
+                    if (str_contains($lowerTerm, 'enem')) {
+                        $sqlFilters['type'] = 'enem';
+                    }
+                }
+            } catch (\Exception $e) {
+                $logs[] = "WARNING: Restriction embedding failed: " . $e->getMessage() . ". Must filters might be incomplete.";
+            }
         }
 
         $detectedConcepts = array_values(array_unique($detectedConcepts));
@@ -515,6 +561,12 @@ class SemanticDashboardController extends Controller
         if (!empty($extractedInsts)) {
             $sqlFilters['institution'] = $extractedInsts;
         }
+
+        // Apply restrictions (must filters override general extracted filters)
+        if (!empty($mustOrgs))       $sqlFilters['organization'] = $mustOrgs;
+        if (!empty($mustInsts))      $sqlFilters['institution']  = $mustInsts;
+        if (!empty($mustSubjectIds)) $sqlFilters['subject']      = $mustSubjectIds[0];
+        if (!empty($mustTopicIds))   $sqlFilters['topic']        = $mustTopicIds[0];
 
         // Aplicar filtros de exclusão
         if (!empty($excludedOrgs)) {
