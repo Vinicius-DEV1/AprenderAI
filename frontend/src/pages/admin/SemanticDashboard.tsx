@@ -1,4 +1,13 @@
-import React from 'react';
+/**
+ * SemanticDashboard
+ * Main entry point for the Semantic Engine administration.
+ * Orchestrates health monitoring, vector index management, and search simulation.
+ */
+/**
+ * SemanticDashboard
+ * Main entry point for the Semantic Engine administration.
+ * Orchestrates health monitoring, vector index management, and search simulation.
+ */
 import { 
     RefreshCw, 
     Rocket, 
@@ -56,7 +65,7 @@ const SemanticDashboard = () => {
         searchPrompt,
         setSearchPrompt,
         searchResults,
-        setSearchResults,
+        // setSearchResults, // Removed unused
         parsePipelineSteps,
         handleReplay,
         loadStats,
