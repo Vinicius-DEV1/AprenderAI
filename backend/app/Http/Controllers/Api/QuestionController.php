@@ -563,10 +563,22 @@ class QuestionController extends Controller
         Log::info('[Xavier][Search] Step 3 done: generic query embedding generated.');
 
         // ── Step 4: L2 Semantic Cache ─────────────────────────────────────────
-        $l2CachedFilters = $cacheService->findSimilarMatch($queryVector, 0.88);
-        if ($l2CachedFilters) {
-            Log::info('[Xavier][Search] Step 4 HIT: L2 semantic cache.');
-            return $this->buildVectorSearchResponse($l2CachedFilters, $user, $request->prompt, 'l2_cache', []);
+        // Bypass L2 cache if explicit filters exist to prevent semantic collisions
+        // (e.g. "somente ibfc" and "somente aocp" are >95% mathematically similar but logically opposite)
+        $hasFilters = $analysis['is_restricted'] 
+            || !empty($analysis['negative_terms']) 
+            || !empty($analysis['organizations']) 
+            || !empty($analysis['years']) 
+            || $analysis['difficulty'] !== null;
+            
+        if (!$hasFilters) {
+            $l2CachedFilters = $cacheService->findSimilarMatch($queryVector, 0.88);
+            if ($l2CachedFilters) {
+                Log::info('[Xavier][Search] Step 4 HIT: L2 semantic cache.');
+                return $this->buildVectorSearchResponse($l2CachedFilters, $user, $request->prompt, 'l2_cache', []);
+            }
+        } else {
+            Log::info('[Xavier][Search] Step 4 BYPASS: L2 semantic cache skipped due to explicit filters.');
         }
 
         // ── Step 5: Busca de Intenção e Conceitos via Qdrant ───────────────────────
