@@ -59,7 +59,7 @@ class IndexQuestionVectorJob implements ShouldQueue
         }
 
         // Concurrency Semaphore: limit to max N simultaneous embedding API calls cluster-wide
-        $maxConcurrent = config('xavier.concurrency.max_embeddings', 5);
+        $maxConcurrent = (int) \App\Models\Configuration::get('xavier_max_concurrent_embeddings', config('xavier.concurrency.max_embeddings', 5));
         if (!$this->acquireSlot('embeddings', $maxConcurrent, retryIn: 20)) {
             return; // Released back to queue automatically
         }

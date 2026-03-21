@@ -4,17 +4,16 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Question;
-use App\Models\Subject;
-use App\Models\Topic;
 use App\Jobs\AIBatchTriageJob;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\AiProcessingBatch;
+use App\Models\AiBatchItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
-class AIBatchTriageController extends Controller
+class AIBatchJobController extends Controller
 {
     /**
      * Preview questions that will be included in a batch.
@@ -78,7 +77,7 @@ class AIBatchTriageController extends Controller
                     'organization' => $q->organization ?? 'N/A',
                 ];
             }),
-            'ignored_count' => $brokenQuestions->count() // Opcional, o painel Front-End pode mostrar num badge.
+            'ignored_count' => $brokenQuestions->count()
         ]);
     }
 
@@ -89,7 +88,7 @@ class AIBatchTriageController extends Controller
     {
         $validated = $request->validate([
             'quantity' => 'required|integer|min:1',
-            'chunk_size' => 'nullable|integer|min:1', // Removido o limite max:10 para flexibilidade total
+            'chunk_size' => 'nullable|integer|min:1',
             'type' => 'required|in:difficulty,explanation,classification,complete,both',
             'model' => 'nullable|string',
             'reprocess' => 'nullable|boolean',
@@ -127,11 +126,9 @@ class AIBatchTriageController extends Controller
                 $query->filterBySubject($request->triage_subject);
             }
 
-            // Busca o dobro da quantidade caso existam muitas questões quebradas
             $questions = $query->limit($validated['quantity'] * 2)->get();
         }
 
-        // 1. Identifica questões quebradas (sem alternativas ou alternativas vazias)
         $brokenQuestions = $questions->filter(function ($q) {
             if ($q->type !== 'discursive' && $q->tipo_questao !== 'redacao' && !in_array(strtolower($q->format ?? ''), ['redacao', 'discursiva'])) {
                 if ($q->alternatives->isEmpty() || $q->alternatives->whereNull('content')->count() > 0 || $q->alternatives->where('content', '')->count() > 0) {
@@ -141,7 +138,6 @@ class AIBatchTriageController extends Controller
             return false;
         });
 
-        // 2. Intercepta: Envia as quebradas para Revisão Manual
         if ($brokenQuestions->count() > 0) {
             Log::info("[AIBATCH] Interceptando {$brokenQuestions->count()} questões com alternativas vazias e movendo para curadoria manual.");
             foreach ($brokenQuestions as $bq) {
@@ -152,10 +148,9 @@ class AIBatchTriageController extends Controller
             }
         }
 
-        // 3. Pega as válidas e limita à quantidade original solicitada pelo usuário
         $validQuestions = $questions->diff($brokenQuestions)->take($validated['quantity']);
         $total = $validQuestions->count();
-        $questions = $validQuestions; // Substitui para as próximas etapas usarem apenas as válidas
+        $questions = $validQuestions;
 
         if ($total === 0) {
             $msg = 'Nenhuma questão encontrada para os critérios selecionados.';
@@ -205,7 +200,6 @@ class AIBatchTriageController extends Controller
             ]
         ], now()->addHours(2));
 
-        $chunkSize = $validated['chunk_size'] ?? 5;
         $reprocess = $validated['reprocess'] ?? false;
         $delaySeconds = $request->input('delay_seconds', 0);
 
@@ -220,17 +214,14 @@ class AIBatchTriageController extends Controller
                 $batchId,
                 $chunk->pluck('id')->toArray(),
                 $validated['type'],
-                null, // model is now auto-selected via CAPABILITY_TRIAGE failover router
+                null,
                 $reprocess,
                 $userId,
-                $index,       // chunk index for UI tracking
-                $delaySeconds, // delay seconds for UI countdown
-                0             // retryAttempt = 0
+                $index,
+                $delaySeconds,
+                0
             );
 
-            // Envia para a fila dedicada.
-            // O delay agora é tratado DENTRO do job para permitir rastreamento em tempo real.
-            // Apenas o primeiro chunk é disparado imediatamente, os demais ficam na fila.
             $job->onQueue(config('xavier.embeddings.batch_queue', 'embeddings'));
             dispatch($job);
         });
@@ -254,6 +245,17 @@ class AIBatchTriageController extends Controller
         if ($batch) {
             $batch->update(['status' => 'cancelled']);
             Cache::forget("batch_progress_{$batchId}");
+
+            // Purge pending jobs from the queue associated with this batch
+            try {
+                DB::table('jobs')
+                    ->where('queue', config('xavier.embeddings.batch_queue', 'embeddings'))
+                    ->where('payload', 'like', '%' . $batchId . '%')
+                    ->delete();
+            } catch (\Exception $e) {
+                Log::error("[AIBATCH] Error purging jobs for cancelled batch {$batchId}: " . $e->getMessage());
+            }
+
             return response()->json(['success' => true]);
         }
 
@@ -271,21 +273,16 @@ class AIBatchTriageController extends Controller
             return response()->json(['success' => false, 'message' => 'Lote não encontrado.'], 404);
         }
 
-        // 1. Cancels future jobs
         $batch->update(['status' => 'cancelled']);
         Cache::forget("batch_progress_{$batchId}");
 
-        // 2. Perform Undo on all already processed items
         try {
             DB::beginTransaction();
-            $items = \App\Models\AiBatchItem::where('batch_id', $batchId)
-                ->where('status', 'success')
-                ->get();
+            $items = AiBatchItem::where('batch_id', $batchId)->where('status', 'success')->get();
 
             $revertedCount = 0;
             foreach ($items as $item) {
-                /** @var \App\Models\AiBatchItem $item */
-                $question = \App\Models\Question::find($item->question_id);
+                $question = Question::find($item->question_id);
                 if ($question && $item->snapshot_before) {
                     $snap = $item->snapshot_before;
 
@@ -321,181 +318,12 @@ class AIBatchTriageController extends Controller
     }
 
     /**
-     * Get the currently active batch (processing).
-     */
-    public function active()
-    {
-        // Pega o lote em processamento ou o último concluído nos últimos 15 minutos
-        // Isso mantém o ícone flutuante visível para o usuário ver o resumo após terminar.
-        $batch = AiProcessingBatch::where('status', 'processing')
-            ->orWhere(function ($q) {
-                $q->whereIn('status', ['completed', 'failed', 'cancelled'])
-                    ->where('updated_at', '>=', now()->subMinutes(15));
-            })
-            ->latest()
-            ->first();
-
-        if ($batch) {
-            return response()->json([
-                'success' => true,
-                'batch_id' => $batch->batch_id,
-                'status' => $batch->status
-            ]);
-        }
-
-        return response()->json(['success' => false, 'message' => 'Nenhum lote ativo.']);
-    }
-
-    /**
-     * Get progress for a batch.
-     */
-    public function status($batchId)
-    {
-        $batch = AiProcessingBatch::where('batch_id', $batchId)->first();
-        $data = Cache::get("batch_progress_{$batchId}");
-
-        if (!$batch) {
-            return response()->json(['message' => 'Lote não encontrado.'], 404);
-        }
-
-        // Se não houver cache, gera as informações básicas a partir do banco
-        if (!$data) {
-            $logs = $batch->errors_log ?? [];
-            $lastError = count($logs) > 0 ? end($logs)['error'] : null;
-
-            $status = $batch->status;
-            $message = "Processando...";
-            if ($status === 'completed')
-                $message = "Concluído";
-            if ($status === 'failed')
-                $message = "Falha no Processamento";
-            if ($status === 'cancelled')
-                $message = "Cancelado";
-            if ($lastError && $status === 'completed')
-                $message = "Finalizado com Erros";
-
-            $data = [
-                'total' => $batch->total_count,
-                'processed' => (int) $batch->processed_count,
-                'errors' => (int) $batch->error_count,
-                'input_tokens' => (int) ($batch->input_tokens ?? 0),
-                'output_tokens' => (int) ($batch->output_tokens ?? 0),
-                'estimated_cost' => (float) ($batch->estimated_cost ?? 0),
-                'status' => $status,
-                'last_error' => $lastError,
-                'message' => $message,
-                'stats' => $batch->stats ?? [
-                    'difficulty' => 0,
-                    'explanation' => 0,
-                    'subjects' => 0,
-                    'topics' => 0,
-                ],
-            ];
-        } else {
-            // Prioriza o que está no Cache para o front-end acompanhar o progresso em tempo real
-            $data['status'] = $batch->status;
-            
-            // Se o cache tem stats, mantemos o do cache (que é o agregado atual)
-            // Se não tem, pega do banco
-            if (!isset($data['stats']) || empty($data['stats'])) {
-                $data['stats'] = $batch->stats;
-            }
-            
-            // Atualiza os contadores atômicos vindos do banco para garantir precisão total
-            $data['total'] = (int) $batch->total_count;
-            $data['processed'] = (int) $batch->processed_count;
-            $data['errors'] = (int) $batch->error_count;
-            
-            // Se o cache estiver vazio de tokens, pega do banco
-            if (empty($data['input_tokens'])) {
-                $data['input_tokens'] = (int) ($batch->input_tokens ?? 0);
-                $data['output_tokens'] = (int) ($batch->output_tokens ?? 0);
-                $data['estimated_cost'] = (float) ($batch->estimated_cost ?? 0);
-            }
-        }
-        // --- FAIL-SAFE DE CONCLUSÃO ---
-        // Se a soma de processados + erros atingiu o total, o lote ACABOU.
-        // Forçamos o status concluído para o frontend mudar de tela, mesmo que o banco 
-        // ainda esteja pendente de um update de status ou preso em race condition.
-        if (($data['processed'] + $data['errors']) >= $data['total'] && $data['total'] > 0) {
-            if ($data['status'] === 'processing') {
-                $data['status'] = 'completed';
-                // Se houver erros, a mensagem deve refletir isso
-                $data['message'] = $data['errors'] > 0 ? "Finalizado com Erros" : "Concluído!";
-
-                // Garantir que o banco seja atualizado para não ficar preso como processing
-                $batch->update(['status' => 'completed']);
-            }
-        }
-
-        // Enrich com dados de rastreamento de chunk e chave ativa
-        $data['chunk_status'] = Cache::get("batch_chunk_status_{$batchId}");
-        $data['active_key'] = Cache::get("batch_active_key_{$batchId}");
-
-        return response()->json($data);
-    }
-
-    /**
-     * Get list of API keys configured for triage capability.
-     * Used by the frontend modal to display active key/model info (read-only).
-     */
-    public function activeKeys()
-    {
-        $keys = \App\Models\ApiKey::getKeysForCapability(\App\Models\ApiKey::CAPABILITY_TRIAGE);
-
-        $result = $keys->map(function ($key) {
-            return [
-                'id' => $key->id,
-                'name' => $key->vault?->nickname ?? "Chave #{$key->id}",
-                'provider' => $key->effective_provider,
-                'model' => $key->preferred_model,
-                'status' => $key->status,
-                'is_primary' => (bool) $key->is_primary,
-            ];
-        })->values();
-
-        return response()->json(['keys' => $result]);
-    }
-
-    /**
-     * Get batch history (paginated)
-     */
-    public function history(Request $request)
-    {
-        $batches = \App\Models\AiProcessingBatch::orderBy('created_at', 'desc')->paginate(15);
-        return response()->json($batches);
-    }
-
-    /**
-     * Get details (items) of a specific batch
-     */
-    public function details($batchId)
-    {
-        $batch = \App\Models\AiProcessingBatch::where('batch_id', $batchId)->firstOrFail();
-        $items = \App\Models\AiBatchItem::with('question')->where('batch_id', $batchId)->get()->map(function ($item) {
-            return [
-                'id' => $item->id,
-                'question_id' => $item->question_id,
-                'statement' => $item->question ? \Illuminate\Support\Str::limit(strip_tags($item->question->statement), 100) : 'Questão excluída',
-                'status' => $item->status,
-                'before' => $item->snapshot_before,
-                'after' => $item->snapshot_after,
-            ];
-        });
-
-        return response()->json([
-            'batch' => $batch,
-            'items' => $items
-        ]);
-    }
-
-    /**
      * Undo all processed items in a batch
      */
     public function undoBatch($batchId)
     {
-        $batch = \App\Models\AiProcessingBatch::where('batch_id', $batchId)->firstOrFail();
-        $items = \App\Models\AiBatchItem::where('batch_id', $batchId)->where('status', 'processed')->get();
+        $batch = AiProcessingBatch::where('batch_id', $batchId)->firstOrFail();
+        $items = AiBatchItem::where('batch_id', $batchId)->where('status', 'processed')->get();
 
         foreach ($items as $item) {
             $this->performUndo($item);
@@ -510,7 +338,7 @@ class AIBatchTriageController extends Controller
      */
     public function undoItem($itemId)
     {
-        $item = \App\Models\AiBatchItem::findOrFail($itemId);
+        $item = AiBatchItem::findOrFail($itemId);
 
         if ($item->status === 'processed') {
             $this->performUndo($item);
@@ -524,9 +352,9 @@ class AIBatchTriageController extends Controller
      */
     public function retry($batchId)
     {
-        $batch = \App\Models\AiProcessingBatch::where('batch_id', $batchId)->firstOrFail();
+        $batch = AiProcessingBatch::where('batch_id', $batchId)->firstOrFail();
 
-        $failedItems = \App\Models\AiBatchItem::where('batch_id', $batchId)
+        $failedItems = AiBatchItem::where('batch_id', $batchId)
             ->whereIn('status', ['failed', 'pending'])
             ->get();
 
@@ -540,7 +368,7 @@ class AIBatchTriageController extends Controller
 
         Cache::put("batch_progress_{$batchId}", [
             'total' => $batch->total_count,
-            'processed' => 0, // Reset progress for the retry view
+            'processed' => 0,
             'errors' => 0,
             'input_tokens' => $batch->input_tokens,
             'output_tokens' => $batch->output_tokens,
@@ -550,12 +378,12 @@ class AIBatchTriageController extends Controller
         ], now()->addHours(2));
 
         $failedItems->chunk(5)->each(function ($chunk, $index) use ($batchId, $batch) {
-            $job = new \App\Jobs\AIBatchTriageJob(
+            $job = new AIBatchTriageJob(
                 $batchId,
                 $chunk->pluck('question_id')->toArray(),
                 $batch->type,
                 $batch->model,
-                false // reprocess
+                false
             );
             $job->onQueue(config('xavier.embeddings.batch_queue', 'embeddings'));
             dispatch($job);
@@ -569,7 +397,7 @@ class AIBatchTriageController extends Controller
      */
     protected function performUndo($item)
     {
-        $question = \App\Models\Question::find($item->question_id);
+        $question = Question::find($item->question_id);
         if ($question && $item->snapshot_before) {
             $before = $item->snapshot_before;
 
@@ -577,7 +405,6 @@ class AIBatchTriageController extends Controller
                 'difficulty' => $before['difficulty'] ?? $question->difficulty,
                 'difficulty_reasoning' => $before['difficulty_reasoning'] ?? $question->difficulty_reasoning,
                 'explanation' => $before['explanation'] ?? $question->explanation,
-                // optionally review_status => 'pending' could be applied, but keeping original behavior is safer unless tracked
             ]);
 
             if (isset($before['subjects']) && is_array($before['subjects'])) {

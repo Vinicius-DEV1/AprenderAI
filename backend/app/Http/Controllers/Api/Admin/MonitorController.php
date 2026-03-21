@@ -107,26 +107,46 @@ class MonitorController extends Controller
                 ];
             });
 
-        // Lotes Concluídos (da tabela 'job_batches')
+        // Lotes Concluídos (da tabela 'job_batches' + 'ai_processing_batches')
         $completedBatches = \Illuminate\Support\Facades\DB::table('job_batches')
             ->whereNotNull('finished_at')
             ->orderBy('finished_at', 'desc')
-            ->limit(30)
+            ->limit(15)
             ->get()
             ->map(function ($batch) {
                 return [
                     'id' => $batch->id,
-                    'name' => class_basename($batch->name),
+                    'name' => 'Lote: ' . class_basename($batch->name),
                     'total_jobs' => $batch->total_jobs,
                     'failed_jobs' => $batch->failed_jobs,
                     'finished_at' => \Carbon\Carbon::createFromTimestamp($batch->finished_at)->toIso8601String(),
                 ];
             });
 
+        $completedAiBatches = \Illuminate\Support\Facades\DB::table('ai_processing_batches')
+            ->whereIn('status', ['completed', 'finished', 'done', 'success'])
+            ->orderBy('updated_at', 'desc')
+            ->limit(15)
+            ->get()
+            ->map(function ($batch) {
+                return [
+                    'id' => $batch->batch_id,
+                    'name' => 'IA: ' . ucfirst($batch->type),
+                    'total_jobs' => $batch->total_count,
+                    'failed_jobs' => $batch->error_count ?? 0,
+                    'finished_at' => \Carbon\Carbon::parse($batch->updated_at)->toIso8601String(),
+                ];
+            });
+
+        $allCompleted = $completedBatches->concat($completedAiBatches)
+            ->sortByDesc('finished_at')
+            ->take(30)
+            ->values();
+
         return response()->json([
             'jobs' => $jobs,
             'failed' => $failedJobs,
-            'completed' => $completedBatches,
+            'completed' => $allCompleted,
         ]);
     }
 }

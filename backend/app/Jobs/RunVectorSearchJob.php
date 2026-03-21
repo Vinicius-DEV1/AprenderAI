@@ -22,24 +22,30 @@ use Illuminate\Support\Facades\Log;
 /**
  * RunVectorSearchJob
  *
- * Executa o pipeline Qdrant + ReRank após os 3 embeddings de query estarem prontos.
+ * Executes the Qdrant multi-vector search + ReRank after all 5 query
+ * embeddings are ready in Redis.
  *
- * QUANDO É DISPARADO:
- *   - Pelo GenerateQueryEmbeddingJob, automaticamente quando TODOS os 3 slots
- *     (statement, concept, explanation) forem concluídos (sucesso ou falha com fallback).
- *   - O mecanismo de atomicidade via Redis INCR garante que este job é disparado
- *     exatamente UMA VEZ por busca, independente da ordem de conclusão dos slots.
+ * WHEN IS IT DISPATCHED?
+ *   - By QuestionController::aiSearch() after generating all 5 format-aligned
+ *     vectors synchronously via a batch API call and storing them in Redis.
+ *   - The dispatch happens directly (not via GenerateQueryEmbeddingJob) in the
+ *     v8 pipeline. The counter key is set to 5 atomically before dispatch.
  *
- * RESPONSABILIDADES:
- *   1. Lê os 3 vetores do Redis (gerados pelo GenerateQueryEmbeddingJob).
- *   2. Para qualquer slot null (falhou), usa o vetor genérico armazenado no contexto.
- *   3. Executa HybridSearch (Qdrant + SQL fallback) + ReRank.
- *   4. Persiste resultado em AiSearchRequest (status='completed').
- *   5. Registra logs de interação (SearchInteractionLog) para aprendizado.
- *   6. Armazena resultado no L2 Semantic Cache para reuso futuro.
+ * RESPONSIBILITIES:
+ *   1. Reads the 5 format-aligned vectors from Redis:
+ *        statement, concept, explanation, alternatives, skills
+ *   2. Falls back to the generic query_vector for any null slot.
+ *   3. Runs HybridSearch (Qdrant multi-vector + optional SQL fallback).
+ *   4. Runs ReRank (vector + popularity + quality + recency + user profile).
+ *   5. Persists the ranked question IDs to AiSearchRequest (status='completed').
+ *   6. Writes SearchInteractionLog rows for user-click tracking.
+ *   7. Stores result in the L2 Semantic Cache for future similar queries.
+ *   8. Cleans up all Redis keys created per-search to free memory early.
  *
- * Fila: 'search_embeddings' (mesma fila dos embedding jobs — processada com prioridade
- * pelos 40 workers 'default' que incluem search_embeddings na lista de filas).
+ * Queue: 'search_embeddings' — processed at highest priority by worker-default.
+ *
+ * @see QuestionController::aiSearch() for the upstream pipeline
+ * @see HasConcurrencyLimit — not used here; search is always allowed to run
  */
 class RunVectorSearchJob implements ShouldQueue
 {
@@ -78,25 +84,43 @@ class RunVectorSearchJob implements ShouldQueue
 
         $ctx = json_decode($rawContext, true);
 
-        // ── Lê os 3 vetores format-aligned do Redis ───────────────────────────
-        // Cada slot foi armazenado pelo GenerateQueryEmbeddingJob.
-        // Se um slot voltar null (falhou), usa o vetor genérico como fallback.
-        $queryVector = $ctx['query_vector']; // Vetor genérico — gerado sincronamente na Step 3
+        // ── Read all 5 format-aligned query vectors from Redis ────────────────
+        // Each slot was stored by QuestionController::aiSearch() via a batch
+        // embedding call. If a slot is missing or null, we fall back to the
+        // generic query_vector (generated synchronously in Step 3) to ensure
+        // the search always proceeds.
+        //
+        // Slot mapping (mirrors IndexQuestionVectorJob named vectors in Qdrant):
+        //   statement    → matches the question statement named vector
+        //   concept      → matches the concept/subject named vector
+        //   explanation  → matches the explanation named vector
+        //   alternatives → matches the alternatives named vector (added in v8)
+        //   skills       → matches the skills named vector (added in v8)
+        $queryVector = $ctx['query_vector']; // Generic vector — synchronous Step 3 fallback
 
-        $statementVector   = Cache::get("xavier:qembed:{$this->searchRequestId}:statement")   ?? $queryVector;
-        $conceptVectorQ    = Cache::get("xavier:qembed:{$this->searchRequestId}:concept")     ?? $queryVector;
-        $explanationVector = Cache::get("xavier:qembed:{$this->searchRequestId}:explanation") ?? $queryVector;
+        $statementVector    = Cache::get("xavier:qembed:{$this->searchRequestId}:statement")    ?? $queryVector;
+        $conceptVector      = Cache::get("xavier:qembed:{$this->searchRequestId}:concept")      ?? $queryVector;
+        $explanationVector  = Cache::get("xavier:qembed:{$this->searchRequestId}:explanation")  ?? $queryVector;
+        $alternativesVector = Cache::get("xavier:qembed:{$this->searchRequestId}:alternatives") ?? $queryVector;
+        $skillsVector       = Cache::get("xavier:qembed:{$this->searchRequestId}:skills")       ?? $queryVector;
 
-        Log::info("[Xavier][RunVectorSearch] Executando busca vetorial para #{$this->searchRequestId}.", [
-            'statement_from_job'   => Cache::has("xavier:qembed:{$this->searchRequestId}:statement"),
-            'concept_from_job'     => Cache::has("xavier:qembed:{$this->searchRequestId}:concept"),
-            'explanation_from_job' => Cache::has("xavier:qembed:{$this->searchRequestId}:explanation"),
+        Log::info("[Xavier][RunVectorSearch] Executing vector search for #{$this->searchRequestId}.", [
+            'statement_cached'    => Cache::has("xavier:qembed:{$this->searchRequestId}:statement"),
+            'concept_cached'      => Cache::has("xavier:qembed:{$this->searchRequestId}:concept"),
+            'explanation_cached'  => Cache::has("xavier:qembed:{$this->searchRequestId}:explanation"),
+            'alternatives_cached' => Cache::has("xavier:qembed:{$this->searchRequestId}:alternatives"),
+            'skills_cached'       => Cache::has("xavier:qembed:{$this->searchRequestId}:skills"),
         ]);
 
+        // Build the 5-vector map expected by HybridSearchService and QdrantService.
+        // QdrantService::searchQuestions() iterates all provided named vectors for
+        // multi-vector scoring, so providing all 5 maximises retrieval quality.
         $queryVectors = [
-            'statement'   => $statementVector,
-            'concept'     => $conceptVectorQ,
-            'explanation' => $explanationVector,
+            'statement'    => $statementVector,
+            'concept'      => $conceptVector,
+            'explanation'  => $explanationVector,
+            'alternatives' => $alternativesVector,
+            'skills'       => $skillsVector,
         ];
 
         // ── Step 7: Hybrid Search ───────────────────────────────────────────
@@ -176,17 +200,22 @@ class RunVectorSearchJob implements ShouldQueue
             );
         }
 
-        // ── Step 10: Cleanup Redis ─────────────────────────────────────────
-        // Embora as chaves tenham TTL (5 min), limpamos agora para liberar RAM.
+        // ── Step 10: Clean up all Redis keys created for this search ──────────
+        // Although all keys have a TTL (5 min), we delete them immediately after
+        // the search completes to free Redis memory as early as possible.
+        // All 5 embedding keys + the context and counter keys are removed.
         try {
             \Illuminate\Support\Facades\Redis::del([
                 "xavier:qembed_ctx:{$this->searchRequestId}",
+                "xavier:qembed_done:{$this->searchRequestId}",
                 "xavier:qembed:{$this->searchRequestId}:statement",
                 "xavier:qembed:{$this->searchRequestId}:concept",
                 "xavier:qembed:{$this->searchRequestId}:explanation",
+                "xavier:qembed:{$this->searchRequestId}:alternatives",
+                "xavier:qembed:{$this->searchRequestId}:skills",
             ]);
         } catch (\Exception $e) {
-            Log::warning("[Xavier][RunVectorSearch] Falha ao limpar chaves Redis: " . $e->getMessage());
+            Log::warning("[Xavier][RunVectorSearch] Failed to clean Redis keys: " . $e->getMessage());
         }
 
         Log::info("[Xavier][RunVectorSearch] Busca #{$this->searchRequestId} concluída com " . count($questionIds) . " questões.");

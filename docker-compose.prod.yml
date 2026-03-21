@@ -77,59 +77,33 @@ services:
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     networks:
       - production-network
-  # We unify all worker types into a prioritized hybrid model.
-  # All 30 workers will listen to the 'high' priority queue (emails, results)
-  # while specific groups handle background tasks with concurrency limits.
-
-  # Group: General Purpose (24 replicas)
-  # Focal point for transactional logic and standard tasks.
-  worker-general:
-    image: aprender-ai-app
-    restart: always
-    working_dir: /var/www
-    volumes:
-      - ./backend/storage/app/public:/var/www/storage/app/public
-      - ./qdrant-data:/var/www/qdrant-backup:ro
-      - /proc:/host_proc:ro
-    env_file: ./backend/.env
-    # Queue priority: high > default
-    command: php artisan queue:work --queue=high,ai_triage,default --sleep=3 --tries=3 --max-time=3600
-    deploy:
-      replicas: 24
-      resources:
-        limits:
-          memory: 512M
-    depends_on:
-      app:
-        condition: service_started
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    networks:
-      - production-network
-
   # ─────────────────────────────────────────────────────────────────────────
-  # Unified Worker Pool (20 replicas)
+  # Unified Worker Pool (20 replicas) — SOLE worker group.
   #
-  # Replaces worker-general (24), worker-embeddings (4), worker-triage (1),
-  # and worker-import (1). Concurrency limits per job type are enforced
-  # internally via Redis distributed semaphores (HasConcurrencyLimit trait):
+  # Previously a legacy `worker-general` service (24 replicas, no --timeout)
+  # ran alongside this pool, creating 44 total workers and causing CPU
+  # saturation. It has been removed. This pool is the single source of truth.
   #
-  #   Embeddings  → max 5 simultaneous (xavier.concurrency.max_embeddings)
-  #   AI Triage   → max 2 simultaneous (xavier.concurrency.max_triage)
-  #   Import ZIP  → max 1 simultaneous (xavier.concurrency.max_import)
+  # Concurrency limits are enforced cluster-wide via Redis semaphores
+  # (HasConcurrencyLimit trait), regardless of replica count:
   #
-  # Queue priority order:
-  #   high            → emails, payment, simulation results (always first)
-  #   search_embeddings → user searches (latency-critical UX)
-  #   default         → general operations
-  #   embeddings      → background vector indexing (can wait)
-  #   low             → low-priority tasks
+  #   Embeddings  → max 5 simultaneous  (XAVIER_MAX_CONCURRENT_EMBEDDINGS)
+  #   AI Triage   → max 5 simultaneous  (XAVIER_MAX_CONCURRENT_TRIAGE)
+  #   Import ZIP  → max 1 simultaneous  (XAVIER_MAX_CONCURRENT_IMPORT)
   #
-  # Timeout of 700s covers the heaviest non-import job (AIBatchTriageJob).
-  # Import ZIP extraction runs in 'default' with its own timeout controlled
-  # by the job's public $timeout = 3600 property.
+  # Queue priority order (left = highest priority):
+  #   high              → emails, payment confirmations, simulation results
+  #   search_embeddings → live user searches (latency-critical UX)
+  #   ai_triage         → AI classification batches
+  #   default           → general background operations
+  #   embeddings        → background vector indexing (can wait)
+  #   low               → lowest-priority tasks
+  #
+  # --timeout=900 kills jobs that exceed 15 min (covers the heaviest job).
+  # --tries=3 is a safety net; resilient jobs manage their own retry via
+  # $this->release() before reaching this limit.
+  # --max-time=3600 gracefully restarts the worker process every hour to
+  # prevent PHP memory leaks in long-running processes.
   # ─────────────────────────────────────────────────────────────────────────
   worker-default:
     image: aprender-ai-app

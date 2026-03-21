@@ -19,7 +19,7 @@ class SystemLogController extends Controller
             return response()->json(['logs' => []]);
         }
 
-        $lines = 50;
+        $lines = 200; // Increased from 50 to 200
         $logs = [];
         $file = fopen($logPath, 'r');
 
@@ -50,5 +50,19 @@ class SystemLogController extends Controller
         }
 
         return response()->json(['logs' => $logs]);
+    }
+
+    /**
+     * Clears the current Laravel log file.
+     */
+    public function clear()
+    {
+        $logPath = storage_path('logs/laravel.log');
+        
+        if (File::exists($logPath)) {
+            File::put($logPath, '');
+        }
+
+        return response()->json(['message' => 'Logs cleared successfully.']);
     }
 }

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import api from '../../api/axios';
+import { useState, useEffect, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '../../../api/axios';
+import { toast } from 'sonner';
 import { RealtimeData, QueuesData } from './Types';
 
 export const useMonitor = () => {
@@ -51,7 +52,7 @@ export const useMonitor = () => {
     });
 
     // Recent system/laravel logs
-    const { data: logsData } = useQuery({
+    const { data: logsData, refetch: refetchLogs } = useQuery({
         queryKey: ['admin-monitor-logs'],
         queryFn: async () => {
             const res = await api.get('/api/v1/admin/monitor/logs');
@@ -60,8 +61,17 @@ export const useMonitor = () => {
         refetchInterval: 10000 // Refresh logs every 10 seconds
     });
 
+    const clearLogs = async () => {
+        try {
+            await api.delete('/api/v1/admin/monitor/logs');
+            refetchLogs();
+        } catch (error) {
+            console.error('Failed to clear logs:', error);
+        }
+    };
+
     // Detailed queue information (jobs, failures, completed batches)
-    const { data: queuesData } = useQuery<QueuesData>({
+    const { data: queuesData, refetch: refetchQueues } = useQuery<QueuesData>({
         queryKey: ['admin-monitor-queues'],
         queryFn: async () => {
             const res = await api.get('/api/v1/admin/monitor/queues');
@@ -138,6 +148,17 @@ export const useMonitor = () => {
         formatBytes,
         fmtGb,
         resourceChartData,
-        networkChartData
+        networkChartData,
+        clearLogs,
+        refetchLogs,
+        clearPendingTriage: async () => {
+            try {
+                await api.delete('/api/v1/admin/monitor/pending-triage');
+                toast.success('Fila de triagem limpa com sucesso');
+                refetchQueues();
+            } catch (error) {
+                toast.error('Falha ao limpar fila de triagem');
+            }
+        }
     };
 };

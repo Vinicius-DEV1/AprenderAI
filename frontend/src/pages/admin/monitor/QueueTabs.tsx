@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { QueuesData, QueueJob, CompletedBatch, FailedJob } from './Types';
+import BatchDetailsModal from './BatchDetailsModal';
 
 interface QueueTabsProps {
     activeTab: 'pending' | 'failed' | 'completed';
@@ -8,6 +9,8 @@ interface QueueTabsProps {
 }
 
 const QueueTabs: React.FC<QueueTabsProps> = ({ activeTab, setActiveTab, queuesData }) => {
+    const [selectedBatch, setSelectedBatch] = useState<CompletedBatch | null>(null);
+
     return (
         <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="flex border-b border-gray-100 bg-gray-50/50">
@@ -109,10 +112,16 @@ const QueueTabs: React.FC<QueueTabsProps> = ({ activeTab, setActiveTab, queuesDa
                             <tbody>
                                 {(queuesData?.completed || []).length > 0 ? (
                                     queuesData?.completed.map((batch: CompletedBatch) => (
-                                        <tr key={batch.id} className="border-b hover:bg-gray-50">
-                                            <td className="px-4 py-3">
-                                                <div className="font-medium text-gray-900">{batch.name}</div>
+                                        <tr 
+                                            key={batch.id} 
+                                            onClick={() => setSelectedBatch(batch)}
+                                            className="border-b hover:bg-blue-50/50 cursor-pointer transition-colors group"
+                                            title="Clique para ver detalhes do lote"
+                                        >
+                                            <td className="px-4 py-3 relative">
+                                                <div className="font-medium text-gray-900 group-hover:text-blue-700 transition-colors">{batch.name}</div>
                                                 <div className="font-mono text-[10px] text-gray-400">{batch.id}</div>
+                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-transparent group-hover:bg-blue-500 transition-colors"></div>
                                             </td>
                                             <td className="px-4 py-3 text-center font-medium text-gray-700">{batch.total_jobs}</td>
                                             <td className="px-4 py-3 text-center">
@@ -173,6 +182,11 @@ const QueueTabs: React.FC<QueueTabsProps> = ({ activeTab, setActiveTab, queuesDa
                     </div>
                 )}
             </div>
+
+            <BatchDetailsModal 
+                batch={selectedBatch} 
+                onClose={() => setSelectedBatch(null)} 
+            />
         </div>
     );
 };

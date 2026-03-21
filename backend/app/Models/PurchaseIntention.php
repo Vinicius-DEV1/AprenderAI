@@ -10,6 +10,9 @@ use App\Models\Concerns\FiltersAdmins;
  * Tracks each click on a plan subscription button and follows through to conversion.
  * Enables tracking of purchase intent → abandoned vs converted.
  */
+/**
+ * @method static \Illuminate\Database\Eloquent\Builder withoutAdmins()
+ */
 class PurchaseIntention extends Model
 {
     use FiltersAdmins;
