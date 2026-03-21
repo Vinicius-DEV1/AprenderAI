@@ -76,7 +76,7 @@ services:
       - ./certbot/www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     networks:
-      - produ  # ── Consolidate Production Workers (Total: 30) ─────────────────────────
+      - production-network
   # We unify all worker types into a prioritized hybrid model.
   # All 30 workers will listen to the 'high' priority queue (emails, results)
   # while specific groups handle background tasks with concurrency limits.
