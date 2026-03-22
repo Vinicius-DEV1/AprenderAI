@@ -37,8 +37,19 @@ class EnemImportService
 
         // 2. Verificar se já existe (Bridge Match para suportar Upsert na VPS)
         // O hash antigo (bugado) gerado para esta questão na VPS original
-        $uniqueStringOld = $organization . '|' . $year . '|' . $institution . '|' . $role . '|' . $context;
+        // ATENÇÃO: O código legado usava o fallback 'Sem título/enunciado' e trim() direto
+        $legacyContext = $apiQuestion['context'] ?? 'Sem título/enunciado';
+        $uniqueStringOld = $organization . '|' . $year . '|' . $institution . '|' . $role . '|' . trim($legacyContext);
         $externalIdOld = md5($uniqueStringOld);
+
+        // Debug Log para ajudar a identificar falhas de matching na VPS
+        \Illuminate\Support\Facades\Log::debug('ENEM Bridge Match:', [
+            'index' => $index,
+            'year' => $year,
+            'context_preview' => \Illuminate\Support\Str::limit($context, 50),
+            'hash_new_strong' => $externalId,
+            'hash_old_legacy' => $externalIdOld,
+        ]);
 
         $existingQuestion = \App\Models\Question::where('external_id', $externalId)
             ->orWhere('external_id', $externalIdOld)
