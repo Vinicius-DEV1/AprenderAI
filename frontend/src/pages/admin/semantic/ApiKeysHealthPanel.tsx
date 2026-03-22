@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Key, AlertCircle, CheckCircle2, RefreshCw, ChevronUp, Clock, Activity, Zap } from 'lucide-react';
+import { Key, AlertCircle, CheckCircle2, RefreshCw, ChevronUp, ChevronDown, Clock, Zap } from 'lucide-react';
 import { DashboardStats } from './Types';
 
 interface ApiKeysHealthPanelProps {
@@ -155,13 +155,9 @@ const ApiKeysHealthPanel: React.FC<ApiKeysHealthPanelProps> = ({ stats, loading 
                                         <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <button 
                                                 onClick={() => setExpandedKey(expandedKey === apiKey.id ? null : apiKey.id)}
-                                                className="flex items-center gap-1 ml-auto px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors text-xs font-bold"
+                                                className="text-indigo-400 hover:text-indigo-600 transition-colors p-1"
                                             >
-                                                {expandedKey === apiKey.id ? (
-                                                    <>Ocultar</>
-                                                ) : (
-                                                    <><Activity className="w-3.5 h-3.5" /> Logs</>
-                                                )}
+                                                {expandedKey === apiKey.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                             </button>
                                         </td>
                                     </tr>
