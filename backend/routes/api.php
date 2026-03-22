@@ -499,7 +499,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('/questions', [PlatformEngagementController::class, 'questions']);
                 Route::get('/simulations', [PlatformEngagementController::class, 'simulations']);
                 Route::get('/essays', [PlatformEngagementController::class, 'essays']);
-                Route::get('/activity', [UserSessionMonitorController::class, 'activity']);
+                Route::get('/activity', [PlatformEngagementController::class, 'activity']);
                 Route::get('/user/{id}', [UserSessionMonitorController::class, 'userDetail']);
             });
         });

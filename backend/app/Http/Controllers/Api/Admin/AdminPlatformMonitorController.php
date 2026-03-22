@@ -28,7 +28,7 @@ class AdminPlatformMonitorController extends Controller
 {
     private function onlineThreshold(): \Illuminate\Support\Carbon
     {
-        return \Carbon\Carbon::now()->subMinutes(5);
+        return now()->subMinutes(5);
     }
 
     // =========================================================================
