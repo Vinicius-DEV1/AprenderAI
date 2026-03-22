@@ -260,4 +260,96 @@ class AdminAnalyticsController extends Controller
             'recent_subscriptions' => $recentSubscriptions,
         ]);
     }
+
+    /**
+     * UTM Acquisition & Revenue Cohorts
+     */
+    public function utmCohorts()
+    {
+        // 1. Get all users with at least a utm_source, grouped by UTM fields
+        $users = \App\Models\User::whereNotNull('utm_source')
+            ->select('id', 'utm_source', 'utm_medium', 'utm_campaign', 'plan_id')
+            ->with(['plan', 'subscriptions' => function ($query) {
+                $query->where('status', 'active');
+            }])
+            ->get();
+
+        $cohorts = [];
+
+        foreach ($users as $user) {
+            $source = $user->utm_source ?? 'unknown';
+            $medium = $user->utm_medium ?? 'unknown';
+            $campaign = $user->utm_campaign ?? 'unknown';
+
+            $key = "{$source}|{$medium}|{$campaign}";
+
+            if (!isset($cohorts[$key])) {
+                $cohorts[$key] = [
+                    'utm_source' => $source,
+                    'utm_medium' => $medium,
+                    'utm_campaign' => $campaign,
+                    'signups' => 0,
+                    'paid_conversions' => 0,
+                    'mrr' => 0,
+                ];
+            }
+
+            $cohorts[$key]['signups']++;
+
+            // Assess if user has an active, paid subscription
+            $hasPaidSub = false;
+            $userMrr = 0;
+
+            foreach ($user->subscriptions as $sub) {
+                if ($sub->plan && $sub->plan->price > 0 && !$sub->is_sandbox && !$sub->is_manual_grant) {
+                    $hasPaidSub = true;
+                    if ($sub->plan->interval === 'yearly') {
+                        $userMrr += ($sub->plan->price / 12);
+                    } else {
+                        $userMrr += $sub->plan->price;
+                    }
+                    // Only count the best/primary active subscription for simplistic MRR modeling per user if needed
+                }
+            }
+
+            if ($hasPaidSub) {
+                $cohorts[$key]['paid_conversions']++;
+                $cohorts[$key]['mrr'] += $userMrr;
+            }
+        }
+
+        // 2. Format output
+        $results = array_values($cohorts);
+
+        // Calculate conversion metrics
+        foreach ($results as &$cohort) {
+            $cohort['conversion_rate'] = $cohort['signups'] > 0 
+                ? round(($cohort['paid_conversions'] / $cohort['signups']) * 100, 2) 
+                : 0;
+            $cohort['mrr'] = round($cohort['mrr'], 2);
+        }
+
+        // Sort by MRR descending, then Signups
+        usort($results, function($a, $b) {
+            if ($a['mrr'] === $b['mrr']) {
+                return $b['signups'] <=> $a['signups'];
+            }
+            return $b['mrr'] <=> $a['mrr'];
+        });
+
+        $totalSignups = array_sum(array_column($results, 'signups'));
+        $totalPaid = array_sum(array_column($results, 'paid_conversions'));
+        $totalMrr = array_sum(array_column($results, 'mrr'));
+        $overallConversion = $totalSignups > 0 ? round(($totalPaid / $totalSignups) * 100, 2) : 0;
+
+        return response()->json([
+            'cohorts' => $results,
+            'summary' => [
+                'total_signups' => $totalSignups,
+                'total_paid' => $totalPaid,
+                'total_mrr' => round($totalMrr, 2),
+                'overall_conversion' => $overallConversion
+            ]
+        ]);
+    }
 }

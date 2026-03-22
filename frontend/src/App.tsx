@@ -92,6 +92,7 @@ import AdminExamsList from './pages/admin/exams/AdminExamsList';
 import AdminExamDetails from './pages/admin/exams/AdminExamDetails';
 import AdminBackups from './pages/admin/Backups';
 import SemanticDashboard from './pages/admin/SemanticDashboard';
+import AdminAcquisition from './pages/admin/AdminAcquisition';
 import PlatformMonitor from './pages/admin/PlatformMonitor';
 import SupportAdmin from './pages/admin/SupportAdmin';
 import BannersAdmin from './pages/admin/BannersAdmin';
@@ -315,6 +316,7 @@ function App() {
                             <Route path="simulations/builder" element={<><MetaTags title="Admin: Motor de Simulados" /><AdminSimulationBuilder /></>} />
                             <Route path="xavier/insights" element={<><MetaTags title="Admin: Xavier Insights" /><AdminXavierInsights /></>} />
                             <Route path="semantic-dashboard" element={<><MetaTags title="Admin: Xavier Semantic" /><SemanticDashboard /></>} />
+                            <Route path="utm-cohorts" element={<><MetaTags title="Admin: Aquisição UTM" /><AdminAcquisition /></>} />
 
                             {/* Exams (Provas) */}
                             <Route path="provas" element={<><MetaTags title="Admin: Provas (PDFs)" /><AdminExamsList /></>} />

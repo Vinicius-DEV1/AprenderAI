@@ -316,6 +316,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('/conversion', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'conversion']);
                 Route::get('/monetization', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'monetization']);
                 Route::get('/subscriptions', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'subscriptions']);
+                Route::get('/utm-cohorts', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'utmCohorts']);
                 Route::get('/realtime', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'realtimeData']);
                 Route::post('/sync', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'syncNow']);
             });
