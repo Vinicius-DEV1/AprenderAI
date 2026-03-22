@@ -19,6 +19,16 @@ export interface RecentSuccess {
     indexed_at: string;
 }
 
+export interface ApiLogEntry {
+    type: 'request' | 'error';
+    module: string;
+    tokens: number;
+    execution_time: number;
+    status: 'success' | 'error' | 'quota_exceeded';
+    message?: string;
+    created_at: string;
+}
+
 export interface DashboardStats {
     overview: {
         mysql_published_questions: number;
@@ -86,10 +96,14 @@ export interface DashboardStats {
         provider: string;
         model: string;
         status: string;
+        is_blacklisted?: boolean;
         rate_limit_ends_in: number | null;
         total_requests: number;
+        requests_today?: number;
+        quota_exceeded_count?: number;
         error_rate: number;
         capabilities?: string[];
+        recent_logs?: ApiLogEntry[];
     }>;
     search_cache?: Array<{
         id: number;

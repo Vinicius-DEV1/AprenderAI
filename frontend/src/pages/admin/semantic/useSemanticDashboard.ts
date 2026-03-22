@@ -127,10 +127,10 @@ export const useSemanticDashboard = () => {
      * loadStats
      * Fetches current semantic health, stats, and active config from the server.
      */
-    const loadStats = async () => {
+    const loadStats = async (isInitial = false) => {
         try {
             isBusyRef.current = true;
-            setLoading(true);
+            if (isInitial || !stats) setLoading(true);
             const res = await api.get('/api/v1/admin/semantic');
             setStats(res.data);
             setConfigState({
@@ -155,7 +155,7 @@ export const useSemanticDashboard = () => {
     const isBusyRef = useRef(false);
 
     useEffect(() => {
-        loadStats();
+        loadStats(true);
 
         /**
          * Real-time polling
@@ -163,7 +163,7 @@ export const useSemanticDashboard = () => {
          */
         const interval = setInterval(() => {
             if (!isBusyRef.current) {
-                loadStats();
+                loadStats(false);
             }
         }, 10000);
 

@@ -1684,7 +1684,7 @@ EOT;
 
                                 // Key exhausted or failed. Mark it as 'Resting' (Level 3).
                                 Log::warning("[AIService] " . ($isQuota ? 'QUOTA EXCEEDED' : 'FAILURE') . " on #{$apiKey->id}. Falling over...");
-                                $this->banKeyTemporarily($apiKey, $e);
+                                $this->banKeyTemporarily($apiKey, $e, 60); // Keep 60 min as requested
                                 break; 
                             }
 
@@ -1755,17 +1755,17 @@ EOT;
     }
 
     /**
-     * Coloca a ID da key em um cache de blacklist rápido por 60 min
+     * Coloca a ID da key em um cache de blacklist rápido por X min
      * impedindo a extração excessiva do BD enquando o HealthChecker não roda.
      */
-    protected function banKeyTemporarily(ApiKey $apiKey, \Exception $e): void
+    protected function banKeyTemporarily(ApiKey $apiKey, \Exception $e, int $durationMinutes = 60): void
     {
         $bannedIds = Cache::get('api_key_blacklist', []);
         if (!in_array($apiKey->id, $bannedIds)) {
             $bannedIds[] = $apiKey->id;
         }
 
-        Cache::put('api_key_blacklist', $bannedIds, now()->addMinutes(60));
+        Cache::put('api_key_blacklist', $bannedIds, now()->addMinutes($durationMinutes));
     }
 
 

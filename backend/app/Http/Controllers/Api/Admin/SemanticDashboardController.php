@@ -170,6 +170,91 @@ class SemanticDashboardController extends Controller
         $questionsVersionCheck = $qdrant->checkIndexVersion(config('xavier.qdrant.collections.questions'), $currentPipeline);
         $conceptsVersionCheck  = $qdrant->checkIndexVersion(config('xavier.qdrant.collections.concepts'), $currentPipeline);
 
+        // 8. API Keys Health
+        $todayRequests = \App\Models\AiRequestLog::whereDate('created_at', Carbon::today())
+            ->select('api_key_id', DB::raw('count(*) as total'))
+            ->groupBy('api_key_id')
+            ->pluck('total', 'api_key_id');
+
+        $quotaErrors = \App\Models\ApiLog::where(function($q) {
+                $q->where('status_code', 429)->orWhere('message', 'like', '%quota%');
+            })
+            ->groupBy('api_key_id')
+            ->select('api_key_id', DB::raw('count(*) as total'))
+            ->get()
+            ->pluck('total', 'api_key_id')
+            ->toArray();
+
+        $apiKeys = \App\Models\ApiKey::with(['vault', 'capabilitiesList'])
+            ->whereHas('capabilitiesList', function ($q) {
+                $q->whereIn('capability', [
+                    \App\Models\ApiKey::CAPABILITY_SEARCH,
+                    \App\Models\ApiKey::CAPABILITY_EMBEDDING,
+                    \App\Models\ApiKey::CAPABILITY_QUERY_EMBEDDING
+                ]);
+            })
+            ->get()
+            ->map(function ($key) use ($todayRequests, $quotaErrors) {
+                $blacklist = Cache::get('api_key_blacklist', []);
+                $isBlacklisted = in_array($key->id, $blacklist);
+                
+                $isRateLimited = $key->last_error_at && str_contains(strtolower($key->last_error_message), 'rate limit') && now()->lt($key->last_error_at->addMinutes(1));
+                
+                // Labeling capabilities for clarity in the dashboard
+                $caps = $key->capabilitiesList->pluck('capability')->toArray();
+                $displayCaps = [];
+                if (in_array(\App\Models\ApiKey::CAPABILITY_EMBEDDING, $caps)) $displayCaps[] = 'Indexação';
+                if (in_array(\App\Models\ApiKey::CAPABILITY_SEARCH, $caps) || in_array(\App\Models\ApiKey::CAPABILITY_QUERY_EMBEDDING, $caps)) $displayCaps[] = 'Busca';
+
+                $recentAiLogs = \App\Models\AiRequestLog::where('api_key_id', $key->id)
+                    ->orderBy('created_at', 'desc')
+                    ->limit(10)
+                    ->get()
+                    ->map(fn($log) => [
+                        'type' => 'request',
+                        'module' => $log->module,
+                        'tokens' => $log->tokens_used_total,
+                        'execution_time' => $log->execution_time,
+                        'status' => 'success',
+                        'created_at' => $log->created_at->toIso8601String(),
+                    ]);
+
+                $recentErrorLogs = \App\Models\ApiLog::where('api_key_id', $key->id)
+                    ->orderBy('created_at', 'desc')
+                    ->limit(10)
+                    ->get()
+                    ->map(fn($log) => [
+                        'type' => 'error',
+                        'module' => 'System',
+                        'tokens' => 0,
+                        'execution_time' => 0,
+                        'status' => $log->status_code == 429 ? 'quota_exceeded' : 'error',
+                        'message' => $log->message,
+                        'created_at' => $log->created_at->toIso8601String(),
+                    ]);
+
+                $recentLogs = $recentAiLogs->concat($recentErrorLogs)
+                    ->sortByDesc('created_at')
+                    ->take(10)
+                    ->values();
+
+                return [
+                    'id' => $key->id,
+                    'name' => $key->vault ? $key->vault->nickname : ($key->provider . ' (Direct)'),
+                    'provider' => current(explode('_', $key->provider)), // 'openai', 'groq', 'azure' etc
+                    'model' => $key->preferred_model ?? 'N/A',
+                    'status' => $isBlacklisted ? 'blacklisted' : ($isRateLimited ? 'rate_limit' : $key->status),
+                    'is_blacklisted' => $isBlacklisted,
+                    'capabilities' => $displayCaps,
+                    'rate_limit_ends_in' => $isRateLimited ? now()->diffInSeconds($key->last_error_at->addMinutes(1)) : null,
+                    'total_requests' => $key->requests_count,
+                    'requests_today' => $todayRequests[(string)$key->id] ?? $todayRequests[(int)$key->id] ?? 0,
+                    'quota_exceeded_count' => $quotaErrors[(string)$key->id] ?? $quotaErrors[(int)$key->id] ?? 0,
+                    'error_rate' => $key->requests_count > 0 ? 0 : 0, 
+                    'recent_logs' => $recentLogs,
+                ];
+            });
+
         return response()->json([
             'overview' => [
                 'mysql_published_questions' => $totalQuestions,
@@ -227,36 +312,7 @@ class SemanticDashboardController extends Controller
                 'chart_data'        => $chartData,
             ],
             'recent_searches' => $recentSearches,
-            'api_keys' => \App\Models\ApiKey::with(['vault', 'capabilitiesList'])
-                ->whereHas('capabilitiesList', function ($q) {
-                    $q->whereIn('capability', [
-                        \App\Models\ApiKey::CAPABILITY_SEARCH,
-                        \App\Models\ApiKey::CAPABILITY_EMBEDDING,
-                        \App\Models\ApiKey::CAPABILITY_QUERY_EMBEDDING
-                    ]);
-                })
-                ->get()
-                ->map(function ($key) {
-                    $isRateLimited = $key->last_error_at && str_contains(strtolower($key->last_error_message), 'rate limit') && now()->lt($key->last_error_at->addMinutes(1));
-                    
-                    // Labeling capabilities for clarity in the dashboard
-                    $caps = $key->capabilitiesList->pluck('capability')->toArray();
-                    $displayCaps = [];
-                    if (in_array(\App\Models\ApiKey::CAPABILITY_EMBEDDING, $caps)) $displayCaps[] = 'Indexação';
-                    if (in_array(\App\Models\ApiKey::CAPABILITY_SEARCH, $caps) || in_array(\App\Models\ApiKey::CAPABILITY_QUERY_EMBEDDING, $caps)) $displayCaps[] = 'Busca';
-
-                    return [
-                        'id' => $key->id,
-                        'name' => $key->vault ? $key->vault->nickname : ($key->provider . ' (Direct)'),
-                        'provider' => current(explode('_', $key->provider)), // 'openai', 'groq', 'azure' etc
-                        'model' => $key->preferred_model ?? 'N/A',
-                        'status' => $isRateLimited ? 'rate_limit' : $key->status,
-                        'capabilities' => $displayCaps,
-                        'rate_limit_ends_in' => $isRateLimited ? now()->diffInSeconds($key->last_error_at->addMinutes(1)) : null,
-                        'total_requests' => $key->requests_count,
-                        'error_rate' => $key->requests_count > 0 ? 0 : 0, 
-                    ];
-                }),
+            'api_keys' => $apiKeys,
             'search_cache' => \App\Models\AiSearchCache::orderBy('created_at', 'desc')->limit(10)->get(),
             'config' => [
                 'vector_search_enabled'       => \App\Models\Configuration::get('xavier_vector_search_enabled', config('xavier.vector_search_enabled')),

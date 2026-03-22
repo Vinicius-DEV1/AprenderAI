@@ -73,7 +73,7 @@ class AITelemetryService
         try {
             ApiLog::create([
                 'provider' => $provider,
-                'key_id' => $keyId,
+                'api_key_id' => $keyId,
                 'status' => $status,
                 'type' => 'error', // Required by database constraint
                 'message' => substr($message, 0, 255),
