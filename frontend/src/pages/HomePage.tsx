@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useConfigStore } from '../stores/configStore';
 import { useAuthStore } from '../stores/authStore';
+import { Analytics } from '../services/analyticsService';
 import '../styles/landing-page.css';
 import '../styles/hero-section.css';
 
@@ -88,12 +89,7 @@ export default function HomePage() {
         if (plan) {
             localStorage.setItem('intended_plan', plan);
         }
-        if (typeof (window as any).gtag === 'function') {
-            (window as any).gtag('event', 'cta_click', {
-                'button_location': location,
-                'plan_name': plan || 'n/a'
-            });
-        }
+        Analytics.ctaClicked(location, plan);
     };
 
     const orgSchema = {

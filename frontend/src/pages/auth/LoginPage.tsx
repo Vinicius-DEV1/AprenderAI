@@ -5,6 +5,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { login as apiLogin, getUser } from '../../api/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { useConfig } from '../../hooks/useConfig';
+import { Analytics } from '../../services/analyticsService';
 
 export default function LoginPage() {
     const navigate = useNavigate();
@@ -34,6 +35,9 @@ export default function LoginPage() {
             // Fetch user data after successful login
             const response = await getUser();
             setUser(response.data.user);
+
+            // Fire GA4 login event — measures returning-user engagement.
+            Analytics.loggedIn('email');
 
             navigate('/dashboard');
         } catch (err: any) {

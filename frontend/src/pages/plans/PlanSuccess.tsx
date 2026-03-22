@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { getUser } from '../../api/auth';
+import { Analytics } from '../../services/analyticsService';
 
 export default function PlanSuccess() {
     const navigate = useNavigate();
@@ -11,9 +12,13 @@ export default function PlanSuccess() {
     // Attempt to extract planName from the query string (e.g. ?planName=Premium)
     const queryParams = new URLSearchParams(location.search);
     const planName = queryParams.get('planName') || 'Premium';
+    const planSlug = queryParams.get('planSlug') || 'unknown';
+    const planPrice = parseFloat(queryParams.get('price') || '0');
 
     // Polling state
     const [isConfirming, setIsConfirming] = useState(true);
+    // Prevents the purchase event from firing more than once during polling
+    const didFirePurchaseRef = useRef(false);
 
     useEffect(() => {
         let attempts = 0;
@@ -36,6 +41,18 @@ export default function PlanSuccess() {
                     if (isPlanUpdated || attempts >= maxAttempts) {
                         setIsConfirming(false);
                         if (interval) clearInterval(interval);
+
+                        // Fire GA4 purchase event exactly once when confirmation arrives.
+                        // A stable transaction_id (user+plan) prevents duplicate events.
+                        if (isPlanUpdated && !didFirePurchaseRef.current) {
+                            didFirePurchaseRef.current = true;
+                            Analytics.purchase({
+                                transactionId: `u${freshUser.id}_p${freshUser.plan_id}`,
+                                planSlug,
+                                planName: freshUser.plan?.name ?? planName,
+                                value: planPrice,
+                            });
+                        }
                     }
                 }
             } catch (error) {
