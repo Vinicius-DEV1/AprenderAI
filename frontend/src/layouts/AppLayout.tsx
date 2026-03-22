@@ -9,6 +9,7 @@ import { usePlatformTracking } from '../hooks/usePlatformTracking';
 import SupportChat from '../components/SupportChat';
 import NotificationBell from '../components/NotificationBell';
 import BannerDisplay from '../components/BannerDisplay';
+import { Toaster } from 'react-hot-toast';
 
 export default function AppLayout() {
     const config = useConfigStore();
@@ -298,6 +299,7 @@ export default function AppLayout() {
             </div>
             {/* Engagement: Floating widgets (support chat) */}
             <SupportChat />
+            <Toaster />
         </div>
     );
 }

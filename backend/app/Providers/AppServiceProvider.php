@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Question;
 use App\Observers\QuestionObserver;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -48,6 +49,16 @@ class AppServiceProvider extends ServiceProvider
 
         \Illuminate\Support\Facades\Queue::failing(function (\Illuminate\Queue\Events\JobFailed $event) {
             // Opcional: registrar falhas específicas no tracker se necessário
+            
+            // Notify admins of the failing job
+            try {
+                app(\App\Services\AdminNotificationService::class)->notifyJobFailure(
+                    $event->job->resolveName(), 
+                    $event->exception
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('[AppServiceProvider] Failed to notify admin of job failure: ' . $e->getMessage());
+            }
         });
     }
 }

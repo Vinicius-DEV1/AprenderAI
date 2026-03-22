@@ -378,8 +378,14 @@ EOT;
             // SRE: Update ApiKey status to trigger auto-healing router
             if ($statusCode === 429) {
                 $apiKey->update(['status' => 'quota_exceeded']);
+                try {
+                    app(\App\Services\AdminNotificationService::class)->notifyAiError($provider, $apiKey->preferred_model ?? 'unknown', 'Quota Exceeded', "Chave ID: {$apiKey->id}");
+                } catch (\Throwable $t) {}
             } elseif (in_array($statusCode, [401, 403])) {
                 $apiKey->update(['status' => 'offline']);
+                try {
+                    app(\App\Services\AdminNotificationService::class)->notifyAiError($provider, $apiKey->preferred_model ?? 'unknown', 'Offline/Invalid Key', "Chave ID: {$apiKey->id}");
+                } catch (\Throwable $t) {}
             }
 
             // Persistence for Admin Dashboard (ApiLog)
@@ -450,8 +456,14 @@ EOT;
             // SRE: Update ApiKey status to trigger auto-healing router
             if ($statusCode === 429 && $provider === 'openai') {
                 $apiKey->update(['status' => 'quota_exceeded']);
+                try {
+                    app(\App\Services\AdminNotificationService::class)->notifyAiError($provider, $apiKey->preferred_model ?? 'unknown', 'Quota Exceeded (Stream)', "Chave ID: {$apiKey->id}");
+                } catch (\Throwable $t) {}
             } elseif (in_array($statusCode, [401, 403])) {
                 $apiKey->update(['status' => 'offline']);
+                try {
+                    app(\App\Services\AdminNotificationService::class)->notifyAiError($provider, $apiKey->preferred_model ?? 'unknown', 'Offline/Invalid Key (Stream)', "Chave ID: {$apiKey->id}");
+                } catch (\Throwable $t) {}
             }
 
             // Persistence for Admin Dashboard (ApiLog)
@@ -747,8 +759,14 @@ EOT;
 
                     if ($statusCode === 429) {
                         $apiKeyModel->update(['status' => 'quota_exceeded']);
+                        try {
+                            app(\App\Services\AdminNotificationService::class)->notifyAiError('gemini', 'gemini-embedding-001', 'Quota Exceeded (Embedding)', "Chave ID: {$apiKeyModel->id}");
+                        } catch (\Throwable $t) {}
                     } elseif (in_array($statusCode, [401, 403])) {
                         $apiKeyModel->update(['status' => 'offline']);
+                        try {
+                            app(\App\Services\AdminNotificationService::class)->notifyAiError('gemini', 'gemini-embedding-001', 'Offline/Invalid Key (Embedding)', "Chave ID: {$apiKeyModel->id}");
+                        } catch (\Throwable $t) {}
                     }
 
                     throw new \Exception("Gemini API Error: " . $errorMessage . " (Status Code: " . $statusCode . ")");

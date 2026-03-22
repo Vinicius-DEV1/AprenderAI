@@ -34,6 +34,14 @@ return Application::configure(basePath: dirname(__DIR__))
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
+            // Report critical unhandled exceptions to admins via the notification bell
+            try {
+                app(\App\Services\AdminNotificationService::class)->notifyException($e);
+            } catch (\Throwable $reportEx) {
+                // Safeguard against infinite loops or failures in the notification service itself
+                // (already handled inside the service, but catching here just in case)
+            }
         });
     })->create();
 
