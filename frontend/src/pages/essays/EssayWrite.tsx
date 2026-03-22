@@ -6,6 +6,7 @@ import {
     submitEssay, getEssayThemes, getEssayRule, getEssays, updateEssayDraft,
     notifyEssayAbandoned, markEssayNotificationDone,
 } from '../../api/essays';
+import { Analytics } from '../../services/analyticsService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface EssayTheme {
@@ -279,6 +280,7 @@ export default function EssayWrite({
         onSuccess: (data) => {
             setEssayId(data.data.id);
             setError(null);
+            Analytics.essayCreated(type, false);
             // If theme was already selected or we are startting generation, flow continues
         },
         onError: (err: any) => {
@@ -294,10 +296,15 @@ export default function EssayWrite({
     const generateMutation = useMutation({
         mutationFn: async () => {
             let currentEssayId = essayId;
+            let isNewDraft = false;
             if (!currentEssayId) {
                 const draft = await createEssayDraft({ type, time_limit: timeLimit });
                 currentEssayId = draft.data.id;
                 setEssayId(currentEssayId);
+                isNewDraft = true;
+            }
+            if (isNewDraft) {
+                Analytics.essayCreated(type, true);
             }
             return startTopicGeneration(currentEssayId!);
         },
@@ -387,6 +394,7 @@ export default function EssayWrite({
             try {
                 const data = await createEssayDraft({ type, time_limit: timeLimit });
                 setEssayId(data.data.id);
+                Analytics.essayCreated(type, false);
             } catch (err: any) {
                 const code = err.response?.data?.code;
                 if (code === 'QUOTA_EXCEEDED') {
