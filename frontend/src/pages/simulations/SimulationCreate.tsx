@@ -271,6 +271,7 @@ export default function SimulationCreate() {
             const response = await createSimulation(payload);
             if (response && response.data && response.data.id) {
                 Analytics.simulationCreated(type, payload.total_questions || totalQuestions);
+                Analytics.simulationFirstCreated(type);
                 navigate(`/simulados/${response.data.id}`);
             } else {
                 navigate('/simulados');

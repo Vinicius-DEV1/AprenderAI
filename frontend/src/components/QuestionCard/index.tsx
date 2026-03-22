@@ -281,6 +281,7 @@ const QuestionCard = memo(({
             
             const firstSubject = q.subjects && q.subjects.length > 0 ? q.subjects[0].name : 'unknown';
             Analytics.questionAnswered(firstSubject, data.correct ?? false);
+            Analytics.questionFirstAnswered(firstSubject);
         } catch (e) {
             toast.error('Erro ao enviar resposta.');
         } finally {

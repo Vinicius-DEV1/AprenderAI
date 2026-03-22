@@ -305,6 +305,7 @@ export default function EssayWrite({
             }
             if (isNewDraft) {
                 Analytics.essayCreated(type, true);
+                Analytics.essayFirstCreated(type);
             }
             return startTopicGeneration(currentEssayId!);
         },
@@ -395,6 +396,7 @@ export default function EssayWrite({
                 const data = await createEssayDraft({ type, time_limit: timeLimit });
                 setEssayId(data.data.id);
                 Analytics.essayCreated(type, false);
+                Analytics.essayFirstCreated(type);
             } catch (err: any) {
                 const code = err.response?.data?.code;
                 if (code === 'QUOTA_EXCEEDED') {

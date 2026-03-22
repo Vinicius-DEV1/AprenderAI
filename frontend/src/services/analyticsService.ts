@@ -134,6 +134,16 @@ export const Analytics = {
     },
 
     /**
+     * ATIVAÇÃO: Disparado apenas na PRIMEIRA vez que o usuário criar um simulado
+     */
+    simulationFirstCreated(type: 'enem' | 'concurso') {
+        if (!localStorage.getItem('activation_first_sim')) {
+            gtrack('simulation_first_created', { simulation_type: type });
+            localStorage.setItem('activation_first_sim', 'true');
+        }
+    },
+
+    /**
      * ATIVAÇÃO: Disparado quando o usuário cria um novo rascunho de redação (ENEM ou Concurso)
      */
     essayCreated(type: string, hasAutomatedTheme: boolean) {
@@ -141,6 +151,16 @@ export const Analytics = {
             essay_type: type,
             automated_theme: hasAutomatedTheme
         });
+    },
+
+    /**
+     * ATIVAÇÃO: Disparado apenas na PRIMEIRA vez que o usuário enviar redação
+     */
+    essayFirstCreated(type: string) {
+        if (!localStorage.getItem('activation_first_essay')) {
+            gtrack('essay_first_created', { essay_type: type });
+            localStorage.setItem('activation_first_essay', 'true');
+        }
     },
 
     /**
