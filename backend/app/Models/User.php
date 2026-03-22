@@ -65,6 +65,12 @@ class User extends Authenticatable implements MustVerifyEmail
         'max_daily_questions_override',
         // Asaas gateway customer reference — used to avoid duplicate customers
         'asaas_customer_id',
+        // UTM Attribution Tracking
+        'utm_source',
+        'utm_medium',
+        'utm_campaign',
+        'utm_term',
+        'utm_content',
     ];
 
     // =========================================================================
