@@ -4,6 +4,7 @@ import { createSimulation } from '../../api/simulations';
 import QuotaLimitModal from '../../components/QuotaLimitModal';
 import MultiSearchableSelect from '../../components/MultiSearchableSelect';
 import { useAuthStore } from '../../stores/authStore';
+import { Analytics } from '../../services/analyticsService';
 import api from '../../api/axios';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -269,6 +270,7 @@ export default function SimulationCreate() {
 
             const response = await createSimulation(payload);
             if (response && response.data && response.data.id) {
+                Analytics.simulationCreated(type, payload.total_questions || totalQuestions);
                 navigate(`/simulados/${response.data.id}`);
             } else {
                 navigate('/simulados');

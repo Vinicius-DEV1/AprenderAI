@@ -6,6 +6,7 @@ import { useConfigStore } from '../../stores/configStore';
 import { useAuthStore } from '../../stores/authStore';
 import api from '../../api/axios';
 import { renderMd } from '../../utils/markdown';
+import { Analytics } from '../../services/analyticsService';
 
 // Modals
 import DialogReportQuestion from './modals/DialogReportQuestion';
@@ -277,6 +278,9 @@ const QuestionCard = memo(({
             setExplanation(data.explanation || '');
             setActiveTab('gabarito');
             queryClient.invalidateQueries({ queryKey: ['engagement'] });
+            
+            const firstSubject = q.subjects && q.subjects.length > 0 ? q.subjects[0].name : 'unknown';
+            Analytics.questionAnswered(firstSubject, data.correct ?? false);
         } catch (e) {
             toast.error('Erro ao enviar resposta.');
         } finally {
