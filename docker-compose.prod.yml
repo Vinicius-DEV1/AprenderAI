@@ -122,7 +122,7 @@ services:
       --timeout=900
       --max-time=3600
     deploy:
-      replicas: 20
+      replicas: 10
       resources:
         limits:
           memory: 768M
