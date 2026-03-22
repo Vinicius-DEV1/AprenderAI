@@ -208,16 +208,30 @@ class SemanticDashboardController extends Controller
 
                 $recentAiLogs = \App\Models\AiRequestLog::where('api_key_id', $key->id)
                     ->orderBy('created_at', 'desc')
-                    ->limit(10)
+                    ->limit(50)
                     ->get()
-                    ->map(fn($log) => [
-                        'type' => 'request',
-                        'module' => $log->module,
-                        'tokens' => $log->tokens_used_total,
-                        'execution_time' => $log->execution_time,
-                        'status' => 'success',
-                        'created_at' => $log->created_at->toIso8601String(),
-                    ]);
+                    ->groupBy(function($log) {
+                        return $log->module . '_' . $log->created_at->format('Y-m-d H:i:s');
+                    })
+                    ->map(function($group) {
+                        $first = $group->first();
+                        return [
+                            'type' => 'request',
+                            'module' => $first->module,
+                            'tokens' => $group->sum('tokens_used_total'),
+                            'execution_time' => $group->avg('execution_time'),
+                            'status' => 'success',
+                            'created_at' => $first->created_at->toIso8601String(),
+                            'count' => $group->count(),
+                            'items' => $group->map(fn($log) => [
+                                'prompt' => $log->prompt_text,
+                                'response' => $log->response_text,
+                                'tokens_in' => $log->tokens_used_input,
+                                'tokens_out' => $log->tokens_used_output,
+                                'tokens_total' => $log->tokens_used_total,
+                            ])->values()->all()
+                        ];
+                    });
 
                 $recentErrorLogs = \App\Models\ApiLog::where('api_key_id', $key->id)
                     ->orderBy('created_at', 'desc')
@@ -231,11 +245,12 @@ class SemanticDashboardController extends Controller
                         'status' => $log->status_code == 429 ? 'quota_exceeded' : 'error',
                         'message' => $log->message,
                         'created_at' => $log->created_at->toIso8601String(),
+                        'count' => 1,
+                        'items' => []
                     ]);
 
                 $recentLogs = $recentAiLogs->concat($recentErrorLogs)
                     ->sortByDesc('created_at')
-                    ->take(10)
                     ->values()
                     ->all();
 

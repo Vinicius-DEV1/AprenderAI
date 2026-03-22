@@ -24,9 +24,17 @@ export interface ApiLogEntry {
     module: string;
     tokens: number;
     execution_time: number;
-    status: 'success' | 'error' | 'quota_exceeded';
+    status: string;
     message?: string;
     created_at: string;
+    count?: number;
+    items?: {
+        prompt: string;
+        response: string;
+        tokens_in: number;
+        tokens_out: number;
+        tokens_total: number;
+    }[];
 }
 
 export interface DashboardStats {
