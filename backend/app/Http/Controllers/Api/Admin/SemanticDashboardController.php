@@ -236,7 +236,8 @@ class SemanticDashboardController extends Controller
                 $recentLogs = $recentAiLogs->concat($recentErrorLogs)
                     ->sortByDesc('created_at')
                     ->take(10)
-                    ->values();
+                    ->values()
+                    ->all();
 
                 return [
                     'id' => $key->id,
