@@ -171,21 +171,6 @@ Route::prefix('v1')->group(function () {
         Route::delete('notebooks/{notebook}/questions/{question}', [NotebookController::class, 'removeQuestion']);
         Route::post('questions/{question}/sync-notebooks', [NotebookController::class, 'syncQuestion']);
 
-        // Monitor Dashboard (Worker & System Health)
-        Route::prefix('monitor')->group(function () {
-            Route::get('/overview', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'overview']);
-            Route::prefix('failed-jobs')->group(function () {
-                Route::get('/', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'listFailedJobs']);
-                Route::delete('/', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'clearFailedJobs']);
-                Route::post('/retry-all', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'retryAllFailedJobs']);
-                Route::post('/{id}/retry', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'retryFailedJob']);
-            });
-
-            // Legacy/existing routes
-            Route::get('/realtime', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'realtime']);
-            Route::get('/history', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'history']);
-            Route::get('/queues', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'queues']);
-        });
 
         // Question Bank
         Route::prefix('questions')->group(function () {
@@ -337,13 +322,21 @@ Route::prefix('v1')->group(function () {
 
             // Server Monitor
             Route::prefix('monitor')->group(function () {
+                // Shared overview & failed jobs (considolated under admin)
+                Route::get('/overview', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'overview']);
+                Route::prefix('failed-jobs')->group(function () {
+                    Route::get('/', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'listFailedJobs']);
+                    Route::delete('/', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'clearFailedJobs']);
+                    Route::post('/retry-all', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'retryAllFailedJobs']);
+                    Route::post('/{id}/retry', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'retryFailedJob']);
+                });
+
                 Route::get('/realtime', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'realtime']);
                 Route::get('/history', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'history']);
                 Route::get('/queues', [\App\Http\Controllers\Api\Admin\MonitorController::class, 'queues']);
                 Route::get('/logs', [\App\Http\Controllers\Api\Admin\SystemLogController::class, 'index']);
                 Route::delete('/logs', [\App\Http\Controllers\Api\Admin\SystemLogController::class, 'clear']);
                 Route::delete('/pending-triage', [\App\Http\Controllers\Api\WorkerMonitorController::class, 'clearPendingTriage']);
-
             });
 
 

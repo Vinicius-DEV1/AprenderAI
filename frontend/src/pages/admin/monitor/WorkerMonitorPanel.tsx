@@ -58,7 +58,7 @@ const WorkerMonitorPanel = () => {
     const { data: stats, isLoading: statsLoading } = useQuery<WorkerStats>({
         queryKey: ['worker-monitor-overview'],
         queryFn: async () => {
-            const res = await api.get('/api/v1/monitor/overview');
+            const res = await api.get('/api/v1/admin/monitor/overview');
             return res.data.data;
         },
         refetchInterval: 5000
@@ -68,7 +68,7 @@ const WorkerMonitorPanel = () => {
     const { data: failedJobsData, isLoading: failedLoading } = useQuery({
         queryKey: ['failed-jobs', page, selectedQueue],
         queryFn: async () => {
-            const res = await api.get(`/api/v1/monitor/failed-jobs?page=${page}${selectedQueue ? `&queue=${selectedQueue}` : ''}`);
+            const res = await api.get(`/api/v1/admin/monitor/failed-jobs?page=${page}${selectedQueue ? `&queue=${selectedQueue}` : ''}`);
             return res.data.data;
         }
     });
@@ -116,7 +116,7 @@ const WorkerMonitorPanel = () => {
     });
 
     const retryOneMutation = useMutation({
-        mutationFn: (id: number) => api.post(`/api/v1/monitor/failed-jobs/${id}/retry`),
+        mutationFn: (id: number) => api.post(`/api/v1/admin/monitor/failed-jobs/${id}/retry`),
         onSuccess: () => {
             toast.success('Job reintegrado à fila.');
             queryClient.invalidateQueries({ queryKey: ['failed-jobs'] });
