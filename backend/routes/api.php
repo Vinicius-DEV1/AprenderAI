@@ -402,6 +402,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('/{id}', [AdminImportReviewController::class, 'show']);
                 Route::post('/{id}/approve', [AdminImportReviewController::class, 'approve']);
                 Route::post('/{id}/revert', [AdminImportReviewController::class, 'revert']);
+                Route::post('/{id}/send-to-triage', [AdminImportReviewController::class, 'sendToTriage']);
                 Route::post('/{imageId}/crop', [AdminImportReviewController::class, 'crop']);
                 Route::delete('/{imageId}/image', [AdminImportReviewController::class, 'deleteImage']);
             });

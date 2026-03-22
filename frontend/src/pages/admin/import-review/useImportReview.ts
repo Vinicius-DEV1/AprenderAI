@@ -70,6 +70,23 @@ export function useImportReview() {
     onError: () => toast.error('Failed to revert question.')
   });
 
+  const sendToTriageMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post(`/api/v1/admin/import/review/${id}/send-to-triage`, Object.fromEntries(searchParams));
+      return res.data;
+    },
+    onSuccess: (data) => {
+      if (data.next_id) {
+        navigate(`/admin/import/review/${data.next_id}?${searchParams.toString()}`);
+        toast.success('Enviada para a fila de IA! Movendo para a próxima...');
+      } else {
+        navigate(`/admin/import/review?${searchParams.toString()}`);
+        toast.success('Enviada para a fila de IA! Fila concluída.');
+      }
+    },
+    onError: () => toast.error('Erro ao enviar para triagem de IA.')
+  });
+
   const deleteImageMutation = useMutation({
     mutationFn: async (imageId: number) => {
       return await api.delete(`/api/v1/admin/import/review/${imageId}/image`);
@@ -185,6 +202,7 @@ export function useImportReview() {
     cropperEls,
     approveMutation,
     revertMutation,
+    sendToTriageMutation,
     deleteImageMutation,
     handleSaveCrop,
     isComplete,

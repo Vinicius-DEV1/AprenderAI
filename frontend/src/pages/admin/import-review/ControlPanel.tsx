@@ -18,6 +18,7 @@ interface ControlPanelProps {
   };
   approveMutation: any;
   revertMutation: any;
+  sendToTriageMutation: any;
   prevId: number | null;
   nextId: number | null;
   navigate: (path: string) => void;
@@ -30,6 +31,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   completion,
   approveMutation,
   revertMutation,
+  sendToTriageMutation,
   prevId,
   nextId,
   navigate,
@@ -37,6 +39,11 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   isCompact = false
 }) => {
   const isPending = question.review_status === 'pending' || question.review_status === 'review';
+
+  const handleEditClick = () => {
+    sessionStorage.setItem('import_review_return_url', window.location.pathname + window.location.search);
+    sessionStorage.setItem('import_review_scroll_y', window.scrollY.toString());
+  };
 
   return (
     <div className={`space-y-3 ${isCompact ? '' : 'p-5 bg-white rounded-xl shadow-sm border border-gray-100'}`}>
@@ -87,20 +94,31 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
           </Link>
           <Link
             to={`/admin/questions/${question.id}/edit`}
+            onClick={handleEditClick}
             className="w-full px-4 py-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]"
           >
             ✏️ Editar Questão
           </Link>
-          <button
-            onClick={() => revertMutation.mutate()}
-            disabled={revertMutation.isPending}
-            className="w-full px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-            </svg>
-            Retornar p/ Revisão
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => revertMutation.mutate()}
+              disabled={revertMutation.isPending}
+              className="w-full px-3 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-bold text-[11px] flex flex-col items-center justify-center gap-1 shadow-sm transition-all active:scale-[0.98]"
+            >
+              <svg className="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+              <span>Retornar p/ Revisão</span>
+            </button>
+            <button
+              onClick={() => sendToTriageMutation.mutate()}
+              disabled={sendToTriageMutation.isPending}
+              className="w-full px-3 py-3 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700 font-bold text-[11px] flex flex-col items-center justify-center gap-1 shadow-sm transition-all active:scale-[0.98]"
+            >
+              <span className="text-lg leading-none">🤖</span>
+              <span>Re-enviar p/ IA</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -108,6 +126,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
           <div className="grid grid-cols-2 gap-2">
             <Link
               to={`/admin/questions/${question.id}/edit`}
+              onClick={handleEditClick}
               className="px-3 py-2 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 font-semibold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
             >
               ✍️ Editar

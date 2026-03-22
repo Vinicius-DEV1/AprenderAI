@@ -215,6 +215,39 @@ class AdminImportReviewController extends Controller
     }
 
     /**
+     * Send question back to automated AI Triage queue.
+     */
+    public function sendToTriage(Request $request, $id)
+    {
+        $question = Question::findOrFail($id);
+        
+        $question->update([
+            'review_status' => 'pending',
+            'is_active' => false // Ensure it stays offline while pending
+        ]);
+
+        $this->triageService->logManualAction($question, 'sent_to_ai_triage', [], Auth::id());
+
+        if ($question->importItem) {
+            $question->importItem->update([
+                'reverted_at' => now(),
+            ]);
+            
+            // Note: We don't adjust the import counts here since 'pending' in the context
+            // of the import batch often means pending manual review, but we just want it
+            // available for the AI jobs to pick up according to user instructions.
+        }
+
+        // Return the NEXT ID to return for seamless navigation just like approve
+        $nextId = $this->applyFilters($request)->latest('id')->value('id');
+
+        return response()->json([
+            'message' => 'Status alterado para Triagem IA.',
+            'next_id' => $nextId
+        ]);
+    }
+
+    /**
      * Process an image crop using GD via QuestionImportService.
      */
     public function crop(Request $request, $imageId)

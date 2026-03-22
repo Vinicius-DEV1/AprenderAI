@@ -104,6 +104,21 @@ export default function QuestionForm() {
         }
     }, [question]);
 
+    const handleReturn = () => {
+        const returnUrl = sessionStorage.getItem('import_review_return_url');
+        if (returnUrl) {
+            sessionStorage.removeItem('import_review_return_url');
+            sessionStorage.setItem('import_review_just_returned', 'true');
+            navigate(returnUrl);
+        } else {
+            if (isEditing) {
+                navigate(-1);
+            } else {
+                navigate('/admin/questions');
+            }
+        }
+    };
+
     const saveMutation = useMutation({
         mutationFn: async (payload: any) => {
             if (isEditing) {
@@ -113,11 +128,7 @@ export default function QuestionForm() {
         },
         onSuccess: () => {
             toast.success(`Questão ${isEditing ? 'atualizada' : 'criada'} com sucesso!`);
-            if (isEditing) {
-                navigate(-1);
-            } else {
-                navigate('/admin/questions');
-            }
+            handleReturn();
         },
         onError: (error: any) => {
             if (error.response?.status === 422) {
@@ -595,7 +606,7 @@ export default function QuestionForm() {
                         <div className="flex items-center justify-end mt-8 border-t pt-4">
                             <button
                                 type="button"
-                                onClick={() => isEditing ? navigate(-1) : navigate('/admin/questions')}
+                                onClick={handleReturn}
                                 className="text-gray-600 underline mr-4 hover:text-gray-900">
                                 Cancelar
                             </button>
