@@ -42,6 +42,7 @@ class ProcessEnemExamJob implements ShouldQueue
         $hasMore = true;
 
         $inserted = 0;
+        $updated = 0;
         $ignored = 0;
         $errors = 0;
         $errorMessages = [];
@@ -65,6 +66,8 @@ class ProcessEnemExamJob implements ShouldQueue
 
                         if ($result['status'] === 'success') {
                             $inserted++;
+                        } elseif ($result['status'] === 'updated') {
+                            $updated++;
                         } elseif ($result['status'] === 'ignored') {
                             $ignored++;
                             $ignoredItems[] = [
@@ -81,6 +84,11 @@ class ProcessEnemExamJob implements ShouldQueue
                         $errors++;
                         $errorMessages[] = "Exceção na questão index " . ($apiQuestion['index'] ?? '?') . ": " . $e->getMessage();
                     }
+
+                    // --- RATE LIMITING ---
+                    // Delay de 0.2 segundos (200.000 microssegundos)
+                    // para não estourar o limite de requisições da API ENEM Dev
+                    usleep(200000);
                 }
 
                 $hasMore = $metadata['hasMore'] ?? false;
@@ -98,6 +106,7 @@ class ProcessEnemExamJob implements ShouldQueue
         $log = \App\Models\EnemImportLog::find($this->importLogId);
         if ($log) {
             $log->increment('inserted_count', $inserted);
+            $log->increment('updated_count', $updated);
             $log->increment('ignored_count', $ignored);
             $log->increment('error_count', $errors);
 
