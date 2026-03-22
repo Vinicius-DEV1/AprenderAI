@@ -321,6 +321,16 @@ Route::prefix('v1')->group(function () {
                 Route::post('/sync', [\App\Http\Controllers\Api\Admin\AdminAnalyticsController::class, 'syncNow']);
             });
 
+            // Campaigns (Operational)
+            Route::prefix('campaigns')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Api\Admin\CampaignController::class, 'index']);
+                Route::post('/', [\App\Http\Controllers\Api\Admin\CampaignController::class, 'store']);
+                Route::get('/{campaign}', [\App\Http\Controllers\Api\Admin\CampaignController::class, 'show']);
+                Route::put('/{campaign}', [\App\Http\Controllers\Api\Admin\CampaignController::class, 'update']);
+                Route::delete('/{campaign}', [\App\Http\Controllers\Api\Admin\CampaignController::class, 'destroy']);
+                Route::post('/{campaign}/toggle', [\App\Http\Controllers\Api\Admin\CampaignController::class, 'toggle']);
+            });
+
             // Server Monitor
             Route::prefix('monitor')->group(function () {
                 // Shared overview & failed jobs (considolated under admin)
