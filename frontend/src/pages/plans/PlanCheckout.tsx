@@ -129,7 +129,7 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                     if (onSuccess) {
                         onSuccess();
                     } else {
-                        navigate(`/checkout/success?planName=${encodeURIComponent(plan?.name || '')}`);
+                    navigate(`/checkout/success?planName=${encodeURIComponent(plan?.name || '')}&planSlug=${encodeURIComponent(plan?.slug || '')}&price=${finalPrice}`);
                     }
                 }
             } catch (err) {
@@ -209,7 +209,7 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                     if (onSuccess) {
                         onSuccess();
                     } else {
-                        navigate(`/checkout/success?planName=${encodeURIComponent(plan!.name)}&upgrade=${upgradeData?.is_upgrade ? 'true' : 'false'}`);
+                        navigate(`/checkout/success?planName=${encodeURIComponent(plan!.name)}&planSlug=${encodeURIComponent(plan!.slug || '')}&price=${finalPrice}&upgrade=${upgradeData?.is_upgrade ? 'true' : 'false'}`);
                     }
                 }
             }
