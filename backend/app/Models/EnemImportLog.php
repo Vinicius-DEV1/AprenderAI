@@ -9,6 +9,7 @@ class EnemImportLog extends Model
     protected $fillable = [
         'year',
         'inserted_count',
+        'updated_count',
         'ignored_count',
         'error_count',
         'errors',

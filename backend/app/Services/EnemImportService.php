@@ -22,27 +22,27 @@ class EnemImportService
     {
         $year = $apiQuestion['year'];
         $index = $apiQuestion['index'] ?? 'N/A';
-        $context = $apiQuestion['context'] ?? 'Sem título/enunciado';
+        $context = trim($apiQuestion['context'] ?? '');
+        $introduction = trim($apiQuestion['alternativesIntroduction'] ?? '');
+        
+        $baseTextForHash = $context ?: ($introduction ?: "Questao_ENEM_{$year}_{$index}");
 
-        // 1. Gerar external_id
+        // 1. Gerar external_id usando também o $index para evitar colisão absoluta
         $organization = 'ENEM';
         $institution = 'INEP';
         $role = 'Estudante';
 
-        $uniqueString = $organization . '|' . $year . '|' . $institution . '|' . $role . '|' . trim($context);
+        $uniqueString = $organization . '|' . $year . '|' . $institution . '|' . $role . '|' . $baseTextForHash . '|' . $index;
         $externalId = md5($uniqueString);
 
-        // 2. Verificar se já existe (Idempotência)
-        if (\App\Models\Question::where('external_id', $externalId)->exists()) {
-            return [
-                'status' => 'ignored',
-                'reason' => 'duplicate',
-                'external_id' => $externalId,
-                'index' => $index,
-                'title' => \Illuminate\Support\Str::limit($context, 100),
-                'full_data' => [] // Don't store full data for duplicates to save space
-            ];
-        }
+        // 2. Verificar se já existe (Bridge Match para suportar Upsert na VPS)
+        // O hash antigo (bugado) gerado para esta questão na VPS original
+        $uniqueStringOld = $organization . '|' . $year . '|' . $institution . '|' . $role . '|' . $context;
+        $externalIdOld = md5($uniqueStringOld);
+
+        $existingQuestion = \App\Models\Question::where('external_id', $externalId)
+            ->orWhere('external_id', $externalIdOld)
+            ->first();
 
         // Validação básica de dados essenciais
         if (empty($apiQuestion['alternatives']) || count($apiQuestion['alternatives']) < 2) {
@@ -58,75 +58,81 @@ class EnemImportService
         // 3. Processar Enunciado e Imagens
         $statement = $this->formatStatement(
             $context,
-            $apiQuestion['alternativesIntroduction'] ?? '',
+            $introduction,
             $year,
             $apiQuestion['files'] ?? []
         );
 
         // 4. Resolver grande área do conhecimento (knowledge_area) e matéria (subject)
-        // Correção de mapeamento: 'discipline' = grande área -> knowledge_area
-        //                        'language'   = idioma específico -> subject (ex: 'Inglês')
         $knowledgeArea = $apiQuestion['discipline'] ?? null;
         $subjectId = $this->resolveSubjectId($apiQuestion['discipline'] ?? 'Geral', $apiQuestion['language'] ?? null);
 
-        // 5. Iniciar transação
+        // 5. Iniciar transação (Insert ou Upsert)
         try {
-            $question = \Illuminate\Support\Facades\DB::transaction(function () use ($apiQuestion, $externalId, $year, $statement, $subjectId, $knowledgeArea, $organization, $institution, $role, $context) {
+            $isUpdate = false;
+            
+            $question = \Illuminate\Support\Facades\DB::transaction(function () use ($apiQuestion, $existingQuestion, $externalId, $year, $statement, $subjectId, $knowledgeArea, $organization, $institution, $role, $context, &$isUpdate) {
 
                 $theme = ($apiQuestion['language'] ?? null) ? 'Língua Estrangeira: ' . ucfirst($apiQuestion['language']) : null;
 
-                // Image Detection: Comprehensive check across all possible sources.
-                // 1. Explicitly attached files array at question level.
                 $hasQuestionFiles = !empty($apiQuestion['files']) && collect($apiQuestion['files'])->filter()->isNotEmpty();
-
-                // 2. Explicitly attached files at alternative level.
                 $hasAlternativeFiles = collect($apiQuestion['alternatives'] ?? [])->contains(
                     fn($alt) => !empty($alt['file'])
                 );
-
-                // 3. Inline images in context/introduction via Markdown or URL.
-                // We use the same logic as formatStatement to check for presence.
                 $hasInlineImages = preg_match('/!\[.*?\]\(.*?\)|https?:\/\/[^\s"\')]+?\.(?:png|jpg|jpeg|gif|webp|svg)/i', $context . ($apiQuestion['alternativesIntroduction'] ?? ''));
 
                 $hasImage = $hasQuestionFiles || $hasAlternativeFiles || $hasInlineImages;
-
-                // review_status semantics:
-                //   'review'   → "Contains images, needs manual layout/context check"
-                //   'approved' → "Pure text question, safe for public bank"
                 $initialStatus = $hasImage ? 'review' : 'approved';
 
-                $question = \App\Models\Question::create([
-                    'external_id' => $externalId,
-                    'type' => 'enem',
-                    'format' => 'multiple_choice',
-                    'difficulty' => 'medium',
-                    'year' => $year,
-                    'statement' => $statement,
-                    'source' => 'api',
-                    'theme' => $theme,
-                    'knowledge_area' => $knowledgeArea,
-                    'organization' => $organization,
-                    'institution' => $institution,
-                    'role' => $role,
-                    'review_status' => $initialStatus,
-                ]);
+                if ($existingQuestion) {
+                    // --- UPSERT BRANCH ---
+                    $isUpdate = true;
+                    $question = $existingQuestion;
+                    
+                    $question->update([
+                        'external_id' => $externalId, // Cura o hash legado da VPS!
+                        'statement' => $statement,
+                        'knowledge_area' => $knowledgeArea,
+                        'theme' => $theme,
+                        'review_status' => $initialStatus,
+                    ]);
 
-                if ($subjectId) {
-                    $question->subjects()->attach($subjectId);
+                    if ($subjectId) {
+                        $question->subjects()->syncWithoutDetaching([$subjectId]);
+                    }
+
+                    // Limpar antigas alternativas para reconstruir puras (livres do bug de double-embedding)
+                    $question->alternatives()->delete();
+                } else {
+                    // --- INSERT BRANCH ---
+                    $question = \App\Models\Question::create([
+                        'external_id' => $externalId,
+                        'type' => 'enem',
+                        'format' => 'multiple_choice',
+                        'difficulty' => 'medium',
+                        'year' => $year,
+                        'statement' => $statement,
+                        'source' => 'api',
+                        'theme' => $theme,
+                        'knowledge_area' => $knowledgeArea,
+                        'organization' => $organization,
+                        'institution' => $institution,
+                        'role' => $role,
+                        'review_status' => $initialStatus,
+                    ]);
+
+                    if ($subjectId) {
+                        $question->subjects()->attach($subjectId);
+                    }
                 }
 
+                // Inserção Limpa das Alternativas
                 foreach ($apiQuestion['alternatives'] as $altData) {
                     $imagePath = null;
-                    $content = $altData['text'] ?? '';
+                    $content = trim($altData['text'] ?? '');
 
                     if (!empty($altData['file'])) {
                         $imagePath = $this->downloadImage($altData['file'], $year);
-                        if ($imagePath) {
-                            // Ensure the image is rendered in the UI by appending markdown if not present
-                            if (!str_contains($content, $imagePath)) {
-                                $content = trim($content . "\n\n![Imagem da Alternativa]({$imagePath})");
-                            }
-                        }
                     }
 
                     \App\Models\QuestionAlternative::create([
@@ -142,7 +148,7 @@ class EnemImportService
             });
 
             return [
-                'status' => 'success',
+                'status' => $isUpdate ? 'updated' : 'success',
                 'question' => $question
             ];
 
@@ -160,9 +166,9 @@ class EnemImportService
      * Formata o statement juntando o contexto com a introdução.
      * E baixa localmente as imagens do markdown e anexos extras.
      */
-    protected function formatStatement(?string $context, ?string $introduction, int $year, array $files = []): string
+    protected function formatStatement(string $context, string $introduction, int $year, array $files = []): string
     {
-        $statement = $context ?? '';
+        $statement = $context;
 
         // 1. Processar Markdown Imagens e URLs diretas no texto
         // Regex robusto para capturar links de imagem comuns inclusive sem markdown
@@ -180,16 +186,24 @@ class EnemImportService
         }, $statement);
 
         if (!empty($introduction)) {
-            $statement .= "\n\n**" . trim($introduction) . "**";
+            if (empty($statement)) {
+                // Se context for vazio, a introduction se torna o texto base puro
+                $statement = $introduction;
+            } else {
+                // Se ambos existirem, concatena adicionando negrito para o comando da questão
+                $statement .= "\n\n**" . $introduction . "**";
+            }
         }
 
         // 2. Processar imagens anexas (files[]) da API ENEM Dev
-        // Evita duplicar se a imagem já foi processada via Regex no passo 1 (check via MD5 seria ideal, mas aqui fazemos simples)
         foreach ($files as $fileUrl) {
-            if (!empty($fileUrl) && !str_contains($statement, md5($fileUrl))) {
+            if (!empty($fileUrl)) {
                 $localUrl = $this->downloadImage($fileUrl, $year);
                 if ($localUrl) {
-                    $statement .= "\n\n![Imagem de Apoio]({$localUrl})";
+                    // Prevenir inserção dupla: checamos se a URL local já foi inserida pelo Regex do Passo 1
+                    if (!str_contains($statement, $localUrl)) {
+                        $statement .= "\n\n![Imagem de Apoio]({$localUrl})";
+                    }
                 }
             }
         }
