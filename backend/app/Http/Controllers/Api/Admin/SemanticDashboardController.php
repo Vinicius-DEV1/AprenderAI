@@ -274,19 +274,34 @@ class SemanticDashboardController extends Controller
 
         $globalAiLogs = \App\Models\AiRequestLog::with('apiKey')
             ->orderBy('created_at', 'desc')
-            ->limit(10)
+            ->limit(50)
             ->get()
-            ->map(function($log) {
+            ->groupBy(function($log) {
+                return $log->api_key_id . '_' . $log->module . '_' . $log->created_at->format('Y-m-d H:i:s');
+            })
+            ->map(function($group) {
+                $first = $group->first();
                 return [
-                    'id' => 'req_' . $log->id,
-                    'timestamp' => $log->created_at->toIso8601String(),
-                    'api_key'   => $log->apiKey ? ($log->apiKey->provider . ' (' . substr($log->apiKey->key, 0, 4) . '...)') : 'Unknown',
+                    'id' => 'req_' . $first->id,
+                    'timestamp' => $first->created_at->toIso8601String(),
+                    'api_key'   => $first->apiKey ? ($first->apiKey->provider . ' (' . substr($first->apiKey->key, 0, 4) . '...)') : 'Unknown',
                     'status'    => 'success',
-                    'latency'   => $log->execution_time,
-                    'module'    => $log->module,
-                    'created_at_raw' => $log->created_at,
+                    'latency'   => $group->avg('execution_time'),
+                    'module'    => $first->module,
+                    'created_at_raw' => $first->created_at,
+                    'tokens'    => $group->sum('tokens_used_total'),
+                    'count'     => $group->count(),
+                    'items'     => $group->map(fn($log) => [
+                        'prompt'       => $log->prompt_text,
+                        'response'     => $log->response_text,
+                        'tokens_in'    => $log->tokens_used_input,
+                        'tokens_out'   => $log->tokens_used_output,
+                        'tokens_total' => $log->tokens_used_total,
+                    ])->values()->all()
                 ];
-            });
+            })
+            ->values()
+            ->take(10);
 
         $globalErrorLogs = \App\Models\ApiLog::with('apiKey')
             ->orderBy('created_at', 'desc')
@@ -300,7 +315,11 @@ class SemanticDashboardController extends Controller
                     'status'    => $log->status_code == 429 ? 'quota_exceeded' : 'error',
                     'latency'   => 0,
                     'module'    => 'System',
+                    'message'   => $log->message,
                     'created_at_raw' => $log->created_at,
+                    'tokens'    => 0,
+                    'count'     => 1,
+                    'items'     => []
                 ];
             });
 

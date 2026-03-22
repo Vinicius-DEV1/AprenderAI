@@ -44,6 +44,16 @@ export interface GlobalLogItem {
     status: string;
     latency: number;
     module: string;
+    message?: string;
+    tokens?: number;
+    count?: number;
+    items?: {
+        prompt: string;
+        response: string;
+        tokens_in: number;
+        tokens_out: number;
+        tokens_total: number;
+    }[];
 }
 
 export interface DashboardStats {
