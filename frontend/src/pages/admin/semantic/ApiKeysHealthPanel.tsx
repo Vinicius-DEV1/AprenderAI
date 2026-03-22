@@ -10,6 +10,7 @@ interface ApiKeysHealthPanelProps {
 const ApiKeysHealthPanel: React.FC<ApiKeysHealthPanelProps> = ({ stats, loading }) => {
     const [expandedKey, setExpandedKey] = useState<number | null>(null);
     const [expandedBatch, setExpandedBatch] = useState<string | null>(null);
+    const [expandedGlobalBatch, setExpandedGlobalBatch] = useState<string | null>(null);
     const [displayLimit, setDisplayLimit] = useState(10);
     const keys = stats?.api_keys || [];
     
@@ -256,39 +257,97 @@ const ApiKeysHealthPanel: React.FC<ApiKeysHealthPanelProps> = ({ stats, loading 
                 </table>
             </div>
 
-            {stats.global_recent_logs && stats.global_recent_logs.length > 0 && (
+        {stats.global_recent_logs && stats.global_recent_logs.length > 0 && (
                 <div className="mt-8 border-t border-slate-200 dark:border-slate-700 pt-6 px-6 pb-6 animate-in fade-in duration-500">
                     <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
                         <Activity className="w-4 h-4 text-indigo-500" />
                         Últimas 10 Requisições (Global)
                     </h3>
                     <div className="space-y-2">
-                        {stats.global_recent_logs.map((log) => (
-                            <div key={log.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700/50 gap-3 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                                <div className="flex items-center gap-3">
-                                    <div className={`p-1.5 rounded-md ${log.status === 'success' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20' : 'bg-rose-100 text-rose-600 dark:bg-rose-500/20'}`}>
-                                        {log.status === 'success' ? <Zap className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{log.module}</span>
-                                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide ${log.status === 'success' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'}`}>
-                                                {log.status === 'quota_exceeded' ? 'QUOTA EXCEEDED' : log.status}
-                                            </span>
+                        {stats.global_recent_logs.map((log: any, idx: number) => {
+                            const isBatch = log.count && log.count > 1;
+                            const logKey = `global_${log.id}_${idx}`;
+                            const isLogExpanded = expandedGlobalBatch === logKey;
+
+                            return (
+                                <div key={idx} className="flex flex-col">
+                                    <div 
+                                        onClick={() => log.count ? setExpandedGlobalBatch(isLogExpanded ? null : logKey) : null}
+                                        className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700/50 gap-3 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${log.count ? 'cursor-pointer group' : ''} ${isLogExpanded ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className={`p-1.5 rounded-md ${log.status === 'success' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20' : 'bg-rose-100 text-rose-600 dark:bg-rose-500/20'}`}>
+                                                {log.status === 'success' ? <Zap className={`w-3.5 h-3.5 ${isBatch ? 'animate-pulse' : ''}`} /> : <AlertCircle className="w-3.5 h-3.5" />}
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 capitalize">
+                                                        {isBatch ? `${log.module} (Batch: ${log.count})` : log.module}
+                                                    </span>
+                                                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide ${log.status === 'success' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'}`}>
+                                                        {log.status === 'quota_exceeded' ? 'QUOTA EXCEEDED' : log.status}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] text-slate-400 font-medium">Key: <span className="text-indigo-600 dark:text-indigo-400 font-mono">{log.api_key}</span></span>
+                                                    {log.message && <span className="text-[10px] text-rose-500 font-medium">• {log.message}</span>}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <span className="text-[10px] text-slate-400 font-medium">Key: <span className="text-indigo-600 dark:text-indigo-400 font-mono">{log.api_key}</span></span>
+                                        <div className="flex items-center gap-4 sm:justify-end">
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                                                    {log.tokens > 0 ? `${log.tokens.toLocaleString()} tokens` : '—'}
+                                                </span>
+                                                <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400">
+                                                    {log.latency > 0 ? `${(log.latency * 1000).toFixed(0)}ms` : '—'}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="text-[10px] font-bold text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded shadow-sm border border-slate-100 dark:border-slate-700 text-center min-w-[65px]">
+                                                    {new Date(log.timestamp).toLocaleTimeString('pt-BR')}
+                                                </div>
+                                                {log.count > 0 && (
+                                                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isLogExpanded ? 'rotate-180' : ''}`} />
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
+                                    
+                                    {/* NESTED EXPANSION (PROMPTS/ITEMS) */}
+                                    {isLogExpanded && log.items && (
+                                        <div className="bg-slate-50/50 dark:bg-slate-900/40 px-5 py-4 space-y-4 border border-t-0 border-slate-100 dark:border-slate-700/50 rounded-b-lg -mt-1 animate-in fade-in duration-200">
+                                            {log.items.map((item: any, i: number) => (
+                                                <div key={i} className="space-y-2 border-l-2 border-indigo-200 dark:border-indigo-800 pl-4 py-1">
+                                                    <div className="flex justify-between items-center bg-slate-100/50 dark:bg-slate-800/50 px-2 py-1 rounded">
+                                                        <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">Requisição #{i + 1}</span>
+                                                        <div className="flex gap-2">
+                                                            <span className="text-[9px] font-bold text-slate-400">IN: {item.tokens_in}</span>
+                                                            <span className="text-[9px] font-bold text-slate-400">OUT: {item.tokens_out}</span>
+                                                            <span className="text-[9px] font-bold text-indigo-400">TOTAL: {item.tokens_total}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="space-y-1">
+                                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-1">Prompt Enviado</span>
+                                                            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-300 font-mono leading-relaxed max-h-[150px] overflow-y-auto whitespace-pre-wrap">
+                                                                {item.prompt || <span className="italic opacity-50 text-[10px]">Nenhum prompt disponível</span>}
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-1">Retorno (Raw)</span>
+                                                            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-[11px] text-emerald-600 dark:text-emerald-400 font-mono leading-relaxed max-h-[150px] overflow-y-auto whitespace-pre-wrap">
+                                                                {item.response || <span className="italic opacity-50 text-[10px] text-slate-400 text-center block py-10">Processado com sucesso (sem retorno textual)</span>}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="flex items-center gap-4 sm:justify-end">
-                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                                        {log.latency > 0 ? `${(log.latency * 1000).toFixed(0)}ms` : '—'}
-                                    </span>
-                                    <div className="text-[10px] font-bold text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded shadow-sm border border-slate-100 dark:border-slate-700 text-center min-w-[65px]">
-                                        {new Date(log.timestamp).toLocaleTimeString('pt-BR')}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             )}
