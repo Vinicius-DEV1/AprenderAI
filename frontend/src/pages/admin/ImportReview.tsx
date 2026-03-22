@@ -11,6 +11,7 @@
  * 
  * @module ImportReview
  */
+import React from 'react';
 import { useImportReview } from './import-review/useImportReview';
 import ImportReviewHeader from './import-review/ImportReviewHeader';
 import QuestionMetadata from './import-review/QuestionMetadata';
@@ -32,12 +33,32 @@ const ImportReview = () => {
         cropperEls,
         approveMutation,
         revertMutation,
+        sendToTriageMutation,
         deleteImageMutation,
         handleSaveCrop,
         isComplete,
         getCacheBustedUrl,
         apiUrl
     } = useImportReview();
+
+    // Scroll restoration when returning from edit
+    React.useEffect(() => {
+        if (!isLoading && data?.question) {
+            const returnedFlag = sessionStorage.getItem('import_review_just_returned');
+            if (returnedFlag === 'true') {
+                sessionStorage.removeItem('import_review_just_returned');
+                const savedScrollY = sessionStorage.getItem('import_review_scroll_y');
+                if (savedScrollY) {
+                    setTimeout(() => {
+                        window.scrollTo({
+                            top: parseInt(savedScrollY, 10),
+                            behavior: 'auto'
+                        });
+                    }, 100);
+                }
+            }
+        }
+    }, [isLoading, data]);
 
     if (isLoading) return <div className="p-8">Carregando revisão...</div>;
     if (!data?.question) return <div className="p-8 text-red-500">Questão não encontrada.</div>;
@@ -78,6 +99,7 @@ const ImportReview = () => {
                                     completion={completion}
                                     approveMutation={approveMutation}
                                     revertMutation={revertMutation}
+                                    sendToTriageMutation={sendToTriageMutation}
                                     prevId={prev_id}
                                     nextId={next_id}
                                     navigate={navigate}
@@ -110,6 +132,7 @@ const ImportReview = () => {
                                         completion={completion}
                                         approveMutation={approveMutation}
                                         revertMutation={revertMutation}
+                                        sendToTriageMutation={sendToTriageMutation}
                                         prevId={prev_id}
                                         nextId={next_id}
                                         navigate={navigate}
@@ -124,6 +147,7 @@ const ImportReview = () => {
                                     completion={completion}
                                     approveMutation={approveMutation}
                                     revertMutation={revertMutation}
+                                    sendToTriageMutation={sendToTriageMutation}
                                     prevId={prev_id}
                                     nextId={next_id}
                                     navigate={navigate}
