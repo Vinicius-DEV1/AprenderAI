@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../api/notifications';
+import { toast } from 'react-hot-toast';
 
 interface Notification {
     id: number;
@@ -33,6 +34,35 @@ export default function NotificationBell({ openUpward = false }: Props) {
 
     const notifications: Notification[] = data?.notifications ?? [];
     const unreadCount: number = data?.unread_count ?? 0;
+
+    // Monitor for new grave (warning) notifications to trigger a toast
+    const prevNotifications = useRef<Notification[]>([]);
+    useEffect(() => {
+        if (!data?.notifications) return;
+        
+        const currentIds = new Set(data.notifications.map((n: Notification) => n.id));
+        const prevIds = new Set(prevNotifications.current.map(n => n.id));
+        
+        // Find genuine new notifications (not just unread ones we already toasted for)
+        const newNotifs = data.notifications.filter((n: Notification) => !prevIds.has(n.id) && !n.is_read);
+        
+        newNotifs.forEach((n: Notification) => {
+            if (n.type === 'warning') { // Warning is our internal mapping for SEVERITY_GRAVE
+                toast.error(n.title, {
+                    duration: 6000,
+                    position: 'top-right',
+                    icon: '🚨',
+                    style: {
+                        borderRadius: '10px',
+                        background: '#333',
+                        color: '#fff',
+                    },
+                });
+            }
+        });
+
+        prevNotifications.current = data.notifications;
+    }, [data?.notifications]);
 
     // Update coordinates when opening
     useEffect(() => {
@@ -142,7 +172,7 @@ export default function NotificationBell({ openUpward = false }: Props) {
                                     {typeIcons[n.type]?.icon ?? 'ℹ️'}
                                 </span>
                                 <div className="flex-1 min-w-0">
-                                    <p className={`text-sm font-bold leading-tight ${!n.is_read ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
+                                    <p className={`text-sm font-bold leading-tight ${!n.is_read ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'} ${n.type === 'warning' ? 'text-red-600 dark:text-red-400' : ''}`}>
                                         {n.title}
                                     </p>
                                     {n.body && (

@@ -79,12 +79,17 @@ class CheckoutTrackingService
             if ($intention) {
                 $user = \App\Models\User::find($userId);
                 $plan = \App\Models\Plan::find($planId);
-                \App\Models\UserNotification::notifyAdmins(
-                    '🛒 Intenção de Compra — ' . ($user?->name ?? 'Usuário'),
-                    'Plano ' . ($plan?->name ?? 'N/A') . ' • R$ ' . number_format($planAmount, 2, ',', '.'),
-                    'info',
-                    '/admin/analytics/checkout'
-                );
+                
+                try {
+                    app(\App\Services\AdminNotificationService::class)->notify(
+                        \App\Services\AdminNotificationService::SEVERITY_LEVE, // Leve for intention, just informational
+                        '🛒 Nova Intenção de Compra',
+                        ($user?->name ?? 'Usuário') . ' iniciou checkout do Plano ' . ($plan?->name ?? 'N/A') . ' (R$ ' . number_format($planAmount, 2, ',', '.') . ')',
+                        "intention_{$userId}_{$planId}",
+                        60, // deduce same user/plan clicks for 60m
+                        '/admin/analytics/checkout'
+                    );
+                } catch (\Throwable $t) {}
             }
 
             return $intention;
@@ -190,12 +195,17 @@ class CheckoutTrackingService
 
             // Notify admins of checkout errors
             $user = \App\Models\User::find($userId);
-            \App\Models\UserNotification::notifyAdmins(
-                '⚠️ Erro no Checkout — ' . ($user?->name ?? 'Usuário'),
-                substr($errorMessage, 0, 120),
-                'warning',
-                '/admin/analytics/checkout'
-            );
+            try {
+                $dedupKey = "checkout_err_{$errorType}_" . md5($errorMessage);
+                app(\App\Services\AdminNotificationService::class)->notify(
+                    \App\Services\AdminNotificationService::SEVERITY_GRAVE, // Grave or Medio depending on business, but checkout errors are critical
+                    '⚠️ Erro no Checkout — ' . ($user?->name ?? 'Usuário Anônimo'),
+                    substr($errorMessage, 0, 120),
+                    $dedupKey,
+                    60, 
+                    '/admin/checkout/errors'
+                );
+            } catch (\Throwable $t) {}
         } catch (\Throwable $e) {
             Log::warning('[CheckoutTracking] Failed to track error', [
                 'error_type' => $errorType,
