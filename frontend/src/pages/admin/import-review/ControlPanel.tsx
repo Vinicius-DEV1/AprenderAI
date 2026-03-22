@@ -99,30 +99,29 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
           >
             ✏️ Editar Questão
           </Link>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => revertMutation.mutate()}
-              disabled={revertMutation.isPending}
-              className="w-full px-3 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-bold text-[11px] flex flex-col items-center justify-center gap-1 shadow-sm transition-all active:scale-[0.98]"
-            >
-              <svg className="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-              </svg>
-              <span>Retornar p/ Revisão</span>
-            </button>
-            <button
-              onClick={() => sendToTriageMutation.mutate()}
-              disabled={sendToTriageMutation.isPending}
-              className="w-full px-3 py-3 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700 font-bold text-[11px] flex flex-col items-center justify-center gap-1 shadow-sm transition-all active:scale-[0.98]"
-            >
-              <span className="text-lg leading-none">🤖</span>
-              <span>Re-enviar p/ IA</span>
-            </button>
-          </div>
+          <button
+            onClick={() => revertMutation.mutate()}
+            disabled={revertMutation.isPending}
+            className="w-full px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]"
+          >
+            <svg className="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+            <span>Retornar p/ Revisão</span>
+          </button>
         </div>
       )}
 
       {isPending && (
+        <div className="space-y-2">
+          <button
+            onClick={() => sendToTriageMutation.mutate()}
+            disabled={sendToTriageMutation.isPending}
+            className="w-full px-4 py-3 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700 font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]"
+          >
+            <span className="text-lg leading-none">🤖</span>
+            Retornar para triagem de IA
+          </button>
           <div className="grid grid-cols-2 gap-2">
             <Link
               to={`/admin/questions/${question.id}/edit`}
@@ -133,11 +132,12 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
             </Link>
             <Link
               to={`/admin/import/review?${searchParams.toString()}`}
-              className="px-3 py-2 bg-gray-50 text-gray-500 rounded-lg text-[11px] font-semibold text-center hover:bg-gray-100 transition-colors"
+              className="px-3 py-2 bg-gray-50 text-gray-500 rounded-lg text-[11px] font-semibold text-center flex items-center justify-center hover:bg-gray-100 transition-colors"
             >
               ⬅️ Sair
             </Link>
           </div>
+        </div>
       )}
 
       {/* Navigation Buttons */}
