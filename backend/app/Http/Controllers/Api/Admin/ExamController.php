@@ -161,7 +161,7 @@ class ExamController extends Controller
      */
     public function show(Request $request, $id)
     {
-        $examId = base64_decode($id);
+        $examId = ($id === 'null') ? null : base64_decode($id);
 
         $query = Question::with([
             'alternatives',
@@ -173,7 +173,7 @@ class ExamController extends Controller
             }
         ]);
 
-        if (!empty($examId) && $examId !== 'null') {
+        if (!empty($examId)) {
             $query->where('arquivo_origem', $examId);
         } else {
             $query->whereNull('arquivo_origem');
