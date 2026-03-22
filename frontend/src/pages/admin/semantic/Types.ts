@@ -37,7 +37,17 @@ export interface ApiLogEntry {
     }[];
 }
 
+export interface GlobalLogItem {
+    id: string;
+    timestamp: string;
+    api_key: string;
+    status: string;
+    latency: number;
+    module: string;
+}
+
 export interface DashboardStats {
+    global_recent_logs?: GlobalLogItem[];
     overview: {
         mysql_published_questions: number;
         mysql_indexed_questions: number;

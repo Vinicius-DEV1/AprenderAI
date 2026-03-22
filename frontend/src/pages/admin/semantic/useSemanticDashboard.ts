@@ -165,7 +165,7 @@ export const useSemanticDashboard = () => {
             if (!isBusyRef.current) {
                 loadStats(false);
             }
-        }, 10000);
+        }, 30000);
 
         /**
          * Click outside listener for the Actions Menu

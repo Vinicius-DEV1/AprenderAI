@@ -99,7 +99,7 @@ const ApiKeysHealthPanel: React.FC<ApiKeysHealthPanelProps> = ({ stats, loading 
                                     </td>
                                     <td className="px-6 py-5">
                                         <div className="flex flex-wrap justify-center gap-1">
-                                            {apiKey.capabilities.map((cap, i) => (
+                                            {(apiKey.capabilities || []).map((cap, i) => (
                                                 <span key={i} className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[9px] font-bold rounded-md border border-slate-200/50 dark:border-slate-700">
                                                     {cap}
                                                 </span>
@@ -108,12 +108,12 @@ const ApiKeysHealthPanel: React.FC<ApiKeysHealthPanelProps> = ({ stats, loading 
                                     </td>
                                     <td className="px-6 py-5 text-center">
                                         <div className="inline-flex flex-col items-center">
-                                            <span className="text-sm font-black text-slate-700 dark:text-slate-200">{apiKey.today_requests || 0}</span>
+                                            <span className="text-sm font-black text-slate-700 dark:text-slate-200">{apiKey.requests_today || 0}</span>
                                             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">REQ</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-5 text-center">
-                                        {apiKey.quota_exceeded_count > 0 ? (
+                                        {(apiKey.quota_exceeded_count || 0) > 0 ? (
                                             <div className="inline-flex flex-col items-center group/quota">
                                                 <span className="text-sm font-black text-rose-500 group-hover:scale-125 transition-transform">{apiKey.quota_exceeded_count}</span>
                                                 <span className="text-[9px] text-rose-400 font-bold uppercase tracking-tighter">FALHAS</span>
@@ -255,6 +255,43 @@ const ApiKeysHealthPanel: React.FC<ApiKeysHealthPanelProps> = ({ stats, loading 
                     </tbody>
                 </table>
             </div>
+
+            {stats.global_recent_logs && stats.global_recent_logs.length > 0 && (
+                <div className="mt-8 border-t border-slate-200 dark:border-slate-700 pt-6 px-6 pb-6 animate-in fade-in duration-500">
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-indigo-500" />
+                        Últimas 10 Requisições (Global)
+                    </h3>
+                    <div className="space-y-2">
+                        {stats.global_recent_logs.map((log) => (
+                            <div key={log.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700/50 gap-3 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-1.5 rounded-md ${log.status === 'success' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20' : 'bg-rose-100 text-rose-600 dark:bg-rose-500/20'}`}>
+                                        {log.status === 'success' ? <Zap className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{log.module}</span>
+                                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide ${log.status === 'success' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'}`}>
+                                                {log.status === 'quota_exceeded' ? 'QUOTA EXCEEDED' : log.status}
+                                            </span>
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 font-medium">Key: <span className="text-indigo-600 dark:text-indigo-400 font-mono">{log.api_key}</span></span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4 sm:justify-end">
+                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                        {log.latency > 0 ? `${(log.latency * 1000).toFixed(0)}ms` : '—'}
+                                    </span>
+                                    <div className="text-[10px] font-bold text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded shadow-sm border border-slate-100 dark:border-slate-700 text-center min-w-[65px]">
+                                        {new Date(log.timestamp).toLocaleTimeString('pt-BR')}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

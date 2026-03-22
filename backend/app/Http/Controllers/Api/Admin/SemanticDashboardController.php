@@ -171,10 +171,11 @@ class SemanticDashboardController extends Controller
         $conceptsVersionCheck  = $qdrant->checkIndexVersion(config('xavier.qdrant.collections.concepts'), $currentPipeline);
 
         // 8. API Keys Health
-        $todayRequests = \App\Models\AiRequestLog::whereDate('created_at', Carbon::today())
+        $todayRequests = \App\Models\AiRequestLog::where('created_at', '>=', now()->startOfDay())
             ->select('api_key_id', DB::raw('count(*) as total'))
             ->groupBy('api_key_id')
-            ->pluck('total', 'api_key_id');
+            ->pluck('total', 'api_key_id')
+            ->toArray();
 
         $quotaErrors = \App\Models\ApiLog::where(function($q) {
                 $q->where('status_code', 429)->orWhere('message', 'like', '%quota%');
@@ -271,7 +272,49 @@ class SemanticDashboardController extends Controller
                 ];
             });
 
+        $globalAiLogs = \App\Models\AiRequestLog::with('apiKey')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function($log) {
+                return [
+                    'id' => 'req_' . $log->id,
+                    'timestamp' => $log->created_at->toIso8601String(),
+                    'api_key'   => $log->apiKey ? ($log->apiKey->provider . ' (' . substr($log->apiKey->key, 0, 4) . '...)') : 'Unknown',
+                    'status'    => 'success',
+                    'latency'   => $log->execution_time,
+                    'module'    => $log->module,
+                    'created_at_raw' => $log->created_at,
+                ];
+            });
+
+        $globalErrorLogs = \App\Models\ApiLog::with('apiKey')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function($log) {
+                return [
+                    'id' => 'err_' . $log->id,
+                    'timestamp' => $log->created_at->toIso8601String(),
+                    'api_key'   => $log->apiKey ? ($log->apiKey->provider . ' (' . substr($log->apiKey->key, 0, 4) . '...)') : 'Unknown',
+                    'status'    => $log->status_code == 429 ? 'quota_exceeded' : 'error',
+                    'latency'   => 0,
+                    'module'    => 'System',
+                    'created_at_raw' => $log->created_at,
+                ];
+            });
+
+        $globalRecentLogs = $globalAiLogs->concat($globalErrorLogs)
+            ->sortByDesc('created_at_raw')
+            ->take(10)
+            ->values()
+            ->map(function($item) {
+                unset($item['created_at_raw']);
+                return $item;
+            });
+
         return response()->json([
+            'global_recent_logs' => $globalRecentLogs,
             'overview' => [
                 'mysql_published_questions' => $totalQuestions,
                 'mysql_indexed_questions'   => $indexedQuestions,
