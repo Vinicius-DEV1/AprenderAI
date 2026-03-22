@@ -27,6 +27,7 @@ class EnemImportController extends Controller
             'id',
             'year',
             'inserted_count',
+            'updated_count',
             'ignored_count',
             'error_count',
             'status',

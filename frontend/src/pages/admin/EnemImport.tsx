@@ -244,6 +244,7 @@ export default function EnemImport() {
                                         <th className="px-6 py-4">Iniciado Em</th>
                                         <th className="px-6 py-4">Alvo</th>
                                         <th className="px-6 py-4">Inseridas</th>
+                                        <th className="px-6 py-4">Atualizadas</th>
                                         <th className="px-6 py-4">Ignoradas</th>
                                         <th className="px-6 py-4">Erros</th>
                                         <th className="px-6 py-4">Status</th>
@@ -256,6 +257,9 @@ export default function EnemImport() {
                                             <td className="px-6 py-4 font-black text-xs text-slate-800 dark:text-slate-200">{log.year === 0 ? 'COMPLETO' : `ANO ${log.year}`}</td>
                                             <td className="px-6 py-4">
                                                 <span className="text-emerald-600 font-black">+{log.inserted_count}</span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-blue-600 font-black">+{log.updated_count || 0}</span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
