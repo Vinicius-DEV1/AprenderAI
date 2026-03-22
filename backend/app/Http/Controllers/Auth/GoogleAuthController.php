@@ -59,6 +59,14 @@ class GoogleAuthController extends Controller
             session(['intended_plan' => request('plan')]);
         }
 
+        // Persist UTM parameters to session for use after Google callback
+        $utmParams = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
+        foreach ($utmParams as $param) {
+            if (request()->has($param)) {
+                session([$param => request($param)]);
+            }
+        }
+
         return Socialite::driver('google')->redirect();
     }
 
@@ -100,14 +108,22 @@ class GoogleAuthController extends Controller
         // 3. If still not found, create new user
         if (!$user) {
             $isNewUser = true;
-            $user = User::create([
+
+            // Retrieve and clear UTM parameters from session
+            $utmData = [];
+            $utmParams = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
+            foreach ($utmParams as $param) {
+                $utmData[$param] = session()->pull($param, null);
+            }
+
+            $user = User::create(array_merge([
                 'name' => $googleUser->getName(),
                 'email' => $googleUser->getEmail(),
                 'google_id' => $googleUser->getId(),
                 'avatar_url' => $googleUser->getAvatar(),
                 'password' => bcrypt(str()->random(16)),
                 'email_verified_at' => now(),
-            ]);
+            ], $utmData));
 
             // Assign free plan by default
             try {
