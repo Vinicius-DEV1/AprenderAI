@@ -69,10 +69,9 @@ class MonitorController extends Controller
         };
 
         // Jobs Ativos/Pendentes (da tabela 'jobs')
-        // Obs: Em produção de alta demanda, deve-se limitar o número de registros
         $jobs = \Illuminate\Support\Facades\DB::table('jobs')
-            ->orderBy('id', 'asc')
-            ->limit(100)
+            ->orderBy('id', 'asc') // Keep oldest first as requested
+            ->limit(200) // Increased limit for better visibility
             ->get()
             ->map(function ($job) use ($payloadToClassName) {
                 return [
@@ -147,6 +146,7 @@ class MonitorController extends Controller
             'jobs' => $jobs,
             'failed' => $failedJobs,
             'completed' => $allCompleted,
+            'recent_completed' => app(\App\Services\QueueTrackerService::class)->getRecentCompletedJobs(),
         ]);
     }
 }
