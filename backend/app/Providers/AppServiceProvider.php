@@ -33,30 +33,35 @@ class AppServiceProvider extends ServiceProvider
         Question::observe(QuestionObserver::class);
 
         // --- Monitoramento de Workers (Performance em Tempo Real) ---
-        $startTime = 0;
-
-        \Illuminate\Support\Facades\Queue::before(function (\Illuminate\Queue\Events\JobProcessing $event) use (&$startTime) {
-            $startTime = microtime(true);
+        \Illuminate\Support\Facades\Queue::before(function (\Illuminate\Queue\Events\JobProcessing $event) {
+            // Usa o ID do job (persistente) para salvar o início no cache por 10 minutos
+            $jobId = $event->job->getJobId();
+            \Illuminate\Support\Facades\Cache::put("job_start:{$jobId}", microtime(true), 600);
         });
 
-        \Illuminate\Support\Facades\Queue::after(function (\Illuminate\Queue\Events\JobProcessed $event) use (&$startTime) {
-            $duration = microtime(true) - $startTime;
-            $queue = $event->job->getQueue();
-
-            $tracker = app(\App\Services\QueueTrackerService::class);
+        \Illuminate\Support\Facades\Queue::after(function (\Illuminate\Queue\Events\JobProcessed $event) {
+            $jobId = $event->job->getJobId();
+            $startTime = \Illuminate\Support\Facades\Cache::pull("job_start:{$jobId}");
             
-            // 1. Registra métrica agregada (throughput/avg duration)
-            $tracker->recordJob($queue, $duration);
+            if ($startTime) {
+                $duration = microtime(true) - $startTime;
+                $queue = $event->job->getQueue();
+                $jobName = $event->job->resolveName();
 
-            // 2. Registra job individual para o monitor
-            $tracker->recordCompletedJob(
-                $event->job->resolveName(),
-                $queue,
-                $duration
-            );
+                // Registra métricas e log de sucesso
+                $tracker = app(\App\Services\QueueTrackerService::class);
+                $tracker->recordJob($queue, $duration);
+                $tracker->recordCompletedJob($jobName, $queue, $duration);
+                
+                \Illuminate\Support\Facades\Log::info("[Monitor] Job Processado: {$jobName} na fila {$queue} ({$duration}s)");
+            }
         });
 
         \Illuminate\Support\Facades\Queue::failing(function (\Illuminate\Queue\Events\JobFailed $event) {
+            $jobId = $event->job->getJobId();
+            \Illuminate\Support\Facades\Cache::forget("job_start:{$jobId}");
+            
+            \Illuminate\Support\Facades\Log::error("[Monitor] Job FALHOU: " . $event->job->resolveName());
             // Opcional: registrar falhas específicas no tracker se necessário
             
             // Notify admins of the failing job
