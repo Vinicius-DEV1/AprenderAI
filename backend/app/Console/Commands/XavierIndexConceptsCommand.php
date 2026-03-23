@@ -29,7 +29,9 @@ class XavierIndexConceptsCommand extends Command
 
     public function handle(QdrantService $qdrant): int
     {
-        $this->info('🚀 Xavier Semantic Search — Entity Indexer');
+        $pid = getmypid();
+        $this->info("🚀 Xavier Semantic Search — Entity Indexer (PID: {$pid})");
+        Log::info("[Xavier][CommandConcepts] START | PID: {$pid}");
         $this->newLine();
 
         $this->info('📦 Garantindo que a coleção de conceitos existe no Qdrant...');
@@ -64,6 +66,7 @@ class XavierIndexConceptsCommand extends Command
 
         $this->newLine();
         $this->info('✅ Todos os jobs de indexação foram disparados com sucesso.');
+        Log::info("[Xavier][CommandConcepts] END | PID: {$pid}");
         return 0;
     }
 

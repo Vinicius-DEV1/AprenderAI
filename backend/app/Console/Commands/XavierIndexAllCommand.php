@@ -33,7 +33,9 @@ class XavierIndexAllCommand extends Command
 
     public function handle(QdrantService $qdrant): int
     {
-        $this->info('🚀 Xavier Semantic Search — Batch Indexer');
+        $pid = getmypid();
+        $this->info("🚀 Xavier Semantic Search — Batch Indexer (PID: {$pid})");
+        Log::info("[Xavier][CommandAll] START | PID: {$pid}");
         $this->newLine();
 
         // Ensure Qdrant collections exist (or recreate if --fresh)
@@ -88,17 +90,20 @@ class XavierIndexAllCommand extends Command
                 })
                 ->select('id')
                 ->cursor(),
-            function ($question) use ($isSync, &$indexed, &$failed) {
+            function ($question) use ($isSync, &$indexed, &$failed, $pid) {
                 try {
                     $job = new IndexQuestionVectorJob($question->id);
                     
                     if ($isSync) {
                         dispatch_sync($job);
                     } else {
-                        // Dispatches to the configured prioritized queue (default: 'low')
-                        dispatch($job)->onQueue(config('xavier.embeddings.queue', 'low'));
+                        dispatch($job)->onQueue(config('xavier.embeddings.queue', 'embeddings')); // Fixed queue name to match batching
                     }
                     $indexed++;
+
+                    if ($indexed % 100 === 0) {
+                        Log::debug("[Xavier][CommandAll] Progress: {$indexed} dispatched...");
+                    }
                 } catch (\Exception $e) {
                     $failed++;
                     Log::error("[Xavier:index-all] Failed for question #{$question->id}: " . $e->getMessage());
@@ -127,6 +132,7 @@ class XavierIndexAllCommand extends Command
             $this->line("   Hybrid workers will process this as a background task.");
         }
 
+        Log::info("[Xavier][CommandAll] END | Dispatched: {$indexed} | Failed: {$failed}");
         return 0;
     }
 }
