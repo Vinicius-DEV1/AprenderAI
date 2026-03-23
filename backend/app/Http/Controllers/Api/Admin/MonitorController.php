@@ -142,11 +142,17 @@ class MonitorController extends Controller
             ->take(30)
             ->values();
 
-        return response()->json([
+        $response = [
             'jobs' => $jobs,
             'failed' => $failedJobs,
             'completed' => $allCompleted,
             'recent_completed' => app(\App\Services\QueueTrackerService::class)->getRecentCompletedJobs(),
-        ]);
+        ];
+
+        \Illuminate\Support\Facades\Log::debug("[Monitor] API Queues Fetch: " . 
+            count($jobs) . " pendentes, " . 
+            count($response['recent_completed']) . " concluídos recentes.");
+
+        return response()->json($response);
     }
 }
