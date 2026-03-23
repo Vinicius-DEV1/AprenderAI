@@ -70,8 +70,8 @@ class MonitorController extends Controller
 
         // Jobs Ativos/Pendentes (da tabela 'jobs')
         $jobs = \Illuminate\Support\Facades\DB::table('jobs')
-            ->orderBy('id', 'asc') // Keep oldest first as requested
-            ->limit(200) // Increased limit for better visibility
+            ->orderBy('id', 'asc')
+            ->limit(500)
             ->get()
             ->map(function ($job) use ($payloadToClassName) {
                 return [
@@ -80,9 +80,20 @@ class MonitorController extends Controller
                     'name' => $payloadToClassName($job->payload),
                     'attempts' => $job->attempts,
                     'is_processing' => $job->reserved_at !== null,
+                    'reserved_at' => $job->reserved_at ? \Carbon\Carbon::createFromTimestamp($job->reserved_at)->toIso8601String() : null,
+                    'available_at' => \Carbon\Carbon::createFromTimestamp($job->available_at)->toIso8601String(),
                     'created_at' => \Carbon\Carbon::createFromTimestamp($job->created_at)->toIso8601String(),
                 ];
             });
+
+        // Queue Summary (Counts)
+        $queueSummary = \Illuminate\Support\Facades\DB::table('jobs')
+            ->select('queue', 
+                \Illuminate\Support\Facades\DB::raw('count(*) as total'),
+                \Illuminate\Support\Facades\DB::raw('count(reserved_at) as processing')
+            )
+            ->groupBy('queue')
+            ->get();
 
         // Jobs Falhados (da tabela 'failed_jobs')
         $failedJobs = \Illuminate\Support\Facades\DB::table('failed_jobs')
@@ -144,6 +155,7 @@ class MonitorController extends Controller
 
         $response = [
             'jobs' => $jobs,
+            'summary' => $queueSummary,
             'failed' => $failedJobs,
             'completed' => $allCompleted,
             'recent_completed' => app(\App\Services\QueueTrackerService::class)->getRecentCompletedJobs(),

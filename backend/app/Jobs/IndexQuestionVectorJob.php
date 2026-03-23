@@ -47,8 +47,12 @@ class IndexQuestionVectorJob implements ShouldQueue
     public function handle(
         AIService             $aiService,
         EmbeddingTextBuilder  $textBuilder,
-        QdrantService         $qdrant
+        QdrantService         $qdrant // Keep QdrantService in handle signature for dependency injection
     ): void {
+        $pid = getmypid();
+        $jobId = $this->job->getJobId();
+        Log::info("[Xavier][JobStart] ID: {$jobId} | Question: {$this->questionId} | PID: {$pid}");
+
         /** @var Question|null $question */
         $question = Question::with(['subjects', 'topics', 'concepts', 'alternatives'])
             ->find($this->questionId);
@@ -139,26 +143,24 @@ class IndexQuestionVectorJob implements ShouldQueue
             Log::debug("[Xavier][IndexQuestion] #{$this->questionId} batch embeddings: OK");
 
         } catch (\App\Exceptions\AIServiceBusyException $e) {
-            Log::info("[IndexQuestionVectorJob] AI Key pool busy for question #{$this->questionId}. Releasing for 30s backoff.");
+            $isQuota = str_contains(strtolower($e->getMessage()), 'quota');
+            $delay = $isQuota ? 300 : 30;
+            Log::warning("[Xavier][JobRelease] ID: {$jobId} | Delay: {$delay}s | Reason: " . ($isQuota ? "Quota Pool" : "Busy Pool"));
             $aiService->registerCongestion('IndexQuestionVectorJob', $this->questionId);
-            $this->release(30);
+            $this->release($delay);
             return;
         } catch (\Exception $e) {
             $msg = $e->getMessage();
             
-            $isQuota = str_contains(strtolower($msg), '429') || 
-                       str_contains(strtolower($msg), 'quota') || 
-                       str_contains(strtolower($msg), 'full failover failure');
-
-            if ($isQuota) {
-                Log::warning("[IndexQuestionVectorJob] Quota limit hit for #{$this->questionId}. Releasing for 5m. Error: {$msg}");
+            if ($aiService->isQuotaExceededError($e)) {
+                Log::warning("[Xavier][JobRelease] ID: {$jobId} | Delay: 300s | Reason: Direct Quota 429");
                 $aiService->registerCongestion('IndexQuestionVectorJob', $this->questionId);
                 $this->release(300);
                 return;
             }
 
-            Log::error("[IndexQuestionVectorJob] Permanent error indexing question #{$this->questionId}: " . $msg);
-            $this->fail($e);
+            Log::error("[Xavier][JobError] ID: {$jobId} | Question: {$this->questionId} | Error: " . $e->getMessage());
+            throw $e;
         }
 
 

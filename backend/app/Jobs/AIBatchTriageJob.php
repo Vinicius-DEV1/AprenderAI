@@ -79,7 +79,11 @@ class AIBatchTriageJob implements ShouldQueue
         try {
             // Circuit Breaker: If no API keys are available for triage, release the job back to the queue
             // to wait for quota reset or manual intervention, preventing mass failures.
-            $aiService = app(\App\Services\AI\AIService::class);
+            $pid = getmypid();
+        $jobId = $this->job->getJobId();
+        Log::info("[Xavier][BatchStart] ID: {$jobId} | Batch: {$this->batchId} | PID: {$pid} | Count: " . count($this->questionIds));
+        
+        $aiService = app(\App\Services\AI\AIService::class);
             if (!$aiService->hasActiveKey(\App\Models\ApiKey::CAPABILITY_TRIAGE)) {
                 Log::info("[AIBATCH] No active keys for triage. Releasing batch #{$this->batchId} chunk #{$this->chunkIndex} to retry in 5 minutes.");
                 $this->release(300); // 5 minutes backoff
@@ -368,19 +372,22 @@ class AIBatchTriageJob implements ShouldQueue
                             'type' => 'partial'
                         ];
                     }
-                    $dbBatch->update(['errors_log' => $existingLogs]);
+                $dbBatch->update(['errors_log' => $existingLogs]);
                 }
             }
         } catch (\App\Exceptions\AIServiceBusyException $e) {
             $isQuota = str_contains(strtolower($e->getMessage()), 'quota');
-            \Illuminate\Support\Facades\Log::warning("[Xavier][AIBatchTriage] " . ($isQuota ? "Quota limite atingida em todas as chaves." : "Pool de IA ocupado.") . " Re-agendando em " . ($isQuota ? "5 min" : "30s"));
-            $this->release($isQuota ? 300 : 30);
+            $delay = $isQuota ? 300 : 30;
+            \Illuminate\Support\Facades\Log::warning("[Xavier][BatchRelease] ID: {$this->job->getJobId()} | Delay: {$delay}s | Reason: " . ($isQuota ? "Quota Pool" : "Busy Pool"));
+            $this->release($delay);
             return;
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("[AIBATCH] Failed to update progress: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("[Xavier][BatchError] ID: {$this->job->getJobId()} | Batch: {$this->batchId} | Error: " . $e->getMessage());
+            throw $e;
         } finally {
             $lock->release();
         }
+        \Illuminate\Support\Facades\Log::info("[Xavier][BatchEnd] ID: {$this->job->getJobId()} | Batch: {$this->batchId}");
     }
 
     /**
