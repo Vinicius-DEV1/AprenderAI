@@ -162,9 +162,12 @@ class SemanticDashboardController extends Controller
                 ];
             });
 
-        // 8. Checar versão do Índice do Qdrant (Garante que as coleções existem antes)
-        $qdrant->ensureQuestionsCollection();
-        $qdrant->ensureConceptsCollection();
+        // 8. Checar versão do Índice do Qdrant (Cachado para evitar spam nos logs)
+        \Illuminate\Support\Facades\Cache::remember('qdrant_collections_ensured', 3600, function() use ($qdrant) {
+            $qdrant->ensureQuestionsCollection();
+            $qdrant->ensureConceptsCollection();
+            return true;
+        });
         
         $currentPipeline = config('xavier.embeddings.pipeline_version', 'v7_lexical_analyser');
         $questionsVersionCheck = $qdrant->checkIndexVersion(config('xavier.qdrant.collections.questions'), $currentPipeline);

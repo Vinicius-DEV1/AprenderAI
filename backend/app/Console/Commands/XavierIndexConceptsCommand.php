@@ -29,44 +29,49 @@ class XavierIndexConceptsCommand extends Command
 
     public function handle(QdrantService $qdrant): int
     {
-        $pid = getmypid();
-        $this->info("🚀 Xavier Semantic Search — Entity Indexer (PID: {$pid})");
-        Log::info("[Xavier][CommandConcepts] START | PID: {$pid}");
-        $this->newLine();
+        try {
+            $pid = getmypid();
+            $this->info("🚀 Xavier Semantic Search — Entity Indexer (PID: {$pid})");
+            Log::info("[Xavier][CommandConcepts] START | PID: {$pid}");
+            $this->newLine();
 
-        $this->info('📦 Garantindo que a coleção de conceitos existe no Qdrant...');
-        $qdrant->ensureConceptsCollection();
-        $this->info('  ✓ Coleção pronta.');
-        $this->newLine();
+            $this->info('📦 Garantindo que a coleção de conceitos existe no Qdrant...');
+            $qdrant->ensureConceptsCollection();
+            $this->info('  ✓ Coleção pronta.');
+            $this->newLine();
 
-        $isSync = (bool) $this->option('sync');
-        $mode = $isSync ? 'síncrono (bloqueante)' : 'assíncrono (fila: embeddings)';
-        $limit = $this->option('limit') ? (int) $this->option('limit') : null;
+            $isSync = (bool) $this->option('sync');
+            $mode = $isSync ? 'síncrono (bloqueante)' : 'assíncrono (fila: embeddings)';
+            $limit = $this->option('limit') ? (int) $this->option('limit') : null;
 
-        $this->info("📋 Modo: {$mode}");
-        if ($limit) {
-            $this->info("🔢 Limite: {$limit} entidades POR CATEGORIA.");
+            $this->info("📋 Modo: {$mode}");
+            if ($limit) {
+                $this->info("🔢 Limite: {$limit} entidades POR CATEGORIA.");
+            }
+            $this->newLine();
+
+            // 1. Indexas as Disciplinas como "Âncoras" primárias de busca
+            $this->indexEntityType(Subject::class, 'subject', $isSync, $limit);
+
+            // 2. Indexa os Tópicos (Assuntos)
+            $this->indexEntityType(Topic::class, 'topic', $isSync, $limit);
+
+            // 3. Indexa os Conceitos Atômicos (para expansão e recall granular)
+            $this->indexEntityType(Concept::class, 'concept', $isSync, $limit);
+
+            // 4. Indexa Bancas (Organizations) extraídas das questões
+            $this->indexUniqueMetadata('organization', 'organization', $isSync, $limit);
+
+            // 5. Indexa Órgãos (Institutions) extraídos das questões
+            $this->indexUniqueMetadata('institution', 'institution', $isSync, $limit);
+
+            $this->newLine();
+            $this->info('✅ Todos os jobs de indexação foram disparados com sucesso.');
+            Log::info("[Xavier][CommandConcepts] END | PID: {$pid}");
+        } catch (\Exception $e) {
+            Log::error("[Xavier][CommandConcepts] FATAL ERROR | PID: " . (getmypid()) . " | " . $e->getMessage());
+            throw $e;
         }
-        $this->newLine();
-
-        // 1. Indexas as Disciplinas como "Âncoras" primárias de busca
-        $this->indexEntityType(Subject::class, 'subject', $isSync, $limit);
-
-        // 2. Indexa os Tópicos (Assuntos)
-        $this->indexEntityType(Topic::class, 'topic', $isSync, $limit);
-
-        // 3. Indexa os Conceitos Atômicos (para expansão e recall granular)
-        $this->indexEntityType(Concept::class, 'concept', $isSync, $limit);
-
-        // 4. Indexa Bancas (Organizations) extraídas das questões
-        $this->indexUniqueMetadata('organization', 'organization', $isSync, $limit);
-
-        // 5. Indexa Órgãos (Institutions) extraídos das questões
-        $this->indexUniqueMetadata('institution', 'institution', $isSync, $limit);
-
-        $this->newLine();
-        $this->info('✅ Todos os jobs de indexação foram disparados com sucesso.');
-        Log::info("[Xavier][CommandConcepts] END | PID: {$pid}");
         return 0;
     }
 
