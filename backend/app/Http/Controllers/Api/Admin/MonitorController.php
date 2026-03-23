@@ -147,6 +147,7 @@ class MonitorController extends Controller
             'failed' => $failedJobs,
             'completed' => $allCompleted,
             'recent_completed' => app(\App\Services\QueueTrackerService::class)->getRecentCompletedJobs(),
+            'congestion' => app(\App\Services\AI\AIService::class)->getCongestionList(),
         ];
 
         \Illuminate\Support\Facades\Log::debug("[Monitor] API Queues Fetch: " . 
