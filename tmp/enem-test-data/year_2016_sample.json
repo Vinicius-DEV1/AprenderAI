@@ -1,0 +1,440 @@
+{
+  "year": 2016,
+  "total": 185,
+  "sample": [
+    {
+      "title": "Questão 1 - ENEM 2016",
+      "index": 1,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2016,
+      "context": "Sentimos que toda satisfação de nossos desejos advinda do mundo assemelha-se à esmola que mantém hoje o mendigo vivo, porém prolonga amanhã a sua fome. A resignação, ao contrário, assemelha-se à fortuna herdada: livra o herdeiro para sempre de todas as preocupações.\n\nSCHOPENHAUER, A. **Aforismo para a sabedoria da vida.** São Paulo: Martins Fontes, 2005.",
+      "files": [],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "O trecho destaca uma ideia remanescente de uma tradição filosófica ocidental, segundo a qual a felicidade se mostra indissociavelmente ligada à",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Consagração de relacionamentos afetivos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Administração da independência interior.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Fugacidade do conhecimento empírico.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Liberdade de expressão religiosa.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Busca de prazeres efêmeros.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 2 - ENEM 2016",
+      "index": 2,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2016,
+      "context": "Batizado por Tancredo Neves de “Nova República”, o período que marca o reencontro do Brasil com os governos civis e a democracia ainda não completou seu quinto ano e já viveu dias de grande comoção. Começou com a tragédia de Tancredo, seguiu pela euforia do Plano Cruzado, conheceu as depressões da inflação e das ameaças da hiperinflação e desembocou na movimentação que antecede as primeiras eleições diretas para presidente em 29 anos.\n\nO álbum dos presidentes: a história vista pelo JB. **Jornal do Brasil**, 15 nov. 1989.",
+      "files": [],
+      "correctAlternative": "C",
+      "alternativesIntroduction": "O período descrito apresenta continuidades e rupturas em relação à conjuntura histórica anterior. Uma dessas continuidades consistiu na",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Representação do legislativo com a fórmula do bipartidarismo.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Detenção de lideranças populares por crimes de Subversão.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Presença de políticos com trajetórias no regime autoritário.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "D",
+          "text": "Prorrogação das restrições advindas dos atos institucionais.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Estabilidade da economia com o congelamento anual de preços.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 3 - ENEM 2016",
+      "index": 3,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2016,
+      "context": "![](https://enem.dev/2016/questions/3/812288c1-3e37-4369-914a-057525abd52e.png)\n\nOs moradores de Andalsnes, na Noruega, poderiam se dar ao luxo de morar perto do trabalho nos dias úteis e de se refugiar na calmaria do bosque aos fins de semana. E sem sair da mesma casa. Bastaria achar uma vaga para estacionar o imóvel antes de curtir o novo endereço.\n\nDisponível em: http://casavogue.globo.com. Acesso em 3 out 2015 (adaptado)",
+      "files": [
+        "https://enem.dev/2016/questions/3/812288c1-3e37-4369-914a-057525abd52e.png"
+      ],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "Uma vez implementada, essa proposta afetaria a dinâmica do espaço urbano por reduzir a intensidade do seguinte processo:",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Êxodo rural.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Movimento pendular.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Migração de retorno.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Deslocamento sazonal.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Ocupação de áreas centrais.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 4 - ENEM 2016",
+      "index": 4,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2016,
+      "context": "O Rio de Janeiro tem projeção imediata no próprio estado e no Espírito Santo, e parcela do Sul do estado da Bahia, e na Zona da Mata, e Minas Gerais, onde tem influência dividida com Belo Horizonte. Compõem a rede urbana do Rio de Janeiro, entre outras cidades: Vitória, Juiz de Fora, Cachoeiro de Itapemirim, Campos dos Goytacazes, Volta Redonda – Barra Mansa, Teixeira de Freitas, Angra dos Reis e Teresópolis.\n\nDisponível em: http://ibge.gov.br. Acesso em: 9 jul.2015 (adaptado).",
+      "files": [],
+      "correctAlternative": "C",
+      "alternativesIntroduction": "O conceito que expressa a relação entre o espaço apresentado e a cidade do Rio de Janeiro é:",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Frente pioneira.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Zona de transição.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Região polarizada.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "D",
+          "text": "Área de conurbação.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Periferia metropolitana.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 5 - ENEM 2016",
+      "index": 5,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2016,
+      "context": "**TEXTO I**\n\nDocumentos do século XVI algumas vezes se referem aos habitantes indígenas Como “os brasis” ou “gente brasília” e, ocasionalmente no século XVII, o termo “brasileiro” era a eles aplicado, mas as referências ao status econômico e jurídico desses eram muito mais populares. Assim, os termos “negro da terra” e “índios” eram utilizados com mais frequência do que qualquer outro.\n\nSCHWARTZ, S. B. Gente da terra braziliense da nação. Pensando o Brasil a Construção de um povo. In: MOTA, C. G. (Org.) **Viagem incompleta** a experiência brasileira (1500-2000). São Paulo Senac, 2000 (adaptado)\n\n**TEXTO II**\n\nÍndio é um conceito construído no processo de conquista da América pelos europeus. Desinteressados pela diversidade cultural, imbuídos de forte preconceito para com o outro, o indivíduo de outras culturas, espanhóis, portugueses, franceses e anglo-saxões terminaram por denominar da mesma forma povos tão dispares quanto os tupinambas e os astecas.\n\nSILVA, K. W.; SILVA, M. H. **Dicionário de conceitos históricos**, São Paulo: Contexto, 2005",
+      "files": [],
+      "correctAlternative": "C",
+      "alternativesIntroduction": "Ao comparar os textos, as formas de designação dos grupos nativos pelos europeus, durante o período analisado, são reveladoras da",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Concepção idealizada do território, entendido como geograficamente indiferenciado.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Percepção corrente de uma ancestralidade comum às populações ameríndias.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Compreensão etnocêntrica acerca das populações dos territórios conquistados.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "D",
+          "text": "Transposição direta das Categorias originadas no imaginário medieval.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Visão utópica configurada a partir de fantasias de riqueza.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 6 - ENEM 2016",
+      "index": 6,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2016,
+      "context": "Ser ou não ser — eis a questão.  \nMorrer — dormir — Dormir! Talvez sonhar. Aí está o obstáculo!  \nOs sonhos que hão de vir no sono da morte  \nQuando tivermos escapado ao tumulto vital  \nNos obriguam a hesitar: e é essa a reflexão  \nQue dá à desventura uma vida tão longa.\n\nSHAKESPEARE, W. **Hamlet**. Porto Alegre: L&PM, 2007",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "Este solilóquio pode ser considerado um precursor do existencialismo ao enfatizar a tensão entre",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Consciência de si e angústia humana.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Inevitabilidade do destino e incerteza moral.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Tragicidade da personagem e ordem do mundo.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Racionalidade argumentativa e loucura iminente.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Dependência paterna e impossibilidade de ação.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 7 - ENEM 2016",
+      "index": 7,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2016,
+      "context": "**TEXTO I**\n\n![](https://enem.dev/2016/questions/7/6576ec6c-8680-4c1b-90c0-6c259bf29f52.jpg)\n\nTradução: “As mulheres do futuro farão da Lua um  \nlugar mais limpo para se viver”.\n\nDisponível em: www.propagandashistoricas.com.br. Acesso em: 16 out. 2015.\n\n**TEXTO II**\n\n**Metade da nova equipe da Nasa** **é composta por mulheres**\n\nAté hoje, cerca de 350 astronautas americanos já estiveram no espaço, enquanto as mulheres não chegam a ser um terço desse número. Após o anúncio da turma composta 50% por mulheres, alguns internautas escreveram comentários machistas e desrespeitosos sobre a escolha nas redes sociais.\n\nDisponível em: https//catracalivre com br. Acesso em 10 mar 2016",
+      "files": [
+        "https://enem.dev/2016/questions/7/6576ec6c-8680-4c1b-90c0-6c259bf29f52.jpg"
+      ],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "A comparação entre o anúncio publicitário de 1968 e a repercussão da notícia mostra a",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Elitização da carreira científica.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Qualificação da atividade doméstica.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Ambição de indústrias patrocinadoras.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Manutenção de estereótipos de gênero.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "Equiparação de papeis nas relações familiares.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 8 - ENEM 2016",
+      "index": 8,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2016,
+      "context": "A África Ocidental é conhecida pela dinâmica das suas mulheres comerciantes, caracterizadas pela perícia, autonomia e mobilidade. A sua presença, que fora atestada por viajantes e por missionários portugueses que visitaram a costa a partir do século XV, Consta também na ampla documentação sobre a região. A literatura é rica em referências às grandes mulheres como as vendedoras ambulantes, cujo jeito para o negócio, bem como a autonomia e mobilidade, é tão típico da região.\n\nHAVIK, P. Dinâmicas e assimetrias afro-atlânticas: a agência feminina e representações em mudança na Guiné (séculos XIX e XX). In: PANTOJA, S. (Org.). **Identidades, memórias e histórias em terras africanas**, Brasília: LGE; Luanda: Nzila, 2006.",
+      "files": [],
+      "correctAlternative": "C",
+      "alternativesIntroduction": "A abordagem realizada pelo autor sobre a vida social da África Ocidental pode ser relacionada a uma característica marcante das cidades no Brasil escravista nos séculos XVIII e XIX, que se observa pela",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Restrição à realização do comércio ambulante por africanos escravizados e seus descendentes.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Convivência entre homens e mulheres livres, de diversas origens, no pequeno comércio.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Presença de mulheres negras no comércio de rua de diversos produtos e alimentos.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "D",
+          "text": "Dissolução dos hábitos culturais trazidos do continente de origem dos escravizados.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Entrada de imigrantes portugueses nas atividades ligadas ao pequeno comércio urbano.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 9 - ENEM 2016",
+      "index": 9,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2016,
+      "context": "Quanto mais complicada se tornou a produção industrial, mais numerosos passaram a ser os elementos da indústria que exigiam garantia de fornecimento. Três deles eram de importância fundamental: o trabalho, a terra e o dinheiro. Numa sociedade comercial, esse fornecimento só poderia ser organizado de uma forma: tornando-os disponíveis à compra. Agora eles tinham que ser organizados para a venda no mercado. Isso estava de acordo com a exigência de um sistema de mercado. Sabemos que em um sistema como esse, os lucros só podem ser assegurados se se garante a autorregulação por meios de mercados competitivos interdependentes.\n\nPOLANYI, K. **A grande transformação:** As origens de nossa época. Rio de Janeiro: Campus, 2000 (Adaptado).",
+      "files": [],
+      "correctAlternative": "C",
+      "alternativesIntroduction": "A consequência do processo de transformação socioeconômica abordada no texto é a",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Expansão das terras comunais.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Limitação do mercado como meio de especulação.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Consolidação da força de trabalho como mercadoria.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "D",
+          "text": "Diminuição do comércio como efeito da industrialização.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Adequação do dinheiro como elemento padrão das transações.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 10 - ENEM 2016",
+      "index": 10,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2016,
+      "context": "O que ocorreu na Bahia de 1798, ao contrário das outras situações de contestação política na América portuguesa, é que o projeto que lhe era subjacente não tocou somente na condição, ou no instrumento, da integração subordinada das colônias no império luso. Dessa feita, ao contrário do que se deu nas Minas Gerais (1789), a sedição avançou sobre a sua decorrência.\n\nJANCSÓ, I.; PIMENTA, J. P. Peças de um mosaico. In: MOTA, C. G. (Org.) **Viagem incompleta**: a experiência brasileira (1500-2000). São Paulo: Senac, 2000.",
+      "files": [],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "A diferença entre as sedições abordadas no texto encontrava-se na pretensão de",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Eliminar a hierarquia militar.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Abolir a escravidão africana.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Anular o domínio metropolitano.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Suprimir a propriedade fundiária.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Extinguir o absolutismo monárquico.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    }
+  ]
+}

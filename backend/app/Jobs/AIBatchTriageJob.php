@@ -68,11 +68,13 @@ class AIBatchTriageJob implements ShouldQueue
             return;
         }
 
-        // Concurrency Semaphore: limit max simultaneous triage jobs cluster-wide
+        // Concurrency Semaphore: DISABLED (User request: one worker only)
+        /*
         $maxConcurrent = (int) \App\Models\Configuration::get('xavier_max_concurrent_triage', config('xavier.concurrency.max_triage', 5));
         if (!$this->acquireSlot('ai_triage', $maxConcurrent, 30)) {
             return; // Released back to queue automatically
         }
+        */
 
         try {
             // Circuit Breaker: If no API keys are available for triage, release the job back to the queue
@@ -190,8 +192,11 @@ class AIBatchTriageJob implements ShouldQueue
 
             $this->writeChunkPhase('idle');
             $this->updateProgress(0, count($this->questionIds), $e->getMessage());
+        /*
         } finally {
             $this->releaseSlot('ai_triage');
+        }
+        */
         }
     }
 

@@ -1,0 +1,229 @@
+{
+    "metadata": {
+        "limit": 5,
+        "offset": 0,
+        "total": 184,
+        "hasMore": true
+    },
+    "questions": [
+        {
+            "title": "Quest\u00e3o 1 - ENEM 2015",
+            "index": 1,
+            "discipline": "ciencias-humanas",
+            "language": null,
+            "year": 2015,
+            "context": "![](https:\/\/enem.dev\/2015\/questions\/1\/5fd3c732-a4f4-4efc-b03e-a7971724d87f.jpg)",
+            "files": [
+                "https:\/\/enem.dev\/2015\/questions\/1\/5fd3c732-a4f4-4efc-b03e-a7971724d87f.jpg"
+            ],
+            "correctAlternative": "A",
+            "alternativesIntroduction": "No mapa est\u00e3o representados os biomas brasileiros que, em fun\u00e7\u00e3o de suas caracter\u00edsticas f\u00edsicas e do modo de ocupa\u00e7\u00e3o do territ\u00f3rio, apresentam problemas ambientais distintos. Nesse sentido, o problema ambiental destacado no mapa indica.",
+            "alternatives": [
+                {
+                    "letter": "A",
+                    "text": "Desertifica\u00e7\u00e3o das \u00e1reas afetadas.",
+                    "file": null,
+                    "isCorrect": true
+                },
+                {
+                    "letter": "B",
+                    "text": "Polui\u00e7\u00e3o dos rios tempor\u00e1rios.",
+                    "file": null,
+                    "isCorrect": false
+                },
+                {
+                    "letter": "C",
+                    "text": "Queimadas dos remanescentes vegetais.",
+                    "file": null,
+                    "isCorrect": false
+                },
+                {
+                    "letter": "D",
+                    "text": "Desmatamento das matas ciliares.",
+                    "file": null,
+                    "isCorrect": false
+                },
+                {
+                    "letter": "E",
+                    "text": "Contamina\u00e7\u00e3o das \u00e1guas subterr\u00e2neas.",
+                    "file": null,
+                    "isCorrect": false
+                }
+            ]
+        },
+        {
+            "title": "Quest\u00e3o 2 - ENEM 2015",
+            "index": 2,
+            "discipline": "ciencias-humanas",
+            "language": null,
+            "year": 2015,
+            "context": "Dominar a luz implica tanto um avan\u00e7o tecnol\u00f3gico quanto uma certa libera\u00e7\u00e3o dos ritmos c\u00edclicos da natureza, com a passagem das esta\u00e7\u00f5es e as altern\u00e2ncias de dia e noite. Com a ilumina\u00e7\u00e3o noturna, a escurid\u00e3o vai cedendo lugar \u00e0 claridade, e a percep\u00e7\u00e3o temporal come\u00e7a a se pautar pela marca\u00e7\u00e3o do rel\u00f3gio. Se a luz invade a noite, perde sentido a separa\u00e7\u00e3o tradicional entre trabalho e descanso \u2013 todas as partes do dia podem ser aproveitadas produtivamente.\n\nSILVA FILHO. A. L. M.\u00a0**Fortaleza: imagens da cidade**. Fortaleza: Museu do Cear\u00e1: Secult-CE. 2001 (adaptado).",
+            "files": [],
+            "correctAlternative": "E",
+            "alternativesIntroduction": "Em rela\u00e7\u00e3o ao mundo do trabalho, a transforma\u00e7\u00e3o apontada no texto teve como consequ\u00eancia a",
+            "alternatives": [
+                {
+                    "letter": "A",
+                    "text": "Melhoria da qualidade da produ\u00e7\u00e3o industrial.",
+                    "file": null,
+                    "isCorrect": false
+                },
+                {
+                    "letter": "B",
+                    "text": "Redu\u00e7\u00e3o da oferta de emprego nas zonas rurais.",
+                    "file": null,
+                    "isCorrect": false
+                },
+                {
+                    "letter": "C",
+                    "text": "Permiss\u00e3o ao trabalhador para controlar seus pr\u00f3prios hor\u00e1rios.",
+                    "file": null,
+                    "isCorrect": false
+                },
+                {
+                    "letter": "D",
+                    "text": "Diminui\u00e7\u00e3o das exig\u00eancias de esfor\u00e7o no trabalho com m\u00e1quinas.",
+                    "file": null,
+                    "isCorrect": false
+                },
+                {
+                    "letter": "E",
+                    "text": "Amplia\u00e7\u00e3o do per\u00edodo dispon\u00edvel para a jornada de trabalho.",
+                    "file": null,
+                    "isCorrect": true
+                }
+            ]
+        },
+        {
+            "title": "Quest\u00e3o 3 - ENEM 2015",
+            "index": 3,
+            "discipline": "ciencias-humanas",
+            "language": null,
+            "year": 2015,
+            "context": "Apesar de seu disfarce de iniciativa e otimismo, o homem moderno est\u00e1 esmagado por um profundo sentimento de impot\u00eancia que o faz olhar fixamente e, como que paralisado, para as cat\u00e1strofes que se avizinham. Por isso, desde j\u00e1, saliente-se a necessidade de uma permanente atitude cr\u00edtica, o \u00fanico modo pelo qual o homem realizar\u00e1 sua voca\u00e7\u00e3o natural de integrar-se, superando a atitude do simples ajustamento ou acomoda\u00e7\u00e3o, apreendendo temas e tarefas de sua \u00e9poca.\n\nFREIRE, P. **Educa\u00e7\u00e3o como pr\u00e1tica da liberdade**. Rio de Janeiro: Paz e Terra, 2011.",
+            "files": [],
+            "correctAlternative": "A",
+            "alternativesIntroduction": "Paulo Freire defende que a supera\u00e7\u00e3o das dificuldades e a apreens\u00e3o da realidade atual ser\u00e1 obtida pelo(a)",
+            "alternatives": [
+                {
+                    "letter": "A",
+                    "text": "Desenvolvimento do pensamento aut\u00f4nomo.",
+                    "file": null,
+                    "isCorrect": true
+                },
+                {
+                    "letter": "B",
+                    "text": "Obten\u00e7\u00e3o de qualifica\u00e7\u00e3o profissional.",
+                    "file": null,
+                    "isCorrect": false
+                },
+                {
+                    "letter": "C",
+                    "text": "Resgate de valores tradicionais.",
+                    "file": null,
+                    "isCorrect": false
+                },
+                {
+                    "letter": "D",
+                    "text": "Realiza\u00e7\u00e3o de desejos pessoais.",
+                    "file": null,
+                    "isCorrect": false
+                },
+                {
+                    "letter": "E",
+                    "text": "Aumento da renda familiar.",
+                    "file": null,
+                    "isCorrect": false
+                }
+            ]
+        },
+        {
+            "title": "Quest\u00e3o 4 - ENEM 2015",
+            "index": 4,
+            "discipline": "ciencias-humanas",
+            "language": null,
+            "year": 2015,
+            "context": "![](https:\/\/enem.dev\/2015\/questions\/4\/bfee8dd7-2b58-4850-9c3a-59ea67faa73c.jpg)",
+            "files": [
+                "https:\/\/enem.dev\/2015\/questions\/4\/bfee8dd7-2b58-4850-9c3a-59ea67faa73c.jpg"
+            ],
+            "correctAlternative": "E",
+            "alternativesIntroduction": "Na charge h\u00e1 uma cr\u00edtica ao processo produtivo agr\u00edcola brasileiro relacionada ao",
+            "alternatives": [
+                {
+                    "letter": "A",
+                    "text": "Elevado pre\u00e7o das mercadorias no com\u00e9rcio.",
+                    "file": null,
+                    "isCorrect": false
+                },
+                {
+                    "letter": "B",
+                    "text": "Aumento da demanda por produtos naturais.",
+                    "file": null,
+                    "isCorrect": false
+                },
+                {
+                    "letter": "C",
+                    "text": "Crescimento da produ\u00e7\u00e3o de alimentos.",
+                    "file": null,
+                    "isCorrect": false
+                },
+                {
+                    "letter": "D",
+                    "text": "H\u00e1bito de adquirir derivados industriais.",
+                    "file": null,
+                    "isCorrect": false
+                },
+                {
+                    "letter": "E",
+                    "text": "Uso de agrot\u00f3xicos nas planta\u00e7\u00f5es.",
+                    "file": null,
+                    "isCorrect": true
+                }
+            ]
+        },
+        {
+            "title": "Quest\u00e3o 5 - ENEM 2015",
+            "index": 5,
+            "discipline": "ciencias-humanas",
+            "language": null,
+            "year": 2015,
+            "context": "A casa de Deus, que acreditam una, est\u00e1, portanto, dividida em tr\u00eas: uns oram, outros combatem, outros, enfim, trabalham. Essas tr\u00eas partes que coexistem n\u00e3o suportam ser separadas; os servi\u00e7os prestados por uma s\u00e3o a condi\u00e7\u00e3o das obras das outras duas; cada uma por sua vez encarrega-se de aliviar o conjunto\u2026 Assim a lei pode triunfar e o mundo gozar da paz.\n\nALDALBERON DE LAON, In: SPINOSA, F.\u00a0**Antologia de textos hist\u00f3ricos medievais**. Lisboa: S\u00e1 da Costa, 1981.",
+            "files": [],
+            "correctAlternative": "A",
+            "alternativesIntroduction": "A ideologia apresentada por Aldalberon de Laon foi produzida durante a Idade M\u00e9dia. Um objetivo de tal ideologia e um processo que a ela se op\u00f4s est\u00e3o indicados, respectivamente, em:",
+            "alternatives": [
+                {
+                    "letter": "A",
+                    "text": "Justificar a domina\u00e7\u00e3o estamental \/ revoltas camponestas.",
+                    "file": null,
+                    "isCorrect": true
+                },
+                {
+                    "letter": "B",
+                    "text": "Subverter a hierarquia social \/ centraliza\u00e7\u00e3o mon\u00e1rquica.",
+                    "file": null,
+                    "isCorrect": false
+                },
+                {
+                    "letter": "C",
+                    "text": "Impedir a igualdade jur\u00eddica \/ revolu\u00e7\u00f5es burguesas.",
+                    "file": null,
+                    "isCorrect": false
+                },
+                {
+                    "letter": "D",
+                    "text": "Controlar a explora\u00e7\u00e3o econ\u00f4mica \/ unifica\u00e7\u00e3o monet\u00e1ria.",
+                    "file": null,
+                    "isCorrect": false
+                },
+                {
+                    "letter": "E",
+                    "text": "Questionar a ordem divina \/ Reforma Cat\u00f3lica.",
+                    "file": null,
+                    "isCorrect": false
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,106 @@
+=== ENEM AUDIT — TODOS OS ANOS ===
+
+--- Questões ENEM por ano (DB) ---
+  Year 2010: 178 questões
+  TOTAL: 178
+
+--- Por knowledge_area ---
+  [ciencias-humanas]: 78
+  [matematica]: 45
+  [ciencias-natureza]: 44
+  [linguagens]: 11
+
+--- Statement length stats por ano ---
+  Year 2010: cnt=178, min=155, max=2040, avg=686, stmt<20chars=0
+
+--- Alternativas com imagem — por ano ---
+  Year 2010: total_alts=890, img_md=30, img_path=30, double_embed=30
+
+--- Questões com statement vazio ou curto ---
+  Count statement vazio: 0
+  Count statement 1-50 chars: 0
+
+--- Alternativas onde content é SOMENTE markdown de imagem ---
+  Count alt image-only (sem texto puro): 0
+
+--- Questões com imagem duplicada no statement ---
+  Com 'Imagem de Apoio' + 'Imagem do enunciado': 1
+  Com 2+ ocorrências de '![' no statement: 3
+
+--- Amostras de questões com imagem em alternativas (DB) ---
+  ID:3280 Year:2010 KA:ciencias-natureza
+  stmt[:200]:[Os pesticidas modernos são divididos em várias classes, entre as quais se destacam os organofosforados, materiais que apresentam efeito tóxico agudo para os seres humanos. Esses pesticidas contêm ]
+    [A] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_63ee5df06dedfab75f957c3fb78b3938.j]
+    [B] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_2395669703f16d61a3ab064ffe63de5d.j]
+    [C] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_5f09710f1d28395ada1b4ff41faa9392.j]
+    [D] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_2af8531029a2be426cb1543063241585.j]
+    [E] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_150f39b06ccc4f79fe7832e868e29afa.j]
+
+  ID:3284 Year:2010 KA:ciencias-natureza
+  stmt[:200]:[Um grupo de cientistas liderado por pesquisadores do instituto de Tecnologia da Califórnia (Caltech), nos Estados Unidos, construiu o primeiro metamaterial que apresenta valor negativo do índice de ]
+    [A] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_40fb402cbf3fb8788bc2a04329f0ba6e.p]
+    [B] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_26ae499affc895fe56010629fa8a35fb.p]
+    [C] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_480e9e2d1265984d4b61be6746a20796.p]
+    [D] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_0a88f37e172cf4c77770b739b20a8b0a.p]
+    [E] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_80b291979b0a81e66e884b9fc3159faa.p]
+
+  ID:3299 Year:2010 KA:linguagens
+  stmt[:200]:[Na busca constante pela sua evolução, o ser humano vem alternando a sua maneira de pensar, de sentir e de criar. Nas últimas décadas do século XVIII e no início do século XIX, os artista]
+    [A] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_76012e8abccd16190555333bd7c193ba.j]
+    [B] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_870beb1fb7ccd5bab8546698e354c299.j]
+    [C] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_02f690ef9b0c1c4a39577c25f1a90c56.j]
+    [D] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_4921b4ee0372fd3913a167268a07aac6.j]
+    [E] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_a8027e07bf47cbedf4f8391f78b18e1c.j]
+
+  ID:3334 Year:2010 KA:matematica
+  stmt[:200]:[![Imagem do enunciado](/storage/questions/images/2010/enem_2010_fe303801e5813d093d11c0d692a8c67e.png)
+
+Algum tempo depois, o professor apagou a lousa por completo e, adotando um procedimento semelhant]
+    [A] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_a492c68fb253b85745460025905fa595.p]
+    [B] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_372a1f7d606811fed84b1669eb8d3807.p]
+    [C] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_fa8636539e3d3d1d34e6a4e1dbb9ce23.p]
+    [D] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_4fab1f33d3ed480718537c580bdc27db.p]
+    [E] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_8ce3f884b9867b33717c2aaa6699b994.p]
+
+  ID:3336 Year:2010 KA:matematica
+  stmt[:200]:[![Imagem do enunciado](/storage/questions/images/2010/enem_2010_fba482a7af8e7848e959e87db68889cc.png)
+
+**Considerando que nenhum dos recipientes tenha tampa, qual das figuras a seguir representa uma p]
+    [A] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_a29621f9baec79812da52c373025defa.p]
+    [B] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_c451ff9943a95a2d59b022e5edac6746.p]
+    [C] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_88e8600fc2b81c4a889221f461d155f5.p]
+    [D] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_2e37b0744fc13f4aa90532c25cf7b78c.p]
+    [E] len=103, img_md=Y, img_path=Y, text_only=n
+         content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_6222dd4726407d444028aa86f870006f.p]
+
+--- EnemImportLogs (todos) ---
+  ID:1 Year:2010 Status:completed Ins:178 Ign:5 Err:0 At:2026-03-19 02:30:04
+
+--- review_status distribution (ENEM) ---
+  review: 67
+  approved: 111
+

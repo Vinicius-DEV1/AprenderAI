@@ -1,0 +1,440 @@
+{
+  "year": 2011,
+  "total": 185,
+  "sample": [
+    {
+      "title": "Questão 1 - ENEM 2011",
+      "index": 1,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2011,
+      "context": "No mundo árabe, países governados há décadas por regimes políticos centralizadores contabilizam metade da população com menos de 30 anos; desses, 56% têm acesso à internet. Sentindo-se sem perspectivas de futuro e diante da estagnação da economia, esses jovens incubam vírus sedentos por modernidade e democracia. Em meados de dezembro, um tunisiano  \nde 26 anos, vendedor de frutas, põe fogo no próprio corpo em protesto por trabalho, justiça e liberdade. Uma série de manifestações eclode na Tunísia e, como uma epidemia, o vírus libertário começa a se espalhar pelos países vizinhos, derrubando em seguida o presidente do Egito, Hosni Mubarak. Sites e redes sociais – como o Facebook e o Twitter – ajudaram a mobilizar manifestantes do norte da África a ilhas do Golfo Pérsico.\n\nSEQUEIRA, C. D.; VILLAMÉA, L. A epidemia da Liberdade. Istoé Internacional. 2 mar. 2011 (adaptado).",
+      "files": [],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "Considerando os movimentos políticos mencionados no texto, o acesso à internet permitiu aos jovens árabes",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Reforçar a atuação dos regimes políticos existentes.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Tomar conhecimento dos fatos sem se envolver.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Manter o distanciamento necessário à sua segurança.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Disseminar vírus capazes de destruir programas dos computadores.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Difundir ideias revolucionárias que mobilizaram a população.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 2 - ENEM 2011",
+      "index": 2,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2011,
+      "context": "O brasileiro tem noção clara dos comportamentos éticos e morais adequados, mas vive sob o espectro da corrupção, revela pesquisa. Se o país fosse resultado dos padrões morais que as pessoas dizem aprovar, pareceria mais com a Escandinávia do que com Bruzundanga (corrompida nação fictícia de Lima Barreto).\n\nFRAGA, P. **Ninguém é inocente.** Folha de S. Paulo, 4 out. 2009 (adaptado).",
+      "files": [],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "O distanciamento entre “reconhecer” e “cumprir” efetivamente o que é moral constitui uma ambiguidade inerente ao humano, porque as normas morais são",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Decorrentes da vontade divina e, por esse motivo, utópicas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Parâmetros idealizados, cujo cumprimento é destituído de obrigação.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Amplas e vão além da capacidade de o indivíduo conseguir cumpri-las integralmente.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Criadas pelo homem, que concede a si mesmo a lei à qual deve se submeter",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "Cumpridas por aqueles que se dedicam inteiramente a observar as normas jurídicas.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 3 - ENEM 2011",
+      "index": 3,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2011,
+      "context": "![](https://enem.dev/2011/questions/3/4f4821ed-38b4-43e9-aa4b-274ef546b8ed.png)\n\nDisponível em: http://www1.folha.uol.com.br. Acesso em: 17 abr. 2010 (adaptado). (Foto: Reprodução/Enem)\n\nO movimento representado na imagem, do início dos anos de 1990, arrebatou milhares de jovens no Brasil.",
+      "files": [
+        "https://enem.dev/2011/questions/3/4f4821ed-38b4-43e9-aa4b-274ef546b8ed.png"
+      ],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "Nesse contexto, a juventude, movida por um forte sentimento cívico,",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Aliou-se aos partidos de oposição e organizou a campanha Diretas Já.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Manifestou-se contra a corrupção e pressionou pela aprovação da Lei da Ficha Limpa.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Engajou-se nos protestos relâmpago e utilizou a internet para agendar suas manifestações.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Espelhou-se no movimento estudantil de 1968 e protagonizou ações revolucionárias armadas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Tornou-se porta-voz da sociedade e influenciou no processo de impeachment do então presidente Collor.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 4 - ENEM 2011",
+      "index": 4,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2011,
+      "context": "A Floresta Amazônica, com toda a sua imensidão, não vai estar aí para sempre. Foi preciso alcançar toda essa taxa de desmatamento de quase 20 mil quilômetros quadrados ao ano, na última década do século XX, para que uma pequena parcela de brasileiros se desse conta de que o maior patrimônio natural do país está sendo torrado.\n\nAB’SABER, A. Amazônia: do discurso à práxis. São Paulo: EdUSP, 1996.",
+      "files": [],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "Um processo econômico que tem contribuído na atualidade para acelerar o problema ambiental descrito é:",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Expansão do Projeto Grande Carajás, com incentivos à chegada de novas empresas mineradoras.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Difusão do cultivo da soja com a implantação de monoculturas mecanizadas.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Construção da rodovia Transamazônica, com o objetivo de interligar a região Norte ao restante do país.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Criação de áreas extrativistas do látex das seringueiras para os chamados povos da floresta.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Ampliação do polo industrial da Zona Franca de Manaus, visando atrair empresas nacionais e estrangeiras.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 5 - ENEM 2011",
+      "index": 5,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2011,
+      "context": "O Centro-Oeste apresentou-se como extremamente receptivo aos novos fenômenos da urbanização, já que era praticamente virgem, não possuindo infraestrutura de monta, nem outros investimentos fixos vindos do passado. Pôde, assim, receber uma infraestrutura nova, totalmente a serviço de uma economia moderna.\n\nSANTOS, M. **A Urbanização Brasileira**. São Paulo: EdUSP, 2005 (adaptado).",
+      "files": [],
+      "correctAlternative": "C",
+      "alternativesIntroduction": "O texto trata da ocupação de uma parcela do território brasileiro. O processo econômico diretamente associado a essa ocupação foi o avanço da",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Industrialização voltada para o setor de base.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Economia da borracha no sul da Amazônia.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Fronteira agropecuária que degradou parte do cerrado.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "D",
+          "text": "Exploração mineral na Chapada dos Guimarães.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Extrativismo na região pantaneira.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 6 - ENEM 2011",
+      "index": 6,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2011,
+      "context": "![](https://enem.dev/2011/questions/6/01d48357-ec3c-4b7f-8b7a-716414cef478.jpg)\n\nTEIXEIRA, W. et al. **Decifrando a Terra.** São Paulo: Nacional, 2009 (adaptado).",
+      "files": [
+        "https://enem.dev/2011/questions/6/01d48357-ec3c-4b7f-8b7a-716414cef478.jpg"
+      ],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "O gráfico relaciona diversas variáveis ao processo de formação do solo. A interpretação dos dados mostra que a água é um dos importantes fatores de pedogênese, pois nas áreas",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "De clima temperado ocorrem alta pluviosidade e grande profundidade de solos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Tropicais ocorre menor pluviosidade, o que se relaciona com a menor profundidade das rochas inalteradas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "De latitudes em torno de 30° ocorrem as maiores profundidades de solo, visto que há maior umidade.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Tropicais a profundidade do solo é menor, o que evidencia menor intemperismo químico da água sobre as rochas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "De menor latitude ocorrem as maiores precipitações, assim como a maior profundidade dos solos.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 7 - ENEM 2011",
+      "index": 7,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2011,
+      "context": "Uma empresa norte-americana de bioenergia está expandindo suas operações para o Brasil para explorar o mercado de pinhão manso. Com sede na Califórnia, a empresa desenvolveu sementes híbridas de pinhão manso, oleaginosa utilizada hoje na produção de biodiesel e de querosene de aviação.\n\nMAGOSSI, E. **O Estado de São Paulo.** 19 maio 2011 (adaptado).",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "A partir do texto, a melhoria agronômica das sementes de pinhão manso abre para o Brasil a oportunidade econômica de",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Ampliar as regiões produtoras pela adaptação do cultivo a diferentes condições climáticas.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Beneficiar os pequenos produtores camponeses de óleo pela venda direta ao varejo.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Abandonar a energia automotiva derivada do petróleo em favor de fontes alternativas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Baratear cultivos alimentares substituídos pelas culturas energéticas de valor econômico superior.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Reduzir o impacto ambiental pela não emissão de gases do efeito estufa para a atmosfera.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 8 - ENEM 2011",
+      "index": 8,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2011,
+      "context": "Um dos principais objetivos de se dar continuidade às pesquisas em erosão dos solos é o de procurar resolver os problemas oriundos desse processo, que, em última análise, geram uma série de impactos ambientais. Além disso, para a adoção de técnicas de conservação dos solos, é preciso conhecer como a água executa seu trabalho de remoção, transporte e deposição de sedimentos. A erosão causa, quase sempre, uma série de problemas ambientais, em nível local ou até mesmo em grandes áreas.\n\nGUERRA, A. J. T. Processos erosivos nas encostas. In: GUERRA, A. J. T.; CUNHA, S. B.  \n**Geomorfologia:** uma atualização de bases e conceitos.  \nRio de Janeiro: Bertrand Brasil, 2007 (adaptado).",
+      "files": [],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "A preservação do solo, principalmente em áreas de encostas, pode ser uma solução para evitar catástrofes em função da intensidade de fluxo hídrico. A prática humana que segue no caminho contrário a essa solução é",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "A aração.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "O terraceamento.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "O pousio.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "A drenagem.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "O desmatamento.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 9 - ENEM 2011",
+      "index": 9,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2011,
+      "context": "O fenômeno de ilha de calor é o exemplo mais marcante da modificação das condições iniciais do clima pelo processo de urbanização, caracterizado pela modificação do solo e pelo calor antropogênico, o qual inclui todas as atividades humanas inerentes à sua vida na cidade.\n\nBARBOSA, R. V. R. **Áreas verdes e qualidade térmica em ambientes urbanos**:  \nestudo em microclimas em Maceió. São Paulo: EdUSP, 2005.",
+      "files": [],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "O texto exemplifica uma importante alteração socioambiental, comum aos centros urbanos. A maximização desse fenômeno ocorre",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Pela reconstrução dos leitos originais dos cursos d’água antes canalizados.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Pela recomposição de áreas verdes nas áreas centrais dos centros urbanos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Pelo uso de materiais com alta capacidade de reflexão no topo dos edifícios.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Pelo processo de impermeabilização do solo nas áreas centrais das cidades.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "Pela construção de vias expressas e gerenciamento de tráfego terrestre.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 10 - ENEM 2011",
+      "index": 10,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2011,
+      "context": "O professor Paulo Saldiva pedala 6 km em 22 minutos de casa para o trabalho, todos os dias. Nunca foi atingido por um carro. Mesmo assim, é vítima diária do trânsito de São Paulo: a cada minuto sobre a bicicleta, seus pulmões são envenenados com 3,3 microgramas de poluição particulada – poeira, fumaça, fuligem, partículas de metal em suspensão, sulfatos, nitratos, carbono, compostos orgânicos e outras substâncias nocivas.\n\nESCOBAR, H. Sem Ar. **O Estado de São Paulo.** Ago. 2008.",
+      "files": [],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "A população de uma metrópole brasileira que vive nas mesmas condições socioambientais das do professor citado no texto apresentará uma tendência de",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Ampliação da taxa de fecundidade.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Diminuição da expectativa de vida.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Elevação do crescimento vegetativo.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Aumento na participação relativa de idosos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Redução na proporção de jovens na sociedade.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    }
+  ]
+}

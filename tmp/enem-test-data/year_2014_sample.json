@@ -1,0 +1,442 @@
+{
+  "year": 2014,
+  "total": 185,
+  "sample": [
+    {
+      "title": "Questão 1 - ENEM 2014",
+      "index": 1,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2014,
+      "context": "![](https://enem.dev/2014/questions/1/7ff93437-729f-4032-a3ce-01846f3169bb.png)",
+      "files": [
+        "https://enem.dev/2014/questions/1/7ff93437-729f-4032-a3ce-01846f3169bb.png"
+      ],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "A charge, datada de 1910, ao retratar a implantação da rede telefônica no Brasil, indica que esta:",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Permitiria aos índios se apropriarem da telefonia móvel.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Ampliaria o contato entre a diversidade de povos indígenas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Faria a comunicação sem ruídos entre grupos sociais distintos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Restringiria a sua área de atendimento aos estados do norte do país.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Possibilitaria a integração das diferentes regiões do território nacional.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 2 - ENEM 2014",
+      "index": 2,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2014,
+      "context": "Sou uma pobre e velha mulher, Muito ignorante, que nem sabe ler. Mostraram-me na igreja da minha terra Um Paraíso com harpas pintado E o Inferno onde fervem almas danadas, Um enche-me de júbilo, o outro me aterra.\n\nVILLON, F. In: GOMBRICH, E. **História da arte**. Lisboa: LTC, 1999.",
+      "files": [],
+      "correctAlternative": "C",
+      "alternativesIntroduction": "Os versos do poeta francês François Villon fazem referência às imagens presentes nos templos católicos medievais. Nesse contexto, as imagens eram usadas com o objetivo de",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Refinar o gosto dos cristãos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Incorporar ideais heréticos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Educar os fiéis através do olhar.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "D",
+          "text": "O divulgar a genialidade dos artistas católicos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Valorizar esteticamente os templos religiosos.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 3 - ENEM 2014",
+      "index": 3,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2014,
+      "context": "Os dois principais rios que alimentavam o Mar de Aral, Amurdarya e Sydarya, mantiveram o nível e o volume do mar por muitos séculos. Entretanto, o projeto de estabelecer e expandir a produção de algodão irrigado aumentou a dependência de várias repúblicas da Ásia Central da irrigação e monocultura. O aumento da demanda resultou no desvio crescente de água para a irrigação, acarretando redução drástica do volume de tributários do Mar de Aral. Foi criado na Ásia Central um novo deserto, com mais de 5 milhões de hectares, como resultado da redução em volume.\n\nTUNDISI, J. G. **Água no século XXI**: enfrentando a escassez. São Carlos: Rima, 2003.",
+      "files": [],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "A intensa interferência humana na região descrita provocou o surgimento de uma área desértica em decorrência da",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Erosão.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Salinização.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Laterização.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Compactação.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Sedimentação.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 4 - ENEM 2014",
+      "index": 4,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2014,
+      "context": "É o caráter radical do que se procura que exige a radicalização do próprio processo de busca. Se todo o espaço for ocupado pela dúvida, qualquer certeza que aparecer a partir daí terá sido de alguma forma gerada pela própria dúvida, e não será seguramente nenhuma daquelas que foram anteriormente varridas por essa mesma dúvida.\n\n_SILVA, F. L. Descartes: a metafísica da modernidade. São Paulo: Moderna, 2001 (adaptado)._",
+      "files": [],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "Apesar de questionar os conceitos da tradição, a dúvida radical da filosofia cartesiana tem caráter positivo por contribuir para o (a):",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Dissolução do saber científico.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Recuperação dos antigos juízos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Exaltação do pensamento clássico.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Surgimento do conhecimento inabalável.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "Fortalecimento dos preconceitos religiosos.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 5 - ENEM 2014",
+      "index": 5,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2014,
+      "context": "![](https://enem.dev/2014/questions/5/90211721-9e1a-406f-b2d0-e1c736d43334.jpg)\n\nNEVES, E. Engraxate. Disponível em: www.grafar.blogspot.com. Acesso em: 15 fev. 2013.",
+      "files": [
+        "https://enem.dev/2014/questions/5/90211721-9e1a-406f-b2d0-e1c736d43334.jpg"
+      ],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "Considerando-se a dinâmica entre tecnologia e organização do trabalho, a representação contida no cartum é caracterizada pelo pessimismo em relação à",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Ideia de progresso.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Concentração do capital.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Noção de sustentabilidade.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Organização dos sindicatos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Obsolescência dos equipamentos.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 6 - ENEM 2014",
+      "index": 6,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2014,
+      "context": "Ao deflagrar-se a crise mundial de 1929, a situação da economia cafeeira se apresentava como se segue. A produção, que se encontrava em altos níveis, teria que seguir crescendo, pois os produtores haviam continuado a expandir as plantações até aquele momento. Com efeito, a produção máxima seria alcançada em 1933, ou seja, no ponto mais baixo da depressão, como reflexo das grandes plantações de 1927-1928. Entretanto, era totalmente impossível obter crédito no exterior para financiar a retenção de novos estoques, pois o mercado internacional de capitais se encontrava em profunda depressão, e o crédito do governo desaparecera com a evaporação das reservas.\n\nFURTADO, C. **Formação econômica do Brasil**. São Paulo: Cia. Editora Nacional, 1997 (adaptado).",
+      "files": [],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "Uma resposta do Estado brasileiro à conjuntura econômica mencionada foi o(a)",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Atração de empresas estrangeiras.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Reformulação do sistema fundiário.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Incremento da mão de obra imigrante.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Desenvolvimento de política industrial.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "Financiamento de pequenos agricultores.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 7 - ENEM 2014",
+      "index": 7,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2014,
+      "context": "Mas plantar pra dividir\n\nNão faço mais isso, não.\n\nEu sou um pobre caboclo,\n\nGanho a vida na enxada.\n\nO que eu colho é dividido\n\nCom quem não planta nada.\n\nSe assim continuar\n\nvou deixar o meu sertão,\n\nmesmo os olhos cheios d’água\n\ne com dor no coração.\n\nVou pro Rio carregar massas\n\npros pedreiros em construção.\n\nDeus até está ajudando:\n\nestá chovendo no sertão!\n\nMas plantar pra dividir,\n\nNão faço mais isso, não.\n\nVALE, J.; AQUINO, J. B. **Sina de caboclo**. São Paulo: Polygram, 1994 (fragmento).",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "No trecho da canção, composta na década de 1960, retrata-se a insatisfação do trabalhador rural com:",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "A distribuição desigual da produção.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Os financiamentos feitos ao produtor rural.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "A ausência de escolas técnicas no campo.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Os empecilhos advindos das secas prolongadas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "A precariedade de insumos no trabalho do campo.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 8 - ENEM 2014",
+      "index": 8,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2014,
+      "context": "O cidadão norte-americano desperta num leito construído segundo padrão originário do Oriente Próximo, mas modificado na Europa Setentrional antes de ser transmitido à América. Sai debaixo de cobertas feitas de algodão cuja planta se tornou doméstica na Índia. No restaurante, toda uma série de elementos tomada de empréstimo o espera. O prato é feito de uma espécie de cerâmica inventada na China. A faca é de aço, liga feita pela primeira vez na Índia do Sul; o garfo é inventado na Itália medieval; a colher vem de um original romano. Lê notícias do dia impressas em caracteres inventados pelos antigos semitas, em material inventado na China e por um processo inventado na Alemanha.\n\nLINTON. R. **O homem: uma introdução à antropologia**. São Paulo: Martins. 1959 (adaptado).",
+      "files": [],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "A situação descrita é um exemplo de como os costumes resultam da",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Assimilação de valores de povos exóticos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Experimentação de hábitos sociais variados.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Recuperação de heranças da Antiguidade Clássica.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Fusão de elementos de tradições culturais diferentes.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "Valorização de comportamento de grupos privilegiados.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 9 - ENEM 2014",
+      "index": 9,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2014,
+      "context": "![](https://enem.dev/2014/questions/9/de4e7360-b8c8-4652-a4a9-b54cfd9a7683.jpg)\n\n**TEXTO II**\n\nA Índia deu um passo alto no setor de teleatendimento para países mais desenvolvidos, como os Estados Unidos e as nações europeias. Atualmente mais de 245 mil indianos realizam ligações para todas as partes do mundo a fim de oferecer cartões de crédito ou telefones celulares ou cobrar contas em atraso.\n\nDisponível em: www.conectacallcenter.com.br. Acesso em: 12 nov. 2013 (adaptado).",
+      "files": [
+        "https://enem.dev/2014/questions/9/de4e7360-b8c8-4652-a4a9-b54cfd9a7683.jpg"
+      ],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "Ao relacionar os textos, a explicação para o processo de territorialização descrito está no(a)",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Aceitação das diferenças culturais.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Adequação da posição geográfica.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Incremento do ensino superior.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Qualidade da rede logística.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Custo da mão de obra local.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 10 - ENEM 2014",
+      "index": 10,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2014,
+      "context": "O jovem espanhol Daniel se sente perdido. Seu diploma de desenhista industrial e seu alto conhecimento de inglês devem ajudá-lo a tomar um rumo. Mas a taxa de desemprego, que supera 52% entre os que têm menos de 25 anos, o desnorteia. Ele está convencido de que seu futuro profissional não está na Espanha, como o de, pelo menos, 120 mil conterrâneos que emigraram nos últimos dois anos. O irmão dele, que é engenheiro-agrônomo, conseguiu emprego no Chile. Atualmente, Daniel participa de uma “oficina de procura de emprego” em países como Brasil, Alemanha e China. A oficina é oferecida por uma universidade espanhola.\n\nGUILAYN, P. Na Espanha, universidade ensina a emigrar. **O Globo**, 17 fev. 2013 (adaptado).",
+      "files": [],
+      "correctAlternative": "C",
+      "alternativesIntroduction": "A situação ilustra uma crise econômica que implica",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Valorização do trabalho fabril.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Expansão dos recursos tecnológicos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Exportação de mão de obra qualificada.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "D",
+          "text": "Diversificação dos mercados produtivos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Intensificação dos intercâmbios estudantis.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    }
+  ]
+}

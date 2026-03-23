@@ -1,0 +1,440 @@
+{
+  "year": 2015,
+  "total": 184,
+  "sample": [
+    {
+      "title": "Questão 1 - ENEM 2015",
+      "index": 1,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2015,
+      "context": "![](https://enem.dev/2015/questions/1/5fd3c732-a4f4-4efc-b03e-a7971724d87f.jpg)",
+      "files": [
+        "https://enem.dev/2015/questions/1/5fd3c732-a4f4-4efc-b03e-a7971724d87f.jpg"
+      ],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "No mapa estão representados os biomas brasileiros que, em função de suas características físicas e do modo de ocupação do território, apresentam problemas ambientais distintos. Nesse sentido, o problema ambiental destacado no mapa indica.",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Desertificação das áreas afetadas.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Poluição dos rios temporários.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Queimadas dos remanescentes vegetais.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Desmatamento das matas ciliares.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Contaminação das águas subterrâneas.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 2 - ENEM 2015",
+      "index": 2,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2015,
+      "context": "Dominar a luz implica tanto um avanço tecnológico quanto uma certa liberação dos ritmos cíclicos da natureza, com a passagem das estações e as alternâncias de dia e noite. Com a iluminação noturna, a escuridão vai cedendo lugar à claridade, e a percepção temporal começa a se pautar pela marcação do relógio. Se a luz invade a noite, perde sentido a separação tradicional entre trabalho e descanso – todas as partes do dia podem ser aproveitadas produtivamente.\n\nSILVA FILHO. A. L. M. **Fortaleza: imagens da cidade**. Fortaleza: Museu do Ceará: Secult-CE. 2001 (adaptado).",
+      "files": [],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "Em relação ao mundo do trabalho, a transformação apontada no texto teve como consequência a",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Melhoria da qualidade da produção industrial.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Redução da oferta de emprego nas zonas rurais.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Permissão ao trabalhador para controlar seus próprios horários.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Diminuição das exigências de esforço no trabalho com máquinas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Ampliação do período disponível para a jornada de trabalho.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 3 - ENEM 2015",
+      "index": 3,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2015,
+      "context": "Apesar de seu disfarce de iniciativa e otimismo, o homem moderno está esmagado por um profundo sentimento de impotência que o faz olhar fixamente e, como que paralisado, para as catástrofes que se avizinham. Por isso, desde já, saliente-se a necessidade de uma permanente atitude crítica, o único modo pelo qual o homem realizará sua vocação natural de integrar-se, superando a atitude do simples ajustamento ou acomodação, apreendendo temas e tarefas de sua época.\n\nFREIRE, P. **Educação como prática da liberdade**. Rio de Janeiro: Paz e Terra, 2011.",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "Paulo Freire defende que a superação das dificuldades e a apreensão da realidade atual será obtida pelo(a)",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Desenvolvimento do pensamento autônomo.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Obtenção de qualificação profissional.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Resgate de valores tradicionais.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Realização de desejos pessoais.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Aumento da renda familiar.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 4 - ENEM 2015",
+      "index": 4,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2015,
+      "context": "![](https://enem.dev/2015/questions/4/bfee8dd7-2b58-4850-9c3a-59ea67faa73c.jpg)",
+      "files": [
+        "https://enem.dev/2015/questions/4/bfee8dd7-2b58-4850-9c3a-59ea67faa73c.jpg"
+      ],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "Na charge há uma crítica ao processo produtivo agrícola brasileiro relacionada ao",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Elevado preço das mercadorias no comércio.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Aumento da demanda por produtos naturais.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Crescimento da produção de alimentos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Hábito de adquirir derivados industriais.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Uso de agrotóxicos nas plantações.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 5 - ENEM 2015",
+      "index": 5,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2015,
+      "context": "A casa de Deus, que acreditam una, está, portanto, dividida em três: uns oram, outros combatem, outros, enfim, trabalham. Essas três partes que coexistem não suportam ser separadas; os serviços prestados por uma são a condição das obras das outras duas; cada uma por sua vez encarrega-se de aliviar o conjunto… Assim a lei pode triunfar e o mundo gozar da paz.\n\nALDALBERON DE LAON, In: SPINOSA, F. **Antologia de textos históricos medievais**. Lisboa: Sá da Costa, 1981.",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "A ideologia apresentada por Aldalberon de Laon foi produzida durante a Idade Média. Um objetivo de tal ideologia e um processo que a ela se opôs estão indicados, respectivamente, em:",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Justificar a dominação estamental / revoltas camponestas.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Subverter a hierarquia social / centralização monárquica.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Impedir a igualdade jurídica / revoluções burguesas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Controlar a exploração econômica / unificação monetária.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Questionar a ordem divina / Reforma Católica.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 6 - ENEM 2015",
+      "index": 6,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2015,
+      "context": "A língua de que usam, por toda a costa, carece de três letras; convém a saber, não se acha nela F, nem L, nem R, coisa digna de espanto, porque assim não têm Fé, nem Lei, nem Rei, e dessa maneira vivem desordenadamente, sem terem além disto conta, nem peso, nem medida.\n\nGÂNGAVO, P M. **A primeira história do Brasil**: história da província de Santa Cruz a que vulgarmente chamamos Brasil. Rio de Janeiro: Zahar, 2004 (adaptado)",
+      "files": [],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "A observação do cronista português Pero de Magalhães de Gândavo, em 1576, sobre a ausência das letras F, L e R na língua mencionada, demonstra a",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Simplicidade da organização social das tribos brasileiras.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Dominação portuguesa imposta aos índios no início da colonização.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Superioridade da sociedade europeia em relação à sociedade indígena.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Incompreensão dos valores socioculturais indígenas pelos portugueses.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "Dificuldade experimentada pelos portugueses no aprendizado da língua nativa.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 7 - ENEM 2015",
+      "index": 7,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2015,
+      "context": "O principal articulador do atual modelo econômico chinês argumenta que o mercado é só um instrumento econômico, que se emprega de forma indistinta tanto no capitalismo como no socialismo. Porém os próprios chineses já estão sentindo, na sua sociedade, o seu real significado: o mercado não é algo neutro, ou um instrumental técnico que possibilita à sociedade utilizá-lo para a construção e edificação do socialismo. Ele é, ao contrário do que diz o articulador, um instrumento do capitalismo e é inerente à sua estrutura como modo de produção. A sua utilização está levando a uma polarização da sociedade chinesa.\n\nOLIVEIRA, A. A Revolução Chinesa. **Caros Amigos**, 31 jan. 2011 (adaptado).",
+      "files": [],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "No texto, as reformas econômicas ocorridas na China são colocadas como antagônicas à construção de um país socialista. Nesse contexto, a característica fundamental do socialismo, à qual o modelo econômico chinês atual se contrapõe é a",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Desestatização da economia.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Instauração de um partido único.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Manutenção da livre concorrência.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Formação de sindicatos trabalhistas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Extinção gradual das classes sociais.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 8 - ENEM 2015",
+      "index": 8,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2015,
+      "context": "Até o fim de 2007, quase 2 milhões de pessoas perderam suas casas e outros 4 milhões corriam o risco de ser despejadas. Os valores das casas despencaram em quase todos os EUA e muitas famílias acabaram devendo mais por suas casas do que o próprio valor do imóvel. Isso desencadeou uma espiral de execuções hipotecárias que diminuiu ainda mais os valores das casas. Em Cleveland, foi como se um “Katrina financeiro” atingisse a cidade. Casas abandonadas, com tábuas em janelas e portas, dominaram a paisagem nos bairros pobres, principalmente negros. Na Califórnia, também se enfileiraram casas abandonadas.\n\nHARVEY, D. **O enigma do capital**. São Paulo: Boitempo, 2011.",
+      "files": [],
+      "correctAlternative": "C",
+      "alternativesIntroduction": "Inicialmente restrita, a crise descrita no texto atingiu proporções globais, devido ao(à)",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Superprodução de bens de consumo.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Colapso industrial de países asiáticos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Interdependência do sistema econômico.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "D",
+          "text": "Isolamento político dos países desenvolvidos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Austeridade fiscal dos países em desenvolvimento.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 9 - ENEM 2015",
+      "index": 9,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2015,
+      "context": "**Voz do sangue**\n\nPalpitam-me  \nos sons do batuque  \ne os ritmos melancólicos do blue.\n\nÓ negro esfarrapado  \ndo Harlem  \nó dançarino de Chicago  \nó negro servidor do South\n\nÓ negro da África  \nnegros de todo o mundo\n\nEu junto  \nao vosso magnifico canto  \na minha pobre voz  \nos meus humildes ritmos.\n\nEu vos acompanho  \npelas emaranhadas Áfricas  \ndo nosso Rumo.\n\nEu vos sinto  \nnegros de todo o mundo  \neu vivo a nossa história  \nmeus irmãos.\n\nDisponível em: www.agostinhoneto.org. Acesso em: 30 jun. 2015.",
+      "files": [],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "Nesse poema, o líder angolano Agostinho Neto, na década de 1940, evoca o pan-africanismo com o objetivo de",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Incitar a luta por políticas de ações afirmativas na América e na África.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Reconhecer as desigualdades sociais entre os negros de Angola e dos Estados Unidos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Descrever o quadro de pobreza após os processos de independência no continente africano.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Solicitar o engajamento dos negros estadunidenses na luta armada pela independência em Angola.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Conclamar as populações negras de diferentes países a apoiar as lutas por igualdade e independência.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 10 - ENEM 2015",
+      "index": 10,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2015,
+      "context": "Iniciou-se em 1903 a introdução de obras de arte com representações de bandeirantes no acervo do Museu Paulista, mediante a aquisição de uma tela que homenageava o sertanista que comandara a destruição do Quilombo de Palmares. Essa aquisição, viabilizada por verba estadual, foi simultânea à emergência de uma interpretação histórica que apontava o fenômeno do sertanismo paulista como o elo decisivo entre a trajetória territorial do Brasil e de São Paulo, concepção essa que se consolidaria entre os historiadores ligados ao Instituto Histórico e Geográfico de São Paulo ao longo das três primeiras décadas do século XX.\n\nMARINS, P. c. G. Nas matas com pose de reis: a representação de bandeirantes e a tradição da retratística monárquica européia. **Revista do LEB**, n. 44, tev. 2007.",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "A prática governamental descrita no texto, com a escolha dos temas das obras, tinha como propósito a construção de uma memória que",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Afirmava a centralidade de um estado na política do país.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Resgatava a importância da resistência escrava na história brasileira.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Evidenciava a importância da produção artística no contexto regional.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Valorizava a saga histórica do povo na afirmação de uma memória social.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Destacava a presença do indígena no desbravamento do território colonial.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    }
+  ]
+}

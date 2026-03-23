@@ -1,0 +1,438 @@
+{
+  "year": 2009,
+  "total": 179,
+  "sample": [
+    {
+      "title": "Questão 1 - ENEM 2009",
+      "index": 1,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2009,
+      "context": "A atmosfera terrestre é composta pelos gases nitrogênio (N2) e oxigênio (O2), que somam cerca de 99%, e por gases traços, entre eles o gás carbônico (CO2), vapor de água (H2O), metano (CH4), ozônio (O3) e o óxido nitroso (N2O), que compõem o restante 1% do ar que respiramos. Os gases traços, por serem constituídos por pelo menos três átomos, conseguem absorver o calor irradiado pela Terra, aquecendo o planeta. Esse fenômeno, que acontece  \nhá bilhões de anos, é chamado de efeito estufa. A partir da Revolução Industrial (século XIX), a concentração de gases traços na atmosfera, em particular o CO2, tem aumentado significativamente, o que resultou no aumento da temperatura em escala global. Mais recentemente, outro fator tornou-se diretamente envolvido no aumento da concentração de CO2 na atmosfera: o desmatamento.\n\nBROWN, I. F.; ALECHANDRE, A. S. Conceitos básicos sobre clima,carbono, florestas e comunidades. A.G. Moreira & S. Schwartzman. As mudanças climáticas globais e os ecossistemas brasileiros. Brasília: Instituto de Pesquisa Ambiental da Amazônia, 2000 (adaptado).",
+      "files": [],
+      "correctAlternative": "C",
+      "alternativesIntroduction": "Considerando o texto, uma alternativa viável para combater o efeito estufa é",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Reduzir o calor irradiado pela Terra mediante a substituição da produção primária pela industrialização refrigerada.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Promover a queima da biomassa vegetal, responsável pelo aumento do efeito estufa devido à produção de CH4.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Reduzir o desmatamento, mantendo-se, assim, o potencial da vegetação em absorver o CO2 da atmosfera.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "D",
+          "text": "Aumentar a concentração atmosférica de H2O, molécula capaz de absorver grande quantidade de calor.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Remover moléculas orgânicas polares da atmosfera, diminuindo a capacidade delas de reter calor.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 2 - ENEM 2009",
+      "index": 2,
+      "discipline": "ciencias-natureza",
+      "language": null,
+      "year": 2009,
+      "context": "Analise a figura.\n\n![](https://enem.dev/2009/questions/2/7af3247b-4580-4b52-8d5a-b64887db9b0e.png)",
+      "files": [
+        "https://enem.dev/2009/questions/2/7af3247b-4580-4b52-8d5a-b64887db9b0e.png"
+      ],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "Supondo que seja necessário dar um título para essa figura, a alternativa que melhor traduziria o processo representado seria:",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Concentração média de álcool no sangue ao longo do dia.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Variação da frequência da ingestão de álcool ao longo das horas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Concentração mínima de álcool no sangue a partir de diferentes dosagens.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Estimativa de tempo necessário para metabolizar diferentes quantidades de álcool.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "Representação gráfica da distribuição de frequência de álcool em determinada hora do dia.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 3 - ENEM 2009",
+      "index": 3,
+      "discipline": "ciencias-natureza",
+      "language": null,
+      "year": 2009,
+      "context": "Estima-se que haja atualmente no mundo 40 milhões de pessoas infectadas pelo HIV (o vírus que causa a AIDS), sendo que as taxas de novas infecções continuam crescendo, principalmente na África, Ásia e Rússia. Nesse cenário de pandemia, uma vacina contra o HIV teria imenso impacto, pois salvaria milhões de vidas. Certamente seria um marco na história planetária e também uma esperança para as populações carentes de tratamento antiviral e de acompanhamento médico.\n\nTANURI, A.; FERREIRA JUNIOR, O. C. Vacina contra Aids: desafios e esperanças. Ciência Hoje (44) 26, 2009 (adaptado).",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "Uma vacina eficiente contra o HIV deveria",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Induzir a imunidade, para proteger o organismo da contaminação viral.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Ser capaz de alterar o genoma do organismo portador, induzindo a síntese de enzimas protetoras.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Produzir antígenos capazes de se ligarem ao vírus, impedindo que este entre nas células do organismo humano.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Ser amplamente aplicada em animais, visto que esses são os principais transmissores do vírus para os seres humanos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Estimular a imunidade, minimizando a transmissão do vírus por gotículas de saliva.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 4 - ENEM 2009",
+      "index": 4,
+      "discipline": "ciencias-natureza",
+      "language": null,
+      "year": 2009,
+      "context": "Em um experimento, preparou-se um conjunto de plantas por técnica de clonagem a partir de uma planta original que apresentava folhas verdes. Esse conjunto foi dividido em dois grupos, que foram tratados de maneira idêntica, com exceção das condições de iluminação, sendo um grupo exposto a ciclos de iluminação solar natural e outro mantido no escuro. Após alguns dias, observou-se que o grupo exposto à luz apresentava folhas verdes como a planta original e o grupo cultivado no escuro apresentava folhas amareladas.",
+      "files": [],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "Ao final do experimento, os dois grupos de plantas apresentaram",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Os genótipos e os fenótipos idênticos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Os genótipos idênticos e os fenótipos diferentes.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Diferenças nos genótipos e fenótipos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "O mesmo fenótipo e apenas dois genótipos diferentes.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "O mesmo fenótipo e grande variedade de genótipos.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 5 - ENEM 2009",
+      "index": 5,
+      "discipline": "ciencias-natureza",
+      "language": null,
+      "year": 2009,
+      "context": "Na linha de uma tradição antiga, o astrônomo grego Ptolomeu (100-170 d.C.) afirmou a tese do geocentrismo, segundo a qual a Terra seria o centro do universo, sendo que o Sol, a Lua e os planetas girariam em seu redor em órbitas circulares. A teoria de Ptolomeu resolvia de modo razoável os problemas astronômicos da sua época. Vários séculos mais tarde, o clérigo e astrônomo polonês Nicolau Copérnico (1473-1543), ao encontrar inexatidões na teoria de Ptolomeu, formulou a teoria do heliocentrismo, segundo a qual o Sol deveria ser considerado o centro do universo, com a Terra, a Lua e os planetas girando circularmente em torno dele. Por fim, o astrônomo e matemático alemão Johannes Kepler (1571- 1630), depois de estudar o planeta Marte por cerca de trinta anos, verificou que a sua órbita é elíptica. Esse resultado generalizou-se para os demais planetas.",
+      "files": [],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "A respeito dos estudiosos citados no texto, é correto afirmar que",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Ptolomeu apresentou as ideias mais valiosas, por serem mais antigas e tradicionais.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Copérnico desenvolveu a teoria do heliocentrismo inspirado no contexto político do Rei Sol.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Copérnico viveu em uma época em que a pesquisa científica era livre e amplamente incentivada pelas autoridades.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Kepler estudou o planeta Marte para atender às necessidades de expansão econômica e científica da Alemanha.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Kepler apresentou uma teoria científica que, graças aos métodos aplicados, pôde ser testada e generalizada.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 6 - ENEM 2009",
+      "index": 6,
+      "discipline": "ciencias-natureza",
+      "language": null,
+      "year": 2009,
+      "context": "O ciclo biogeoquímico do carbono compreende diversos compartimentos, entre os quais a Terra, a atmosfera e os oceanos, e diversos processos que permitem a transferência de compostos entre esses reservatórios. Os estoques de carbono armazenados na forma de recursos não renováveis, por exemplo, o petróleo, são limitados, sendo de grande relevância que se perceba a importância da substituição de combustíveis fósseis por combustíveis de fontes renováveis.",
+      "files": [],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "A utilização de combustíveis fósseis interfere no ciclo do carbono, pois provoca",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Aumento da porcentagem de carbono contido na Terra.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Redução na taxa de fotossíntese dos vegetais superiores.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Aumento da produção de carboidratos de origem vegetal.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Aumento na quantidade de carbono presente na atmosfera.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "Redução da quantidade global de carbono armazenado nos oceanos.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 7 - ENEM 2009",
+      "index": 7,
+      "discipline": "ciencias-natureza",
+      "language": null,
+      "year": 2009,
+      "context": "Um novo método para produzir insulina artificial que utiliza tecnologia de DNA recombinante foi desenvolvido por pesquisadores do Departamento de Biologia Celular da Universidade de Brasília (UnB) em parceria com a iniciativa privada. Os pesquisadores modificaram geneticamente a bactéria Escherichia coli para torná-la capaz de sintetizar o hormônio. O processo permitiu fabricar insulina em maior quantidade e em apenas 30 dias, um terço do tempo necessário para obtê-la pelo método tradicional, que consiste na extração do hormônio a partir do pâncreas de animais abatidos.\n\nCiência Hoje, 24 abr. 2001. Disponível em: http://cienciahoje.uol.com.br (adaptado).",
+      "files": [],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "A produção de insulina pela técnica do DNA recombinante tem, como consequência,",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "O aperfeiçoamento do processo de extração de insulina a partir do pâncreas suíno.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "A seleção de microrganismos resistentes a antibióticos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "O progresso na técnica da síntese química de hormônios.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Impacto favorável na saúde de indivíduos diabéticos.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "A criação de animais transgênicos.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 8 - ENEM 2009",
+      "index": 8,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2009,
+      "context": "A economia moderna depende da disponibilidade de muita energia em diferentes formas, para funcionar e crescer. No Brasil, o consumo total de energia pelas indústrias cresceu mais de quatro vezes no período entre 1970 e 2005. Enquanto os investimentos em energias limpas e renováveis, como solar e eólica, ainda são incipientes, ao se avaliar a possibilidade de instalação de usinas geradoras de energia elétrica, diversos fatores devem ser levados em consideração, tais como os impactos causados ao ambiente e às populações locais.\n\nRICARDO, B.; CAMPANILI, M. **Almanaque Brasil Socioambiental.** São Paulo: Instituto Socioambiental, 2007 (adaptado).",
+      "files": [],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "Em uma situação hipotética, optou-se por construir uma usina hidrelétrica em região que abrange diversas quedas d’água em rios cercados por mata, alegando-se que causaria impacto ambiental muito menor que uma usina termelétrica. Entre os possíveis impactos da instalação de uma usina hidrelétrica nessa região, inclui-se",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "A poluição da água por metais da usina.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "A destruição do habitat de animais terrestres.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "O aumento expressivo na liberação de CO2 para a atmosfera.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "O consumo não renovável de toda água que passa pelas turbinas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "O aprofundamento no leito do rio, com a menor deposição de resíduos no trecho de rio anterior à represa.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 9 - ENEM 2009",
+      "index": 9,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2009,
+      "context": "As mudanças climáticas e da vegetação ocorridas nos trópicos da América do Sul têm sido bem documentadas por diversos autores, existindo um grande acúmulo de evidências geológicas ou paleoclimatológicas que evidenciam essas mudanças ocorridas durante o Quaternário nessa região. Essas mudanças resultaram em restrição da distribuição das florestas pluviais, com expansões concomitantes de habitats não-florestais durante períodos áridos (glaciais), seguido da expansão das florestas pluviais e restrição das áreas não-florestais durante períodos úmidos (interglaciais).\n\nDisponível em: http://zoo.bio.ufpr.br. Acesso em: 1 maio 2009.",
+      "files": [],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "Durante os períodos glaciais,",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "As áreas não-florestais ficam restritas a refúgios ecológicos devido à baixa adaptabilidade de espécies não-florestais a ambientes áridos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Grande parte da diversidade de espécies vegetais é reduzida, uma vez que necessitam de condições semelhantes a dos períodos interglaciais.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "A vegetação comum ao cerrado deve ter se limitado a uma pequena região do centro do Brasil, da qual se expandiu até atingir a atual distribuição.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Plantas com adaptações ao clima árido, como o desenvolvimento de estruturas que reduzem a perda de água, devem apresentar maior área de distribuição.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "Florestas tropicais como a amazônica apresentam distribuição geográfica mais ampla, uma vez que são densas e diminuem a ação da radiação solar sobre o solo e reduzem os efeitos da aridez.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 10 - ENEM 2009",
+      "index": 10,
+      "discipline": "ciencias-natureza",
+      "language": null,
+      "year": 2009,
+      "context": "A fotossíntese é importante para a vida na Terra. Nos cloroplastos dos organismos fotossintetizantes, a energia solar é convertida em energia química que, juntamente com água e gás carbônico (CO2), é utilizada para a síntese de compostos orgânicos (carboidratos). A fotossíntese é o único processo de importância biológica capaz de realizar essa conversão. Todos os organismos, incluindo os produtores, aproveitam a energia armazenada nos carboidratos para impulsionar os processos celulares, liberando CO2 para a atmosfera e água para a célula por meio da respiração celular. Além disso, grande fração dos recursos energéticos do planeta, produzidos tanto no presente (biomassa) como em tempos remotos (combustível fóssil), é resultante da atividade fotossintética.",
+      "files": [],
+      "correctAlternative": "C",
+      "alternativesIntroduction": "As informações sobre obtenção e transformação dos recursos naturais por meio dos processos vitais de fotossíntese e respiração, descritas no texto, permitem concluir que",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "O CO2 e a água são moléculas de alto teor energético.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Os carboidratos convertem energia solar em energia química.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "A vida na Terra depende, em última análise, da energia proveniente do Sol.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "D",
+          "text": "O processo respiratório é responsável pela retirada de carbono da atmosfera.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "A produção de biomassa e de combustível fóssil, por si, é responsável pelo aumento de CO2 atmosférico.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    }
+  ]
+}

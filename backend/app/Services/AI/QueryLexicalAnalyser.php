@@ -79,7 +79,10 @@ class QueryLexicalAnalyser
 
         // Fallback: se não houver nada filtrado, o prompt todo é positivo
         if (empty($analysis['positive_terms']) && empty($analysis['negative_terms'])) {
-            $analysis['positive_terms'] = [$analysis['clean_prompt']];
+            $clean = $analysis['clean_prompt'] ?? '';
+            if (trim($clean) !== '') {
+                $analysis['positive_terms'] = [$clean];
+            }
         }
 
         Log::info('[Xavier][Lexical] Prompt analysed.', $analysis);

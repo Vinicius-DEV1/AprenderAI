@@ -58,11 +58,13 @@ class IndexQuestionVectorJob implements ShouldQueue
             return;
         }
 
-        // Concurrency Semaphore: limit to max N simultaneous embedding API calls cluster-wide
+        // Concurrency Semaphore: DISABLED (User request: one worker only)
+        /*
         $maxConcurrent = (int) \App\Models\Configuration::get('xavier_max_concurrent_embeddings', config('xavier.concurrency.max_embeddings', 5));
         if (!$this->acquireSlot('embeddings', $maxConcurrent, retryIn: 20)) {
             return; // Released back to queue automatically
         }
+        */
 
         try {
 
@@ -200,8 +202,11 @@ class IndexQuestionVectorJob implements ShouldQueue
         Log::info("[Xavier][IndexQuestion] Question #{$this->questionId} indexed successfully (v{$newVersion}).");
         $aiService->removeCongestion('IndexQuestionVectorJob', $this->questionId);
 
+        /*
         } finally {
             $this->releaseSlot('embeddings');
+        }
+        */
         }
     }
 

@@ -1,0 +1,104 @@
+=== ENEM IMPORT DB AUDIT ===
+
+Total questions (all): 6991
+Total ENEM questions: 178
+
+--- questions column types ---
+  knowledge_area: type=varchar, max_len=255
+  statement: type=text, max_len=65535
+  explanation: type=text, max_len=65535
+  external_id: type=varchar, max_len=255
+  image_path: type=varchar, max_len=255
+
+--- question_alternatives column types ---
+  label: type=varchar, max_len=255
+  content: type=text, max_len=65535
+  image_path: type=varchar, max_len=255
+
+--- SAMPLE 5 ENEM QUESTIONS ---
+ID:3368 Year:2010 KA:matematica STATUS:review
+  stmt_len:665
+  stmt_preview:[Marco e Paulo foram classificados em um concurso. Para classificação no concurso o candidato deveria obter média aritmética na pontuação igual ou superior a 14. Em caso de empate na média, o d]
+  q.image_path:null
+  alts:
+    [A] len=47, img_md=no, img_path=null
+    [B] len=40, img_md=no, img_path=null
+    [C] len=67, img_md=no, img_path=null
+    [D] len=33, img_md=no, img_path=null
+    [E] len=40, img_md=no, img_path=null
+
+ID:3371 Year:2010 KA:matematica STATUS:review
+  stmt_len:991
+  stmt_preview:[João mora na cidade A e precisa visitar cinco clientes, localizados em cidades diferentes da sua. Cada trajeto possível pode ser representado por uma sequência de 7 letras. Por exemplo, o trajeto ]
+  q.image_path:null
+  alts:
+    [A] len=7, img_md=no, img_path=null
+    [B] len=7, img_md=no, img_path=null
+    [C] len=8, img_md=no, img_path=null
+    [D] len=8, img_md=no, img_path=null
+    [E] len=8, img_md=no, img_path=null
+
+ID:3370 Year:2010 KA:matematica STATUS:approved
+  stmt_len:712
+  stmt_preview:[Em 2006, a produção mundial de etanol foi de 40 bilhões de litros e a de biodiesel, de 6,5 bilhões. Neste mesmo ano, a produção brasileira de etanol correspondeu a 43% da produção mund]
+  q.image_path:null
+  alts:
+    [A] len=6, img_md=no, img_path=null
+    [B] len=6, img_md=no, img_path=null
+    [C] len=6, img_md=no, img_path=null
+    [D] len=6, img_md=no, img_path=null
+    [E] len=6, img_md=no, img_path=null
+
+ID:3369 Year:2010 KA:matematica STATUS:approved
+  stmt_len:466
+  stmt_preview:[Um grupo de pacientes com Hepatite C foi submetido a um tratamento tradicional em que 40% desses pacientes foram completamente curados. Os pacientes que não obtiveram cura foram distribuídos em do]
+  q.image_path:null
+  alts:
+    [A] len=3, img_md=no, img_path=null
+    [B] len=3, img_md=no, img_path=null
+    [C] len=3, img_md=no, img_path=null
+    [D] len=3, img_md=no, img_path=null
+    [E] len=3, img_md=no, img_path=null
+
+ID:3378 Year:2010 KA:matematica STATUS:review
+  stmt_len:419
+  stmt_preview:[Para conseguir chegar a um número recorde de produção de ovos de Páscoa, as empresas brasileiras começam a se planejar para esse período com um ano de ovos de Páscoa produzidos no Brasil]
+  q.image_path:null
+  alts:
+    [A] len=9, img_md=no, img_path=null
+    [B] len=9, img_md=no, img_path=null
+    [C] len=9, img_md=no, img_path=null
+    [D] len=9, img_md=no, img_path=null
+    [E] len=9, img_md=no, img_path=null
+
+--- Statement length distribution ---
+ENEM questions with statement < 10 chars: 0
+ENEM questions with statement 10-100 chars: 0
+
+--- Image audit ---
+Alts with embedded image markdown: 30
+Alts with image_path set: 30
+
+Alts with BOTH markdown AND image_path (double-embed): 30
+
+--- Sample ENEM Q with image_path in alt ---
+ID:3280 Year:2010 KA:ciencias-natureza
+stmt[:300]:[Os pesticidas modernos são divididos em várias classes, entre as quais se destacam os organofosforados, materiais que apresentam efeito tóxico agudo para os seres humanos. Esses pesticidas contêm um átomo central de fósforo ao qual estão ligados outros átomos ou grupo de átomos como oxigên]
+  [A] len=103
+    content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_63ee5df06dedfab75f957c3fb78b3938.jpg)]
+    img_path:/storage/questions/images/2010/enem_2010_63ee5df06dedfab75f957c3fb78b3938.jpg
+  [B] len=103
+    content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_2395669703f16d61a3ab064ffe63de5d.jpg)]
+    img_path:/storage/questions/images/2010/enem_2010_2395669703f16d61a3ab064ffe63de5d.jpg
+  [C] len=103
+    content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_5f09710f1d28395ada1b4ff41faa9392.jpg)]
+    img_path:/storage/questions/images/2010/enem_2010_5f09710f1d28395ada1b4ff41faa9392.jpg
+  [D] len=103
+    content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_2af8531029a2be426cb1543063241585.jpg)]
+    img_path:/storage/questions/images/2010/enem_2010_2af8531029a2be426cb1543063241585.jpg
+  [E] len=103
+    content:[![Imagem da Alternativa](/storage/questions/images/2010/enem_2010_150f39b06ccc4f79fe7832e868e29afa.jpg)]
+    img_path:/storage/questions/images/2010/enem_2010_150f39b06ccc4f79fe7832e868e29afa.jpg
+
+--- EnemImportLogs ---
+  ID:1 Year:2010 Status:completed Inserted:178 Ignored:5 Errors:0

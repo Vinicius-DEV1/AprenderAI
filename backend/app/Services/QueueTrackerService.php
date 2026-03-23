@@ -59,6 +59,45 @@ class QueueTrackerService
     }
 
     /**
+     * Records an individual completed job's details for the "Recent Completed" dashboard table.
+     * Stores the last 50 entries in a Redis list.
+     *
+     * @param string $name            Class name of the job
+     * @param string $queue           Queue name
+     * @param float  $durationSeconds Total processing time
+     */
+    public function recordCompletedJob(string $name, string $queue, float $durationSeconds): void
+    {
+        $redis = Redis::connection();
+        $key   = "monitor:recent_completed_jobs";
+
+        $data = json_encode([
+            'id'          => uniqid(),
+            'name'        => class_basename($name),
+            'queue'       => $queue,
+            'duration'    => round($durationSeconds, 2),
+            'finished_at' => now()->toDateTimeString(),
+        ]);
+
+        $redis->lpush($key, $data);
+        $redis->ltrim($key, 0, 49); // Keep last 50
+    }
+
+    /**
+     * Returns the list of last completed jobs.
+     * @return array
+     */
+    public function getRecentCompletedJobs(): array
+    {
+        $redis = Redis::connection();
+        $key   = "monitor:recent_completed_jobs";
+
+        $items = $redis->lrange($key, 0, -1) ?: [];
+        
+        return array_map(fn($item) => json_decode($item, true), $items);
+    }
+
+    /**
      * Returns performance metrics for all active production queues.
      *
      * Metrics per queue:

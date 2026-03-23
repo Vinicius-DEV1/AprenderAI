@@ -1,0 +1,440 @@
+{
+  "year": 2019,
+  "total": 181,
+  "sample": [
+    {
+      "title": "Questão 1 - ENEM 2019",
+      "index": 1,
+      "discipline": "linguagens",
+      "language": "espanhol",
+      "year": 2019,
+      "context": "**Adelfos**\n\nYo soy como las gentes que a mi tierra vinieron — soy de la raza mora, vieja amiga del sol —, que todo lo ganaron y todo lo perdieron. Tengo el alma de nardo del árabe español.\n\n**MACHADO, M.** Disponível em: www.poetasandaluces.com. Acesso em: 22 out. 2015 (fragmento).",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "Nessa estrofe, o poeta e dramaturgo espanhol Manuel Machado reflete acerca",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "De sua formação identitária plural.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Da condição nômade de seus antepassados.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Da perda sofrida com o processo de migração.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Da dívida do povo espanhol para com o povo árabe.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "De sua identificação com os elementos da natureza.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 2 - ENEM 2019",
+      "index": 2,
+      "discipline": "linguagens",
+      "language": "espanhol",
+      "year": 2019,
+      "context": "**Millennials: Así es la generación que ya no recuerda**  \n**cómo era el mundo sin Internet**\n\nAlgunos los llaman generación Y, otros “Millennials”, generación del milenio o incluso “Echo Boomers”.  \nNacieron y crecieron en una era de rápido desarrollo de las nuevas tecnologías, y casi no recuerdan cómo era el mundo sin Internet.  \nSon idealistas, impacientes y están bien preparados académicamente. Muchos de ellos han tenido oportunidad de viajar por el mundo a una edad temprana,  \nde estudiar en las mejores universidades y de trabajar en empresas multinacionales y extranjeras.  \nLa generación Y se compone de este tipo de personas que quieren todo a la vez. No están dispuestos a soportar un trabajo poco interesante y rutinario, no quieren dejar las cosas buenas para luego. Lo que sí quieren es dejar su huella en la historia, vivir una vida interesante, formar parte de algo grande, crecer y desarrollarse, cambiar el mundo que les rodea, y no solo ganar dinero.\n\nDisponível em: https://actualidad.rt.com. Acesso em: 4 dez. 2018.",
+      "files": [],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "O texto aponta características e interesses da “Geração Y”. Nele, a expressão dejar su huella refere-se a um dos desejos dessa geração, que é o de",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Conhecer diferentes lugares.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Fazer a diferença no mundo.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Aproveitar todas as oportunidades.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Obter uma formação acadêmica de excelência.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Conquistar boas colocações no mundo do trabalho.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 3 - ENEM 2019",
+      "index": 3,
+      "discipline": "linguagens",
+      "language": "espanhol",
+      "year": 2019,
+      "context": "**Que hay de cierto en la fábula de la cigarra y la hormiga**\n\nCuenta una conocida fábula que, tras pasar todo un verano cantando y ociosa, una cigarra se encontró sin alimento y decidió pedir a su vecina, la hormiga algo que llevarse a la boca. Esta le ofreció granos de arroz acompañados de una moraleja: más vale prevenir que lamentar. ¿Merecen su fama de previsoras y afanosas las hormigas? Sin duda. Las hormigas cortadoras de hojas (Atta cephalotes), por ejemplo, son consideradas las primeras agricultoras del planeta, dedicadas a cortar, acarrear e integrar hojas en el jardín de hongos del que se alimentan. Otro dato curioso es que se ha comprobado que, prácticamente en todas las especies de hormigas, las más ancianas asumen trabajos de mayor riesgo. De acuerdo con Dawid Moron de la Universidad de Jagiellonian (Polonia), esto se debe a que es mejor para la colonia sacrificar una vida que está cerca de su fin que a un individuo joven.\n\nEn cuanto a las cigarras, no se les puede acusar de perezosas. Lo que sí es cierto es que los machos pasan el verano “cantando” — un sonido que producen con unas membranas llamadas timbales — y encaramados a un árbol, de cuya savia se alimentan.\n\n**Disponível em:** www.muyinteresante.es.  \nAcesso em: 31 out. 2012 (adaptado).",
+      "files": [],
+      "correctAlternative": "C",
+      "alternativesIntroduction": "A fábula é um gênero de ampla divulgação frequentemente revisitado com diversos objetivos. No texto, a fábula A cigarra e a formiga é retomada para",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Apresentar ao leitor um ensinamento moral.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Reforçar o estereótipo associado às cigarras.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Descrever o comportamento dos insetos na natureza.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "D",
+          "text": "Expor a superioridade das formigas em relação às cigarras.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Descrever a relação social entre formigas e cigarras na natureza.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 4 - ENEM 2019",
+      "index": 4,
+      "discipline": "linguagens",
+      "language": "espanhol",
+      "year": 2019,
+      "context": "**Empanada  \n**\n\nOvera en bayo claro,\n\nvaquilla echada,\n\neres del vino tinto la camarada.\n\n\\[…\\]\n\nVienes llena de pino,\n\ncebolla y carne,\n\ncon pasas, huevo duro,\n\ny aliño de hambre.\n\nCon el primer mordisco\n\npor una oreja,\n\nse abre tu boca ardiente\n\ncomo sorpresa.\n\nTe la lleno de pebre\n\nquedas picante\n\nsi te beso muy fuerte,\n\nno me reclames.\n\nBusco, loco, en tu vientre,\n\ndelicia oscura,\n\nla traición exquisita\n\nde tu aceituna.\n\n\\[…\\]\n\nY repite el ataque\n\npor andanadas:\n\nNadie queda con hambre\n\nsi hay empanadas.\n\n**ANTRIX, J.** Disponível em: http://versado-en-la-cocina.blogspot.com.  \nAcesso em: 8 dez. 2018 (fragmento).",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "A gastronomia é uma das formas de expressão cultural de um povo. Nesse poema, ao personificar as empanadas, o escritor chileno Antrix",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Enaltece esse prato da culinária hispânica.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Descreve algumas etapas de preparação dessa receita.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Destaca a importância do vinho na alimentação hispânica.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Resgata o papel histórico desse alimento em tempos de fome.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Evidencia a relevância de alguns condimentos na cozinha hispânica.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 5 - ENEM 2019",
+      "index": 5,
+      "discipline": "linguagens",
+      "language": "espanhol",
+      "year": 2019,
+      "context": "**El Hombre Electrónico**\n\n¿Cuántas veces has cambiado de móvil? ¿Cuántos ordenadores has tenido ya? ¿Tienes cámara digital, IPOD, Nintendo Wii y televisión de pantalla de plasma? Ordenadores, teléfonos móviles, GPS, walkmans, televisiones, lavadoras, tostadores, aspiradores y un larguísimo etcétera. Todos usamos aparatos eléctricos que tarde o temprano se convertirán en residuos. El Hombre Electrónico mide 7 metros de altura y pesa 3,3 toneladas. Es una escultura hecha con la cantidad de residuos eléctricos y electrónicos que un ciudadano medio (en el Reino Unido) tirará a la basura a lo largo de su vida, si se sigue consumiendo este tipo de productos al ritmo actual. El Hombre Electrónico ha sido diseñado por el escultor Paul Bomini con objetivo de aumentar la conciencia de los ciudadanos a la hora de consumir aparatos eléctricos. Esta campaña parte de la base de que todos compramos aparatos electrónicos como herramientas de trabajo u ocio, pero haciéndonos unas cuantas preguntas podemos inducir cambios en nuestro comportamiento que beneficiarán al medio ambiente, otras personas y a nosotros mismos: ¿Tienes algún aparato eléctrico o electrónico que no necesitas? ¿Podrías ser más responsable a la hora de comprar un nuevo producto electrónico? ¿Podrías reciclar o reparar estos productos una vez que se han quedado obsoletos o se han roto? ¿Intentas ahorrar energia en tu vida diaria?\n\n**Disponível em:** www.verdecito.es. Acesso em: 20 fev. 2009 (adaptado).",
+      "files": [],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "Considerando a necessidade de assumir uma conduta mais responsável com o meio ambiente, Paul Bomini criou a escultura O homem eletrônico para",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Incentivar inovações em reciclagem para a construção de máquinas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Propor a criação de objetos a partir de aparelhos descartados.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Divulgar o lançamento de produtos eletrônicos sustentáveis.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "D problematizar o descarte inconsequente de equipamentos.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "Alertar sobre as escolhas tecnológicas da população.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 6 - ENEM 2019",
+      "index": 6,
+      "discipline": "linguagens",
+      "language": null,
+      "year": 2019,
+      "context": "![](https://enem.dev/2019/questions/6/cec1fc23-8701-42af-93d4-d1ca5aef4495.png)\n\n**Disponível em:** http://palavrastempoder.org. Acesso em: 20 abr. 2015",
+      "files": [
+        "https://enem.dev/2019/questions/6/cec1fc23-8701-42af-93d4-d1ca5aef4495.png"
+      ],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "Pela análise do conteúdo, constata-se que essa campanha publicitária tem como função social",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Propagar a imagem positiva do Ministério Público.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Conscientizar a população que direitos implicam deveres.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Coibir violações de direitos humanos nos meios de comunicação.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Divulgar políticas sociais que combatem a intolerância e o preconceito.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Instruir as pessoas sobre a forma correta de expressão nas redes sociais.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 7 - ENEM 2019",
+      "index": 7,
+      "discipline": "linguagens",
+      "language": null,
+      "year": 2019,
+      "context": "Um amor desse  \nEra 24 horas lado a lado  \nUm radar na pele, aquele sentimento alucinado  \nCoração batia acelerado  \nBastava um olhar pra eu entender  \nQue era hora de me entregar pra você  \nPalavras não faziam falta mais  \nAh, só de lembrar do seu perfume  \nQue arrepio, que calafrio  \nQue o meu corpo sente  \nNem que eu queira, eu te apago da minha mente  \nAh, esse amor  \nDeixou marcas no meu corpo  \nAh, esse amor  \nSó de pensar, eu grito, eu quase morro\n\n**AZEVEDO, N.; LEÃO, W.; QUADROS, R.** _Coração pede socorro_.  \nRio de Janeiro: Som Livre, 2018 (fragmento).",
+      "files": [],
+      "correctAlternative": "C",
+      "alternativesIntroduction": "Essa letra de canção foi composta especialmente para uma campanha de combate à violência contra as mulheres, buscando conscientizá-las acerca do limite entre relacionamento amoroso e relacionamento abusivo. Para tanto, a estratégia empregada na letra é a",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Revelação da submissão da mulher à situação de violência, que muitas vezes a leva à morte.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Ênfase na necessidade de se ouvirem os apelos da mulher agredida, que continuamente pede socorro.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Exploração de situação de duplo sentido, que mostra que atos de dominação e violência não configuram amor.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "D",
+          "text": "Divulgação da importância de denunciar a violência doméstica, que atinge um grande número de mulheres no país.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Naturalização de situações opressivas, que fazem parte da vida de mulheres que vivem em uma sociedade patriarcal.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 8 - ENEM 2019",
+      "index": 8,
+      "discipline": "linguagens",
+      "language": null,
+      "year": 2019,
+      "context": "Meu caro Sherlock Holmes, algo horrível aconteceu às três da manhã no Jardim Lauriston. Nosso homem que estava na vigia viu uma luz às duas da manhã saindo de uma casa vazia. Quando se aproximou, encontrou a porta aberta e, na sala da frente, o corpo de um cavalheiro bem vestido. Os cartões que estavam em seu bolso tinham o nome de Enoch J. Drebber, Cleveland, Ohio, EUA. Não houve assalto e nosso homem não conseguiu encontrar algo que indicasse como ele morreu. Não havia marcas de sangue, nem feridas nele. Não sabemos como ele entrou na casa vazia. Na verdade, todo assunto é um quebra-cabeça sem fim. Se puder vir até a casa seria ótimo, se não, eu lhe conto os detalhes e gostaria muito de saber sua opinião. Atenciosamente, Tobias Gregson.\n\n**DOYLE, A. C.** _Um estudo em vermelho_. Cotia: Pé de Letra, 2017",
+      "files": [],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "Considerando o objetivo da carta de Tobias Gregson, a sequência de enunciados negativos presente nesse texto tem a função de",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Restringir a investigação, deixando-a sob a responsabilidade do autor da carta.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Refutar possíveis causas da morte do cavalheiro, auxiliando na investigação.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Identificar o local da cena do crime, localizando-o no Jardim Lauriston.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Introduzir o destinatário da carta, caracterizando sua personalidade.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Apresentar o vigia, incluindo-o entre os suspeitos do assassinato.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 9 - ENEM 2019",
+      "index": 9,
+      "discipline": "linguagens",
+      "language": null,
+      "year": 2019,
+      "context": "**Mídias: aliadas ou inimigas da educação física escolar?**\n\nNo caso do esporte, a mediação efetuada pela câmera de TV construiu uma nova modalidade de consumo: o esporte telespetáculo, realidade textual relativamente autônoma face à prática “real” do esporte, construída pela codificação e mediação dos eventos esportivos efetuados pelo enquadramento, edição das imagens e comentários, interpretando para o espectador o que ele está vendo. Esse fenômeno tende a valorizar a forma em relação ao conteúdo, e para tal faz uso privilegiado da linguagem audiovisual com ênfase na imagem cujas possibilidades são levadas cada vez mais adiante, em decorrência dos avanços tecnológicos. Por outro lado, a narração esportiva propõe uma concepção hegemônica de esporte: esporte é esforço máximo, busca da vitória, dinheiro… O preço que se paga por sua espetacularização é a fragmentação do fenômeno esportivo. A experiência global do ser-atleta é modificada: a sociabilização no confronto e a ludicidade não são vivências privilegiadas no enfoque das mídias, mas as eventuais manifestações de violência, em partidas de futebol, por exemplo, são exibidas e reexibidas em todo o mundo.\n\n**BETTI, M**. _Motriz_, n. 2, jul.-dez. 2001 (adaptado).",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "A reflexão trazida pelo texto, que aborda o esporte telespetáculo, está fundamentada na",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Distorção da experiência do ser-atleta para os espectadores.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Interpretação dos espectadores sobre o conteúdo transmitido.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Utilização de equipamentos audiovisuais de última geração.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Valorização de uma visão ampliada do esporte.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Equiparação entre a forma e o conteúdo.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 10 - ENEM 2019",
+      "index": 10,
+      "discipline": "linguagens",
+      "language": null,
+      "year": 2019,
+      "context": "![](https://enem.dev/2019/questions/10/ae918ab7-0af8-4aba-a19e-2ea912322846.jpg)",
+      "files": [
+        "https://enem.dev/2019/questions/10/ae918ab7-0af8-4aba-a19e-2ea912322846.jpg"
+      ],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "Essa campanha se destaca pela maneira como utiliza a linguagem para conscientizar a sociedade da necessidade de se acabar com o bullying. Tal estratégia está centrada no(a)",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Chamamento de diferentes atores sociais pelo uso recorrente de estruturas injuntivas.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Variedade linguística caracterizadora do português europeu.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Restrição a um grupo específico de vítimas ao apresentar marcas gráficas de identificação de gênero como “o(a)”.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Combinação do significado de palavras escritas em línguas inglesa e portuguesa.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Enunciado de cunho esperançoso “passe à história” no título do cartaz.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    }
+  ]
+}

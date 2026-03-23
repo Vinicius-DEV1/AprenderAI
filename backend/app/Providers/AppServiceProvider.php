@@ -43,8 +43,17 @@ class AppServiceProvider extends ServiceProvider
             $duration = microtime(true) - $startTime;
             $queue = $event->job->getQueue();
 
-            // Resolve QueueTrackerService e registra métrica
-            app(\App\Services\QueueTrackerService::class)->recordJob($queue, $duration);
+            $tracker = app(\App\Services\QueueTrackerService::class);
+            
+            // 1. Registra métrica agregada (throughput/avg duration)
+            $tracker->recordJob($queue, $duration);
+
+            // 2. Registra job individual para o monitor
+            $tracker->recordCompletedJob(
+                $event->job->resolveName(),
+                $queue,
+                $duration
+            );
         });
 
         \Illuminate\Support\Facades\Queue::failing(function (\Illuminate\Queue\Events\JobFailed $event) {
