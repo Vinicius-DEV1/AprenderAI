@@ -33,106 +33,111 @@ class XavierIndexAllCommand extends Command
 
     public function handle(QdrantService $qdrant): int
     {
-        $pid = getmypid();
-        $this->info("🚀 Xavier Semantic Search — Batch Indexer (PID: {$pid})");
-        Log::info("[Xavier][CommandAll] START | PID: {$pid}");
-        $this->newLine();
+        try {
+            $pid = getmypid();
+            $this->info("🚀 Xavier Semantic Search — Batch Indexer (PID: {$pid})");
+            Log::info("[Xavier][CommandAll] START | PID: {$pid}");
+            $this->newLine();
 
-        // Ensure Qdrant collections exist (or recreate if --fresh)
-        if ($this->option('fresh')) {
-            $this->warn('⚠  --fresh flag detected. Recreating Qdrant collections...');
-            // Note: Qdrant collection recreation would require a delete endpoint.
-            // For safety, we just ensure the collections exist (no destructive action).
-            $this->warn('  (For a true reset, delete the collections manually via Qdrant UI first)');
-        }
+            // Ensure Qdrant collections exist (or recreate if --fresh)
+            if ($this->option('fresh')) {
+                $this->warn('⚠  --fresh flag detected. Recreating Qdrant collections...');
+                // Note: Qdrant collection recreation would require a delete endpoint.
+                // For safety, we just ensure the collections exist (no destructive action).
+                $this->warn('  (For a true reset, delete the collections manually via Qdrant UI first)');
+            }
 
-        $this->info('📦 Ensuring Qdrant collections exist...');
-        $qdrant->ensureQuestionsCollection();
-        $qdrant->ensureFiltersCollection(); // Concepts were renamed to Filters/Entities in Xavier 2.0
-        $this->info('  ✓ Collections ready.');
-        $this->newLine();
+            $this->info('📦 Ensuring Qdrant collections exist...');
+            $qdrant->ensureQuestionsCollection();
+            $qdrant->ensureFiltersCollection(); // Concepts were renamed to Filters/Entities in Xavier 2.0
+            $this->info('  ✓ Collections ready.');
+            $this->newLine();
 
-        $chunkSize = max(1, (int) $this->option('chunk'));
-        $isSync    = (bool) $this->option('sync');
-        $mode      = $isSync ? 'synchronous' : 'async (queue: embeddings)';
+            $chunkSize = max(1, (int) $this->option('chunk'));
+            $isSync    = (bool) $this->option('sync');
+            $mode      = $isSync ? 'synchronous' : 'async (queue: embeddings)';
 
-        $this->info("📋 Mode: {$mode} | Chunk size: {$chunkSize}");
-        $this->newLine();
+            $this->info("📋 Mode: {$mode} | Chunk size: {$chunkSize}");
+            $this->newLine();
 
-        // Count approved questions (filter depends on --force)
-        $total = Question::published()
-            ->where('tipo_questao', '!=', 'Redação')
-            ->when(!$this->option('force'), function ($query) {
-                return $query->whereDoesntHave('vectors');
-            })
-            ->count();
-
-        if ($total === 0) {
-            $this->warn('No pending approved questions found. Nothing to index.');
-            return 0;
-        }
-
-        $this->info("🔢 Found {$total} questions to index" . ($this->option('force') ? ' (FORCE MODE)' : '') . ".");
-        $this->newLine();
-
-        $indexed  = 0;
-        $failed   = 0;
-        $skipped  = 0;
-
-        $this->withProgressBar(
-            Question::published()
+            // Count approved questions (filter depends on --force)
+            $total = Question::published()
                 ->where('tipo_questao', '!=', 'Redação')
                 ->when(!$this->option('force'), function ($query) {
                     return $query->whereDoesntHave('vectors');
                 })
-                ->when($this->option('limit'), function ($query, $limit) {
-                    return $query->limit((int) $limit);
-                })
-                ->select('id')
-                ->cursor(),
-            function ($question) use ($isSync, &$indexed, &$failed, $pid) {
-                try {
-                    $job = new IndexQuestionVectorJob($question->id);
-                    
-                    if ($isSync) {
-                        dispatch_sync($job);
-                    } else {
-                        dispatch($job)->onQueue(config('xavier.embeddings.queue', 'embeddings')); // Fixed queue name to match batching
-                    }
-                    $indexed++;
+                ->count();
 
-                    if ($indexed % 100 === 0) {
-                        Log::debug("[Xavier][CommandAll] Progress: {$indexed} dispatched...");
-                    }
-                } catch (\Exception $e) {
-                    $failed++;
-                    Log::error("[Xavier:index-all] Failed for question #{$question->id}: " . $e->getMessage());
-                }
+            if ($total === 0) {
+                $this->warn('No pending approved questions found. Nothing to index.');
+                return 0;
             }
-        );
 
-        $this->newLine(2);
-        $this->table(
-            ['Metric', 'Count'],
-            [
-                ['✅ Dispatched/Indexed', $indexed],
-                ['❌ Failed',            $failed],
-                ['⏭  Skipped',           $skipped],
-                ['📊 Total',             $total],
-            ]
-        );
+            $this->info("🔢 Found {$total} questions to index" . ($this->option('force') ? ' (FORCE MODE)' : '') . ".");
+            $this->newLine();
 
-        if ($isSync) {
-            $this->newLine();
-            $this->info('✅ Synchronous indexing complete.');
-        } else {
-            $queueName = config('xavier.embeddings.queue', 'low');
-            $this->newLine();
-            $this->info("✅ Jobs dispatched to [{$queueName}] queue (Prioritized Workers).");
-            $this->line("   Hybrid workers will process this as a background task.");
+            $indexed  = 0;
+            $failed   = 0;
+            $skipped  = 0;
+
+            $this->withProgressBar(
+                Question::published()
+                    ->where('tipo_questao', '!=', 'Redação')
+                    ->when(!$this->option('force'), function ($query) {
+                        return $query->whereDoesntHave('vectors');
+                    })
+                    ->when($this->option('limit'), function ($query, $limit) {
+                        return $query->limit((int) $limit);
+                    })
+                    ->select('id')
+                    ->cursor(),
+                function ($question) use ($isSync, &$indexed, &$failed, $pid) {
+                    try {
+                        $job = new IndexQuestionVectorJob($question->id);
+                        
+                        if ($isSync) {
+                            dispatch_sync($job);
+                        } else {
+                            dispatch($job)->onQueue(config('xavier.embeddings.queue', 'embeddings')); // Fixed queue name to match batching
+                        }
+                        $indexed++;
+
+                        if ($indexed % 100 === 0) {
+                            Log::debug("[Xavier][CommandAll] Progress: {$indexed} dispatched...");
+                        }
+                    } catch (\Exception $e) {
+                        $failed++;
+                        Log::error("[Xavier:index-all] Failed for question #{$question->id}: " . $e->getMessage());
+                    }
+                }
+            );
+
+            $this->newLine(2);
+            $this->table(
+                ['Metric', 'Count'],
+                [
+                    ['✅ Dispatched/Indexed', $indexed],
+                    ['❌ Failed',            $failed],
+                    ['⏭  Skipped',           $skipped],
+                    ['📊 Total',             $total],
+                ]
+            );
+
+            if ($isSync) {
+                $this->newLine();
+                $this->info('✅ Synchronous indexing complete.');
+            } else {
+                $queueName = config('xavier.embeddings.queue', 'embeddings');
+                $this->newLine();
+                $this->info("✅ Jobs dispatched to [{$queueName}] queue (Prioritized Workers).");
+                $this->line("   Hybrid workers will process this as a background task.");
+            }
+
+            Log::info("[Xavier][CommandAll] END | Dispatched: {$indexed} | Failed: {$failed}");
+        } catch (\Exception $e) {
+            Log::error("[Xavier][CommandAll] FATAL ERROR | PID: " . (getmypid()) . " | " . $e->getMessage());
+            throw $e;
         }
-
-        Log::info("[Xavier][CommandAll] END | Dispatched: {$indexed} | Failed: {$failed}");
         return 0;
     }
 }
