@@ -371,6 +371,11 @@ class AIBatchTriageJob implements ShouldQueue
                     $dbBatch->update(['errors_log' => $existingLogs]);
                 }
             }
+        } catch (\App\Exceptions\AIServiceBusyException $e) {
+            $isQuota = str_contains(strtolower($e->getMessage()), 'quota');
+            \Illuminate\Support\Facades\Log::warning("[Xavier][AIBatchTriage] " . ($isQuota ? "Quota limite atingida em todas as chaves." : "Pool de IA ocupado.") . " Re-agendando em " . ($isQuota ? "5 min" : "30s"));
+            $this->release($isQuota ? 300 : 30);
+            return;
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("[AIBATCH] Failed to update progress: " . $e->getMessage());
         } finally {
