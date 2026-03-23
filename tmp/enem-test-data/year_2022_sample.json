@@ -1,0 +1,444 @@
+{
+  "year": 2022,
+  "total": 185,
+  "sample": [
+    {
+      "title": "Questão 1 - ENEM 2022",
+      "index": 1,
+      "discipline": "linguagens",
+      "language": "espanhol",
+      "year": 2022,
+      "context": "![](https://enem.dev/2022/questions/1-espanhol/b8e76f18-f22d-4401-bf90-fd34c74e07e5.jpg)\n\nDisponível em: www.inali.gob.mx. Acesso em: 2 dez. 2018.",
+      "files": [
+        "https://enem.dev/2022/questions/1-espanhol/b8e76f18-f22d-4401-bf90-fd34c74e07e5.jpg"
+      ],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "Esse cartaz tem a função social de",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Difundi a arte iconográfica indígena mexicana.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Resgatar a literatura popular produzida em língua zapoteca.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Questionar o conhecimento do povo mexicano sobre as línguas ameríndias",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Destacar o papel dos órgãos governamentais na conservação das línguas no México.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Defender a preservação das línguas originárias garantindo a diversidade linguística mexicana.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 2 - ENEM 2022",
+      "index": 2,
+      "discipline": "linguagens",
+      "language": "espanhol",
+      "year": 2022,
+      "context": "**Pequeño hermano**\n\nEs, no cabe duda, el instrumento más presente y más poderoso de todos los que entraron en nuestras vidas. Ni la televisión ni el ordenador, no hablemos ya del obsoleto fax o de las agendas o los libros electrónicos, ha tenido tal influencia, tal predicamento sobre nosotros. El móvil somos nosotros mismos. Todo desactivado e inerte, inocuo, ya les digo. Y de repente, tras un viaje y tres o cuatro imprudentes fotos, salta un aviso en la pantalla. Con sonido, además, pese a que tengo también todas las alertas desactivadas. Y mi monstruo doméstico me dice: Tienes un recuerdo nuevo. Lo repetiré: tienes un recuerdo nuevo. ¿Y tú qué sabes? ¿Y a ti, máquina demoníaca, qué te importa? ¿Cómo te atreves a decirme qué son o no son mis recuerdos? ¿Qué es esta intromisión, este descaro? El pequeño hermano lo sabe casi todo. Sólo hay una esperanza: que la obsolescencia programada mate antes al pequeño hermano y que nosotros sigamos vivos, con los recuerdos que nos dé la gana.\n\nFERNANDEZ, D, Disponível em: www.lavanguardia.com.\n\nAcesso em:  5 dez. 2018 (adaptado).",
+      "files": [],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "No texto, autor faz uma crítica ao(à)",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Conhecimento das pessoas sobre as tecnologias.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Uso do celular alheio por pessoas desautorizadas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Funcionamento de recursos tecnológicos obsoletos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Ingerência do celular sobre as escolhas dos usuários",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "Falta de informação sobre a configuração de alertas no celular",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 3 - ENEM 2022",
+      "index": 3,
+      "discipline": "linguagens",
+      "language": "espanhol",
+      "year": 2022,
+      "context": "En los suburbios de La Habana, llaman al amigo _mi tierra o mi sangre._En Caracas, el amigo es _mi pana o mi llave_: _pana_, por panadería, la fuente del buen pan para las hambres del alma; y _llave_ por…—_Llave_, por _llave_—me dice Mario Benedetti. Y me cuenta que cuando vivía en Buenos Aires, en los tiempos del terror, él llevaba cinco llaves ajenas en su llavero: cinco llaves, de cinco casas, de cinco amigos: las llaves que lo salvaron.\n\nGALEANO, E. **El libro de los abrazos**. Madri: Siglo Veintiuno, 2015.",
+      "files": [],
+      "correctAlternative": "C",
+      "alternativesIntroduction": "Nesse texto, o autor demonstra como as diferentes expressões existentes em espanhol para se referir a “amigo” variam em função",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Das peculiaridades dos subúrbios hispano-americanos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Da força da conexão espiritual entre os amigos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Do papel da amizade em diferentes contextos.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "D",
+          "text": "Do hábito de reunir amigos em torno da mesa",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Dos graus de intimidade entre os amigos",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 4 - ENEM 2022",
+      "index": 4,
+      "discipline": "linguagens",
+      "language": "espanhol",
+      "year": 2022,
+      "context": "**Los niños de nuestro olvido**\n\nEscribo sobre un destino  \nQue apenas puedo tocar  \nEn tanto un niño se inventa  \nCon pegamento un hogar\n\nMientras busco las palabras  \nPara hacer esta canción  \nUn niño esquiva las balas  \nQue buscan su corazón\n\nAcurrucado en mí calle  \nDuerme un niño y la piedad  \nArma lejos un pesebre  \nY juega a la navidad\n\nArma lejos un pesebre  \nY juega a la navidad  \nY juega a la navidad  \nY juega, y juega, y juega…\n\nLa niñez de nuestro olvido  \nPide limosna en un bar  \nY lava tu parabrisas  \nPor un peso, por un pan\n\nSi las flores del futuro  \nCrecen con tanto dolor  \nSeguramente mañana  \nSerá un mañana sin sol",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "No texto, a expressão “un mañana sin sol” é usada para concluir uma critica ao(à)",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Descanso diante da problemática de crianças em situação de rua.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Violência característica do cotidiano das grandes metrópoles.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Estímulo à mendicância nos centros urbanos",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Tendência de informalização do trabalho",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Falta de serviços de saúde adequados",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 5 - ENEM 2022",
+      "index": 5,
+      "discipline": "linguagens",
+      "language": "espanhol",
+      "year": 2022,
+      "context": "![](https://enem.dev/2022/questions/5-espanhol/2a1a630d-3c73-4b12-81e5-219ee4f917b7.jpg)\n\nMURIG. Disponível em: https://murigcolectivafeminista.wordpress.com.\n\nAcesso em: 26 out. 2021(adaptado)",
+      "files": [
+        "https://enem.dev/2022/questions/5-espanhol/2a1a630d-3c73-4b12-81e5-219ee4f917b7.jpg"
+      ],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "No texto, as palavras “crianzas” e “tribu” são usadas para",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Evidenciar a importância de uma rede de apoio para as mães na criação dos seus filhos",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Denunciar a disparidade entre o trabalho das mães de diferentes classes",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Ressaltar o fechamento de escolas e creches durante o período pandêmico",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Ratificar a romantização da dedicação das mães na educação da crianças",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Enfatizar a proteção aos filhos em razão do isolamento social das famílias",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 6 - ENEM 2022",
+      "index": 6,
+      "discipline": "linguagens",
+      "language": null,
+      "year": 2022,
+      "context": "**Urgência emocional**\n\nSe tudo é para ontem, se a vida engata uma primeira e sai em disparada, se não há mais tempo para paradas estratégicas, caímos fatalmente no vício de querer que os amores sejam igualmente resolvidos num átimo de segundo. Temos pressa para ouvir “eu te amo”. Não vemos a hora de que fiquem estabelecidas as regras de convívio: somos namorados, ficantes, casados, amantes? Urgência emocional. Uma cilada. Associamos diversas palavras ao AMOR: paixão, romance, sexo, adrenalina, palpitação. Esquecemos, no entanto, da palavra que viabiliza esse sentimento: “paciência”. Amor sem paciência não vinga. Amor não pode ser mastigado e engolido com emergência, com fome desesperada. É uma refeição que pode durar uma vida.\n\nMEDEIROS, M. Disponível em: http:/porumavidasimples.blogspot.com.br. Acesso em: 20 ago. 2017 (adaptado).",
+      "files": [],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "Nesse texto de opinião, as marcas linguísticas revelam uma situação distensa e de pouca formalidade, o que se evidencia pelo(a)",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Impessoalização ao longo do texto, como em: “se não há mais tempo”.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Construção de uma atmosfera de urgência, em palavras como: “pressa”.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Repetição de uma determinada estrutura sintática, como em: “Se tudo é para ontem”.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Ênfase no emprego da hipérbole, como em: “uma refeição que pode durar uma vida”.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Emprego de metáforas, como em: “a vida engata uma primeira e sai em disparada”.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 7 - ENEM 2022",
+      "index": 7,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2022,
+      "context": "**TEXTO I**\n\n![](https://enem.dev/2022/questions/7/01826c2e-3f38-4271-86de-f85c879bd70f.png)\n\nDisponível em: https://amigodobicho.wordpress.com/. Acesso em: 10 dez. 2017.\n\n**TEXTO II**\n\n**Nas ruas, na cidade e no parque**\n\nNinguém nunca prendeu o Delegado. O vaivém de rua em rua e sua longa vida são relembrados e recontados. Exemplo de sobrevivência, liderança, inteligência canina, desde pequenininho seu focinho negro e seus olhos delineados desenharam um mapa mental olfativo-visual de Lavras. Corria de quem precisava correr e se aproximava de quem não lhe faria mal, distinguia este daquele. Assim, tornou-se um cão comunitário. Nunca se soube por que escolheu a rua, talvez lhe tenham feito mal dentro de quatro paredes. Idoso, teve câncer e desapareceu. O querido foi procurado pela cidade inteira por duas protetoras, mas nunca encontrado.\n\n**COSTA, A. R. N. Viver o amor aos cães: Parque Francisco de Assis. Carmo do Cachoeira: Irdin, 2014 (adaptado).**",
+      "files": [
+        "https://enem.dev/2022/questions/7/01826c2e-3f38-4271-86de-f85c879bd70f.png"
+      ],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "Os dois textos abordam a temática de animais de rua, porém, em relação ao Texto I, o Texto II",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Problematiza a necessidade de adoção de animais sem lar.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Valida a troca afetiva entre os pets adotados e seus donos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Reforça a importância da campanha de adoção de animais.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Exalta a natureza amigável de cães e de gatos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Promove a campanha de adoção de animais.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 8 - ENEM 2022",
+      "index": 8,
+      "discipline": "linguagens",
+      "language": null,
+      "year": 2022,
+      "context": "É ruivo? Tem olhos azuis? É homem ou mulher? Usa chapéu? Quem jogou Cara a Cara na infância sabe de cor o roteiro de perguntas para adivinhar quem é o personagem misterioso do seu oponente.\n\nAgora, o jogo está prestes a ganhar uma nova versão. A designer polonesa Zuzia Kozerska-Girard está desenvolvendo uma variação do _Guess Who?_ (nome do Cara a Cara em inglês), em que as personalidades do tabuleiro são, na verdade, mulheres notáveis da história e  \nda atualidade, como a artista Frida Kahlo, a ativista Malala Yousafzai, a astronauta Valentina Tereshkova e a aviadora Amelia Earhart. O _Who’s She?_ (“Quem é ela?”, em português) traz, no total, 28 mulheres que representam diversas profissões, nacionalidades e idades.\n\nA ideia é que, em vez de perguntar sobre a aparência das personagens, as questões sejam direcionadas aos feitos delas: ganhou algum Nobel, fez alguma descoberta? Para cada personagem há um cartão com fatos divertidos e interessantes sobre sua vida. Uma campanha entrou no ar com o objetivo de arrecadar dinheiro para desenvolver o _Who’s She?_. A meta inicial era reunir 17 mil dólares. Oito dias antes de a campanha acabar, o projeto já angariou quase 350 mil dólares.\n\nA chegada do jogo à casa do comprador varia de acordo com a quantia doada — quanto mais você doou, mais rápido vai poder jogar.\n\nDisponível em: www.super.abril.com.br. Acesso em: 4 dez. 2018 (adaptado).",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "Ao divulgar a adaptação do jogo para questões relativas a ações e habilidades de mulheres notáveis, o texto busca",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Contribuir para a formação cidadã dos jogadores.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Refutar modelos estereotipados de beleza e elegância.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Estimular a competitividade entre potenciais compradores.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Exemplificar estratégias de arrecadação financeira pela internet.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Desenvolver conhecimentos lúdicos específicos dos tempos atuais.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 9 - ENEM 2022",
+      "index": 9,
+      "discipline": "linguagens",
+      "language": null,
+      "year": 2022,
+      "context": "![](https://enem.dev/2022/questions/9/b1a38f51-88f6-4686-9189-734021ee6771.png)\n\n**Disponível em: : www.portaldapropaganda.com.br. Acesso em: 29 out. 2013 (adaptado).**",
+      "files": [
+        "https://enem.dev/2022/questions/9/b1a38f51-88f6-4686-9189-734021ee6771.png"
+      ],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "Para convencer o público-alvo sobre a necessidade de um trânsito mais seguro, essa peça publicitária apela para o(a)",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Sentimento de culpa provocado no condutor causador de acidentes.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Dano psicológico causado nas vítimas da violência nas estradas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Importância do monitoramento do trânsito pelas autoridades competentes.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Necessidade de punição a motoristas alcoolizados envolvidos em acidentes.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Sofrimento decorrente da perda de entes queridos em acidentes automobilísticos.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 10 - ENEM 2022",
+      "index": 10,
+      "discipline": "linguagens",
+      "language": null,
+      "year": 2022,
+      "context": "Ciente de que, no campo da criação, as inovações tecnológicas abrem amplo leque de possibilidades – ao permitir, e mesmo estimular, que o artista explore a fundo, em seu processo criativo, questões como a aleatoriedade, o acaso, a não linearidade e a hipermídia –, Leo Cunha comenta que, no que tange ao campo da divulgação, as alternativas são ainda mais evidentes: “Afinal, é imensa a capacidade de reprodução, multiplicação e compartilhamento das obras artísticas/culturais. Ao mesmo tempo, ganham dimensão os dilemas envolvidos com a questão da autoria, dos direitos autorais, da reprodução e intervenção não autorizadas, entre outras questões”. Já segundo a professora Yacy-Ara Froner, o uso de ferramentas tecnológicas não pode ser visto como um fim em si mesmo. Isso porque computadores, samplers, programas de imersão, internet e intranet, vídeo, televisão, rádio, GPD etc. são apenas suportes com os quais os artistas exercem sua imaginação.\n\nSILVA JR., M. G. Movidas pela dúvida. **Minas faz Ciências**, n. 52, dez-fev. 2013 (adaptado).",
+      "files": [],
+      "correctAlternative": "C",
+      "alternativesIntroduction": "Segundo os autores citados no texto, a expansão de possibilidades no campo das manifestações artísticas promovida pela internet pode pôr em risco o(a)",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Sucesso dos artistas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Valorização dos suportes.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Proteção da produção estética.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "D",
+          "text": "Modo de distribuição de obras.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Compartilhamento das obras artísticas.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    }
+  ]
+}

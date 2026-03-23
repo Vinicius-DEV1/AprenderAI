@@ -73,6 +73,11 @@ class XavierSearchController extends Controller
         }
 
         // ── Step 3: Generic Embedding Generation ─────────────────────────────
+        if (empty($normalizedQuery)) {
+            Log::info('[Xavier][Search] Step 3 SKIPPED: normalized query is empty. Falling back to legacy.');
+            return $this->legacyAiSearch($request, $user, $cacheService);
+        }
+
         try {
             $queryVector = $aiService->generateEmbedding($normalizedQuery, $user->id, 'RETRIEVAL_QUERY');
             

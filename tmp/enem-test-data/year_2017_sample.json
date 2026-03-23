@@ -1,0 +1,436 @@
+{
+  "year": 2017,
+  "total": 185,
+  "sample": [
+    {
+      "title": "Questão 1 - ENEM 2017",
+      "index": 1,
+      "discipline": "linguagens",
+      "language": "espanhol",
+      "year": 2017,
+      "context": "**El carpintero**\n\nOrlando Goicoechea reconoce las maderas por el olor, de qué árboles vienen, qué edad tienen, y oliéndolas sabe si fueron cortadas a tiempo o a destiempo y les adivina los posibles contratiempos.\n\nAl cabo de tantos años de trabajo, Orlando se ha dado el lujo de comprarse un video, y ve una película tras otra.\n\nNo sabía que eras loco por cine le dice el vecino.\n\nY Orlando le explica que no, que a él ni le va ni le viene, pero gracias al video puede detener las películas para estudiar los muebles.\n\nGALEANO, E. Disponivel em: http://elcajondesastre.blogcindarrio.com. Acesso em: 18 abr. 2012.",
+      "files": [],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "No conto de Galeano, a expressão ni le va ni le viene encerra uma opinião a respeito de cinema que",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Desconstrói a ideia central do conto sobre a importância das atividades de lazer.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Contradiz a percepção que o narrador tem em relação à profissão exercida por Orlando.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Revela o descaso do narrador com relação ao ofício desempenhado por Orlando.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Reforça a impressão do vizinho de que Orlando gostava de filmes.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Evidencia a extrema devoção do carpinteiro ao seu ofício.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 2 - ENEM 2017",
+      "index": 2,
+      "discipline": "linguagens",
+      "language": "espanhol",
+      "year": 2017,
+      "context": "**El virus del papiloma humano (HPV) también es un problema de hombres**\n\nPara algunos hombres, el virus del papiloma humano (HPV) es algo muy lejano. Se olvidan de que ellos también se infectan y de que, al contagiarnos, nos están regalando un pasaporte mágico para el cáncer cérvico-uterino — segunda causa de muerte entre las mujeres de México —; incluso me ha tocado escuchar en boca de algunos de ellos que “sólo se trata de una infeccioncita”. Pues bien, el HPV también es un problema de hombres, no sólo porque propaga la infección entre la población femenina, sino también porque este virus produce otros problemas de salud tanto en hombres como en mujeres, incluyendo verrugas genitales y cáncer de boca y garganta que, si bien no son tan conocidos o alarmantes por su cantidad, como otros tipos de cáncer, también constituyen un riesgo. Por lo anterior, la Academia Americana de Pediatría decidió enfrentarse al HPV mediante vacunas que se ponen tanto a mujeres como hombres. Los especialistas afirman que la vacuna es más efectiva si se administra antes de que el niño se vuelva sexualmente activo, y responde mejor en el organismo de varones entre 9 y 15 años.\n\nALBITER, K. Disponível em: http://vivirmexico.com. Acesso em: 10 jul. 2012 (adaptado).",
+      "files": [],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "O texto aborda a temática do HPV. Ao discorrer sobre o contágio e a prevenção do papiloma humano, a autora informa aos leitores que esse vírus é",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Estudado pela Academia Americana de Pediatria por seus efeitos em crianças.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Responsável pelo aumento de casos de câncer na população jovem mexicana.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Ignorado pelos homens por se restringir à população feminina.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Combatido por vacinas que devem ser aplicadas tanto em mulheres quanto em homens.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "Classificado como um problema superável pela facilidade com que se enfrenta a infecção.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 3 - ENEM 2017",
+      "index": 3,
+      "discipline": "linguagens",
+      "language": "espanhol",
+      "year": 2017,
+      "context": "Aquí estoy establecido,  \nEn los Estados Unidos,  \nDiez años pasaron ya,  \nEn que crucé de mojado,  \nPapeles no he arreglado,  \nSigo siendo un ilegal.  \nTengo mi esposa y mis hijos,  \nQue me los traje muy chicos,  \nY se han olvidado ya,  \nDe mi México querido,  \nDel que yo nunca me olvido,  \nY no puedo regresar.  \n\\[…\\]  \nMis hijos no hablan conmigo,  \nOtro idioma han aprendido,  \nY olvidado el español,  \nPiensan como americanos,  \nNiegan que son mexicanos,  \nAunque tengan mi color.\n\nLOS TIGRES DEL NORTE. **Jaula de oro**. Woodland Hills, Califórnia: Fonovisa, 1986 (fragmento).",
+      "files": [],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "A letra de canção coloca em cena um dilema por vezes vivenciado por imigrantes. Esse dilema se configura no sentimento do pai em relação ao(à)",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Diluição de sua identidade latino-americana, advinda do contato cotidiano com o outro.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Distanciamento dos filhos, gerado pela apropriação da língua e da cultura do outro.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Preconceito étnico-racial sofrido pelos imigrantes mexicanos no novo país.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Desejo de se integrar à nova cultura e de se comunicar na outra língua.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Vergonha perante os filhos de viver ilegalmente em outro país.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 4 - ENEM 2017",
+      "index": 4,
+      "discipline": "linguagens",
+      "language": "espanhol",
+      "year": 2017,
+      "context": "**Emotivo encuentro en la universidad pública**\n\nEl entonces mandatario uruguayo recibió el cariño de sus compatriotas residentes en Nueva York e informó sobre la evolución del país, las políticas de gobierno, los avances y cuentas pendientes. Como en ocasiones similares, se multiplicaron las muestras de respeto y emoción. “Una nación es un formidable sentimiento de un ‘nosotros’”, dijo.\n\nMujica comenzó su discurso relatando lo recogido de otras experiencias de comunidades en el exilio. “Muchos de ustedes echaron raíces, tienen hijos y no pueden cometer la agresión de descuajarle la vida. Tienen que cargar con esa nostalgia de ser de allá, pero estar acá”, dijo.\n\n“Estamos metidos en la lucha por mejorar las circunstancias, con el sueño de que las generaciones que vengan, puedan venir con más soltura, con más apoyo”, dijo el Presidente.\n\nMujica se refirió a algunas críticas que reciben algunas políticas sociales. “Nos acusan de que damos sin contrapartida. Nos dicen ‘a la gente no hay que darle pescado, sino enseñarle a pescar’. Sí — razonó el Presidente —, pero cuando le afanaste la caña, le afanaste el bote, ¿qué le vas a pedir? Para atrás no arreglamos, arreglamos para adelante.”\n\nDisponível em: www.republica.com.uy. Acesso em: 26 set. 2013 (adaptado).",
+      "files": [],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "No discurso dirigido aos compatriotas radicados em Nova York, o então presidente Mujica expressa o desejo de que os cidadãos que vivem no Uruguai",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Apoiem as políticas públicas afirmativas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Integrem-se ao processo de globalização.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Cultivem o sentimento nacionalista.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Ofereçam uma contrapartida à nação.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Tenham melhores condições de vida.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 5 - ENEM 2017",
+      "index": 5,
+      "discipline": "linguagens",
+      "language": "espanhol",
+      "year": 2017,
+      "context": "**El eclipse**\n\nCuando Fray Bartolomé Arrazola se sintió perdido aceptó que ya nada podría salvarlo. La selva poderosa de Guatemala lo había apresado, implacable y definitiva. Ante su ignorancia topográfica se sentó con tranquilidad a esperar la muerte. Al despertar se encontró rodeado por un grupo de indígenas de rostro impasible que se disponía a sacrificarlo ante un altar, un altar que a Bartolomé le pareció como el lecho en que descansaría, al fin, de sus temores, de su destino, de sí mismo. Tres años en el país le habían conferido un mediano dominio de las lenguas nativas. Intentó algo. Dijo algunas palabras que fueron comprendidas. Entonces floreció en él una idea que tuvo por digna de su talento y de su cultura universal y de su arduo conocimiento de Aristóteles. Recordó que para ese día se esperaba un eclipse total de sol. Y dispuso, en lo más íntimo, valerse de aquel conocimiento para engañar a sus opresores y salvar la vida. — Si me matáis — les dijo — puedo hacer que el sol se oscurezca en su altura. Los indígenas lo miraron fijamente y Bartolomé sorprendió la incredulidad en sus ojos. Vio que se produjo un pequeño consejo, y esperó confiado, no sin cierto desdén. Dos horas después el corazón de Fray Bartolomé Arrazola chorreaba su sangre vehemente sobre la piedra de los sacrificios (brillante bajo la opaca luz de un sol eclipsado), mientras uno de los indígenas recitaba sin ninguna inflexión de voz, sin prisa, una por una las infinitas fechas en que se producirían eclipses solares y lunares, que los astrónomos de la comunidad maya habían previsto y anotado en sus códices sin la valiosa ayuda de Aristóteles.\n\nMONTERROSO, A. **Obras completas y otros cuentos**. Bogotá: Norma, 1994 (adaptado).",
+      "files": [],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "No texto, confrontam-se duas visões de mundo: a da cultura ocidental, representada por Frei Bartolomé Arrazola, e a da mítica pré-hispânica, representada pela comunidade indígena maia. Segundo a narrativa,",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Os catequizadores espanhóis avalizam os saberes produzidos pelas comunidades indígenas hispano-americanas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Os indígenas da comunidade maia mostram-se perplexos diante da superioridade do conhecimento aristotélico do frei espanhol.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "O catequizador espanhol Arrazola apresenta-se adaptado às culturas autóctones, ao promover a interlocução entre os conhecimentos aristotélico e indígena.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "O episódio representa, de forma neutra, o significado do conhecimento ancestral indígena, quando comparado ao conhecimento ocidental.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Os conhecimentos acadêmicos de Arrazola são insuficientes para salvá-lo da morte, ante a sabedoria astronômica da cultura maia.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 6 - ENEM 2017",
+      "index": 6,
+      "discipline": "linguagens",
+      "language": null,
+      "year": 2017,
+      "context": "**Romanos usavam redes sociais há dois mil anos, diz livro**\n\nAo tuitar ou comentar embaixo do _post_ de um de seus vários amigos no Facebook, você provavelmente se sente privilegiado por viver em um tempo na história em que é possível alcançar de forma imediata uma vasta rede de contatos por meio de um simples clique no botão “enviar”. Você talvez também reflita sobre como as gerações passadas puderam viver sem mídias sociais, desprovidas da capacidade de verem e serem vistas, de receber, gerar e interagir com uma imensa carga de informações. Mas o que você talvez não saiba é que os seres humanos usam ferramentas de interação social há mais de dois mil anos. É o que afirma Tom Standage, autor do livro _Writing on the Wall — Social Media, The first 2 000 Years_ (Escrevendo no mural — mídias sociais, os primeiros 2 mil anos, em tradução livre).\n\nSegundo Standage, Marco Túlio Cícero, filósofo e político romano, teria sido, junto com outros membros da elite romana, precursor do uso de redes sociais. O autor relata como Cícero usava um escravo, que posteriormente tornou-se seu escriba, para redigir mensagens em rolos de papiro que eram enviados a uma espécie de rede de contatos. Estas pessoas, por sua vez, copiavam seu texto, acrescentavam seus próprios comentários e repassavam adiante. “Hoje temos computadores e banda larga, mas os romanos tinham escravos e escribas que transmitiam suas mensagens”, disse Standage à BBC Brasil. “Membros da elite romana escreviam entre si constantemente, comentando sobre as últimas movimentações políticas e expressando opiniões.”\n\nAlém do papiro, outra plataforma comumente utilizada pelos romanos era uma tábua de cera do tamanho e da forma de um _tablet_ moderno, em que escreviam recados, perguntas ou transmitiam os principais pontos da _acta diurna_, um “jornal” exposto diariamente no Fórum de Roma. Essa tábua, o “iPad da Roma Antiga”, era levada por um mensageiro até o destinatário, que respondia embaixo da mensagem.\n\nNIDECKER, F. Disponível em: www.bbc.co.uk. Acesso em: 7 nov. 2013 (adaptado).",
+      "files": [],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "Na reportagem, há uma comparação entre tecnologias de comunicação antigas e atuais. Quanto ao gênero mensagem, identifica-se como característica que perdura ao longo dos tempos o(a)",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Imediatismo das respostas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Compartilhamento de informações.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Interferência direta de outros no texto original.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Recorrência de seu uso entre membros da elite.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Perfil social dos envolvidos na troca comunicativa.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 7 - ENEM 2017",
+      "index": 7,
+      "discipline": "linguagens",
+      "language": null,
+      "year": 2017,
+      "context": "Garcia tinha-se chegado ao cadáver, levantara o lenço e contemplara por alguns instantes as feições  \ndefuntas. Depois, como se a morte espiritualizasse tudo, inclinou-se e beijou-a na testa. Foi nesse momento que Fortunato chegou à porta. Estacou assombrado; não podia ser o beijo da amizade, podia ser o epílogo de um livro adúltero \\[…\\].  \nEntretanto, Garcia inclinou-se ainda para beijar outra vez o cadáver, mas então não pôde mais. O beijo rebentou em soluços, e os olhos não puderam conter as lágrimas, que vieram em borbotões, lágrimas de amor calado, e irremediável desespero. Fortunato, à porta, onde ficara, saboreou tranquilo essa explosão de dor moral que foi longa, muito longa, deliciosamente longa.\n\nASSIS, M. A causa secreta, Disponível em: www.dominimopublico.gov.br  \nAcesso em: 9 out. 2015.",
+      "files": [],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "No fragmento, o narrador adota um ponto de vista que acompanha a perspectiva de Fortunato. O que singulariza esse procedimento narrativo é o registro do(a)",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Indignação face à suspeita do adultério da esposa.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Tristeza compartilhada pela perda da mulher amada.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Espanto diante da demonstração de afeto de Garcia.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Prazer da personagem em relação ao sofrimento alheio.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "Superação do ciúme pela comoção decorrente da morte.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 8 - ENEM 2017",
+      "index": 8,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2017,
+      "context": "Mas assim que penetramos no universo da web, descobrimos que ele constitui não apenas um imenso “território” em expansão acelerada, mas que também oferece inúmeros “mapas”, filtros, seleções para ajudar o navegante a orientar-se. O melhor guia para a web é a própria web. Ainda que seja preciso ter a paciência  \nde explorá-la. Ainda que seja preciso arriscar-se a ficar perdido, aceitar “a perda de tempo” para familiarizar-se com esta terra estranha. Talvez seja preciso ceder por um instante a seu aspecto lúdico para descobrir, no desvio de um link, os sites que mais se aproximam de nossos interesses profissionais ou de nossas paixões e que poderão, portanto, alimentar da melhor maneira possível nossa jornada pessoal.\n\nLÉVY, P. Cibercultura. São Paulo: Editora 34, 1999.",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "O usuário iniciante sente-se não raramente desorientado no oceano de informações e possibilidades disponíveis na rede mundial de computadores. Nesse sentido, Pierre Lévy destaca como um dos principais aspectos da internet o(a)",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Espaço aberto para a aprendizagem.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Grande número de ferramentas de pesquisa.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Ausência de mapas ou guias explicativos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Infinito número de páginas virtuais",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Dificuldade de acesso aos sites de pesquisa.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 9 - ENEM 2017",
+      "index": 9,
+      "discipline": "linguagens",
+      "language": null,
+      "year": 2017,
+      "context": "**TEXTO I**  \nTerezinha de Jesus  \nDe uma queda foi ao chão  \nAcudiu três cavalheiros  \nTodos os três de chapéu na mão\n\nO primeiro foi seu pai  \nO segundo, seu irmão  \nO terceiro foi aquele  \nA quem Tereza deu a mão\n\nATISTA, M. F. B. M.; SANTOS, I. M. F. (Org.). **Cancioneiro da Paraíba**. João Pessoa: Grafset, 1993 (adaptado).\n\n**TEXTO II**  \nOutra interpretação é feita a partir das condições sociais daquele tempo. Para a ama e para a criança para quem cantava a cantiga, a música falava do casamento como um destino natural na vida da mulher, na sociedade brasileira do século XIX, marcada pelo patriarcalismo. A música prepara a moça para o seu destino não apenas inexorável, mas desejável: o casamento, estabelecendo uma hierarquia de obediência (pai, irmão mais velho, marido), de acordo com a época e circunstâncias de sua vida.\n\nDisponível em: http://provsjose.blogspot.com.br. Acesso em: 5 dez. 2012.",
+      "files": [],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "O comentário do texto II sobre o texto I evoca a mobilização da língua oral que, em determinados\ncontextos,",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Assegura a existência de pensamentos contrários à ordem vigente.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Mantém a heterogeneidade das formas de relações sociais.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Conserva a influência religiosa sobre certas culturas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Preserva a diversidade cultural e comportamental.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Reforça comportamentos e padrões culturais.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 10 - ENEM 2017",
+      "index": 10,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2017,
+      "context": "Essas moças tinham o vezo de afirmar o contrário do que desejavam. Notei a singularidade quando principiaram a elogiar o meu paletó cor de macaco. Examinavam-no sérias, achavam o pano e os aviamentos de qualidade superior , o feitio admirável. Envaideci-me: nunca havia reparado em tais vantagens. Mas os gabas se prolongaram, trouxeram-me desconfiança. Percebi afinal que elas zombavam e não me susceptibilizei. Longe disso: achei curiosa aquela maneira de falar pelo avesso, diferente das grosserias a que me habituara. Em geral me diziam com franqueza que a roupa não me assentava no corpo, sobrava nos sovacos.\n\nRAMOS, G. **Infância**. Rio de Janeiro: Record, 1994.",
+      "files": [],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "Por meio de recursos linguísticos, os textos mobilizam estratégias para introduzir e retomar ideias, promovendo a progressão do tema. No fragmento transcrito, um novo aspecto do tema é introduzido pela expressão",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "\"a singularidade\".",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "\"tais vantagens\".",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "\"os gabos\".",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "\"Longe disso\".",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "\"Em geral\".",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    }
+  ]
+}

@@ -98,6 +98,18 @@ export interface CompletedBatch {
 }
 
 /**
+ * CompletedJob
+ * Individual job that has finished execution successfully.
+ */
+export interface CompletedJob {
+    id: string;
+    name: string;
+    queue: string;
+    duration: number;
+    finished_at: string;
+}
+
+/**
  * QueuesData
  * Collection of all queue-related data for the Monitor UI.
  */
@@ -105,4 +117,5 @@ export interface QueuesData {
     jobs: QueueJob[];
     failed: FailedJob[];
     completed: CompletedBatch[];
+    recent_completed: CompletedJob[];
 }

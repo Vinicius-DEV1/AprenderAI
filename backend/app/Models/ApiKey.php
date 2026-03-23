@@ -168,37 +168,9 @@ class ApiKey extends Model
             ->values();
 
         // -------------------------------------------------------------------
-        // ROUND-ROBIN: Rotação de Offset via Redis
-        //
-        // Se houver mais de uma chave disponível, aplica o round-robin:
-        //   1. Incrementa atomicamente um contador por capability no Redis.
-        //      O TTL de 24h garante que o contador seja zerado diariamente,
-        //      evitando acúmulo infinito de um inteiro (não há risco prático,
-        //      mas é uma boa prática de cleanup).
-        //   2. Calcula o offset inicial: contador % total_de_chaves.
-        //   3. Reordena a Collection para começar a partir desse offset.
+        // ROUND-ROBIN: DISABLED per User Request
+        // We always use strict sequential order (priority-based).
         // -------------------------------------------------------------------
-        if ($keys->count() > 1) {
-            // Chave Redis única por capability para evitar interferência entre rotas
-            $redisKey = "ai_key_rotation_index_{$capability}";
-
-            // Incremento atômico: thread/process-safe sem precisar de Lock adicional,
-            // pois o Redis é single-threaded internamente.
-            $counter = \Illuminate\Support\Facades\Redis::incr($redisKey);
-
-            // Define TTL de 24h apenas na primeira criação da chave
-            // (para evitar que o contador cresça infinitamente em produção)
-            if ($counter === 1) {
-                \Illuminate\Support\Facades\Redis::expire($redisKey, 86400); // 24 horas
-            }
-
-            // Calcula o índice de início via módulo (garante que volta ao 0 ao passar do fim)
-            $offset = ($counter - 1) % $keys->count();
-
-            // Rearranja a Collection começando do offset e envolvendo o final como um anel circular
-            // Ex: keys=[A,B,C,D], offset=2 → resultado=[C,D,A,B]
-            $keys = $keys->slice($offset)->merge($keys->slice(0, $offset))->values();
-        }
 
         return $keys;
     }

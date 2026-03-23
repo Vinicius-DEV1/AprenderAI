@@ -1,0 +1,442 @@
+{
+  "year": 2012,
+  "total": 185,
+  "sample": [
+    {
+      "title": "Questão 1 - ENEM 2012",
+      "index": 1,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2012,
+      "context": "![](https://enem.dev/2012/questions/1/a10f997f-9601-4fa1-8733-f344a15d1849.jpg)\n\nCharge anônima. BURKE, P. A fabricação do rei. Rio de Janeiro: Zahar, 1994. (Foto: Enem)",
+      "files": [
+        "https://enem.dev/2012/questions/1/a10f997f-9601-4fa1-8733-f344a15d1849.jpg"
+      ],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "Na França, o rei Luís XIV teve sua imagem fabricada por um conjunto de estratégias que visavam sedimentar uma determinada noção de soberania. Neste sentido, a charge apresentada demonstra",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "A humanidade do rei, pois retrata um homem comum, sem os adornos próprios à vestimenta real.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "A unidade entre o público e o privado, pois a figura do rei com a vestimenta real representa o público e sem a vestimenta real, o privado.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "O vínculo entre monarquia e povo, pois leva ao conhecimento do público a figura de um rei  despretensioso e distante do poder político.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "O gosto estético refinado do rei, pois evidencia a elegância dos trajes reais em relação aos de outros membros da corte.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "A importância da vestimenta para a constituição simbólica do rei, pois o corpo político adornado esconde os defeitos do corpo pessoal.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 2 - ENEM 2012",
+      "index": 2,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2012,
+      "context": "Esclarecimento é a saída do homem de sua menoridade, da qual ele próprio é culpado. A menoridade é a incapacidade de fazer uso de seu entendimento sem a direção de outro indivíduo. O homem é o próprio culpado dessa menoridade se a causa dela não se encontra na falta de entendimento, mas na falta de decisão e coragem de servir-se de si mesmo sem a direção de outrem. Tem coragem de fazer uso de teu próprio entendimento, tal é o lema do esclarecimento. A preguiça e a covardia são as causas pelas quais uma tão grande parte dos homens, depois que a natureza de há muito os libertou de uma condição estranha, continuem, no entanto, de bom grado menores durante toda a vida.\n\n_KANT, I. Resposta à pergunta: o que é esclarecimento? Petrópolis: Vozes, 1985 (adaptado)._",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "Kant destaca no texto o conceito de Esclarecimento, fundamental para a compreensão do contexto filosófico da Modernidade. Esclarecimento, no sentido empregado por Kant, representa",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "A reivindicação de autonomia da capacidade racional como expressão da maioridade.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "O exercício da racionalidade como pressuposto menor diante das verdades eternas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "A imposição de verdades matemáticas, com caráter objetivo, de forma heterônoma.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "A compreensão de verdades religiosas que libertam o homem da falta de entendimento.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "A emancipação da subjetividade humana de ideologias produzidas pela própria razão.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 3 - ENEM 2012",
+      "index": 3,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2012,
+      "context": "**Texto I**\n\nO que vemos no país é uma espécie de espraiamento e a manifestação da agressividade através da violência. Isso se desdobra de maneira evidente na criminalidade, que está presente em todos os redutos — seja nas áreas abandonadas pelo poder público, seja na política ou no futebol. O brasileiro não é mais violento do que outros povos, mas a fragilidade do exercício e do reconhecimento da cidadania e a ausência do Estado em vários territórios do país se impõem como um caldo de cultura no qual a agressividade e a violência fincam suas raízes.\n\nEntrevista com Joel Birman. A Corrupção é um crime sem rosto. IstoÉ. Edição 2099, 3 fev. 2010.\n\n**Texto II**\n\nNenhuma sociedade pode sobreviver sem canalizar as pulsões e emoções do indivíduo, sem um controle muito específico de seu comportamento. Nenhum controle desse tipo é possível sem que as pessoas anteponham limitações umas às outras, e todas as limitações são convertidas, na pessoa a quem são impostas, em medo de um ou outro tipo.\n\nELIAS, N. O Processo Civilizador. Rio de Janeiro: Jorge Zahar, 1993.",
+      "files": [],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "Considerando-se a dinâmica do processo civilizador, tal como descrito no Texto II, o argumento do Texto I acerca da violência e agressividade na sociedade brasileira expressa a",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Incompatibilidade entre os modos democráticos de convívio social e a presença de aparatos de controle policial.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Manutenção de práticas repressivas herdadas dos períodos ditatoriais sob a forma de leis e atos administrativos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Inabilidade das forças militares em conter a violência decorrente das ondas migratórias nas grandes cidades brasileiras.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Dificuldade histórica da sociedade brasileira em institucionalizar formas de controle social compatíveis com valores democráticos.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "Incapacidade das instituições político-legislativas em formular mecanismos de controle social específicos à realidade social brasileira.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 4 - ENEM 2012",
+      "index": 4,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2012,
+      "context": "![](https://enem.dev/2012/questions/4/ac453b4a-3dcd-43a8-a8d4-88471ae096ca.jpg)\n\nDisponível em: http://quadro-a-quadro.blog.br. Acesso em: 27 jan. 2012.\n\nCom sua entrada no universo dos gibis, o Capitão chegaria para apaziguar a agonia, o autoritarismo militar e combater a tirania. Claro que, em tempos de guerra, um gibi de um herói com uma bandeira americana no peito aplicando um sopapo no Fürer só poderia ganhar destaque, e o sucesso não demoraria muito a chegar.\n\nCOSTA, C. Capitão América, o primeiro vingador: crítica. Disponível em: www.revistastart.com.br.  \nAcesso em: 27 jan. 2012 (adaptado).",
+      "files": [
+        "https://enem.dev/2012/questions/4/ac453b4a-3dcd-43a8-a8d4-88471ae096ca.jpg"
+      ],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "A capa da primeira edição norte-americana da revista do Capitão América demonstra sua associação com a participação dos Estados Unidos na luta contra",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "A Tríplice Aliança, na Primeira Guerra Mundial.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Os regimes totalitários, na Segunda Guerra Mundial.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "O poder soviético, durante a Guerra Fria.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "O movimento comunista, na Guerra do Vietnã.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "O terrorismo internacional, após 11 de setembro de 2001.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 5 - ENEM 2012",
+      "index": 5,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2012,
+      "context": "Torna-se claro que quem descobriu a África no Brasil, muito antes dos europeus, foram os próprios africanos trazidos como escravos. E esta descoberta não se restringia apenas ao reino linguístico, estendia-se também a outras áreas culturais, inclusive à da religião. Há razões para pensar que os africanos, quando misturados e transportados ao Brasil, não demoraram em perceber a existência entre si de elos culturais mais profundos.\n\nSLENES, R. Malungu, ngoma vem! África coberta e descoberta do Brasil. Revista USP, n. 12, dez./jan./fev. 1991-92 (adaptado).",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "Com base no texto, ao favorecer o contato de indivíduos de diferentes partes da África, a experiência da escravidão no Brasil tornou possível a",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Formação de uma identidade cultural afro-brasileira.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Superação de aspectos culturais africanos por antigas tradições europeias.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Reprodução de conflitos entre grupos étnicos africanos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Manutenção das características culturais específicas de cada etnia.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Resistência à incorporação de elementos culturais indígenas.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 6 - ENEM 2012",
+      "index": 6,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2012,
+      "context": "Nós nos recusamos a acreditar que o banco da justiça é falível. Nós nos recusamos a acreditar que há capitais insuficientes de oportunidade nesta nação. Assim nós viemos trocar este cheque, um cheque que nos dará o direito de reclamar as riquezas de liberdade e a segurança da justiça.\n\nKING Jr., M. L. Eu tenho um sonho, 28 ago. 1963. Disponível em: www.palmares.gov.br. Acesso em: 30 nov. 2011 (adaptado).",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "O cenário vivenciado pela população negra, no sul dos Estados Unidos nos anos 1950, conduziu à mobilização social. Nessa época, surgiram reivindicações que tinham como expoente Martin Luther King e objetivavam",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "A conquista de direitos civis para a população negra.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "O apoio aos atos violentos patrocinados pelos negros em espaço urbano.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "A supremacia das instituições religiosas em meio à comunidade negra sulista.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "A incorporação dos negros no mercado de trabalho.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "A aceitação da cultura negra como representante do modo de vida americano.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 7 - ENEM 2012",
+      "index": 7,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2012,
+      "context": "É verdade que nas democracias o povo parece fazer o que quer; mas a liberdade política não consiste nisso. Deve-se ter sempre presente em mente o que é independência e o que é liberdade. A liberdade é o direito de fazer tudo o que as leis permitem; se um cidadão pudesse fazer tudo o que elas proíbem, não teria mais liberdade, porque os outros também teriam tal poder.\n\nMONTESQUIEU. Do Espírito das Leis. São Paulo: Editora Nova Cultural, 1997 (adaptado).",
+      "files": [],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "A característica de democracia ressaltada por Montesquieu diz respeito",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Ao status de cidadania que o indivíduo adquire ao tomar as decisões por si mesmo.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Ao condicionamento da liberdade dos cidadãos à conformidade às leis.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "À possibilidade de o cidadão participar no poder e, nesse caso, livre da submissão às leis.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Ao livre-arbítrio do cidadão em relação àquilo que é proibido, desde que ciente das consequências.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Ao direito do cidadão exercer sua vontade de acordo com seus valores pessoais.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 8 - ENEM 2012",
+      "index": 8,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2012,
+      "context": "![](https://enem.dev/2012/questions/8/88114786-6c63-4f7d-9f2d-9d38e58eaaab.jpg)\n\nLord Willingdon’s Dilemma (Disponível em: www.gandhiserve.org. Acesso em: 21 nov.2011.)",
+      "files": [
+        "https://enem.dev/2012/questions/8/88114786-6c63-4f7d-9f2d-9d38e58eaaab.jpg"
+      ],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "O cartum, publicado em 1932, ironiza as consequências sociais das constantes prisões de Mahatma Gandhi pelas autoridades britânicas, na Índia, demonstrando",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "A ineficiência do sistema judiciário inglês no território indiano.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "O apoio da população hindu à prisão de Gandhi.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "O caráter violento das manifestações hindus frente à ação inglesa.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "A impossibilidade de deter o movimento liderado por Gandhi.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "A indiferença das autoridades britânicas frente ao apelo popular hindu.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 9 - ENEM 2012",
+      "index": 9,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2012,
+      "context": "Na regulação de matérias culturalmente delicadas, como, por exemplo, a linguagem oficial, os currículos da educação pública, o status das Igrejas e das comunidades religiosas, as normas do direito penal (por exemplo, quanto ao aborto), mas também em assuntos menos chamativos, como, por exemplo, a posição da família e dos consórcios semelhantes ao matrimônio, a aceitação de normas de segurança ou a delimitação das esferas pública e privada — em tudo isso reflete-se amiúde apenas o autoentendimento ético-político de uma cultura majoritária, dominante por motivos históricos. Por causa de tais regras, implicitamente repressivas, mesmo dentro de uma comunidade republicana que garanta formalmente a igualdade de direitos para todos, pode eclodir um conflito cultural movido pelas minorias desprezadas contra a cultura da maioria.\n\n_HABERMAS, J. A inclusão do outro: estudos de teoria política. São Paulo: Loyola, 2002._",
+      "files": [],
+      "correctAlternative": "C",
+      "alternativesIntroduction": "A reivindicação dos direitos culturais das minorias, como exposto por Habermas, encontra amparo nas democracias contemporâneas, na medida em que se alcança",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "A secessão, pela qual a minoria discriminada obteria a igualdade de direitos na condição da sua concentração espacial, num tipo de independência nacional.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "A reunificação da sociedade que se encontra fragmentada em grupos de diferentes comunidades étnicas, confissões religiosas e formas de vida, em torno da coesão de uma cultura política nacional.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "A coexistência das diferenças, considerando a possibilidade de os discursos de autoentendimento se submeterem ao debate público, cientes de que estarão vinculados à coerção do melhor argumento.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "D",
+          "text": "A autonomia dos indivíduos que, ao chegarem à vida adulta, tenham condições de se libertar das tradições de suas origens em nome da harmonia da política nacional.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "O desaparecimento de quaisquer limitações, tais como linguagem política ou distintas convenções de comportamento, para compor a arena política a ser compartilhada.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 10 - ENEM 2012",
+      "index": 10,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2012,
+      "context": "Mas uma coisa ouso afirmar, porque há muitos testemunhos, e é que vi nesta terra de Veragua \\[Panamá\\] maiores indícios de ouro nos dois primeiros dias do que na Hispaniola em quatro anos, e que as terras da região não podem ser mais bonitas nem mais bem lavradas. Ali, se quiserem podem mandar extrair à vontade.\n\nCarta de Colombo aos reis da Espanha, julho de 1503. Apud AMADO, J.; FIGUEIREDO, L. C. Colombo e a América: quinhentos anos depois. São Paulo: Atual, 1991 (adaptado).",
+      "files": [],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "O documento permite identificar um interesse econômico espanhol na colonização da América a partir do século XV. A implicação desse interesse na ocupação do espaço americano está indicada na",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Expulsão dos indígenas para fortalecer o clero católico.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Promoção das guerras justas para conquistar o território.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Imposição da catequese para explorar o trabalho africano.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Opção pela policultura para garantir o povoamento ibérico.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Fundação de cidades para controlar a circulação de riquezas.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    }
+  ]
+}

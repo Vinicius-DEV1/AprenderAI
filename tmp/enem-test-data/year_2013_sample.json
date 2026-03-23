@@ -1,0 +1,440 @@
+{
+  "year": 2013,
+  "total": 185,
+  "sample": [
+    {
+      "title": "Questão 1 - ENEM 2013",
+      "index": 1,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2013,
+      "context": "![](https://enem.dev/2013/questions/1/6e8acb98-430b-4f01-b22a-6b616a3c0651.jpg)",
+      "files": [
+        "https://enem.dev/2013/questions/1/6e8acb98-430b-4f01-b22a-6b616a3c0651.jpg"
+      ],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "Os mapas representam distintos padrões de distribuição de processos socioespaciais. Nesse sentido, a menor incidência de disputas territoriais envolvendo povos indígenas se explica pela",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Fertilização natural dos solos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Expansão da fronteira agrícola.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Intensificação da migração de retorno.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Homologação de reservas extrativistas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Concentração histórica da urbanização.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 2 - ENEM 2013",
+      "index": 2,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2013,
+      "context": "Trata-se de um gigantesco movimento de construção de cidades, necessário para o assentamento residencial dessa população, bem como de suas necessidades de trabalho, abastecimento, transportes, saúde, energia, água etc. Ainda que o rumo tomado pelo crescimento urbano não tenha respondido satisfatoriamente a todas essas necessidades, o território foi ocupado e foram construídas as condições para viver nesse espaço.\n\nMARICATO, E. **Brasil, cidades: alternativas para a crise urbana.** Petrópolis: Vozes, 2001.",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "A dinâmica de transformação das cidades tende a apresentar como consequência a expansão das áreas periféricas pelo(a)",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Crescimento da população urbana e aumento da especulação imobiliária.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Direcionamento maior do fluxo de pessoas, devido à existência de um grande número de serviços.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Delimitação de áreas para uma ocupação organizada do espaço físico, melhorando a qualidade de vida.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Implantação de políticas públicas que promovem a moradia e o direito à cidade aos seus moradores.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Reurbanização de moradias nas áreas centrais, mantendo o trabalhador próximo ao seu emprego, diminuindo os deslocamentos para a periferia.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 3 - ENEM 2013",
+      "index": 3,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2013,
+      "context": "No dia 1º de julho de 2012, a cidade do Rio de Janeiro tornou-se a primeira do mundo a receber o título da Unesco de Patrimônio Mundial como Paisagem Cultural. A candidatura, apresentada pelo Instituto do Patrimônio Histórico e Artístico Nacional (Iphan), foi aprovada durante a 36.ª Sessão do Comitê do Patrimônio Mundial. O presidente do Iphan explicou que “a paisagem carioca é a imagem mais explícita do que podemos chamar de civilização brasileira, com sua originalidade, desafios, contradições e possibilidades”. A partir de agora, os locais da cidade valorizados com o título da Unesco serão alvo de ações integradas visando à preservação da sua paisagem cultural.\n\nDisponível em: www.cultura.gov.br. Acesso em: 7 mar. 2013 (adaptado).",
+      "files": [],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "O reconhecimento da paisagem em questão como patrimônio mundial deriva da",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Presença do corpo artístico local.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Imagem internacional da metrópole.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Herança de prédios da ex-capital do país.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Diversidade de culturas presente na cidade.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Relação sociedade-natureza de caráter singular.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    },
+    {
+      "title": "Questão 4 - ENEM 2013",
+      "index": 4,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2013,
+      "context": "Há já algum tempo eu me apercebi de que, desde meus primeiros anos, recebera muitas falsas opiniões como verdadeiras, e de que aquilo que depois eu fundei em princípios tão mal assegurados não podia ser senão mui duvidoso e incerto. Era necessário tentar seriamente, uma vez em minha vida, desfazer-me de todas as opiniões a que até então dera crédito, e começar tudo novamente a fim de estabelecer um saber firme e inabalável.\n\n_DESCARTES, R. Meditações concernentes à Primeira Filosofia. São Paulo: Abril Cultural, 1973 (adaptado)._\n\nTEXTO II\n\nÉ o caráter radical do que se procura que exige a radicalização do próprio processo de busca. Se todo o espaço for ocupado pela dúvida, qualquer certeza que aparecer a partir daí terá sido de alguma forma gerada pela própria dúvida, e não será seguramente nenhuma daquelas que foram anteriormente varridas por essa mesma dúvida.\n\n_SILVA, F. L. Descartes: a metafísica da modernidade. São Paulo: Moderna, 2001 (adaptado)._",
+      "files": [],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "A exposição e a análise do projeto cartesiano indicam que, para viabilizar a reconstrução radical do conhecimento, deve-se",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Retomar o método da tradição para edificar a ciência com legitimidade.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Questionar de forma ampla e profunda as antigas ideias e concepções.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Investigar os conteúdos da consciência dos homens menos esclarecidos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Buscar uma via para eliminar da memória saberes antigos e ultrapassados.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Encontrar ideias e pensamentos evidentes que dispensam ser questionados.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 5 - ENEM 2013",
+      "index": 5,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2013,
+      "context": "De ponta a ponta, é tudo praia-palma, muito chã e muito formosa. Pelo sertão nos pareceu, vista do mar, muito grande, porque, a estender olhos, não podíamos ver senão terra com arvoredos, que nos parecia muito longa. Nela, até agora, não pudemos saber que haja ouro, nem prata, nem coisa alguma de metal ou ferro; nem lho vimos. Porém a terra em si é de muito bons ares \\[…\\]. Porém o melhor fruto que dela se pode tirar me parece que será salvar esta gente.\n\nCarta de Pero Vaz de Caminha. In: MARQUES, A.; BERUTTI, F.; FARIA, R. História moderna através de textos. São Paulo: Contexto, 2001.",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "A carta de Pero Vaz de Caminha permite entender o projeto colonizador para a nova terra. Nesse trecho, o relato enfatiza o seguinte objetivo:",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Valorizar a catequese a ser realizada sobre os povos nativos.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Descrever a cultura local para enaltecer a prosperidade portuguesa.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Transmitir o conhecimento dos indígenas sobre o potencial econômico existente.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Realçar a pobreza dos habitantes nativos para demarcar a superioridade europeia.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Criticar o modo de vida dos povos autóctones para evidenciar a ausência de trabalho.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 6 - ENEM 2013",
+      "index": 6,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2013,
+      "context": "**O canto triste dos conquistados: os últimos dias de Tenochtitlán**\n\nNos caminhos jazem dardos quebrados; os cabelos estão espalhados. Destelhadas estão as casas, Vermelhas estão as águas, os rios, como se alguém as tivesse tingido, Nos escudos esteve nosso resguardo, mas os escudos não detêm a desolação…\n\nPINSKY, J. et al. **História da América através de textos.** São Paulo. Contexto, 2007 (fragmento).",
+      "files": [],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "O texto é um registro asteca, cujo sentido está relacionado ao(à)",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Tragédia causada pela destruição da cultura desse povo.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Tentativa frustada de resistência a um poder considerado superior.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Extermínio das populações indígenas pelo Exército espanhol.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Dissolução da memória sobre os feitos de seus antepassados.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Profetização das consequências da colonização da América.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 7 - ENEM 2013",
+      "index": 7,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2013,
+      "context": "![](https://enem.dev/2013/questions/7/e7849157-525a-481c-873b-9d0abe4b1e46.png)",
+      "files": [
+        "https://enem.dev/2013/questions/7/e7849157-525a-481c-873b-9d0abe4b1e46.png"
+      ],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "O processo registrado no gráfico gerou a seguinte consequência demográfica:",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Decréscimo da população absoluta.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Redução do crescimento vegetativo.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Diminuição da proporção de adultos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Expansão de políticas de controle da natalidade.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Aumento da renovação da população economicamente ativa.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 8 - ENEM 2013",
+      "index": 8,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2013,
+      "context": "As Brigadas Internacionais foram unidades de combatentes formadas por voluntários de 53 nacionalidades dispostos a lutar em defesa da República espanhola. Estima-se que cerca de 60 mil cidadãos de várias partes do mundo – incluindo 40 brasileiros – tenham se incorporado a essas unidades. Apesar de coordenadas pelos comunistas, as Brigadas contaram com membros socialistas, liberais e de outras correntes político-ideológicas.\n\nSOUZA, I. I. A Guerra Civil Europeia. História Viva, n. 70, 2009 (fragmento).",
+      "files": [],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "A Guerra Civil Espanhola expressou as disputas em curso na Europa na década de 1930. A perspectiva política comum que promoveu a mobilização descrita foi o(a)",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Crítica ao stalinismo.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Combate ao fascismo.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Rejeição ao federalismo.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Apoio ao corporativismo.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Adesão ao anarquismo.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 9 - ENEM 2013",
+      "index": 9,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2013,
+      "context": "De todas as transformações impostas pelo meio técnico-científico-informacional à logística de transportes, interessa-nos mais de perto a intermodalidade. E por uma razão muito simples: o potencial que tal “ferramenta logística” ostenta permite que haja, de fato, um sistema de transportes condizente com a escala geográfica do Brasil.\n\nHUERTAS, D. M. O papel dos transportes na expansão recente da fronteira agrícola brasileira. **Revista Transporte y Territorio**, Universidade de Buenos Aires, n. 3, 2010 (adaptado).",
+      "files": [],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "A necessidade de modais de transporte interligados, no território brasileiro, justifica-se pela(s)",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Variações climáticas no território, associadas à interiorização da produção.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Grandes distâncias e a busca da redução dos custos de transporte.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Formação geológica do país, que impede o uso de um único modal.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Proximidade entre a área de produção agrícola intensiva e os portos.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Diminuição dos fluxos materiais em detrimento de fluxos imateriais.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 10 - ENEM 2013",
+      "index": 10,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2013,
+      "context": "Nasce daqui uma questão: se vale mais ser amado que temido ou temido que amado. Responde-se que ambas as coisas seriam de desejar; mas porque é difícil juntá-las, é muito mais seguro ser temido que amado, quando haja de faltar uma das duas. Porque dos homens se pode dizer, duma maneira geral, que são ingratos, volúveis, simuladores, covardes e ávidos de lucro, e enquanto lhes fazes bem são inteiramente teus, oferecem-te o sangue, os bens, a vida e os filhos, quando, como acima disse, o perigo está longe; mas quando ele chega, revoltam-se.\n\nMAQUIAVEL, N. O príncipe. Rio de Janeiro: Bertrand, 1991.",
+      "files": [],
+      "correctAlternative": "C",
+      "alternativesIntroduction": "A partir da análise histórica do comportamento humano em suas relações sociais e políticas. Maquiavel define o homem como um ser",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Munido de virtude, com disposição nata a praticar o bem a si e aos outros.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Possuidor de fortuna, valendo-se de riquezas para alcançar êxito na política.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Guiado por interesses, de modo que suas ações são imprevisíveis e inconstantes.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "D",
+          "text": "Naturalmente racional, vivendo em um estado pré-social e portando seus direitos naturais.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Sociável por natureza, mantendo relações pacíficas com seus pares.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    }
+  ]
+}

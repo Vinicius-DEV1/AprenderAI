@@ -1,0 +1,444 @@
+{
+  "year": 2010,
+  "total": 185,
+  "sample": [
+    {
+      "title": "Questão 1 - ENEM 2010",
+      "index": 1,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2010,
+      "context": "![](https://enem.dev/2010/questions/1/ac150e2b-3bf9-48b5-8d9e-aa52c2461af6.jpg)",
+      "files": [
+        "https://enem.dev/2010/questions/1/ac150e2b-3bf9-48b5-8d9e-aa52c2461af6.jpg"
+      ],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "O gráfico representa a relação entre o tamanho e a totalidade dos imóveis rurais no Brasil. Que característica da estrutura fundiária brasileira está evidenciada no gráfico apresentado?",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "A concentração de terras nas mãos de poucos.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "A existência de poucas terras agricultáveis.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "O domínio territorial dos minifúndios.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "A primazia da agricultura familiar.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "A debilidade dos plantations modernos.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 2 - ENEM 2010",
+      "index": 2,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2010,
+      "context": "Antes, eram apenas as grandes cidades que se apresentavam como o império da técnica, objeto de modificações, suspensões, acréscimos, cada vez mais sofisticadas e carregadas de artifício. Esse mundo artificial inclui, hoje, o mundo rural.\n\nSANTOS, M. **A Natureza do Espaço.** São Paulo: Hucitec, 1996.",
+      "files": [],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "Considerando a transformação mencionada no texto, uma consequência socioespacial que caracteriza o atual mundo rural brasileiro é",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "A redução do processo de concentração de terras.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "O aumento do aproveitamento de solos menos férteis.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "A ampliação do isolamento do espaço rural.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "A estagnação da fronteira agrícola do país.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "A diminuição do nível de emprego formal.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 3 - ENEM 2010",
+      "index": 3,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2010,
+      "context": "A maioria das pessoas daqui era do campo. Vila Maria é hoje exportadora de trabalhadores. Empresários de Primavera do Leste, Estado de Mato Grosso, procuram o bairro de Vila Maria para conseguir mão de obra. É gente indo distante daqui 300, 400 quilômetros para ir trabalhar, para ganhar sete conto por dia. (Carlito, 43 anos, maranhense, entrevistado em 22/03/98).\n\nRibeiro, H. S. **O migrante e a cidade: dilemas e conflitos**. Araraquara: Wunderlich, 2001 (adaptado).",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "O texto retrata um fenômeno vivenciado pela agricultura brasileira nas últimas décadas do século XX, consequência",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Dos impactos sociais da modernização da agricultura.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Da recomposição dos salários do trabalhador rural.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Da exigência de qualificação do trabalhador rural.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Da diminuição da importância da agricultura.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Dos processos de desvalorização de áreas rurais.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 4 - ENEM 2010",
+      "index": 4,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2010,
+      "context": "Os lixões são o pior tipo de disposição final dos resíduos sólidos de uma cidade, representando um grave problema ambiental e de saúde pública. Nesses locais, o lixo é jogado diretamente no solo e a céu aberto, sem nenhuma norma de controle, o que causa, entre outros problemas, a contaminação do solo e das águas pelo chorume (líquido escuro com alta carga poluidora, proveniente da decomposição da matéria orgânica presente no lixo).\n\nRICARDO, B.; CANPANILLI, M. **Almanaque Brasil**  \n**Socioambiental 2008.**  \nSão Paulo, Instituto Socioambiental, 2007.",
+      "files": [],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "Considere um município que deposita os resíduos sólidos produzidos por sua população em um lixão. Esse procedimento é considerado um problema de saúde pública porque os lixões",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Causam problemas respiratórios, devido ao mau cheiro que provém da decomposição.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "São locais propícios à proliferação de vetores de doenças, além de contaminarem o solo e as águas.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Provocam o fenômeno da chuva ácida, devido aos gases oriundos da decomposição da matéria orgânica.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "São instalados próximos ao centro das cidades, afetando toda a população que circula diariamente na área.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "São responsáveis pelo desaparecimento das nascentes na região onde são instalados, o que leva à escassez de água.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 5 - ENEM 2010",
+      "index": 5,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2010,
+      "context": "![](https://enem.dev/2010/questions/5/0507e0cd-2002-4267-8a14-b1061254b765.jpg)\n\nTEIXEIRA. W. et al. (Orgs). **Decifrando a Terra.** São Paulo: Companhia Editora Nacional, 2009.",
+      "files": [
+        "https://enem.dev/2010/questions/5/0507e0cd-2002-4267-8a14-b1061254b765.jpg"
+      ],
+      "correctAlternative": "D",
+      "alternativesIntroduction": "O esquema representa um processo de erosão em encosta. Que prática realizada por um agricultor pode resultar em aceleração desse processo?",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Plantio direto.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Associação de culturas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Implantação de curvas de nível.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Aração do solo, do topo ao vale.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "E",
+          "text": "Terraceamento na propriedade.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 6 - ENEM 2010",
+      "index": 6,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2010,
+      "context": "![](https://enem.dev/2010/questions/6/aa83a948-e33c-4b98-b195-2e781566a1f4.jpg)\n\nTEIXEIRA. W. et al. (Orgs). **Decifrando a Terra.** São Paulo: Companhia Editora Nacional, 2009.",
+      "files": [
+        "https://enem.dev/2010/questions/6/aa83a948-e33c-4b98-b195-2e781566a1f4.jpg"
+      ],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "Muitos processos erosivos se concentram nas encostas, principalmente aqueles motivados pela água e pelo vento. No entanto, os reflexos também são sentidos nas áreas de baixada, onde geralmente há ocupação urbana. Um exemplo desses reflexos na vida cotidiana de muitas cidades brasileiras é",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "A maior ocorrência de enchentes, já que os rios assoreados comportam menos água em seus leitos.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "A contaminação da população pelos sedimentos trazidos pelo rio e carregados de matéria orgânica.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "O desgaste do solo nas áreas urbanas, causado pela redução do escoamento superficial pluvial na encosta.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "A maior facilidade de captação de água potável para o abastecimento público, já que é maior o efeito do escoamento sobre a infiltração.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "O aumento da incidência de doenças como a amebíase na população urbana, em decorrência do escoamento de água poluída do topo das encostas.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 7 - ENEM 2010",
+      "index": 7,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2010,
+      "context": "Pensando nas correntes e prestes a entrar no braço que deriva da Corrente do Golfo para o norte, lembrei-me de um vidro de café solúvel vazio. Coloquei no vidro uma nota cheia de zeros, uma bola cor rosa-choque. Anotei a posição e data: Latitude 49º49′ N, Longitude 23º49′ W. Tampei e joguei na água. Nunca imaginei que receberia uma carta com a foto de um menino norueguês, segurando a bolinha e a estranha nota.\n\nKLINK, A. **Parati: entre dois pólos.** São Paulo: Companhia das Letras, 1998 (adaptado).",
+      "files": [],
+      "correctAlternative": "C",
+      "alternativesIntroduction": "No texto, o autor anota sua coordenada geográfica, que é",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "A relação que se estabelece entre as distâncias representadas no mapa e as distâncias reais da superfície cartografada.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "O registro de que os paralelos são verticais e o convergem para os polos, e os meridianos são círculos imaginários, horizontais e equidistantes.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "A informação de um conjunto de linhas imaginárias que permitem localizar um ponto ou acidente geográfico na superfície terrestre.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "D",
+          "text": "A latitude como distância em graus entre um ponto e o Meridiano de Greenwich, e a longitude como a distância em graus entre um ponto e o Equador.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "A forma de projeção cartográfica, usado para navegação, onde os meridianos e paralelos distorcem a superfície do planeta.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 8 - ENEM 2010",
+      "index": 8,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2010,
+      "context": "![](https://enem.dev/2010/questions/8/a4c1596f-3cc7-4a97-966e-ccc2d1b0db88.jpg)",
+      "files": [
+        "https://enem.dev/2010/questions/8/a4c1596f-3cc7-4a97-966e-ccc2d1b0db88.jpg"
+      ],
+      "correctAlternative": "B",
+      "alternativesIntroduction": "O esquema mostra depósitos em que aparecem fósseis de animais do Período Jurássico. As rochas em que se encontram esses fósseis são",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Magmáticas, pois a ação de vulcões causou as maiores extinções desses animais já conhecidas ao longo da história terrestre.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "Sedimentares, pois os restos podem ter sido soterrados e litificados com o restante dos sedimentos.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "C",
+          "text": "Magmáticas, pois são as rochas mais facilmente erodidas, possibilitando a formação de tocas que foram posteriormente lacradas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Sedimentares, já que cada uma das camadas encontradas na figura simboliza um evento de erosão dessa área representada.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Metamórficas, pois os animais representados precisavam estar perto de locais quentes.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 9 - ENEM 2010",
+      "index": 9,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2010,
+      "context": "O G-20 é o grupo que reúne os países do G-7, os mais industrializados do mundo (EUA, Japão, Alemanha, França, Reino Unido, Itália e Canadá), a União Europeia e os principais emergentes (Brasil, Rússia, Índia, China, África do Sul, Arábia Saudita, Argentina, Austrália, Coreia do Sul, Indonésia, México e Turquia). Esse grupo de países vem ganhando força nos fóruns internacionais de decisão e consulta.\n\nALLAN. R. **Crise global**. Dísponivel em: http://conteudoclippingmp.planejamento.gov.br. Acesso em: 31 jul. 2010.",
+      "files": [],
+      "correctAlternative": "A",
+      "alternativesIntroduction": "Entre os países emergentes que formam o G-20, estão os chamados BRIC (Brasil, Rússia, Índia e China), termo criado em 2001 para referir-se aos países que",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "Apresentam características econômicas promissoras para as próximas décadas.",
+          "file": null,
+          "isCorrect": true
+        },
+        {
+          "letter": "B",
+          "text": "Possuem base tecnológica mais elevada.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "Apresentam índices de igualdade social e econômica mais acentuados.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "Apresentam diversidade ambiental suficiente para impulsionar a economia global.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "Possuem similaridades culturais capazes de alavancar a economia mundial.",
+          "file": null,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "title": "Questão 10 - ENEM 2010",
+      "index": 10,
+      "discipline": "ciencias-humanas",
+      "language": null,
+      "year": 2010,
+      "context": "A Inglaterra pedia lucros e recebia lucros. Tudo se transformava em lucro. As cidades tinham sua sujeira lucrativa, suas favelas lucrativas, sua fumaça lucrativa, sua desordem lucrativa, sua ignorância lucrativa, seu desespero lucrativo. As novas fábricas e os novos altos-fornos eram como as Pirâmides, mostrando mais a escravização do homem que seu poder.\n\nDEANE, P. **A Revolução Industrial.** Rio de Janeiro: Zahar, 1979 (adaptado).",
+      "files": [],
+      "correctAlternative": "E",
+      "alternativesIntroduction": "Qual relação é estabelecida no texto entre os avanços tecnológicos ocorridos no contexto da Revolução Industrial Inglesa e as características das cidades industriais no início do século XIX?",
+      "alternatives": [
+        {
+          "letter": "A",
+          "text": "A facilidade em se estabelecerem relações lucrativas transformava as cidades em espaços privilegiados para a livre iniciativa, característica da nova sociedade capitalista.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "B",
+          "text": "O desenvolvimento de métodos de planejamento urbano aumentava a eficiência do trabalho industrial.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "C",
+          "text": "A construção de núcleos urbanos integrados por meios de transporte facilitava o deslocamento dos trabalhadores das periferias até as fábricas.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "D",
+          "text": "A grandiosidade dos prédios onde se localizavam as fábricas revelava os avanços da engenharia e da arquitetura do período, transformando as cidades em locais de experimentação estética e artística.",
+          "file": null,
+          "isCorrect": false
+        },
+        {
+          "letter": "E",
+          "text": "O alto nível de exploração dos trabalhadores industriais ocasionava o surgimento de aglomerados urbanos marcados por péssimas condições de moradia, saúde e higiene.",
+          "file": null,
+          "isCorrect": true
+        }
+      ]
+    }
+  ]
+}

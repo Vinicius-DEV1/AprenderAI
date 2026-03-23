@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { QueuesData, QueueJob, CompletedBatch, FailedJob } from './Types';
+import { QueuesData, QueueJob, CompletedBatch, FailedJob, CompletedJob } from './Types';
 import BatchDetailsModal from './BatchDetailsModal';
 
 interface QueueTabsProps {
@@ -97,52 +97,104 @@ const QueueTabs: React.FC<QueueTabsProps> = ({ activeTab, setActiveTab, queuesDa
                     </div>
                 )}
 
-                {/* Completed Batches Tab */}
+                {/* Completed Jobs/Batches Tab */}
                 {activeTab === 'completed' && (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left text-gray-500">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                                <tr>
-                                    <th className="px-4 py-3">Lote ID / Nome</th>
-                                    <th className="px-4 py-3 text-center">Jobs Totais</th>
-                                    <th className="px-4 py-3 text-center">Falhas no Lote</th>
-                                    <th className="px-4 py-3 text-right">Data de Conclusão</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {(queuesData?.completed || []).length > 0 ? (
-                                    queuesData?.completed.map((batch: CompletedBatch) => (
-                                        <tr 
-                                            key={batch.id} 
-                                            onClick={() => setSelectedBatch(batch)}
-                                            className="border-b hover:bg-blue-50/50 cursor-pointer transition-colors group"
-                                            title="Clique para ver detalhes do lote"
-                                        >
-                                            <td className="px-4 py-3 relative">
-                                                <div className="font-medium text-gray-900 group-hover:text-blue-700 transition-colors">{batch.name}</div>
-                                                <div className="font-mono text-[10px] text-gray-400">{batch.id}</div>
-                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-transparent group-hover:bg-blue-500 transition-colors"></div>
-                                            </td>
-                                            <td className="px-4 py-3 text-center font-medium text-gray-700">{batch.total_jobs}</td>
-                                            <td className="px-4 py-3 text-center">
-                                                {batch.failed_jobs > 0 ? (
-                                                    <span className="text-red-500 font-bold">{batch.failed_jobs}</span>
-                                                ) : (
-                                                    <span className="text-green-500">—</span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 text-right text-gray-500">
-                                                {new Date(batch.finished_at).toLocaleString('pt-BR')}
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
+                    <div className="flex flex-col">
+                        {/* 1. Inidividual Recent Successes (New Section) */}
+                        <div className="p-4 bg-green-50/30 border-b border-gray-100">
+                            <h3 className="text-xs font-bold text-green-700 uppercase tracking-wider flex items-center gap-2">
+                                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                                Trabalhos Individuais Recentes
+                            </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-gray-500">
+                                <thead className="text-[10px] text-gray-500 uppercase bg-gray-50/50">
                                     <tr>
-                                        <td colSpan={4} className="px-4 py-8 text-center text-gray-500 italic">Nenhum lote foi concluído recentemente.</td>
+                                        <th className="px-4 py-2">Job Name</th>
+                                        <th className="px-4 py-2">Fila</th>
+                                        <th className="px-4 py-2">Duração</th>
+                                        <th className="px-4 py-2 text-right">Horário</th>
                                     </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {(queuesData?.recent_completed || []).length > 0 ? (
+                                        queuesData?.recent_completed.map((job: CompletedJob) => (
+                                            <tr key={job.id} className="border-b border-gray-50 hover:bg-white transition-colors">
+                                                <td className="px-4 py-2.5 font-mono text-gray-700 text-xs">{job.name}</td>
+                                                <td className="px-4 py-2.5">
+                                                    <span className="px-2 py-0.5 text-[9px] font-bold bg-gray-100 text-gray-500 rounded">
+                                                        {job.queue}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-2.5 text-gray-600">
+                                                    {job.duration}s
+                                                </td>
+                                                <td className="px-4 py-2.5 text-right text-gray-400 tabular-nums">
+                                                    {new Date(job.finished_at).toLocaleTimeString('pt-BR')}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={4} className="px-4 py-6 text-center text-gray-400 italic text-xs">Aguardando a conclusão de novos jobs...</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* 2. Traditional Batch List */}
+                        <div className="p-4 bg-gray-50/50 border-y border-gray-100 mt-4">
+                            <h3 className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                Histórico de Lotes (Batches)
+                            </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-gray-500">
+                                <thead className="text-[10px] text-gray-700 uppercase bg-gray-50/50">
+                                    <tr>
+                                        <th className="px-4 py-3">Lote ID / Nome</th>
+                                        <th className="px-4 py-3 text-center">Jobs Totais</th>
+                                        <th className="px-4 py-3 text-center">Falhas no Lote</th>
+                                        <th className="px-4 py-3 text-right">Data de Conclusão</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white">
+                                    {(queuesData?.completed || []).length > 0 ? (
+                                        queuesData?.completed.map((batch: CompletedBatch) => (
+                                            <tr 
+                                                key={batch.id} 
+                                                onClick={() => setSelectedBatch(batch)}
+                                                className="border-b hover:bg-blue-50/50 cursor-pointer transition-colors group"
+                                                title="Clique para ver detalhes do lote"
+                                            >
+                                                <td className="px-4 py-3 relative">
+                                                    <div className="font-medium text-gray-900 group-hover:text-blue-700 transition-colors">{batch.name}</div>
+                                                    <div className="font-mono text-[10px] text-gray-400">{batch.id}</div>
+                                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-transparent group-hover:bg-blue-500 transition-colors"></div>
+                                                </td>
+                                                <td className="px-4 py-3 text-center font-medium text-gray-700">{batch.total_jobs}</td>
+                                                <td className="px-4 py-3 text-center">
+                                                    {batch.failed_jobs > 0 ? (
+                                                        <span className="text-red-500 font-bold">{batch.failed_jobs}</span>
+                                                    ) : (
+                                                        <span className="text-green-500">—</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-right text-gray-500">
+                                                    {new Date(batch.finished_at).toLocaleString('pt-BR')}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={4} className="px-4 py-8 text-center text-gray-500 italic">Nenhum lote foi concluído recentemente.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
 

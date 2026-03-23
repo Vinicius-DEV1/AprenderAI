@@ -115,7 +115,8 @@ class WorkerMonitorController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => $failedJobs
+            'recent_completed' => app(\App\Services\QueueTrackerService::class)->getRecentCompletedJobs(),
+            'failed'    => $failedJobs,
         ], 200);
     }
 
@@ -193,6 +194,9 @@ class WorkerMonitorController extends Controller
             // 3. Clear pending jobs from DB (if using database queue driver)
             try {
                 if (\Illuminate\Support\Facades\Schema::hasTable('jobs')) {
+                    // The instruction implies ordering, but for a delete operation,
+                    // we just need to target the correct jobs.
+                    // Ordering and limiting are typically for selection, not deletion.
                     DB::table('jobs')
                         ->where('payload', 'like', '%AIBatchTriageJob%')
                         ->delete();

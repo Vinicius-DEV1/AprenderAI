@@ -723,6 +723,11 @@ EOT;
             $capability = ($taskType === 'RETRIEVAL_QUERY') 
                 ? ApiKey::CAPABILITY_QUERY_EMBEDDING 
                 : ApiKey::CAPABILITY_EMBEDDING;
+            
+            // Guard: don't attempt to embed empty strings (Gemini returns 400)
+            if (empty(trim($text))) {
+                return null;
+            }
 
             return $this->executeWithFailover($capability, function ($apiKeyModel) use ($text, $userId, $taskType) {
                 $startTime = microtime(true);
@@ -1179,6 +1184,13 @@ EOT;
     public function generateEmbeddingsBatch(array $texts, ?int $userId = null, string $taskType = 'RETRIEVAL_DOCUMENT'): array
     {
         if (empty($texts)) return [];
+        
+        // Guard: filter out empty strings while maintaining consistency if needed
+        // but for now, we just return empty if all are empty or throw if some are empty.
+        // Actually, let's just check if THE first one is empty for simplicity in this system
+        // which usually embeds a single large block in batch.
+        $nonEmptyTexts = array_filter($texts, fn($t) => !empty(trim($t)));
+        if (empty($nonEmptyTexts)) return [];
 
         $capability = ($taskType === 'RETRIEVAL_QUERY') 
             ? ApiKey::CAPABILITY_QUERY_EMBEDDING 
