@@ -48,7 +48,9 @@ class IndexSemanticEntityJob implements ShouldQueue
         EmbeddingTextBuilder $textBuilder,
         QdrantService        $qdrant
     ): void {
-        Log::info("[Xavier][IndexEntity] Starting indexing for {$this->entityType} #{$this->entityId}...");
+        $pid = getmypid();
+        $jobId = $this->job->getJobId();
+        Log::info("[Xavier][EntityStart] ID: {$jobId} | {$this->entityType} #{$this->entityId} | PID: {$pid}");
 
         // Concurrency Semaphore: DISABLED (User request: one worker only)
         /*
@@ -89,11 +91,11 @@ class IndexSemanticEntityJob implements ShouldQueue
                 throw new \RuntimeException("Vetor retornado vazio.");
             }
         } catch (\App\Exceptions\AIServiceBusyException $e) {
-            // POOL BUSY OR LOCKED: All keys are currently used by other workers or blacklisted.
-            // Release back to queue with 5m delay to avoid aggressive key contention.
-            Log::info("[IndexSemanticEntityJob] AI pool busy for {$this->entityType} #{$this->entityId}. Releasing for 5m backoff.");
+            $isQuota = str_contains(strtolower($e->getMessage()), 'quota');
+            $delay = $isQuota ? 300 : 30;
+            Log::warning("[Xavier][EntityRelease] ID: {$jobId} | Delay: {$delay}s | Reason: " . ($isQuota ? "Quota Pool" : "Busy Pool"));
             $aiService->registerCongestion('IndexSemanticEntityJob', $this->entityId);
-            $this->release(300);
+            $this->release($delay);
             return;
         } catch (\Exception $e) {
             $msg = $e->getMessage();
@@ -104,14 +106,14 @@ class IndexSemanticEntityJob implements ShouldQueue
                        str_contains(strtolower($msg), 'full failover failure');
 
             if ($isQuota) {
-                Log::warning("[IndexSemanticEntityJob] Quota limit hit or no keys available for {$this->entityType} '{$this->entityId}'. Releasing for 5m. Error: {$msg}");
+                Log::warning("[Xavier][EntityRelease] ID: {$jobId} | Delay: 300s | Reason: Direct Quota 429");
                 $aiService->registerCongestion('IndexSemanticEntityJob', $this->entityId);
                 $this->release(300);
                 return;
             }
 
             // Permanent failure: Log and fail the job definitively.
-            Log::error("[IndexSemanticEntityJob] Permanent error indexing {$this->entityType} #{$this->entityId}: " . $msg);
+            Log::error("[Xavier][EntityError] ID: {$jobId} | {$this->entityType} #{$this->entityId} | Error: " . $msg);
             $this->fail($e);
         }
 
@@ -144,7 +146,7 @@ class IndexSemanticEntityJob implements ShouldQueue
             if (method_exists($model, 'update') && !in_array($this->entityType, ['organization', 'institution'])) {
                 $model->update(['qdrant_indexed_at' => now()]);
             }
-            Log::info("[Xavier][IndexEntity] {$this->entityType} '{$this->entityId}' indexed successfully.");
+            Log::info("[Xavier][EntityEnd] ID: {$jobId} | {$this->entityType} #{$this->entityId} indexed successfully.");
         } else {
             throw new \RuntimeException("Qdrant upsert failed");
         }
