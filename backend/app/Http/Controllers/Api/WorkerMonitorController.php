@@ -115,8 +115,7 @@ class WorkerMonitorController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'recent_completed' => app(\App\Services\QueueTrackerService::class)->getRecentCompletedJobs(),
-            'failed'    => $failedJobs,
+            'data' => $failedJobs,
         ], 200);
     }
 
