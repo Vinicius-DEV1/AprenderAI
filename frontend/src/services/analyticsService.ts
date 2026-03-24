@@ -171,5 +171,15 @@ export const Analytics = {
             subject: subject || 'unknown',
             is_correct: isCorrect
         });
+    },
+
+    /**
+     * ATIVAÇÃO: Disparado apenas na PRIMEIRA vez que o usuário responder uma questão
+     */
+    questionFirstAnswered(subject: string) {
+        if (!localStorage.getItem('activation_first_question')) {
+            gtrack('question_first_answered', { subject: subject || 'unknown' });
+            localStorage.setItem('activation_first_question', 'true');
+        }
     }
 } as const;
