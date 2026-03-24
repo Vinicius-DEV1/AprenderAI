@@ -1627,7 +1627,7 @@ EOT;
         // Background workers (CLI) should back off quickly (2s) to Level 2 (Queue Backoff)
         // while interactive users (Web) get more endurance (15s) to acquire a key.
         $isBackground = app()->runningInConsole();
-        $timeout = 15.0; // Now 15s for everyone as requested
+        $timeout = $isBackground ? 600.0 : 30.0; // Increased to up to 10 minutes so queue worker waits sequentially instead of sleeping/failing constantly.
 
         while ((microtime(true) - $startTime) < $timeout) {
             // NEW: Jitter moved BEFORE picking a key and BEFORE locking.
@@ -1678,8 +1678,8 @@ EOT;
                 $lockAcquired = \Illuminate\Support\Facades\Redis::set($lockKey, '1', 'EX', 60, 'NX');
                 if (!$lockAcquired) {
                     $keysLockedCount++;
-                    Log::debug("[AIService][executeWithFailover] Lock acquisition FAILED for Key #{$apiKey->id}.");
-                    continue;
+                    Log::debug("[AIService][executeWithFailover] Lock acquisition FAILED for Key #{$apiKey->id}. Enforcing SEQUENTIAL mode.");
+                    break;
                 }
 
                 Log::debug("[AIService][executeWithFailover] Lock ACQUIRED for Key #{$apiKey->id}.");
