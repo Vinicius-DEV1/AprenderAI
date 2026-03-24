@@ -1658,8 +1658,17 @@ EOT;
                 if ($isLocked) {
                     $keysLockedCount++;
                     $poolStatus['busy']++;
-                    Log::debug("[AIService][executeWithFailover] Skipping Key #{$apiKey->id} ({$apiKey->provider}): Locked in Redis.");
-                    continue;
+                    
+                    // --- TEMPORARY FIX: SEQUENTIAL API KEY USAGE ---
+                    // By user request, we temporarily disable parallel API key usage.
+                    // Instead of skipping to the next key (which parallelizes the workload),
+                    // we 'break' the loop. This forces the worker to wait and retry acquiring 
+                    // this specific primary key (via the Level 1 retry loop below) instead of activating Key 2.
+                    // Once this key hits a quota limit (429), it will be globally blacklisted,
+                    // and THEN all workers will naturally fallback to Key 2 together in sequence.
+                    // To re-enable parallel architecture: rename this 'break;' back to 'continue;'.
+                    Log::debug("[AIService][executeWithFailover] Key #{$apiKey->id} ({$apiKey->provider}) is locked. Enforcing SEQUENTIAL mode by waiting instead of skipping to the next key.");
+                    break;
                 }
 
                 $poolStatus['online']++;
