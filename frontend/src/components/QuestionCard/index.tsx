@@ -283,7 +283,12 @@ const QuestionCard = memo(({
             Analytics.questionAnswered(firstSubject, data.correct ?? false);
             Analytics.questionFirstAnswered(firstSubject);
         } catch (e: any) {
-            const message = e.response?.data?.message || e.response?.data?.error || 'Erro ao enviar resposta.';
+            let message = 'Erro ao enviar resposta.';
+            if (e.response?.status >= 500) {
+                message = 'Erro interno no servidor. Tente novamente mais tarde.';
+            } else {
+                message = e.response?.data?.message || e.response?.data?.error || message;
+            }
             toast.error(message);
         } finally {
             setSubmitting(false);
