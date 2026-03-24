@@ -162,9 +162,9 @@ class MonitorController extends Controller
             'congestion' => app(\App\Services\AI\AIService::class)->getCongestionList(),
         ];
 
-        \Illuminate\Support\Facades\Log::debug("[Monitor] API Queues Fetch: " . 
-            count($jobs) . " pendentes, " . 
-            count($response['recent_completed']) . " concluídos recentes.");
+        // \Illuminate\Support\Facades\Log::debug("[Monitor] API Queues Fetch: " . 
+        //     count($jobs) . " pendentes, " . 
+        //     count($response['recent_completed']) . " concluídos recentes.");
 
         return response()->json($response);
     }
