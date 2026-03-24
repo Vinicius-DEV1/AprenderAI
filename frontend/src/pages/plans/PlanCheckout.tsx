@@ -7,6 +7,7 @@ import { validateCoupon, processCheckout, getUpgradePreview } from '../../api/su
 import { getUser } from '../../api/auth';
 import { IMaskInput } from 'react-imask';
 import { useCheckoutTracking } from '../../hooks/useCheckoutTracking';
+import { useUIStore } from '../../stores/uiStore';
 
 interface PlanCheckoutProps {
     embeddedPlanId?: string | number;
@@ -600,6 +601,14 @@ export default function PlanCheckout({ embeddedPlanId, onSuccess, onCancel }: Pl
                                             <svg className="w-5 h-5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                                         </>
                                     )}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => useUIStore.getState().setSupportChatOpen(true)}
+                                    className="mt-3 w-full py-3 px-6 bg-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-bold text-sm transition-colors flex justify-center items-center gap-2"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                                    Problemas com o pagamento? Fale conosco
                                 </button>
                             </fieldset>
                         </form>

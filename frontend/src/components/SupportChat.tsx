@@ -11,6 +11,7 @@ interface Message {
     attachment_url: string | null;
     created_at: string;
 }
+import { useUIStore } from '../stores/uiStore';
 
 /**
  * SupportChat — fixed support button + slide-in mini-chat panel.
@@ -19,7 +20,7 @@ interface Message {
  * Opens as a vertical chat widget anchored to the bottom-right corner.
  */
 export default function SupportChat() {
-    const [isOpen, setIsOpen] = useState(false);
+    const { isSupportChatOpen: isOpen, setSupportChatOpen: setIsOpen } = useUIStore();
     const [activeTicketId, setActiveTicketId] = useState<number | null>(null);
     const [messageText, setMessageText] = useState('');
     const [attachment, setAttachment] = useState<File | null>(null);
@@ -106,8 +107,8 @@ export default function SupportChat() {
         <>
             {/* ── Floating Support Button ─────────────────────────────────────── */}
             <button
-                onClick={() => setIsOpen(o => !o)}
-                className="fixed bottom-4 right-4 z-50 w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-200 border-2 border-white"
+                onClick={() => setIsOpen(!isOpen)}
+                className="fixed bottom-4 right-4 z-[999] w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-200 border-2 border-white"
                 title="Abrir suporte"
                 aria-label="Suporte"
             >
@@ -130,7 +131,7 @@ export default function SupportChat() {
 
             {/* ── Chat Panel ──────────────────────────────────────────────────── */}
             {isOpen && (
-                <div className="fixed bottom-20 right-4 z-50 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden"
+                <div className="fixed bottom-20 right-4 z-[999] w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden"
                     style={{ maxHeight: '520px' }}>
 
                     {/* Header */}

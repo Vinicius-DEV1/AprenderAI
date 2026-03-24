@@ -12,6 +12,10 @@ interface UIState {
     openBatchModal: (pendingCount?: number) => void;
     closeBatchModal: () => void;
     dismissBatch: (batchId: string) => void;
+
+    // Global Support Chat State
+    isSupportChatOpen: boolean;
+    setSupportChatOpen: (value: boolean) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -41,4 +45,7 @@ export const useUIStore = create<UIState>((set) => ({
         localStorage.setItem('dismissed_batches', JSON.stringify(newList));
         return { dismissedBatches: newList };
     }),
+
+    isSupportChatOpen: false,
+    setSupportChatOpen: (value) => set({ isSupportChatOpen: value }),
 }));
