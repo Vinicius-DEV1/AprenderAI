@@ -70,8 +70,6 @@ class IndexQuestionVectorJob implements ShouldQueue
         }
         */
 
-        try {
-
         // Circuit Breaker: If no API keys are available for embedding, release the job back to the queue
         // to wait for quota reset or manual intervention, preventing mass failures.
         if (!$aiService->hasActiveKey(\App\Models\ApiKey::CAPABILITY_EMBEDDING)) {
@@ -209,7 +207,6 @@ class IndexQuestionVectorJob implements ShouldQueue
             $this->releaseSlot('embeddings');
         }
         */
-        }
     }
 
     /**
