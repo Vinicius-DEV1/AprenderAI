@@ -60,8 +60,6 @@ class IndexSemanticEntityJob implements ShouldQueue
         }
         */
 
-        try {
-
         $model = $this->resolveModel();
         if (!$model) {
             $msg = "[Xavier][IndexEntity] Entity '{$this->entityId}' of type '{$this->entityType}' NOT FOUND.";
@@ -156,7 +154,6 @@ class IndexSemanticEntityJob implements ShouldQueue
             $this->releaseSlot('embeddings');
         }
         */
-        }
     }
 
     private function resolveModel()
