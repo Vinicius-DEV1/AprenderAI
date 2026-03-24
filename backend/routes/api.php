@@ -47,6 +47,7 @@ use App\Http\Controllers\Api\Admin\AdminPlatformMonitorController;
 use App\Http\Controllers\Api\Admin\PlatformEngagementController;
 use App\Http\Controllers\Api\Admin\UserSessionMonitorController;
 use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\ErrorTrackingController;
 
 // Engagement System
 use App\Http\Controllers\Api\SupportController;
@@ -79,6 +80,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/webhooks/asaas', [\App\Http\Controllers\WebhookController::class, 'handleAsaas'])->name('api.webhooks.asaas');
 
     // Público
+    Route::post('/log-error', [ErrorTrackingController::class, 'logError'])->name('api.log-error');
     Route::get('/config', [ConfigController::class, 'index'])->name('api.config');
     Route::post('/login', [AuthController::class, 'login'])->name('api.login');
     Route::get('/login', function () {
