@@ -52,13 +52,12 @@ class IndexSemanticEntityJob implements ShouldQueue
         $jobId = $this->job->getJobId();
         Log::info("[Xavier][EntityStart] ID: {$jobId} | {$this->entityType} #{$this->entityId} | PID: {$pid}");
 
-        // Concurrency Semaphore: DISABLED (User request: one worker only)
-        /*
-        $maxConcurrent = (int) \App\Models\Configuration::get('xavier_max_concurrent_embeddings', config('xavier.concurrency.max_embeddings', 3));
-        if (!$this->acquireSlot('embeddings', $maxConcurrent, retryIn: 20)) {
+        // Concurrency Semaphore: LIMITADO A 1 WORKER (sequencial absoluto)
+        if (!$this->acquireSlot('embeddings', 1, retryIn: 20)) {
             return; // Released back to queue automatically
         }
-        */
+
+        try {
 
         $model = $this->resolveModel();
         if (!$model) {
@@ -149,11 +148,9 @@ class IndexSemanticEntityJob implements ShouldQueue
             throw new \RuntimeException("Qdrant upsert failed");
         }
         
-        /*
         } finally {
             $this->releaseSlot('embeddings');
         }
-        */
     }
 
     private function resolveModel()
