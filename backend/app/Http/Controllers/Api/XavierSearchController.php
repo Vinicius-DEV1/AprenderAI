@@ -246,8 +246,13 @@ class XavierSearchController extends Controller
             $expandedTopicIds   = $expanded['topic_ids'];
         }
 
-        $extractedSubjects = $expandedSubjectIds;
-        $extractedTopics   = $expandedTopicIds;
+        // Calculate pure expanded (excluding exact matches)
+        $pureExpandedSubjects = array_values(array_diff($expandedSubjectIds, $extractedSubjects));
+        $pureExpandedTopics   = array_values(array_diff($expandedTopicIds, $extractedTopics));
+
+        // DO NOT OVERWRITE $extractedSubjects and $extractedTopics
+        // $extractedSubjects = $expandedSubjectIds;
+        // $extractedTopics   = $expandedTopicIds;
 
         // ── Step 5c: Type Detection via Keywords ─────────────────────────────
         $extractedType = null;
@@ -327,11 +332,13 @@ class XavierSearchController extends Controller
             'is_restricted'       => $analysis['is_restricted'],
             'restricted_terms'    => $analysis['restricted_terms'],
             'intent_filters'      => array_filter([
-                'subject_id'   => $extractedSubjects ?: null,
-                'topic_id'     => $extractedTopics   ?: null,
-                'organization' => $extractedOrgs     ?: null,
-                'institution'  => $extractedInsts    ?: null,
-                'type'         => $extractedType ? [$extractedType] : null,
+                'exact_subject_id'    => $extractedSubjects    ?: null,
+                'exact_topic_id'      => $extractedTopics      ?: null,
+                'expanded_subject_id' => $pureExpandedSubjects ?: null,
+                'expanded_topic_id'   => $pureExpandedTopics   ?: null,
+                'organization'        => $extractedOrgs        ?: null,
+                'institution'         => $extractedInsts       ?: null,
+                'type'                => $extractedType ? [$extractedType] : null,
             ]),
             'search_path'         => $searchPath,
             'candidate_limit'     => (int) \App\Models\Configuration::get('xavier_qdrant_candidate_limit', config('xavier.search.qdrant_candidate_limit', 50)),
