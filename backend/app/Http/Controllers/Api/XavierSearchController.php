@@ -341,7 +341,7 @@ class XavierSearchController extends Controller
                 'type'                => $extractedType ? [$extractedType] : null,
             ]),
             'search_path'         => $searchPath,
-            'candidate_limit'     => (int) \App\Models\Configuration::get('xavier_qdrant_candidate_limit', config('xavier.search.qdrant_candidate_limit', 50)),
+            'candidate_limit'     => (int) \App\Models\Configuration::get('xavier_qdrant_candidate_limit', config('xavier.search.qdrant_candidate_limit', 200)),
             'final_limit'         => (int) \App\Models\Configuration::get('xavier_final_result_limit', config('xavier.search.final_result_limit', 100)),
         ];
 
