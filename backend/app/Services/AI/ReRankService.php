@@ -125,14 +125,30 @@ class ReRankService
                     ? $payload['topic_ids']
                     : ($payload['topic_id'] ? [$payload['topic_id']] : []);
 
-                if (!empty($intentFilters['subject_id'])) {
-                    $overlap = array_intersect((array) $intentFilters['subject_id'], $payloadSubjectIds);
-                    if (!empty($overlap)) $intentBoost += $this->iBoost;
+                // EXACT Matches (Full weight)
+                if (!empty($intentFilters['exact_subject_id'])) {
+                    $overlap = array_intersect((array) $intentFilters['exact_subject_id'], $payloadSubjectIds);
+                    if (!empty($overlap)) $intentBoost += $this->iBoost; // +0.30
                 }
-                if (!empty($intentFilters['topic_id'])) {
-                    $overlap = array_intersect((array) $intentFilters['topic_id'], $payloadTopicIds);
-                    if (!empty($overlap)) $intentBoost += $this->iBoost * 0.5;
+                
+                // EXPANDED Matches (Penalty/Discounted weight)
+                elseif (!empty($intentFilters['expanded_subject_id'])) {
+                    $overlap = array_intersect((array) $intentFilters['expanded_subject_id'], $payloadSubjectIds);
+                    if (!empty($overlap)) $intentBoost += $this->iBoost * 0.25; // +0.075
                 }
+
+                // EXACT Topics
+                if (!empty($intentFilters['exact_topic_id'])) {
+                    $overlap = array_intersect((array) $intentFilters['exact_topic_id'], $payloadTopicIds);
+                    if (!empty($overlap)) $intentBoost += $this->iBoost * 0.5; // +0.15
+                }
+                
+                // EXPANDED Topics
+                elseif (!empty($intentFilters['expanded_topic_id'])) {
+                    $overlap = array_intersect((array) $intentFilters['expanded_topic_id'], $payloadTopicIds);
+                    if (!empty($overlap)) $intentBoost += $this->iBoost * 0.1; // +0.03
+                }
+
                 if (!empty($intentFilters['type']) && in_array($payload['type'] ?? null, $intentFilters['type'])) {
                     $intentBoost += 0.10;
                 }

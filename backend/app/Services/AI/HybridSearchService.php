@@ -34,10 +34,12 @@ class HybridSearchService
         array  $expandedConceptIds = [],
         array  $sqlFilters = [],
         int    $limit = 50,
-        array  $excludedConceptIds = []
+        array  $excludedConceptIds = [],
+        array  $expandedSubjectIds = [],
+        array  $expandedTopicIds   = []
     ): array {
         // Build Qdrant filter from expanded concept IDs + SQL filters
-        $qdrantFilter = $this->buildQdrantFilter($expandedConceptIds, $sqlFilters, $excludedConceptIds);
+        $qdrantFilter = $this->buildQdrantFilter($expandedConceptIds, $sqlFilters, $excludedConceptIds, $expandedSubjectIds, $expandedTopicIds);
 
         // Try Qdrant multi-vector search
         try {
@@ -67,7 +69,7 @@ class HybridSearchService
     /**
      * Build the Qdrant filter clause from concept IDs and SQL-style metadata filters.
      */
-    private function buildQdrantFilter(array $conceptIds, array $sqlFilters, array $excludedConceptIds = []): array
+    private function buildQdrantFilter(array $conceptIds, array $sqlFilters, array $excludedConceptIds = [], array $expandedSubjectIds = [], array $expandedTopicIds = []): array
     {
         $must = [];
 
@@ -113,6 +115,22 @@ class HybridSearchService
                     'match' => ['value' => $slug]
                 ];
             }
+        }
+
+        // Semantic Fallback Expansion (Numeric Subject IDs in V2)
+        if (!empty($expandedSubjectIds)) {
+            $should[] = [
+                'key'   => 'subject_ids',
+                'match' => ['any' => array_map('intval', $expandedSubjectIds)]
+            ];
+        }
+
+        // Semantic Fallback Expansion (Numeric Topic IDs in V2)
+        if (!empty($expandedTopicIds)) {
+            $should[] = [
+                'key'   => 'topic_ids',
+                'match' => ['any' => array_map('intval', $expandedTopicIds)]
+            ];
         }
 
         // Filter by difficulty

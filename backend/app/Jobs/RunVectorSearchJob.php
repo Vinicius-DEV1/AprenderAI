@@ -125,11 +125,24 @@ class RunVectorSearchJob implements ShouldQueue
 
         // ── Step 7: Hybrid Search ───────────────────────────────────────────
         $expandedConceptIds = $ctx['expanded_concept_ids'] ?? [];
+        
+        // V2 Semantic Expansion support
+        $expandedSubjectIds = $ctx['intent_filters']['expanded_subject_id'] ?? [];
+        $expandedTopicIds   = $ctx['intent_filters']['expanded_topic_id'] ?? [];
+
         $sqlFilters         = $ctx['sql_filters']          ?? ['keyword' => $ctx['prompt']];
         $candidateLimit     = $ctx['candidate_limit']      ?? 50;
         $excludedConceptIds = $ctx['excluded_concept_ids'] ?? [];
 
-        $candidates = $hybridSearch->search($queryVectors, $expandedConceptIds, $sqlFilters, $candidateLimit, $excludedConceptIds);
+        $candidates = $hybridSearch->search(
+            $queryVectors, 
+            $expandedConceptIds, 
+            $sqlFilters, 
+            $candidateLimit, 
+            $excludedConceptIds,
+            $expandedSubjectIds,
+            $expandedTopicIds
+        );
         Log::info("[Xavier][RunVectorSearch] Hybrid search: " . count($candidates) . " candidatos.");
 
         // ── Step 8: ReRank ──────────────────────────────────────────────────
