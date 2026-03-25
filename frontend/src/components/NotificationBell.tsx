@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../api/notifications';
-import { toast } from 'react-hot-toast';
 
 interface Notification {
     id: number;
@@ -35,35 +34,6 @@ export default function NotificationBell({ openUpward = false }: Props) {
     const notifications: Notification[] = data?.notifications ?? [];
     const unreadCount: number = data?.unread_count ?? 0;
 
-    // Monitor for new grave (warning) notifications to trigger a toast
-    const prevNotifications = useRef<Notification[]>([]);
-    useEffect(() => {
-        if (!data?.notifications) return;
-        
-        const currentIds = new Set(data.notifications.map((n: Notification) => n.id));
-        const prevIds = new Set(prevNotifications.current.map(n => n.id));
-        
-        // Find genuine new notifications (not just unread ones we already toasted for)
-        const newNotifs = data.notifications.filter((n: Notification) => !prevIds.has(n.id) && !n.is_read);
-        
-        newNotifs.forEach((n: Notification) => {
-            if (n.type === 'warning') { // Warning is our internal mapping for SEVERITY_GRAVE
-                toast.error(n.title, {
-                    duration: 6000,
-                    position: 'top-right',
-                    icon: '🚨',
-                    style: {
-                        borderRadius: '10px',
-                        background: '#333',
-                        color: '#fff',
-                    },
-                });
-            }
-        });
-
-        prevNotifications.current = data.notifications;
-    }, [data?.notifications]);
-
     // Update coordinates when opening
     useEffect(() => {
         if (isOpen && triggerRef.current) {
@@ -87,8 +57,8 @@ export default function NotificationBell({ openUpward = false }: Props) {
         return () => document.removeEventListener('mousedown', handler);
     }, [isOpen]);
 
-    const markRead = async (id: number) => {
-        await markNotificationRead(id);
+    const markGroupRead = async (ids: number[]) => {
+        await Promise.all(ids.map(id => markNotificationRead(id)));
         queryClient.invalidateQueries({ queryKey: ['user-notifications'] });
     };
 
@@ -96,6 +66,31 @@ export default function NotificationBell({ openUpward = false }: Props) {
         await markAllNotificationsRead();
         queryClient.invalidateQueries({ queryKey: ['user-notifications'] });
     };
+
+    // Group identical unread notifications to clean up the UI
+    const groupedNotifications = useMemo(() => {
+        const result: (Notification & { count: number; groupIds: number[] })[] = [];
+        const seen = new Map<string, typeof result[0]>();
+
+        for (const n of notifications) {
+            // Group identical unread notifications together, using title AND body
+            if (!n.is_read) {
+                const key = `${n.title}|${n.body || ''}`;
+                const existing = seen.get(key);
+                if (existing) {
+                    existing.count += 1;
+                    existing.groupIds.push(n.id);
+                } else {
+                    const newItem = { ...n, count: 1, groupIds: [n.id] };
+                    seen.set(key, newItem);
+                    result.push(newItem);
+                }
+            } else {
+                result.push({ ...n, count: 1, groupIds: [n.id] });
+            }
+        }
+        return result;
+    }, [notifications]);
 
     const typeIcons: Record<string, { icon: string }> = {
         info:    { icon: 'ℹ️' },
@@ -162,7 +157,7 @@ export default function NotificationBell({ openUpward = false }: Props) {
                             <p className="font-medium">Nenhuma notificação por aqui.</p>
                             <p className="text-xs text-slate-500 mt-1">Avisaremos você quando algo novo aparecer.</p>
                         </div>
-                    ) : notifications.slice(0, 10).map(n => (
+                    ) : groupedNotifications.slice(0, 10).map(n => (
                         <div
                             key={n.id}
                             className={`px-4 py-3.5 transition-colors ${!n.is_read ? 'bg-blue-50/60 dark:bg-blue-950/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
@@ -172,9 +167,16 @@ export default function NotificationBell({ openUpward = false }: Props) {
                                     {typeIcons[n.type]?.icon ?? 'ℹ️'}
                                 </span>
                                 <div className="flex-1 min-w-0">
-                                    <p className={`text-sm font-bold leading-tight ${!n.is_read ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'} ${n.type === 'warning' ? 'text-red-600 dark:text-red-400' : ''}`}>
-                                        {n.title}
-                                    </p>
+                                    <div className="flex items-start justify-between gap-2">
+                                        <p className={`text-sm font-bold leading-tight ${!n.is_read ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'} ${n.type === 'warning' ? 'text-red-600 dark:text-red-400' : ''}`}>
+                                            {n.title}
+                                            {n.count > 1 && (
+                                                <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400">
+                                                    [{n.count}x]
+                                                </span>
+                                            )}
+                                        </p>
+                                    </div>
                                     {n.body && (
                                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
                                             {n.body}
@@ -195,7 +197,7 @@ export default function NotificationBell({ openUpward = false }: Props) {
                                 </div>
                                 {!n.is_read && (
                                     <button
-                                        onClick={() => markRead(n.id)}
+                                        onClick={() => markGroupRead(n.groupIds)}
                                         className="w-2.5 h-2.5 mt-1 rounded-full bg-blue-500 flex-shrink-0 hover:bg-blue-700 transition-colors"
                                         title="Marcar como lida"
                                     />
@@ -204,7 +206,7 @@ export default function NotificationBell({ openUpward = false }: Props) {
                         </div>
                     ))}
                 </div>
-                {notifications.length > 10 && (
+                {groupedNotifications.length > 10 && (
                     <a
                         href="/notificacoes"
                         className="block w-full text-center py-3 text-xs font-bold text-blue-600 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 transition-colors"
