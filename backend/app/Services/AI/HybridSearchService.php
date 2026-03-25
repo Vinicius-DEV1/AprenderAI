@@ -43,6 +43,12 @@ class HybridSearchService
 
         // Try Qdrant multi-vector search
         try {
+            Log::debug('[Xavier][HybridSearch] Sending query to Qdrant...', [
+                'limit'         => $limit,
+                'qdrant_filter' => $qdrantFilter,
+                'sql_filters'   => $sqlFilters
+            ]);
+
             $results = $this->qdrant->searchQuestions(
                 $queryVectors,
                 $qdrantFilter,
