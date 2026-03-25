@@ -214,7 +214,15 @@ class ReRankService
         // Apply hard cap
         $result = array_slice(array_values($trimmed), 0, $topN);
 
-        Log::info('[Xavier][ReRank] Reranked ' . count($candidates) . ' candidates → ' . count($result) . ' returned (cutoff floor: ' . round($absoluteFloor, 3) . ').');
+        Log::info('[Xavier][ReRank] Debug Rerank:', [
+            'total_in'       => count($candidates),
+            'max_vector'     => $maxVectorScore,
+            'best_composite' => $bestScore,
+            'absoluteFloor'  => $absoluteFloor,
+            'total_survived' => count($trimmed),
+            'final_returned' => count($result),
+            'topN_cap'       => $topN
+        ]);
 
         return $result;
     }
