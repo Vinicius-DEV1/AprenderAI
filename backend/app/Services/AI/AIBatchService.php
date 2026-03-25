@@ -146,6 +146,7 @@ class AIBatchService
         $prompt .= "   - REDAÇÃO: Para temas de redação, gere APENAS Feedback Pedagógico em `explanation` e deixe o resto null.\n";
         $prompt .= "2. LATEX OBRIGATÓRIO: Use \\( ... \\) e \\[ ... \\] para qualquer fórmula matemática/física.\n\n";
         $prompt .= "3. CLASSIFICAÇÃO (MÚLTIPLOS ASSUNTOS):\n";
+        $prompt .= "   - REGRA CRÍTICA PARA PORTUGUÊS: Toda questão de português DEVE ser classificada exclusivamente como 'Língua Portuguesa'. Nunca use variações como 'Português', 'Portugues' ou 'Lingua Portuguesa' sem acento. Se a entrada sugerir 'Português', normalize automaticamente para 'Língua Portuguesa'. Essa regra tem prioridade máxima.\n";
         $prompt .= "   - Se a questão for genuinamente interdisciplinar, retorne um ARRAY de assuntos/matérias. SE NÃO, retorne apenas 1 item no array.\n";
         $prompt .= "   - Nunca combine dois assuntos em uma mesma string; se houver mais de um tema, use obrigatoriamente itens separados no array.\n";
         $prompt .= "   - Se não usar ID existente, retorne string nova no array. `subjects` = áreas (ex: 'Matemática'). `topics` = assuntos (ex: 'Trigonometria'). MÁXIMO 1 a 4 palavras. Iniciais Maiúsculas.\n";
@@ -350,6 +351,12 @@ class AIBatchService
                 if (!$subjectId && !empty($subjectName)) {
                     $subjectName = (string) $subjectName;
                     $normalizedName = strtolower(trim($subjectName));
+
+                    // Normalização hardcoded para Língua Portuguesa
+                    if (in_array($normalizedName, ['português', 'portugues', 'lingua portuguesa', 'língua portuguesa'])) {
+                        $subjectName = 'Língua Portuguesa';
+                        $normalizedName = strtolower($subjectName);
+                    }
 
                     $existingSubject = Subject::whereRaw('LOWER(name) = ?', [$normalizedName])
                         ->orWhere('name', 'like', '%' . trim($subjectName) . '%')
