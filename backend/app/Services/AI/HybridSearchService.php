@@ -107,6 +107,7 @@ class HybridSearchService
         // Filter by concepts (Semantic Expansion)
         // We use 'should' instead of 'must' to allow results that match the vector
         // even if they don't have the explicit concept tagged, but boost those with concepts.
+        // Semantic Expansion (String Slugs) - Legacy
         $should = [];
         if (!empty($conceptIds)) {
             foreach ($conceptIds as $slug) {
@@ -117,21 +118,14 @@ class HybridSearchService
             }
         }
 
-        // Semantic Fallback Expansion (Numeric Subject IDs in V2)
-        if (!empty($expandedSubjectIds)) {
-            $should[] = [
-                'key'   => 'subject_ids',
-                'match' => ['any' => array_map('intval', $expandedSubjectIds)]
-            ];
-        }
-
-        // Semantic Fallback Expansion (Numeric Topic IDs in V2)
-        if (!empty($expandedTopicIds)) {
-            $should[] = [
-                'key'   => 'topic_ids',
-                'match' => ['any' => array_map('intval', $expandedTopicIds)]
-            ];
-        }
+        /* 
+         * DO NOT use Qdrant's 'should' clause for subject_ids or topic_ids!
+         * Qdrant's SHOULD clause acts as a HARD FILTER (Must match at least one).
+         * If we add expanded subjects here, it will permanently filter out any question
+         * that doesn't explicitly have these tags, destroying the mathematical
+         * vector recall for questions that are semantically related but untagged.
+         * The intent boosting is handled gracefully by ReRankService instead.
+         */
 
         // Filter by difficulty
         if (!empty($sqlFilters['difficulty'])) {
