@@ -77,7 +77,7 @@ class MigrateSubjectPortuguese extends Command
                     
                     // Reindexar Concepts no final
                     foreach ($conceptsToMigrate as $concept) {
-                        IndexConceptVectorJob::dispatch((string) $concept->id)->onQueue('indexing');
+                        IndexConceptVectorJob::dispatch((string) $concept->id)->onQueue(config('xavier.embeddings.queue', 'embeddings'));
                     }
                 }
 
@@ -119,7 +119,7 @@ class MigrateSubjectPortuguese extends Command
 
                     // Reindexar Questions
                     foreach ($questionIds as $qId) {
-                        IndexQuestionVectorJob::dispatch($qId)->onQueue('indexing');
+                        IndexQuestionVectorJob::dispatch($qId)->onQueue(config('xavier.embeddings.queue', 'embeddings'));
                     }
                 }
 
@@ -148,7 +148,7 @@ class MigrateSubjectPortuguese extends Command
         }
 
         // Reindexar a nova entidade para garantir consistência semântica no motor de busca
-        IndexSemanticEntityJob::dispatch((string) $newSubject->id, 'subject')->onQueue('indexing');
+        IndexSemanticEntityJob::dispatch((string) $newSubject->id, 'subject')->onQueue(config('xavier.embeddings.queue', 'embeddings'));
 
         // Limpar Cache
         $this->info("Limpando cache tags 'subjects'...");

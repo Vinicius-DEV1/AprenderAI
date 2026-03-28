@@ -116,7 +116,7 @@ services:
     env_file: ./backend/.env
     command: >
       php artisan queue:work
-      --queue=high,search_embeddings,ai_triage,default,embeddings,low
+      --queue=high,search_embeddings,essays,ai_triage,default,embeddings,low
       --sleep=3
       --tries=3
       --timeout=900
