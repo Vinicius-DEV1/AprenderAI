@@ -103,6 +103,21 @@ class EvaluateEssayJob implements ShouldQueue
                     ],
                 ]);
 
+                \App\Models\UserNotification::notifyEssayOnce(
+                    $this->essay->user_id,
+                    $this->essay->id,
+                    [
+                        'title' => 'Redação corrigida!',
+                        'body' => "Sua redação '{$this->essay->title}' foi avaliada pela IA e recebeu a nota 0 (Fuga ao tema).",
+                        'action_url' => "/redacoes/{$this->essay->id}",
+                        'meta' => [
+                            'essay_id' => $this->essay->id,
+                            'score' => 0,
+                        ]
+                    ],
+                    'success'
+                );
+
                 Log::info("[EvaluateEssayJob] Essay ID: {$this->essay->id} detected as OFF-TOPIC. User ID: {$this->essay->user_id}, Score: 0");
                 return; // LOCK - Stop processing
             }
@@ -276,6 +291,21 @@ class EvaluateEssayJob implements ShouldQueue
                     })(),
                     'improved_version' => $improved,
                 ]);
+
+                \App\Models\UserNotification::notifyEssayOnce(
+                    $this->essay->user_id,
+                    $this->essay->id,
+                    [
+                        'title' => 'Redação corrigida!',
+                        'body' => "Sua redação '{$this->essay->title}' foi avaliada pela IA e recebeu a nota {$this->essay->score}.",
+                        'action_url' => "/redacoes/{$this->essay->id}",
+                        'meta' => [
+                            'essay_id' => $this->essay->id,
+                            'score' => $this->essay->score,
+                        ]
+                    ],
+                    'success'
+                );
 
                 Log::info("[EvaluateEssayJob] Essay ID: {$this->essay->id} evaluated. User ID: {$this->essay->user_id}, isOffTopic: " . ($isOffTopicNormalPath ? 'true' : 'false') . ", final score: " . ($this->essay->score));
             } else {

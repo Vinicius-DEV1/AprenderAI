@@ -82,7 +82,6 @@ class UserNotification extends Model
             $exists = self::where('user_id', $userId)
                 ->where('type', $type)
                 ->where('related_payment_id', $subscriptionId)
-                ->whereNull('read_at')
                 ->exists();
 
             if ($exists) {
@@ -119,13 +118,13 @@ class UserNotification extends Model
     public static function notifyEssayOnce(
         int $userId,
         int $essayId,
-        array $data
+        array $data,
+        string $type = 'essay_pending'
     ): ?self {
         try {
             $exists = self::where('user_id', $userId)
-                ->where('type', 'essay_pending')
+                ->where('type', $type)
                 ->where('related_essay_id', $essayId)
-                ->whereNull('read_at')
                 ->exists();
 
             if ($exists) {
@@ -134,7 +133,7 @@ class UserNotification extends Model
 
             return self::create(array_merge($data, [
                 'user_id'          => $userId,
-                'type'             => 'essay_pending',
+                'type'             => $type,
                 'related_essay_id' => $essayId,
             ]));
         } catch (\Throwable $e) {
