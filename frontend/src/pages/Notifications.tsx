@@ -6,6 +6,7 @@ import { getPendingPixSubscription } from '../api/subscriptions';
 import { toast } from 'sonner';
 import MetaTags from '../components/MetaTags';
 import PixRecoveryModal from '../components/PixRecoveryModal';
+import { useAuthStore } from '../stores/authStore';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -16,6 +17,7 @@ interface NotificationMeta {
     pix_expires_at?: string;
     action?: 'resume_pix' | 'regenerate_pix' | 'resume_essay';
     essay_id?: number;
+    severity?: string;
 }
 
 interface AppNotification {
@@ -29,6 +31,15 @@ interface AppNotification {
     is_read: boolean;
     created_at: string;
 }
+
+type TabKey = 'geral' | 'criticos' | 'ia' | 'checkout';
+
+const TAB_CONFIG = [
+    { id: 'geral', label: 'Geral', icon: '📝' },
+    { id: 'criticos', label: 'Alertas & Críticas', icon: '⚠️' },
+    { id: 'ia', label: 'IA & Integrações', icon: '🤖' },
+    { id: 'checkout', label: 'Checkout & Vendas', icon: '💸' },
+];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -59,6 +70,11 @@ const formatDate = (iso: string) => {
 export default function Notifications() {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
+    const { user } = useAuthStore();
+    const isAdmin = user?.role === 'admin';
+
+    // Tabs state
+    const [activeTab, setActiveTab] = useState<TabKey>('geral');
 
     // Modal state
     const [activeModal, setActiveModal] = useState<{
@@ -88,6 +104,41 @@ export default function Notifications() {
         if (aIsSpecial !== bIsSpecial) return aIsSpecial - bIsSpecial;
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
+
+    // ── Admin Categorization ───────────────────────────────────────────────
+    const getCategory = (n: AppNotification): TabKey => {
+        if (!isAdmin) return 'geral';
+
+        const title = n.title || '';
+        const isSystemError = title.includes('500') || title.includes('Rotina/Job');
+        const isAi = title.includes('Alerta de IA');
+        const isCheckout = title.includes('Pagamento/Gateway');
+        const hasSeverity = !!n.meta?.severity;
+
+        if (isSystemError) return 'criticos';
+        if (isAi) return 'ia';
+        if (isCheckout) return 'checkout';
+
+        if (hasSeverity) {
+            return n.meta!.severity === 'leve' ? 'geral' : 'criticos';
+        }
+
+        return 'geral';
+    };
+
+    const filteredNotifications = isAdmin 
+        ? notifications.filter(n => getCategory(n) === activeTab)
+        : notifications;
+
+    const badgeCounts = { geral: 0, criticos: 0, ia: 0, checkout: 0 };
+    if (isAdmin) {
+        notifications.forEach(n => {
+            if (!n.is_read) {
+                const cat = getCategory(n);
+                badgeCounts[cat]++;
+            }
+        });
+    }
 
     // ── Mutations ──────────────────────────────────────────────────────────
     const markReadMutation = useMutation({
@@ -175,7 +226,7 @@ export default function Notifications() {
 
     // ── Render ─────────────────────────────────────────────────────────────
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="max-w-5xl mx-auto space-y-6 lg:space-y-8">
             <MetaTags title="Minhas Notificações" />
 
             {/* Modal */}
@@ -203,22 +254,51 @@ export default function Notifications() {
                 )}
             </div>
 
+            {/* Admin Tabs */}
+            {isAdmin && (
+                <div className="flex overflow-x-auto gap-2 pb-2 hide-scrollbar border-b border-slate-200 dark:border-slate-800">
+                    {TAB_CONFIG.map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id as TabKey)}
+                            className={`flex items-center gap-2 px-6 py-3 font-semibold transition-all whitespace-nowrap border-b-2 -mb-[1px] ${
+                                activeTab === tab.id
+                                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10'
+                                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                            }`}
+                        >
+                            <span className="text-lg">{tab.icon}</span>
+                            <span>{tab.label}</span>
+                            {badgeCounts[tab.id as TabKey] > 0 && (
+                                <span className={`flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[11px] rounded-full font-bold ml-1 ${
+                                    activeTab === tab.id 
+                                    ? 'bg-indigo-600 text-white shadow-sm' 
+                                    : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                                }`}>
+                                    {badgeCounts[tab.id as TabKey]}
+                                </span>
+                            )}
+                        </button>
+                    ))}
+                </div>
+            )}
+
             {/* List */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                 {isLoading ? (
                     <div className="p-12 text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4" />
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4" />
                         <p className="text-slate-500">Carregando suas notificações...</p>
                     </div>
-                ) : notifications.length === 0 ? (
+                ) : filteredNotifications.length === 0 ? (
                     <div className="p-20 text-center">
-                        <div className="text-5xl mb-4">🔔</div>
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-1">Tudo em dia por aqui!</h2>
-                        <p className="text-slate-500">Você não possui notificações no momento.</p>
+                        <div className="text-5xl mb-4 text-slate-300 dark:text-slate-600">📭</div>
+                        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-1">Nenhuma notificação por aqui!</h2>
+                        <p className="text-slate-500">Você está em dia nesta categoria.</p>
                     </div>
                 ) : (
                     <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {notifications.map((n: AppNotification) => {
+                        {filteredNotifications.map((n: AppNotification) => {
                             const cfg = typeConfig[n.type] ?? typeConfig['info'];
                             const isPixType = PIX_TYPES.includes(n.type);
                             const isEssayType = ESSAY_TYPES.includes(n.type);
@@ -256,7 +336,7 @@ export default function Notifications() {
                                                 )}
                                             </div>
 
-                                            <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+                                            <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-4 whitespace-pre-wrap">
                                                 {n.body || 'Sem conteúdo adicional.'}
                                             </p>
 
@@ -318,16 +398,16 @@ export default function Notifications() {
                                                     ) : n.action_url ? (
                                                         <a
                                                             href={n.action_url}
-                                                            className="px-4 py-1.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition shadow-sm"
+                                                            className="px-4 py-1.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition shadow-sm border border-blue-700"
                                                         >
-                                                            Ver Detalhes
+                                                            Acessar Detalhes
                                                         </a>
                                                     ) : null}
 
                                                     {!n.is_read && (
                                                         <button
                                                             onClick={() => markReadMutation.mutate(n.id)}
-                                                            className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                                                            className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline bg-transparent"
                                                         >
                                                             Marcar como lida
                                                         </button>
