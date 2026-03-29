@@ -59,7 +59,7 @@ export default function Profile() {
     const loadFavorites = async () => {
         setFavLoading(true);
         try {
-            const res = await api.get(`/api/v1/questions?is_favorite=1&page=${favPage}`);
+            const res = await api.get(`/api/v1/questions?favorites_only=1&page=${favPage}`);
             setFavorites(res.data.data);
             setFavTotal(res.data.total);
             setFavHasNext(!!res.data.next_page_url);
