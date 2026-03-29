@@ -27,7 +27,7 @@ class IndexConceptVectorJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries   = 20;
+    public int $tries   = 20000;
     public int $timeout = 60;
 
     public function __construct(protected string $conceptId)
