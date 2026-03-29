@@ -188,7 +188,7 @@ services:
     # O bloco `environment` abaixo "traduz" os nomes do Laravel para os
     # nomes que o MySQL espera (MYSQL_*). Ambos precisam estar presentes.
     env_file: ./backend/.env
-    command: --default-authentication-plugin=mysql_native_password
+    command: --default-authentication-plugin=mysql_native_password --binlog-expire-logs-seconds=86400
     environment:
       MYSQL_ROOT_HOST: '%'
     volumes:
