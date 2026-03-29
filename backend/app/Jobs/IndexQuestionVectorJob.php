@@ -34,9 +34,10 @@ class IndexQuestionVectorJob implements ShouldQueue
 
     /**
      * Tries limit.
-     * With a 5-minute backoff (300s), 576 tries = 48 hours (2 days) of resilience.
+     * Em conjunção com $this->release(20s) de Concorrência ou 5-min para cotas,
+     * 20.000 tries confere vários de dias de imunidade à morte súbita na fila.
      */
-    public int $tries   = 576; 
+    public int $tries   = 20000; 
     public int $timeout = 120;
 
     public function __construct(protected int $questionId)
