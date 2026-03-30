@@ -162,7 +162,7 @@ class AIBatchAnalyticsController extends Controller
             $date = Carbon::now()->subDays($days)->format('Y-m-d');
             return [
                 'date' => Carbon::now()->subDays($days)->format('d/m'),
-                'total' => AiProcessingBatch::whereDate('created_at', $date)->sum('total_items')
+                'total' => AiProcessingBatch::whereDate('created_at', $date)->sum('total_count')
             ];
         });
 
@@ -173,7 +173,7 @@ class AIBatchAnalyticsController extends Controller
                 'month' => $date->translatedFormat('M/Y'),
                 'total' => AiProcessingBatch::whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
-                    ->sum('total_items')
+                    ->sum('total_count')
             ];
         });
 
