@@ -103,6 +103,11 @@ class AdminSimulationController extends Controller
 
         $config = $validated['configuration'];
 
+        // Normalize naming for the engine (frontend sends total_questions, engine expects questions)
+        if (!isset($config['questions']) && isset($config['total_questions'])) {
+            $config['questions'] = $config['total_questions'];
+        }
+
         // If no user is logged in (admin), we will just use the current admin user
         $user = $request->user();
 
