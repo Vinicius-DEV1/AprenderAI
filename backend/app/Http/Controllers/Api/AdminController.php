@@ -76,31 +76,36 @@ class AdminController extends Controller
             if ($sub->is_manual_grant) {
                 $action  = 'ganhou o plano';
                 $intent  = 'granted';           // purple badge
-            } elseif ($sub->status === 'active') {
+            } elseif ($sub->status === 'active' || $sub->status === 'approved') {
                 $action  = 'assinou o plano';   // payment confirmed
                 $intent  = 'confirmed';         // green badge
-            } elseif ($sub->status === 'pending' && $sub->billing_type === 'pix') {
-                $action  = 'gerou PIX para o plano';  // awaiting PIX scan
+            } elseif ($sub->status === 'pending' && strtolower($sub->billing_type) === 'pix') {
+                $action  = 'gerou um pedido PIX para o plano';  // awaiting PIX scan
                 $intent  = 'pix_pending';       // orange badge
             } elseif ($sub->status === 'pending') {
-                $action  = 'iniciou contratação do plano';  // card/other pending
+                $action  = 'iniciou um pedido para o plano';  // card/other pending
                 $intent  = 'payment_pending';   // yellow badge
             } else {
                 $action  = 'interagiu com o plano';
                 $intent  = 'unknown';
             }
 
+            $userName = trim($sub->user?->name);
+            if (empty($userName)) {
+                $userName = 'Usuário (Sem Nome)';
+            }
+
             return [
                 'type'            => 'subscription',
-                'message'         => ($sub->user->name ?? 'Usuário') . " {$action} " . ($sub->plan->name ?? 'Grátis'),
+                'message'         => "{$userName} {$action} " . ($sub->plan->name ?? 'Grátis'),
                 'created_at'      => $sub->created_at->toIso8601String(),
                 'is_sandbox'      => (bool) $sub->is_sandbox,
                 'is_manual_grant' => (bool) $sub->is_manual_grant,
                 'payment_intent'  => $intent,   // used by frontend to pick badge color
                 'user' => [
                     'id'         => $sub->user->id ?? 0,
-                    'name'       => $sub->user->name ?? 'Desconhecido',
-                    'avatar_url' => "https://ui-avatars.com/api/?name=" . urlencode($sub->user->name ?? 'U')
+                    'name'       => $userName,
+                    'avatar_url' => "https://ui-avatars.com/api/?name=" . urlencode($userName)
                 ]
             ];
         });
