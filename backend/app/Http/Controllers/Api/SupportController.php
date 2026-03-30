@@ -166,6 +166,13 @@ class SupportController extends Controller
             'last_message_at' => now(),
         ]);
 
+        \App\Models\UserNotification::notifyAdmins(
+            "💬 Nova resposta no suporte",
+            "De: {$request->user()->name} — Ticket #{$ticket->id}",
+            'info',
+            "/admin/suporte?ticket_id={$ticket->id}"
+        );
+
         return response()->json([
             'success' => true,
             'message' => [

@@ -136,9 +136,13 @@ export default function SimulationView() {
                     const awayMs = Date.now() - hiddenAtRef.current;
                     const awaySeconds = Math.floor(awayMs / 1000);
                     // Deduct the away-time from the remaining clock
-                    setTimeRemaining(prev =>
-                        prev !== null ? Math.max(0, prev - awaySeconds) : prev
-                    );
+                    setTimeRemaining(prev => {
+                        const newTime = prev !== null ? Math.max(0, prev - awaySeconds) : prev;
+                        if (newTime !== null && newTime > 0 && awaySeconds > 5) {
+                            toast.info(`⏰ Pausado enquanto você esteve fora. Seu tempo foi atualizado.`);
+                        }
+                        return newTime;
+                    });
                     hiddenAtRef.current = null;
                 }
                 setIsTimerPaused(false);
@@ -149,9 +153,10 @@ export default function SimulationView() {
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, []); // Registered once; closures over refs so no deps needed
 
-    // Heartbeat Effect
+    // Heartbeat Effect (Autosave/Ping)
     useEffect(() => {
-        if (!isGenerating && simulation?.status === 'in_progress' && !isTimeExpired) {
+        // Obey isTimerPaused so we don't send API requests while tab is backgrounded
+        if (!isGenerating && simulation?.status === 'in_progress' && !isTimeExpired && !isTimerPaused) {
             const sendHeartbeat = () => {
                 api.post(`/api/v1/simulations/${id}/heartbeat`).catch(() => {});
             };
@@ -161,7 +166,7 @@ export default function SimulationView() {
             const heartbeat = setInterval(sendHeartbeat, 120000);
             return () => clearInterval(heartbeat);
         }
-    }, [isGenerating, simulation?.status, isTimeExpired, id]);
+    }, [isGenerating, simulation?.status, isTimeExpired, id, isTimerPaused]);
 
     // AI Messages Cycle
     useEffect(() => {
@@ -442,7 +447,6 @@ export default function SimulationView() {
         :root.dark .alternative-container.selected { background: rgba(37,99,235,0.2); border-color: #3b82f6; }
 
         .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
-        .word-break-all { word-break: break-all; }
       `}</style>
 
             <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center' }}>
