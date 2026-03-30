@@ -287,7 +287,7 @@ class SemanticDashboardController extends Controller
                 return [
                     'id' => 'req_' . $first->id,
                     'timestamp' => $first->created_at->toIso8601String(),
-                    'api_key'   => $first->apiKey ? ($first->apiKey->provider . ' (' . substr($first->apiKey->key, 0, 4) . '...)') : 'Unknown',
+                    'api_key'   => $first->apiKey ? (($first->apiKey->vault ? $first->apiKey->vault->nickname : $first->apiKey->provider) . ' (' . substr($first->apiKey->key, 0, 4) . '...)') : 'Unknown',
                     'status'    => 'success',
                     'latency'   => $group->avg('execution_time'),
                     'module'    => $first->module,
@@ -314,7 +314,7 @@ class SemanticDashboardController extends Controller
                 return [
                     'id' => 'err_' . $log->id,
                     'timestamp' => $log->created_at->toIso8601String(),
-                    'api_key'   => $log->apiKey ? ($log->apiKey->provider . ' (' . substr($log->apiKey->key, 0, 4) . '...)') : 'Unknown',
+                    'api_key'   => $log->apiKey ? (($log->apiKey->vault ? $log->apiKey->vault->nickname : $log->apiKey->provider) . ' (' . substr($log->apiKey->key, 0, 4) . '...)') : 'Unknown',
                     'status'    => $log->status_code == 429 ? 'quota_exceeded' : 'error',
                     'latency'   => 0,
                     'module'    => 'System',
