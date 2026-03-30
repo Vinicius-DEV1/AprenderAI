@@ -299,6 +299,39 @@ class SubscriptionController extends Controller
             return response()->json(['message' => 'Você já possui este plano ativo e ele ainda é válido.'], 400);
         }
 
+        // ── GUARD: Prevent duplicate PIX charges for the same plan ──
+        // Without this guard, multiple clicks or page refreshes would create multiple
+        // pending charges in Asaas, all valid and awaiting payment scan.
+        // If a non-expired pending PIX subscription exists, block the new request.
+        if ($request->payment_method === 'pix') {
+            $existingPendingPix = Subscription::where('user_id', $user->id)
+                ->where('plan_id', $plan->id)
+                ->where('status', 'pending')
+                ->where('billing_type', 'pix')
+                ->where(function ($q) {
+                    // Consider a PIX expired after 24 hours (Asaas default = 1 day)
+                    $q->where('created_at', '>=', now()->subHours(24))
+                      ->orWhereNotNull('pix_expire_at')->where('pix_expire_at', '>', now());
+                })
+                ->first();
+
+            if ($existingPendingPix) {
+                Log::info('[API Checkout] Blocked duplicate pending PIX request.', [
+                    'user_id'         => $user->id,
+                    'plan_id'         => $plan->id,
+                    'subscription_id' => $existingPendingPix->id,
+                ]);
+                return response()->json([
+                    'message'    => 'Você já possui um PIX pendente para este plano. Use o QR Code gerado anteriormente ou aguarde sua expiração (24 horas) para gerar um novo.',
+                    'pix_exists' => true,
+                    'pix_qr_code'            => $existingPendingPix->pix_qr_code,
+                    'pix_qr_code_image'      => $existingPendingPix->pix_qr_code_image,
+                    'pix_expire_at'          => $existingPendingPix->pix_expire_at,
+                    'subscription_id'        => $existingPendingPix->id,
+                ], 409);
+            }
+        }
+
         try {
             $discount = null;
             $coupon = null;
