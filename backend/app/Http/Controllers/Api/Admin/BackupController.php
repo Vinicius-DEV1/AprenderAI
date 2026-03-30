@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Jobs\DatabaseBackupJob;
 use App\Models\BackupJob;
+use App\Models\BackupDownloadLog;
 use App\Services\BackupService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -115,56 +116,77 @@ class BackupController extends Controller
     }
 
     /**
-     * Direct local dump — streams mysqldump output (.sql.gz) directly to the
-     * admin's browser. Does NOT require S3 configuration.
+     * Direct local dump — streams compressed backup data directly to the admin's browser.
+     * Does NOT require S3 configuration. Supports three download types via the `full` query param:
+     *
+     *   full=0  → SQL only (mysqldump | gzip)                  → sql_only
+     *   full=1  → MySQL + public images (tar.gz, no Qdrant)    → full_mysql_images
+     *   full=2  → MySQL + images + Qdrant vector data (tar.gz) → full_all
      *
      * Security:
      *  - Requires authenticated admin session (is.admin middleware).
-     *  - Every request is logged: who, from which IP, and when — BEFORE the dump starts.
+     *  - Every request is persisted to backup_download_logs AND logged to Laravel log.
+     *  - Both are written BEFORE the dump begins to capture all attempts.
      *  - The DB password is never exposed in headers or responses.
-     *  - Data is piped through gzip before transmission (compressed in-flight).
      */
     public function localDump(Request $request): StreamedResponse
     {
-        $user = $request->user();
-        $ip = $request->ip();
-        $isFull = $request->query('full') === '1';
+        $user      = $request->user();
+        $ip        = $request->ip();
+        $fullParam = $request->query('full', '0'); // '0', '1', or '2'
         $timestamp = Carbon::now()->format('Y-m-d_H-i-s');
-        
-        if ($isFull) {
-            $filename = "backup_completo_{$timestamp}.tar.gz";
+
+        // Determine download type and filename based on the 'full' parameter
+        if ($fullParam === '2') {
+            $downloadType = 'full_all';             // MySQL + images + Qdrant
+            $filename     = "backup_full_all_{$timestamp}.tar.gz";
+        } elseif ($fullParam === '1') {
+            $downloadType = 'full_mysql_images';    // MySQL + images only
+            $filename     = "backup_completo_{$timestamp}.tar.gz";
         } else {
-            $filename = "backup_local_{$timestamp}.sql.gz";
+            $downloadType = 'sql_only';             // SQL dump compressed
+            $filename     = "backup_local_{$timestamp}.sql.gz";
         }
 
-        // -----------------------------------------------------------------------
-        // AUDIT LOG — registrado ANTES do dump para capturar qualquer tentativa
-        // -----------------------------------------------------------------------
+        // ── AUDIT LOG (Part 1): Laravel log — captures every attempt ──
         Log::channel('stack')->warning('[BackupController::localDump] Download solicitado.', [
-            'type' => $isFull ? 'full' : 'sql_only',
-            'user_id' => $user->id,
-            'user_name' => $user->name,
-            'user_email' => $user->email,
-            'ip' => $ip,
-            'user_agent' => $request->userAgent(),
+            'type'         => $downloadType,
+            'user_id'      => $user->id,
+            'user_name'    => $user->name,
+            'user_email'   => $user->email,
+            'ip'           => $ip,
+            'user_agent'   => $request->userAgent(),
             'requested_at' => now()->toIso8601String(),
-            'filename' => $filename,
+            'filename'     => $filename,
         ]);
 
-        $dbHost = env('DB_HOST', 'db');
-        $dbPort = env('DB_PORT', '3306');
+        // ── AUDIT LOG (Part 2): Database record — visible in UI download history ──
+        try {
+            BackupDownloadLog::create([
+                'user_id'       => $user->id,
+                'user_name'     => $user->name,
+                'user_email'    => $user->email,
+                'ip_address'    => $ip,
+                'download_type' => $downloadType,
+                'filename'      => $filename,
+            ]);
+        } catch (\Throwable $e) {
+            // Non-fatal: log but do not block the download
+            Log::error('[BackupController::localDump] Failed to persist download log to DB.', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        $dbHost     = env('DB_HOST', 'db');
+        $dbPort     = env('DB_PORT', '3306');
         $dbDatabase = env('DB_DATABASE');
         $dbUsername = env('DB_USERNAME');
         $dbPassword = env('DB_PASSWORD');
 
-        if ($isFull) {
-            $tmpSql = "/tmp/db_{$timestamp}.sql";
-            
-            // Generate SQL to tmp file, then tar it with the images folder AND qdrant data, then delete tmp file
-            // Archive structure:
-            // - db_timestamp.sql
-            // - public/ (images)
-            // - qdrant-backup/ (vector data)
+        // Build the shell command based on download type
+        if ($downloadType === 'full_all') {
+            // MySQL + storage public images + Qdrant vector data
+            $tmpSql  = "/tmp/db_{$timestamp}.sql";
             $command = sprintf(
                 'MYSQL_PWD=%s mysqldump --host=%s --port=%s --user=%s --single-transaction --skip-lock-tables --routines --triggers %s > %s && tar -cz -C /tmp %s -C /var/www/storage/app public -C /var/www qdrant-backup && rm %s',
                 escapeshellarg($dbPassword),
@@ -176,7 +198,22 @@ class BackupController extends Controller
                 escapeshellarg(basename($tmpSql)),
                 escapeshellarg($tmpSql)
             );
+        } elseif ($downloadType === 'full_mysql_images') {
+            // MySQL + storage public images (no Qdrant)
+            $tmpSql  = "/tmp/db_{$timestamp}.sql";
+            $command = sprintf(
+                'MYSQL_PWD=%s mysqldump --host=%s --port=%s --user=%s --single-transaction --skip-lock-tables --routines --triggers %s > %s && tar -cz -C /tmp %s -C /var/www/storage/app public && rm %s',
+                escapeshellarg($dbPassword),
+                escapeshellarg($dbHost),
+                escapeshellarg($dbPort),
+                escapeshellarg($dbUsername),
+                escapeshellarg($dbDatabase),
+                escapeshellarg($tmpSql),
+                escapeshellarg(basename($tmpSql)),
+                escapeshellarg($tmpSql)
+            );
         } else {
+            // SQL-only, piped directly through gzip
             $command = sprintf(
                 'MYSQL_PWD=%s mysqldump --host=%s --port=%s --user=%s --single-transaction --skip-lock-tables --routines --triggers %s | gzip',
                 escapeshellarg($dbPassword),
@@ -199,7 +236,7 @@ class BackupController extends Controller
             if (!is_resource($process)) {
                 Log::error('[BackupController::localDump] Falha ao iniciar proc_open.', [
                     'user_id' => $user->id,
-                    'ip' => $ip,
+                    'ip'      => $ip,
                 ]);
                 echo 'ERRO: Falha ao iniciar o processo de dump.';
                 return;
@@ -217,7 +254,7 @@ class BackupController extends Controller
                 }
             }
 
-            $stderr = stream_get_contents($pipes[2]);
+            $stderr   = stream_get_contents($pipes[2]);
             fclose($pipes[1]);
             fclose($pipes[2]);
             $exitCode = proc_close($process);
@@ -226,28 +263,51 @@ class BackupController extends Controller
             if ($exitCode !== 0 || $totalBytes < 200) {
                 Log::error('[BackupController::localDump] Falha no dump ou arquivo suspeito (vazio).', [
                     'exit_code' => $exitCode,
-                    'bytes' => $totalBytes,
-                    'stderr' => substr($stderr, 0, 500),
-                    'user_id' => $user->id,
-                    'ip' => $ip,
+                    'bytes'     => $totalBytes,
+                    'stderr'    => substr($stderr, 0, 500),
+                    'user_id'   => $user->id,
+                    'ip'        => $ip,
                 ]);
             } else {
                 Log::info('[BackupController::localDump] Download direto concluído com sucesso.', [
-                    'user_id' => $user->id,
-                    'user_name' => $user->name,
-                    'ip' => $ip,
+                    'user_id'    => $user->id,
+                    'user_name'  => $user->name,
+                    'ip'         => $ip,
                     'bytes_sent' => $totalBytes,
-                    'filename' => $filename,
+                    'filename'   => $filename,
                 ]);
             }
         }, 200, [
-            'Content-Type' => 'application/gzip',
+            'Content-Type'        => 'application/gzip',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            'Cache-Control'       => 'no-store, no-cache, must-revalidate',
             'X-Content-Type-Options' => 'nosniff',
-            'X-Frame-Options' => 'DENY',
-            'Pragma' => 'no-cache',
+            'X-Frame-Options'     => 'DENY',
+            'Pragma'              => 'no-cache',
         ]);
+    }
+
+    /**
+     * Return the last 50 backup download log entries.
+     * Shown in the admin Backups page as a download audit table.
+     */
+    public function downloadLogs(): \Illuminate\Http\JsonResponse
+    {
+        $logs = BackupDownloadLog::orderByDesc('created_at')
+            ->limit(50)
+            ->get()
+            ->map(fn ($log) => [
+                'id'            => $log->id,
+                'user_name'     => $log->user_name ?? 'Desconhecido',
+                'user_email'    => $log->user_email,
+                'ip_address'    => $log->ip_address,
+                'download_type' => $log->download_type,
+                'type_label'    => $log->type_label,   // accessor from model
+                'filename'      => $log->filename,
+                'created_at'    => $log->created_at->toIso8601String(),
+            ]);
+
+        return response()->json(['logs' => $logs]);
     }
 
     /**
