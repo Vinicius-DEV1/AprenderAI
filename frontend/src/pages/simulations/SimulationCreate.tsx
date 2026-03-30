@@ -97,6 +97,10 @@ export default function SimulationCreate() {
     const [isQuotaModalOpen, setIsQuotaModalOpen] = useState(false);
     const [quotaData, setQuotaData] = useState({ limit: 0, used: 0 });
     const [quotaResource, setQuotaResource] = useState('Provas');
+
+    // Debug State (Admin Only)
+    const [isDebugging, setIsDebugging] = useState(false);
+    const [debugData, setDebugData] = useState<any>(null);
     
     // User Store for quotas
     const { user } = useAuthStore();
@@ -243,6 +247,42 @@ export default function SimulationCreate() {
     const totalAllocated = subjects.reduce((sum, sub) => sum + (Number(sub.qty) || 0), 0);
     const isValid = type === 'enem' || (totalAllocated === totalQuestions && subjects.length > 0);
 
+    const getPayload = () => {
+        let payload: any = { type, include_essay: includeEssay };
+
+        if (type === 'enem') {
+            payload.total_questions = 90;
+            payload.subject_distribution = getEnemDistribution();
+        } else {
+            payload.total_questions = totalQuestions;
+            payload.subject_distribution = subjects.reduce((acc, curr) => {
+                if (curr.name.trim()) acc[curr.name] = Number(curr.qty);
+                return acc;
+            }, {} as Record<string, number>);
+
+            if (organizations.length > 0) payload.organization = organizations;
+            if (institutions.length > 0) payload.institution = institutions;
+            if (roles.length > 0) payload.role = roles;
+        }
+        return payload;
+    };
+
+    const handleDebug = async () => {
+        if (!isValid) return;
+        setIsDebugging(true);
+        try {
+            const res = await api.post('/api/v1/admin/simulations/debug-pool', {
+                tipo: type,
+                configuration: getPayload()
+            });
+            setDebugData(res.data);
+        } catch (e: any) {
+            alert('Debug error: ' + (e.response?.data?.message || e.message));
+        } finally {
+            setIsDebugging(false);
+        }
+    };
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!isValid) return;
@@ -251,22 +291,7 @@ export default function SimulationCreate() {
         setError(null);
 
         try {
-            let payload: any = { type, include_essay: includeEssay };
-
-            if (type === 'enem') {
-                payload.total_questions = 90;
-                payload.subject_distribution = getEnemDistribution();
-            } else {
-                payload.total_questions = totalQuestions;
-                payload.subject_distribution = subjects.reduce((acc, curr) => {
-                    if (curr.name.trim()) acc[curr.name] = Number(curr.qty);
-                    return acc;
-                }, {} as Record<string, number>);
-
-                if (organizations.length > 0) payload.organization = organizations;
-                if (institutions.length > 0) payload.institution = institutions;
-                if (roles.length > 0) payload.role = roles;
-            }
+            const payload = getPayload();
 
             const response = await createSimulation(payload);
             if (response && response.data && response.data.id) {
@@ -599,25 +624,37 @@ export default function SimulationCreate() {
                             </div>
                         </label>
 
-                        <button
-                            type="submit"
-                            disabled={!isValid || submitting}
-                            className={`w-full md:w-auto px-10 py-3.5 font-bold rounded-xl text-white transition-all transform flex items-center justify-center gap-2 ${isValid ? 'bg-indigo-600 hover:bg-indigo-700 shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:-translate-y-0.5' : 'bg-slate-300 dark:bg-slate-700 cursor-not-allowed opacity-70'}`}
-                        >
-                            {!submitting ? (
-                                <>
-                                    <span>Iniciar Simulado</span>
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                                    </svg>
-                                </>
-                            ) : (
-                                <>
-                                    <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
-                                    <span>Gerando...</span>
-                                </>
+                        <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+                            {user?.role === 'admin' && (
+                                <button
+                                    type="button"
+                                    onClick={handleDebug}
+                                    disabled={!isValid || isDebugging}
+                                    className={`w-full md:w-auto px-6 py-3.5 font-bold rounded-xl text-amber-600 border-2 border-amber-200 transition-all transform flex items-center justify-center gap-2 ${isValid ? 'hover:bg-amber-50 shadow-sm' : 'opacity-50 cursor-not-allowed'}`}
+                                >
+                                    {isDebugging ? <span className="animate-spin text-xl">⚙️</span> : '🛠️ Debug Pool'}
+                                </button>
                             )}
-                        </button>
+                            <button
+                                type="submit"
+                                disabled={!isValid || submitting}
+                                className={`w-full md:w-auto px-10 py-3.5 font-bold rounded-xl text-white transition-all transform flex items-center justify-center gap-2 ${isValid ? 'bg-indigo-600 hover:bg-indigo-700 shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:-translate-y-0.5' : 'bg-slate-300 dark:bg-slate-700 cursor-not-allowed opacity-70'}`}
+                            >
+                                {!submitting ? (
+                                    <>
+                                        <span>Iniciar Simulado</span>
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                        </svg>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
+                                        <span>Gerando...</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -630,6 +667,76 @@ export default function SimulationCreate() {
                 limit={quotaData.limit}
                 upgradeRoute="/planos"
             />
+
+            {/* Admin Debug Modal */}
+            <AnimatePresence>
+                {debugData && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] overflow-y-auto bg-black/60 backdrop-blur-sm px-4 py-10 flex items-center justify-center"
+                    >
+                        <motion.div
+                            initial={{ y: 50, scale: 0.95 }}
+                            animate={{ y: 0, scale: 1 }}
+                            exit={{ y: 20, scale: 0.95 }}
+                            className="bg-white dark:bg-slate-900 w-full max-w-5xl rounded-3xl shadow-2xl p-8 flex flex-col max-h-[90vh]"
+                        >
+                            <div className="flex justify-between items-center mb-6 border-b pb-4">
+                                <h3 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+                                    <span className="text-amber-500">🛠️</span> Resultado do Debug (Banco vs Distribuição)
+                                </h3>
+                                <button onClick={() => setDebugData(null)} className="text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full w-10 h-10 flex items-center justify-center font-bold">
+                                    ✕
+                                </button>
+                            </div>
+
+                            <div className="overflow-y-auto pr-4 space-y-6">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="bg-slate-50 border p-4 rounded-xl">
+                                        <div className="text-[10px] font-black uppercase text-slate-400">Total Encontrado</div>
+                                        <div className="text-3xl font-black text-indigo-600">{debugData.returned_count}</div>
+                                    </div>
+                                    <div className="bg-slate-50 border p-4 rounded-xl">
+                                        <div className="text-[10px] font-black uppercase text-slate-400">Total Solicitado</div>
+                                        <div className="text-3xl font-black text-slate-600">{getPayload().total_questions}</div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Distribuição Alcançada</h4>
+                                    <div className="flex flex-wrap gap-2 text-sm">
+                                        {Object.entries(debugData.picked_distribution).map(([sub, count]: any) => (
+                                            <div key={sub} className="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg font-bold border border-emerald-100">
+                                                {sub}: {count}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Questões Selecionadas ({debugData.pool?.length})</h4>
+                                    <div className="space-y-3">
+                                        {debugData.pool?.map((q: any) => (
+                                            <div key={q.id} className="border border-slate-200 p-4 rounded-xl hover:bg-slate-50 transition">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <span className="bg-slate-100 px-2 py-1 rounded text-xs font-bold font-mono">#{q.id}</span>
+                                                    <span className="text-[10px] uppercase font-black text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded">{q.source}</span>
+                                                </div>
+                                                <p className="text-sm text-slate-600 line-clamp-2 italic mb-3">"{q.statement_snippet}"</p>
+                                                <div className="flex gap-2 flex-wrap">
+                                                    {q.subjects?.map((s: string) => <span key={s} className="bg-blue-50 text-blue-600 text-[10px] px-1.5 py-0.5 rounded font-bold">{s}</span>)}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </>
     );
 }

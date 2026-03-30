@@ -395,6 +395,7 @@ Route::prefix('v1')->group(function () {
 
             // Simulation Builder
             Route::prefix('simulations')->group(function () {
+                Route::post('/debug-pool', [AdminSimulationController::class, 'debugPool']);
                 Route::get('/presets', [AdminSimulationController::class, 'index']);
                 Route::post('/presets', [AdminSimulationController::class, 'store']);
                 Route::get('/presets/{preset}', [AdminSimulationController::class, 'show']);
