@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -50,6 +50,10 @@ export default function SimulationView() {
     const [localAnswers, setLocalAnswers] = useState<Record<number, string>>({});
     const [showFinishModal, setShowFinishModal] = useState(false);
     const [isTimeExpired, setIsTimeExpired] = useState(false);
+    // Tracks whether the timer is paused because the tab is hidden
+    const [isTimerPaused, setIsTimerPaused] = useState(false);
+    // Stores when the user left the tab, used to calculate away-time on return
+    const hiddenAtRef = useRef<number | null>(null);
 
     const messages = [
         'Analisando seu desempenho histórico...',
@@ -102,10 +106,14 @@ export default function SimulationView() {
         }
     }, [simulation, timeRemaining]);
 
+    // ── Timer: count down every second, pause when the tab is hidden ──
     useEffect(() => {
         if (!isGenerating && timeRemaining !== null && timeRemaining > 0) {
             const timer = setInterval(() => {
-                setTimeRemaining(prev => (prev !== null && prev > 0 ? prev - 1 : 0));
+                // Skip tick if the tab is not visible — avoids giving extra time
+                if (!isTimerPaused) {
+                    setTimeRemaining(prev => (prev !== null && prev > 0 ? prev - 1 : 0));
+                }
             }, 1000);
             return () => clearInterval(timer);
         } else if (timeRemaining === 0 && !isTimeExpired && simulation?.status === 'in_progress') {
@@ -113,7 +121,33 @@ export default function SimulationView() {
             setShowFinishModal(true);
             // We don't call finishMutation immediately here, we let the modal show up
         }
-    }, [isGenerating, timeRemaining, isTimeExpired, simulation?.status]);
+    }, [isGenerating, timeRemaining, isTimeExpired, simulation?.status, isTimerPaused]);
+
+    // ── Visibility: pause timer when user switches tabs ──
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                // User left the tab — record the exact timestamp
+                hiddenAtRef.current = Date.now();
+                setIsTimerPaused(true);
+            } else {
+                // User returned — compute how long they were away
+                if (hiddenAtRef.current !== null) {
+                    const awayMs = Date.now() - hiddenAtRef.current;
+                    const awaySeconds = Math.floor(awayMs / 1000);
+                    // Deduct the away-time from the remaining clock
+                    setTimeRemaining(prev =>
+                        prev !== null ? Math.max(0, prev - awaySeconds) : prev
+                    );
+                    hiddenAtRef.current = null;
+                }
+                setIsTimerPaused(false);
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, []); // Registered once; closures over refs so no deps needed
 
     // Heartbeat Effect
     useEffect(() => {
@@ -428,9 +462,14 @@ export default function SimulationView() {
             <div className="simulation-container">
                 {/* Sidebar Navigation */}
                 <aside className="question-nav">
-                    <div className="timer">
-                        <div className="timer-label">Tempo restante</div>
-                        <div className="timer-value">{formatTime(timeRemaining || 0)}</div>
+                    {/* Timer — color changes to amber + shows pause badge when tab is not active */}
+                    <div className="timer" style={isTimerPaused ? { background: '#78350f' } : {}}>
+                        <div className="timer-label">
+                            {isTimerPaused ? '⏸ Pausado (aba inativa)' : 'Tempo restante'}
+                        </div>
+                        <div className="timer-value" style={isTimerPaused ? { color: '#fde68a' } : {}}>
+                            {formatTime(timeRemaining || 0)}
+                        </div>
                     </div>
 
                     <div className="nav-grid">
