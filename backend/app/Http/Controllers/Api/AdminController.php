@@ -34,11 +34,14 @@ class AdminController extends Controller
         $months = collect([]);
         $subscriptionsGrowth = collect([]);
 
+        // 2. Charts Data: count only CONFIRMED (active) subscriptions per month
+        // Pending PIX/card charges must not inflate the "Novas Assinaturas" chart
         for ($i = 5; $i >= 0; $i--) {
             $date = now()->subMonths($i);
             $months->push($date->format('M/Y'));
             $subscriptionsGrowth->push(
-                Subscription::where('created_at', '<=', $date->endOfMonth())
+                Subscription::where('status', 'active')          // only confirmed
+                    ->where('created_at', '<=', $date->endOfMonth())
                     ->paid()
                     ->where(function ($query) use ($date) {
                         $query->whereNull('canceled_at')
@@ -53,7 +56,8 @@ class AdminController extends Controller
             'inactive' => User::doesntHave('subscriptions', 'and', fn($q) => $q->where('status', 'active')->paid())->count(),
         ];
 
-        // 3. Activity Feed
+        // 3. Activity Feed — correctly label each entry based on subscription status
+        // so admins can distinguish confirmed payments from pending intentions
         $latestUsers = User::latest()->take(5)->get()->map(function ($user) {
             return [
                 'type' => 'user',
@@ -67,17 +71,35 @@ class AdminController extends Controller
             ];
         });
 
-        $latestSubs = Subscription::with(['user', 'plan'])->latest()->take(5)->get()->map(function ($sub) {
-            $typeString = $sub->is_manual_grant ? 'ganhou o plano' : 'assinou o plano';
+        $latestSubs = Subscription::with(['user', 'plan'])->latest()->take(10)->get()->map(function ($sub) {
+            // Determine the correct human-readable action based on status + billing type
+            if ($sub->is_manual_grant) {
+                $action  = 'ganhou o plano';
+                $intent  = 'granted';           // purple badge
+            } elseif ($sub->status === 'active') {
+                $action  = 'assinou o plano';   // payment confirmed
+                $intent  = 'confirmed';         // green badge
+            } elseif ($sub->status === 'pending' && $sub->billing_type === 'pix') {
+                $action  = 'gerou PIX para o plano';  // awaiting PIX scan
+                $intent  = 'pix_pending';       // orange badge
+            } elseif ($sub->status === 'pending') {
+                $action  = 'iniciou contratação do plano';  // card/other pending
+                $intent  = 'payment_pending';   // yellow badge
+            } else {
+                $action  = 'interagiu com o plano';
+                $intent  = 'unknown';
+            }
+
             return [
-                'type' => 'subscription',
-                'message' => ($sub->user->name ?? 'Usuário') . " {$typeString} " . ($sub->plan->name ?? 'Grátis'),
-                'created_at' => $sub->created_at->toIso8601String(),
-                'is_sandbox' => (bool) $sub->is_sandbox,
+                'type'            => 'subscription',
+                'message'         => ($sub->user->name ?? 'Usuário') . " {$action} " . ($sub->plan->name ?? 'Grátis'),
+                'created_at'      => $sub->created_at->toIso8601String(),
+                'is_sandbox'      => (bool) $sub->is_sandbox,
                 'is_manual_grant' => (bool) $sub->is_manual_grant,
+                'payment_intent'  => $intent,   // used by frontend to pick badge color
                 'user' => [
-                    'id' => $sub->user->id ?? 0,
-                    'name' => $sub->user->name ?? 'Desconhecido',
+                    'id'         => $sub->user->id ?? 0,
+                    'name'       => $sub->user->name ?? 'Desconhecido',
                     'avatar_url' => "https://ui-avatars.com/api/?name=" . urlencode($sub->user->name ?? 'U')
                 ]
             ];

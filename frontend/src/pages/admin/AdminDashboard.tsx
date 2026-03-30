@@ -299,16 +299,32 @@ export default function AdminDashboard() {
                         <div className="relative border-l-2 border-gray-100 dark:border-slate-700 ml-3 space-y-8">
                             {activity_feed.map((act: any, idx: number) => (
                                 <div key={idx} className="relative ml-6">
-                                    {/* Timeline Bullet */}
+                                    {/* Timeline Bullet — color reflects payment intent */}
                                     <span className={`absolute -left-[33px] flex items-center justify-center w-8 h-8 rounded-full ring-4 ring-white dark:ring-slate-800 shadow-sm
-                                        ${act.type === 'subscription' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
-                                        {act.type === 'subscription' ? (
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                                            </svg>
-                                        ) : (
+                                        ${
+                                            act.type === 'user'
+                                                ? 'bg-blue-100 text-blue-600'
+                                                : act.payment_intent === 'confirmed'
+                                                    ? 'bg-green-100 text-green-600'
+                                                    : act.payment_intent === 'pix_pending'
+                                                        ? 'bg-orange-100 text-orange-600'
+                                                        : act.payment_intent === 'payment_pending'
+                                                            ? 'bg-yellow-100 text-yellow-600'
+                                                            : 'bg-purple-100 text-purple-600'
+                                        }`}>
+                                        {act.type === 'user' ? (
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                            </svg>
+                                        ) : act.payment_intent === 'pix_pending' ? (
+                                            /* PIX QR Code icon */
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                                            </svg>
+                                        ) : (
+                                            /* Wallet / payment icon for confirmed or other */
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                                             </svg>
                                         )}
                                     </span>
@@ -322,6 +338,22 @@ export default function AdminDashboard() {
                                         </div>
                                         <p className="text-xs font-bold text-gray-600 dark:text-slate-400 leading-relaxed flex items-center gap-2 flex-wrap">
                                             {act.message}
+                                            {/* Payment intent badge — shown only for subscription entries */}
+                                            {act.payment_intent === 'pix_pending' && (
+                                                <span className="inline-flex items-center gap-0.5 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-orange-300 dark:border-orange-700">
+                                                    ⏳ PIX PENDENTE
+                                                </span>
+                                            )}
+                                            {act.payment_intent === 'payment_pending' && (
+                                                <span className="inline-flex items-center gap-0.5 bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-yellow-300 dark:border-yellow-700">
+                                                    ⏳ PAGAMENTO PENDENTE
+                                                </span>
+                                            )}
+                                            {act.payment_intent === 'confirmed' && (
+                                                <span className="inline-flex items-center gap-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-green-300 dark:border-green-700">
+                                                    ✅ CONFIRMADO
+                                                </span>
+                                            )}
                                             {act.is_sandbox && (
                                                 <span className="inline-flex items-center gap-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
                                                     🧪 SANDBOX
