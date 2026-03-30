@@ -1722,26 +1722,35 @@ EOT;
                                 }
 
                                 // --------------------------------------------------------------------------------
-                                // THE FAILOVER PENALTY ENGINE
+                                // THE FAILOVER PENALTY ENGINE (WITH SMART REGEX FOR RETRY-AFTER)
                                 // --------------------------------------------------------------------------------
-                                // This is a critical threshold. We caught a 'retriable' exception (429, 500, 503, Timeout).
-                                // But NOT all errors are created equal. 
-                                //
-                                // If Gemini/OpenAI returns a '429 Quota Exceeded' (isQuota = true), it means the 
-                                // physical key has reached its daily/RPM limits. Banning it for 60 minutes makes sense.
-                                //
-                                // HOWEVER, if Gemini returns a '500 Internal Server Error' or '503 Service Unavailable' 
-                                // due to processing massive payloads (like a chunk_size of 10 heavily loaded questions), 
-                                // the key ITSELF is perfectly healthy. It is merely a temporary server hiccup.
-                                // If we ban a key for 60 minutes over a mere timeout, a single poisoned batch can 
-                                // obliterate the entire 20-key pool in seconds, causing a full system hibernation!
-                                // 
-                                // SOLUTION: We apply a strict 60-minute ban for true 429s, and a brief 2-minute 
-                                // "cooling off" penalty for 500s/timeouts, preserving the pool's integrity.
-                                // --------------------------------------------------------------------------------
-                                $banDuration = $isQuota ? 60 : 2;
-                                
-                                $penaltyReason = $isQuota ? 'Genuine Quota Exhaustion (429)' : 'API Server Hiccup/Timeout (500/503)';
+                                $errorMessage = $e->getMessage();
+                                $banDuration = 60; // Default max ban
+                                $penaltyReason = 'Genuine Quota Exhaustion / API Server Error';
+
+                                if ($isQuota) {
+                                    // Parse "Please retry in Xs." or "retryDelay: "Xs"" from Google API response
+                                    if (preg_match('/Please retry in ([\d\.]+)s/i', $errorMessage, $matches) || 
+                                        preg_match('/"retryDelay":\s*"([\d\.]+)s"/i', $errorMessage, $matches)) {
+                                        
+                                        $secondsToWait = (float) $matches[1];
+                                        // User requested: seconds + 10s safety margin, then convert to minutes
+                                        $safeSeconds = $secondsToWait + 10;
+                                        $banDuration = (int) ceil($safeSeconds / 60);
+                                        
+                                        $penaltyReason = "Rate Limit RPM (Retry-After: {$secondsToWait}s detected, Added 10s margin = {$safeSeconds}s total. Ban = {$banDuration}min)";
+                                        Log::info("[AIService][PENALTY_ENGINE] Smart Detection: Found RPM Retry-After limit! Banning key #{$apiKey->id} for {$banDuration} minute(s) instead of 60.");
+                                    } else {
+                                        // Still a Quota error, but no Retry-After found. Assume Daily Quota Exhaustion.
+                                        $banDuration = 60; // 60 minutes
+                                        $penaltyReason = "Genuine DB/Daily Quota Exhaustion (No Retry-After found). Applied strict 60min ban.";
+                                        Log::warning("[AIService][PENALTY_ENGINE] Quota Exhausted with NO Retry-After found. Applying max ban (60m) to key #{$apiKey->id}. Error Snippet: " . substr($errorMessage, 0, 150));
+                                    }
+                                } else {
+                                    // Not a quota error (e.g. 500, 503, Timeout)
+                                    $banDuration = 2; // 2 minutes cool-off
+                                    $penaltyReason = 'API Server Hiccup/Timeout (500/503)';
+                                }
                                 Log::warning("[AIService] EXHAUSTION PROTOCOL: Triggering Failover for Key #{$apiKey->id}.", [
                                     'provider' => $apiKey->provider,
                                     'reason'   => $penaltyReason,
