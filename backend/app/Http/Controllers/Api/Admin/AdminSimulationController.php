@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\SimulationPreset;
 use App\Models\SimulationRule;
+use App\Services\SimulationEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -91,5 +92,61 @@ class AdminSimulationController extends Controller
     {
         $preset->delete();
         return response()->json(null, 204);
+    }
+
+    public function debugPool(Request $request, SimulationEngine $engine)
+    {
+        $validated = $request->validate([
+            'tipo' => 'required|string',
+            'configuration' => 'required|array'
+        ]);
+
+        $config = $validated['configuration'];
+
+        // If no user is logged in (admin), we will just use the current admin user
+        $user = $request->user();
+
+        try {
+            // Select questions using the exact engine method
+            // But we intercept logging or just return the final list
+            $questions = $engine->selectQuestions($user, $config, $validated['tipo']);
+
+            // Build a small report
+            $pool = $questions->map(function ($q) {
+                return [
+                    'id' => $q->id,
+                    'external_id' => $q->external_id,
+                    'difficulty' => $q->difficulty,
+                    'type' => $q->type,
+                    'source' => $q->source,
+                    'subjects' => $q->subjects->pluck('name'),
+                    'topics' => $q->topics->pluck('name'),
+                    'organization' => $q->organization,
+                    'statement_snippet' => \Illuminate\Support\Str::limit(strip_tags($q->statement), 100)
+                ];
+            });
+
+            // Count distribution matched
+            $pickedDistribution = [];
+            foreach ($pool as $q) {
+                foreach ($q['subjects'] as $sub) {
+                    $pickedDistribution[$sub] = ($pickedDistribution[$sub] ?? 0) + 1;
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'requested_config' => $config,
+                'returned_count' => $questions->count(),
+                'picked_distribution' => $pickedDistribution,
+                'pool' => $pool
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
+        }
     }
 }
