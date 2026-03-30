@@ -1,8 +1,9 @@
 import { AllQuestionsTable, ReportedQuestionsTable, TrashedQuestionsTable } from './QuestionBankTables';
+import BatchHistoryTab from './BatchHistoryTab';
 
 interface QuestionBankProps {
-    activeTab: 'all' | 'reported' | 'trashed';
-    setActiveTab: (tab: 'all' | 'reported' | 'trashed') => void;
+    activeTab: 'all' | 'reported' | 'trashed' | 'batch_history';
+    setActiveTab: (tab: 'all' | 'reported' | 'trashed' | 'batch_history') => void;
     filters: any;
     setFilters: (filters: any) => void;
     availableSubjects: string[];
@@ -26,6 +27,8 @@ interface QuestionBankProps {
     setReportsPage: (page: number) => void;
     trashedPage: number;
     setTrashedPage: (page: number) => void;
+    batchHistoryPage: number;
+    setBatchHistoryPage: (page: number) => void;
     SmartPagination: any;
     data: any;
 }
@@ -56,6 +59,8 @@ export default function QuestionBank({
     setReportsPage,
     trashedPage,
     setTrashedPage,
+    batchHistoryPage,
+    setBatchHistoryPage,
     SmartPagination,
     data
 }: QuestionBankProps) {
@@ -89,6 +94,12 @@ export default function QuestionBank({
                         {reportsData?.total > 0 && (
                             <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{reportsData.total}</span>
                         )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('batch_history')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'batch_history' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        📊 Histórico de IA
                     </button>
                     <button
                         onClick={() => setActiveTab('trashed')}
@@ -215,6 +226,14 @@ export default function QuestionBank({
                         </div>
                     )}
                 </>
+            )}
+
+            {activeTab === 'batch_history' && (
+                <BatchHistoryTab
+                    batchHistoryPage={batchHistoryPage}
+                    setBatchHistoryPage={setBatchHistoryPage}
+                    SmartPagination={SmartPagination}
+                />
             )}
         </div>
     );

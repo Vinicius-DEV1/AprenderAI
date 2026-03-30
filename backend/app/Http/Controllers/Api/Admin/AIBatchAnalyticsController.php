@@ -154,8 +154,36 @@ class AIBatchAnalyticsController extends Controller
      */
     public function history(Request $request)
     {
-        $batches = AiProcessingBatch::orderBy('created_at', 'desc')->paginate(15);
-        return response()->json($batches);
+        $limit = $request->query('limit', 15);
+        $batches = AiProcessingBatch::orderBy('created_at', 'desc')->paginate($limit);
+
+        // Chart Data: Last 7 Days (Count of items processed)
+        $last7Days = collect(range(6, 0))->map(function ($days) {
+            $date = Carbon::now()->subDays($days)->format('Y-m-d');
+            return [
+                'date' => Carbon::now()->subDays($days)->format('d/m'),
+                'total' => AiProcessingBatch::whereDate('created_at', $date)->sum('total_items')
+            ];
+        });
+
+        // Chart Data: Last 6 Months
+        $last6Months = collect(range(5, 0))->map(function ($months) {
+            $date = Carbon::now()->subMonths($months);
+            return [
+                'month' => $date->translatedFormat('M/Y'),
+                'total' => AiProcessingBatch::whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month)
+                    ->sum('total_items')
+            ];
+        });
+
+        return response()->json([
+            'batches' => $batches,
+            'charts' => [
+                'weekly' => $last7Days,
+                'monthly' => $last6Months
+            ]
+        ]);
     }
 
     /**
