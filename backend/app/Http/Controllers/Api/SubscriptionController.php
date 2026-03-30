@@ -309,9 +309,8 @@ class SubscriptionController extends Controller
                 ->where('status', 'pending')
                 ->where('billing_type', 'pix')
                 ->where(function ($q) {
-                    // Consider a PIX expired after 24 hours (Asaas default = 1 day)
-                    $q->where('created_at', '>=', now()->subHours(24))
-                      ->orWhereNotNull('pix_expire_at')->where('pix_expire_at', '>', now());
+                    // Block duplicate PIX generation within the last 30 minutes 
+                    $q->where('created_at', '>=', now()->subMinutes(30));
                 })
                 ->first();
 
@@ -322,7 +321,7 @@ class SubscriptionController extends Controller
                     'subscription_id' => $existingPendingPix->id,
                 ]);
                 return response()->json([
-                    'message'    => 'Você já possui um PIX pendente para este plano. Use o QR Code gerado anteriormente ou aguarde sua expiração (24 horas) para gerar um novo.',
+                    'message'    => 'Você já gerou um pedido via PIX recentemente. Por favor, aguarde alguns minutos antes de tentar gerar outro ou realize o pagamento com o QR Code anterior.',
                     'pix_exists' => true,
                     'pix_qr_code'            => $existingPendingPix->pix_qr_code,
                     'pix_qr_code_image'      => $existingPendingPix->pix_qr_code_image,
