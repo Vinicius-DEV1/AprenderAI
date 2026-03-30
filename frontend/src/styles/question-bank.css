@@ -884,7 +884,7 @@
 /* Constrain any <img> embedded inside alternative text (markdown-rendered HTML) */
 .qb-alt img {
     max-width: 100% !important;
-    max-height: 180px !important;
+    max-height: 300px !important;
     height: auto !important;
     object-fit: contain;
     border-radius: 6px;
@@ -1004,6 +1004,28 @@
     word-break: break-word;
     min-width: 0;
     max-width: 100%;
+    flex: 1;
+    overflow: hidden; /* Prevent huge images or tables from blowing up the flex box */
+}
+
+.qb-alt-text img {
+    max-width: 100% !important;
+    height: auto !important;
+    object-fit: contain;
+    border-radius: 6px;
+    display: block;
+}
+
+.qb-alt-text pre,
+.qb-alt-text code {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.qb-alt-text table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
 }
 
 .dark .qb-alt-text {
