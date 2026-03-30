@@ -24,6 +24,17 @@ interface BackupSettings {
     schedule_time: string;
 }
 
+interface BackupDownloadLogEntry {
+    id: number;
+    user_name: string;
+    user_email: string | null;
+    ip_address: string | null;
+    download_type: 'sql_only' | 'full_mysql_images' | 'full_all';
+    type_label: string;
+    filename: string | null;
+    created_at: string;
+}
+
 const StatusBadge = ({ status }: { status: BackupJob['status'] }) => {
     const map = {
         pending: { label: 'Aguardando', cls: 'bg-yellow-100 text-yellow-700', dot: 'bg-yellow-400' },
@@ -54,7 +65,11 @@ export default function AdminBackups() {
     const [activeJobId, setActiveJobId] = useState<number | null>(null);
     const [downloadingId, setDownloadingId] = useState<number | null>(null);
     const [localDumping, setLocalDumping] = useState(false);
-    const [fullDumping, setFullDumping] = useState(false);
+    // Download type selector: '0' = SQL only, '1' = MySQL+Images, '2' = MySQL+Images+Qdrant
+    const [downloadType, setDownloadType] = useState<'0' | '1' | '2'>('0');
+    // Audit log of previous downloads (fetched from /admin/backups/download-logs)
+    const [downloadLogs, setDownloadLogs] = useState<BackupDownloadLogEntry[]>([]);
+    const [logsLoading, setLogsLoading] = useState(false);
 
     // -------------------------------------------------------------------------
     // Fetch history + settings
@@ -74,7 +89,21 @@ export default function AdminBackups() {
 
     useEffect(() => {
         fetchData();
+        fetchDownloadLogs();
     }, [fetchData]);
+
+    // Fetch download audit log from the server
+    const fetchDownloadLogs = async () => {
+        setLogsLoading(true);
+        try {
+            const res = await api.get('/api/v1/admin/backups/download-logs');
+            setDownloadLogs(res.data.logs ?? []);
+        } catch {
+            // silent — non-critical, may fail if migration not run yet
+        } finally {
+            setLogsLoading(false);
+        }
+    };
 
     // -------------------------------------------------------------------------
     // Poll active job status
@@ -170,30 +199,43 @@ export default function AdminBackups() {
     };
 
     // -------------------------------------------------------------------------
-    // Local dump — streams .sql.gz directly from server to browser (no S3)
-    // Every request is logged on the server with the admin's name, IP and time.
+    // Local dump — streams compressed backup directly from server to browser.
+    // Supports 3 download types controlled by the `downloadType` state:
+    //   '0' = SQL only  |  '1' = MySQL + Images  |  '2' = MySQL + Images + Qdrant
+    // Every request is logged on the server (DB + Laravel log).
     // -------------------------------------------------------------------------
-    const handleLocalDump = async (isFull = false) => {
-        if (isFull) setFullDumping(true);
-        else setLocalDumping(true);
-        
-        const toastId = toast.loading(
-            isFull 
-                ? 'Gerando backup completo (DB + Imagens)... Isso pode demorar alguns minutos.' 
-                : 'Gerando dump do banco... o download iniciará em breve.'
-        );
+    const handleLocalDump = async () => {
+        setLocalDumping(true);
+
+        const labels: Record<string, string> = {
+            '0': 'Gerando dump do banco... o download iniciará em breve.',
+            '1': 'Gerando backup completo (DB + Imagens)... Isso pode demorar alguns minutos.',
+            '2': 'Gerando backup total (DB + Imagens + Qdrant)... Isso pode demorar vários minutos.',
+        };
+        const successLabels: Record<string, string> = {
+            '0': 'Download do banco (SQL) concluído!',
+            '1': 'Download completo (DB + Imagens) concluído!',
+            '2': 'Download total (DB + Imagens + Qdrant) concluído!',
+        };
+        const extensions: Record<string, string> = {
+            '0': 'sql.gz',
+            '1': 'tar.gz',
+            '2': 'tar.gz',
+        };
+
+        const toastId = toast.loading(labels[downloadType]);
 
         try {
             const res = await api.get('/api/v1/admin/backups/local-dump', {
-                params: { full: isFull ? '1' : '0' },
+                params: { full: downloadType },
                 responseType: 'blob',
-                timeout: 1800_000, // 30 minutos — backups com muitas imagens demoram
+                timeout: 1800_000, // 30 min max for large full backups
             });
 
-            // Create a temporary <a> element to trigger the browser download
+            // Trigger browser download from the blob
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-            const filename = isFull ? `backup_completo_${timestamp}.tar.gz` : `backup_local_${timestamp}.sql.gz`;
-            const url = URL.createObjectURL(new Blob([res.data], { type: isFull ? 'application/gzip' : 'application/gzip' }));
+            const filename = `backup_${timestamp}.${extensions[downloadType]}`;
+            const url = URL.createObjectURL(new Blob([res.data], { type: 'application/gzip' }));
             const link = document.createElement('a');
             link.href = url;
             link.download = filename;
@@ -202,12 +244,13 @@ export default function AdminBackups() {
             link.remove();
             URL.revokeObjectURL(url);
 
-            toast.success(isFull ? 'Download do backup completo concluído!' : 'Download do banco concluído!', { id: toastId });
+            toast.success(successLabels[downloadType], { id: toastId });
+            // Refresh download log so the new entry shows up immediately
+            fetchDownloadLogs();
         } catch (err: any) {
             toast.error(err?.response?.data?.message ?? 'Erro ao gerar o backup. Verifique os logs do servidor.', { id: toastId });
         } finally {
             setLocalDumping(false);
-            setFullDumping(false);
         }
     };
 
@@ -244,53 +287,48 @@ export default function AdminBackups() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                    {/* Download Direto (sem S3) */}
-                    <button
-                        onClick={() => handleLocalDump(false)}
-                        disabled={localDumping || fullDumping}
-                        title="Faz o dump apenas do banco MySQL (.sql.gz) e baixa diretamente. Rápido e leve."
-                        className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-semibold text-sm hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
-                    >
-                        {localDumping ? (
-                            <>
-                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                                Gerando SQL...
-                            </>
-                        ) : (
-                            <>
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                </svg>
-                                Apenas Banco (SQL)
-                            </>
-                        )}
-                    </button>
-
-                    {/* Download Completo (DB + Imagens) */}
-                    <button
-                        onClick={() => handleLocalDump(true)}
-                        disabled={localDumping || fullDumping}
-                        title="Faz o backup completo do banco de dados E de todas as imagens das questões. Gera um arquivo .tar.gz."
-                        className="flex items-center gap-2 px-5 py-2.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg font-semibold text-sm hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
-                    >
-                        {fullDumping ? (
-                            <>
-                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                                Criando Pacote Full...
-                            </>
-                        ) : (
-                            <>
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                </svg>
-                                Download Completo (DB + Imagens)
-                            </>
-                        )}
-                    </button>
+                    {/* ── Local Dump: type selector + unified download button ── */}
+                    <div className="flex items-center rounded-lg border border-gray-300 overflow-hidden shadow-sm">
+                        <label className="sr-only">Tipo de backup local</label>
+                        <select
+                            id="backup-type-selector"
+                            value={downloadType}
+                            onChange={e => setDownloadType(e.target.value as '0' | '1' | '2')}
+                            disabled={localDumping}
+                            className="px-3 py-2.5 bg-white text-gray-700 text-sm font-medium border-r border-gray-300 focus:outline-none disabled:opacity-50"
+                        >
+                            <option value="0">🗄️ Apenas Banco (SQL)</option>
+                            <option value="1">📦 DB + Imagens</option>
+                            <option value="2">🌐 DB + Imagens + Qdrant</option>
+                        </select>
+                        <button
+                            id="backup-local-download-btn"
+                            onClick={handleLocalDump}
+                            disabled={localDumping}
+                            title={
+                                downloadType === '0' ? 'Faz o dump apenas do banco MySQL (.sql.gz). Rápido e leve.' :
+                                downloadType === '1' ? 'Dump MySQL + todas as imagens das questões. Gera .tar.gz.' :
+                                'Dump MySQL + imagens + dados vetoriais do Qdrant. Arquivo grande.'
+                            }
+                            className="flex items-center gap-2 px-4 py-2.5 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                            {localDumping ? (
+                                <>
+                                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    Baixando...
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Baixar Backup
+                                </>
+                            )}
+                        </button>
+                    </div>
 
                     {/* Backup para S3 */}
                     <button
@@ -524,6 +562,68 @@ export default function AdminBackups() {
                             </div>
                         )}
                     </div>
+                </div>
+            {/* ── Download Audit Log ──────────────────────────────────────── */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-8">
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div>
+                        <h2 className="text-sm font-semibold text-gray-700">📋 Histórico de Downloads Locais</h2>
+                        <p className="text-xs text-gray-500 mt-0.5">Registro de auditoria — quem baixou, quando, de qual IP e qual tipo.</p>
+                    </div>
+                    <button
+                        onClick={fetchDownloadLogs}
+                        disabled={logsLoading}
+                        className="text-xs text-indigo-600 hover:text-indigo-800 font-medium disabled:opacity-50"
+                    >
+                        {logsLoading ? 'Carregando...' : '↻ Atualizar'}
+                    </button>
+                </div>
+
+                {logsLoading && downloadLogs.length === 0 ? (
+                    <div className="py-8 text-center text-gray-400 text-sm">Carregando histórico...</div>
+                ) : downloadLogs.length === 0 ? (
+                    <div className="py-8 text-center text-gray-400 text-sm">Nenhum download registrado ainda.</div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-100 text-sm">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Tipo</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Admin</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">IP</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Arquivo</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Data/Hora</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {downloadLogs.map(log => (
+                                    <tr key={log.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-4 py-3">
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                                log.download_type === 'sql_only'
+                                                    ? 'bg-gray-100 text-gray-700'
+                                                    : log.download_type === 'full_mysql_images'
+                                                    ? 'bg-indigo-50 text-indigo-700'
+                                                    : 'bg-purple-50 text-purple-700'
+                                            }`}>
+                                                {log.type_label}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-700">
+                                            <div className="font-medium">{log.user_name}</div>
+                                            {log.user_email && <div className="text-xs text-gray-400">{log.user_email}</div>}
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-500 font-mono text-xs">{log.ip_address ?? '—'}</td>
+                                        <td className="px-4 py-3 text-gray-500 text-xs truncate max-w-[220px]">{log.filename ?? '—'}</td>
+                                        <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                                            {new Date(log.created_at).toLocaleString('pt-BR')}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
                 </div>
             </div>
         </div>
