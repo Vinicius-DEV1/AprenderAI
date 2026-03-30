@@ -82,6 +82,15 @@ class SupportController extends Controller
             'attachment_path' => $attachmentPath,
         ]);
 
+        // Notify every admin user so they are aware of the new ticket without
+        // having to poll the support panel manually.
+        \App\Models\UserNotification::notifyAdmins(
+            "🎫 Novo ticket de suporte aberto",
+            "De: {$request->user()->name} — \"{$ticket->subject}\"",
+            'info',
+            '/admin/suporte'
+        );
+
         return response()->json([
             'success' => true,
             'ticket'  => ['id' => $ticket->id, 'subject' => $ticket->subject],
