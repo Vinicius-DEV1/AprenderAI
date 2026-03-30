@@ -468,6 +468,8 @@ Route::prefix('v1')->group(function () {
                 Route::get('/{id}/download', [BackupController::class, 'download']);
                 Route::post('/settings', [BackupController::class, 'updateSettings']);
                 Route::get('/local-dump', [BackupController::class, 'localDump']);
+                // Audit trail — shows who downloaded what and when
+                Route::get('/download-logs', [BackupController::class, 'downloadLogs']);
             });
 
             // ── Engagement: Support Admin ─────────────────────────────────────
