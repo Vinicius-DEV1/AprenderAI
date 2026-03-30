@@ -7,12 +7,16 @@ import { Link } from 'react-router-dom';
 
 export default function ClassificationRanking() {
     const [type, setType] = useState<'all' | 'enem' | 'concurso'>('all');
+    const [publishedOnly, setPublishedOnly] = useState(true);
 
     const { data, isLoading, isError } = useQuery({
-        queryKey: ['classification-ranking', type],
+        queryKey: ['classification-ranking', type, publishedOnly],
         queryFn: async () => {
             const res = await api.get('/api/v1/admin/questions/stats/classification-ranking', {
-                params: { type: type === 'all' ? '' : type }
+                params: { 
+                    type: type === 'all' ? '' : type,
+                    published_only: publishedOnly ? 1 : 0
+                }
             });
             return res.data;
         }
@@ -41,26 +45,45 @@ export default function ClassificationRanking() {
                     <p className="text-gray-500 font-medium">Distribuição quantitativa de questões por Disciplina e Assunto.</p>
                 </div>
 
-                {/* Filter Pills */}
-                <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 self-start md:self-center">
-                    <button
-                        onClick={() => setType('all')}
-                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all uppercase tracking-widest ${type === 'all' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:text-gray-600'}`}
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                    {/* Published Only Toggle */}
+                    <button 
+                        onClick={() => setPublishedOnly(!publishedOnly)}
+                        className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl border transition-all duration-300 font-bold ${
+                            publishedOnly 
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm shadow-emerald-50' 
+                                : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
+                        }`}
                     >
-                        Todos
+                        <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${
+                            publishedOnly ? 'bg-emerald-500 border-emerald-500' : 'border-gray-300'
+                        }`}>
+                            {publishedOnly && <span className="text-[10px] text-white">✓</span>}
+                        </div>
+                        <span className="text-[10px] uppercase tracking-widest">Apenas Publicadas</span>
                     </button>
-                    <button
-                        onClick={() => setType('enem')}
-                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all uppercase tracking-widest ${type === 'enem' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:text-gray-600'}`}
-                    >
-                        ENEM
-                    </button>
-                    <button
-                        onClick={() => setType('concurso')}
-                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all uppercase tracking-widest ${type === 'concurso' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:text-gray-600'}`}
-                    >
-                        Concurso
-                    </button>
+
+                    {/* Filter Pills */}
+                    <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 self-start md:self-center">
+                        <button
+                            onClick={() => setType('all')}
+                            className={`px-4 py-2 rounded-xl text-xs font-black transition-all uppercase tracking-widest ${type === 'all' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            Todos
+                        </button>
+                        <button
+                            onClick={() => setType('enem')}
+                            className={`px-4 py-2 rounded-xl text-xs font-black transition-all uppercase tracking-widest ${type === 'enem' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            ENEM
+                        </button>
+                        <button
+                            onClick={() => setType('concurso')}
+                            className={`px-4 py-2 rounded-xl text-xs font-black transition-all uppercase tracking-widest ${type === 'concurso' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            Concurso
+                        </button>
+                    </div>
                 </div>
             </div>
 

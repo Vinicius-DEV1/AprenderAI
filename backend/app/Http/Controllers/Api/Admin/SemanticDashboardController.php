@@ -192,7 +192,6 @@ class SemanticDashboardController extends Controller
         $apiKeys = \App\Models\ApiKey::with(['vault', 'capabilitiesList'])
             ->whereHas('capabilitiesList', function ($q) {
                 $q->whereIn('capability', [
-                    \App\Models\ApiKey::CAPABILITY_SEARCH,
                     \App\Models\ApiKey::CAPABILITY_EMBEDDING,
                     \App\Models\ApiKey::CAPABILITY_QUERY_EMBEDDING
                 ]);
@@ -211,6 +210,7 @@ class SemanticDashboardController extends Controller
                 if (in_array(\App\Models\ApiKey::CAPABILITY_SEARCH, $caps) || in_array(\App\Models\ApiKey::CAPABILITY_QUERY_EMBEDDING, $caps)) $displayCaps[] = 'Busca';
 
                 $recentAiLogs = \App\Models\AiRequestLog::where('api_key_id', $key->id)
+                    ->whereIn('module', ['embedding', 'embedding_batch'])
                     ->orderBy('created_at', 'desc')
                     ->limit(50)
                     ->get()
@@ -276,6 +276,7 @@ class SemanticDashboardController extends Controller
             });
 
         $globalAiLogs = \App\Models\AiRequestLog::with('apiKey')
+            ->whereIn('module', ['embedding', 'embedding_batch'])
             ->orderBy('created_at', 'desc')
             ->limit(50)
             ->get()

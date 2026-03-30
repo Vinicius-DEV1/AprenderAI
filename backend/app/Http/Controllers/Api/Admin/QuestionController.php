@@ -519,11 +519,15 @@ class QuestionController extends Controller
     public function classificationRanking(Request $request)
     {
         $type = $request->get('type'); // optional: 'enem' or 'concurso'
+        $publishedOnly = $request->boolean('published_only');
 
         // Filter callback for question counts
-        $filter = function ($query) use ($type) {
+        $filter = function ($query) use ($type, $publishedOnly) {
             if ($type) {
                 $query->where('type', $type);
+            }
+            if ($publishedOnly) {
+                $query->published();
             }
         };
 
