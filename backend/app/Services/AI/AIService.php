@@ -1721,9 +1721,35 @@ EOT;
                                     continue;
                                 }
 
-                                // Key exhausted or failed. Mark it as 'Resting' (Level 3).
-                                Log::warning("[AIService] " . ($isQuota ? 'QUOTA EXCEEDED' : 'FAILURE') . " on #{$apiKey->id}. Falling over...");
-                                $this->banKeyTemporarily($apiKey, $e, 60); // Keep 60 min as requested
+                                // --------------------------------------------------------------------------------
+                                // THE FAILOVER PENALTY ENGINE
+                                // --------------------------------------------------------------------------------
+                                // This is a critical threshold. We caught a 'retriable' exception (429, 500, 503, Timeout).
+                                // But NOT all errors are created equal. 
+                                //
+                                // If Gemini/OpenAI returns a '429 Quota Exceeded' (isQuota = true), it means the 
+                                // physical key has reached its daily/RPM limits. Banning it for 60 minutes makes sense.
+                                //
+                                // HOWEVER, if Gemini returns a '500 Internal Server Error' or '503 Service Unavailable' 
+                                // due to processing massive payloads (like a chunk_size of 10 heavily loaded questions), 
+                                // the key ITSELF is perfectly healthy. It is merely a temporary server hiccup.
+                                // If we ban a key for 60 minutes over a mere timeout, a single poisoned batch can 
+                                // obliterate the entire 20-key pool in seconds, causing a full system hibernation!
+                                // 
+                                // SOLUTION: We apply a strict 60-minute ban for true 429s, and a brief 2-minute 
+                                // "cooling off" penalty for 500s/timeouts, preserving the pool's integrity.
+                                // --------------------------------------------------------------------------------
+                                $banDuration = $isQuota ? 60 : 2;
+                                
+                                $penaltyReason = $isQuota ? 'Genuine Quota Exhaustion (429)' : 'API Server Hiccup/Timeout (500/503)';
+                                Log::warning("[AIService] EXHAUSTION PROTOCOL: Triggering Failover for Key #{$apiKey->id}.", [
+                                    'provider' => $apiKey->provider,
+                                    'reason'   => $penaltyReason,
+                                    'penalty_applied' => "{$banDuration} minutes",
+                                    'error_excerpt'   => substr($e->getMessage(), 0, 150)
+                                ]);
+
+                                $this->banKeyTemporarily($apiKey, $e, $banDuration);
                                 break; 
                             }
 
