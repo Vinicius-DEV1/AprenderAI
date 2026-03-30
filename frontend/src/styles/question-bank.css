@@ -871,12 +871,25 @@
 }
 
 .qb-alt-image {
+    /* Constrain alternative images rendered via src attribute */
     max-width: 100% !important;
     max-height: 200px !important;
     height: auto !important;
     object-fit: contain;
     border-radius: 6px;
     margin-top: 8px;
+    display: block;
+}
+
+/* Constrain any <img> embedded inside alternative text (markdown-rendered HTML) */
+.qb-alt img {
+    max-width: 100% !important;
+    max-height: 180px !important;
+    height: auto !important;
+    object-fit: contain;
+    border-radius: 6px;
+    display: block;
+    margin-top: 6px;
 }
 
 .markdown-content img {
@@ -899,6 +912,9 @@
     margin-bottom: 8px;
     cursor: pointer;
     transition: all 0.15s ease;
+    /* Prevent flex children (especially images) from overflowing the card */
+    overflow: hidden;
+    min-width: 0;
 }
 
 .dark .qb-alt {
@@ -983,6 +999,11 @@
     font-size: 14px;
     color: #334155;
     line-height: 1.5;
+    /* Prevent long words/URLs from overflowing the alternative card */
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .dark .qb-alt-text {

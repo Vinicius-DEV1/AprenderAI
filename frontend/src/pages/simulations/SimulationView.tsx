@@ -523,7 +523,7 @@ export default function SimulationView() {
                                             <div className="flex flex-col gap-2 flex-grow overflow-hidden">
                                                 {alt.content && (
                                                     <div
-                                                        className="qb-alt-text prose prose-sm max-w-none text-slate-700 dark:text-slate-300 word-break-all"
+                                                        className="qb-alt-text prose prose-sm max-w-none text-slate-700 dark:text-slate-300"
                                                         style={{ fontSize: '15px' }}
                                                         dangerouslySetInnerHTML={renderMd(alt.content)}
                                                     />
