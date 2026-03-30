@@ -51,9 +51,10 @@ export default function AdminQuestions() {
     }, [triageFilters]);
 
     // NEW STATES FOR REPORTS TABS
-    const [activeTab, setActiveTab] = useState<'all' | 'reported' | 'trashed'>('all');
+    const [activeTab, setActiveTab] = useState<'all' | 'reported' | 'trashed' | 'batch_history'>('all');
     const [reportsPage, setReportsPage] = useState(1);
     const [trashedPage, setTrashedPage] = useState(1);
+    const [batchHistoryPage, setBatchHistoryPage] = useState(1);
     const [trashedSearch, setTrashedSearch] = useState('');
 
     const { data, isLoading } = useQuery({
@@ -220,6 +221,8 @@ export default function AdminQuestions() {
                 setReportsPage={setReportsPage}
                 trashedPage={trashedPage}
                 setTrashedPage={setTrashedPage}
+                batchHistoryPage={batchHistoryPage}
+                setBatchHistoryPage={setBatchHistoryPage}
                 SmartPagination={SmartPagination}
                 data={data}
             />
