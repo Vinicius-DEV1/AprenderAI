@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\HasConcurrencyLimit;
 use App\Models\Concept;
 use App\Models\ConceptRelation;
 use App\Services\AI\AIService;
@@ -26,6 +27,7 @@ use Illuminate\Support\Facades\Log;
 class IndexConceptVectorJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use HasConcurrencyLimit;
 
     public int $tries   = 20000;
     public int $timeout = 60;
@@ -51,6 +53,14 @@ class IndexConceptVectorJob implements ShouldQueue
         }
 
         Log::info("[Xavier][IndexConcept] Found concept #{$concept->id} ({$concept->name}). Starting indexing...");
+
+        // LIMITADOR DE CONCORRÊNCIA ADICIONADO PARA EVITAR EFEITO METRALHADORA DE 600 RPM!
+        if (!$this->acquireSlot('embeddings', 1, retryIn: 20)) {
+            Log::debug("[Xavier][IndexConcept] Worker lock occupied. Releasing concept {$this->conceptId} to run later.");
+            return; // Released back to queue automatically
+        }
+
+        try {
 
         // Gather related concept names for richer embedding context
         $relatedNames = ConceptRelation::where('concept_id', $this->conceptId)
@@ -120,6 +130,11 @@ class IndexConceptVectorJob implements ShouldQueue
             $msg = "[Xavier][IndexConcept] Qdrant upsert failed for concept '{$this->conceptId}'. Check Qdrant connectivity/logs.";
             Log::error($msg);
             throw new \RuntimeException($msg);
+        }
+
+        } finally {
+            $this->releaseSlot('embeddings');
+            Log::debug("[Xavier][IndexConcept] Worker slot released for concept {$this->conceptId}.");
         }
     }
 }
