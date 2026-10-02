@@ -28,3 +28,8 @@ backend/bootstrap/cache/*
 # Frontend Specific
 frontend/dist
 frontend/node_modules
+
+# Sensitive & Scraper local
+scraper/
+apikey.txt
+*.txt.key
