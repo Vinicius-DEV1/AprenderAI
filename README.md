@@ -14,10 +14,10 @@ O **AprenderAI** é uma solução completa para estudantes e concurseiros que in
 
 ```plaintext
 .
-├── backend/            # API RESTful em PHP 8.x + Laravel
+├── backend/            # API RESTful em PHP 8.x + Laravel 11
 ├── frontend/           # SPA moderna em React + TypeScript + Vite + TailwindCSS
-├── scraper/            # Scripts de extração e higienização de questões e gabaritos
-├── documentacao/       # Guias técnicos e regras de negócio
+├── documentacao/       # Guias técnicos e especificações de arquitetura
+├── deploy.sh           # Pipeline de deploy Blue-Green zero downtime
 ├── docker-compose.local.yml  # Orquestração de ambiente local (MySQL, Redis, App)
 └── docker-compose.prod.yml   # Orquestração de produção
 ```
