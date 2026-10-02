@@ -1,18 +1,58 @@
-# Monorepo Ignores
-**/node_modules
-**/vendor
-.env
-.env.backup
-.env.production
-.phpunit.result.cache
-docker-compose.override.yml
-*.sqlite
-npm-debug.log
-yarn-error.log
-.idea
-.vscode
+# =============================================================================
+# AprenderAI - .gitignore
+# =============================================================================
 
-# Backend Specific
+# Dependências
+**/node_modules/
+**/vendor/
+
+# Arquivos de Ambiente e Credenciais
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.cert
+apikey*.txt
+credentials*.json
+
+# Logs, Dumps e Bancos de Dados
+*.log
+*.sql
+*.dump
+*.sqlite
+*.sqlite3
+*.bak
+*.swp
+*.swo
+
+# Scraper & Scripts Locais Temporários
+scraper/
+scraper.py
+enem-test-data/
+tmp/
+temp/
+scratch/
+
+# Testes, Caches e Builds
+.phpunit.result.cache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE & SO
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+.DS_Store
+Thumbs.db
+
+# Laravel Backend
 backend/public/hot
 backend/public/storage
 backend/storage/*.key
@@ -25,11 +65,11 @@ backend/storage/logs/*
 backend/bootstrap/cache/*
 !backend/bootstrap/cache/.gitignore
 
-# Frontend Specific
-frontend/dist
-frontend/node_modules
-
-# Sensitive & Scraper local
-scraper/
-apikey.txt
-*.txt.key
+# Frontend
+frontend/dist/
+frontend/node_modules/
+frontend/*.png
+frontend/evidence_*.png
+frontend/screenshot*.js
+frontend/screenshot*.mjs
+docker-compose.override.yml
